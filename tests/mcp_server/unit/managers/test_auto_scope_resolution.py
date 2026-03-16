@@ -175,8 +175,6 @@ class TestAutoScopeEdgeCases:
         project_file.parent.mkdir(parents=True, exist_ok=True)
         project_file.write_text("# stub\n")
 
-        manager = make_qa_manager(tmp_path)
-
         mock_cfg = MagicMock()
         mock_cfg.active_gates = []
         mock_cfg.artifact_logging.enabled = False
@@ -185,9 +183,9 @@ class TestAutoScopeEdgeCases:
         project_scope = MagicMock()
         project_scope.include_globs = ["mcp_server/*.py"]
         mock_cfg.project_scope = project_scope
+        manager = make_qa_manager(tmp_path, quality_config=mock_cfg)
 
-        with patch("mcp_server.managers.qa_manager.QualityConfig.load", return_value=mock_cfg):
-            result = manager._resolve_scope("auto")
+        result = manager._resolve_scope("auto")
 
         assert result != [], (
             "scope=auto with no baseline must fallback to project scope, not return []."
@@ -212,8 +210,6 @@ class TestAutoScopeEdgeCases:
         project_file.parent.mkdir(parents=True, exist_ok=True)
         project_file.write_text("# stub\n")
 
-        manager = make_qa_manager(tmp_path)
-
         mock_cfg = MagicMock()
         mock_cfg.active_gates = []
         mock_cfg.artifact_logging.enabled = False
@@ -222,9 +218,9 @@ class TestAutoScopeEdgeCases:
         project_scope = MagicMock()
         project_scope.include_globs = ["mcp_server/*.py"]
         mock_cfg.project_scope = project_scope
+        manager = make_qa_manager(tmp_path, quality_config=mock_cfg)
 
-        with patch("mcp_server.managers.qa_manager.QualityConfig.load", return_value=mock_cfg):
-            result = manager._resolve_scope("auto")
+        result = manager._resolve_scope("auto")
 
         assert result != [], (
             "scope=auto with empty baseline_sha must fallback to project scope, not return []."

@@ -38,6 +38,7 @@ import pytest
 
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
+from tests.mcp_server.test_support import make_artifact_manager
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +48,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 
 def _make_manager(tmp_path: Path) -> ArtifactManager:
     """Create ArtifactManager with test workspace."""
-    return ArtifactManager(workspace_root=str(tmp_path))
+    return make_artifact_manager(tmp_path)
 
 
 def _run_v1(manager: ArtifactManager, artifact_type: str, context: dict) -> str:

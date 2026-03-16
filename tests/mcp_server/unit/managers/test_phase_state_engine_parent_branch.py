@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tests for PhaseStateEngine with parent_branch tracking.
 
 Issue #79: Tests for parent_branch in state management.

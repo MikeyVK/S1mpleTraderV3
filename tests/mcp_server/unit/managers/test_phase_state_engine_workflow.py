@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """RED tests for PhaseStateEngine workflow validation.
 
 Issue #50 - Step 3: PhaseStateEngine Integration

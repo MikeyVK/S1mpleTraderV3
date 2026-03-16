@@ -1,7 +1,7 @@
 """Unit tests for ArtifactManager."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import pytest
 
@@ -9,6 +9,7 @@ from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from tests.mcp_server.test_support import make_artifact_manager
 
 
 class TestArtifactManagerCore:
@@ -28,6 +29,7 @@ class TestArtifactManagerCore:
     def test_constructor_accepts_optional_scaffolder(self) -> None:
         """Test that constructor accepts optional scaffolder parameter."""
         mock_scaffolder = Mock(spec=TemplateScaffolder)
+        mock_scaffolder.registry = Mock(spec=ArtifactRegistryConfig)
         manager = ArtifactManager(scaffolder=mock_scaffolder)
         assert manager.scaffolder is mock_scaffolder
 
@@ -53,9 +55,19 @@ class TestArtifactManagerCore:
         mock_validation_service.validate = AsyncMock(return_value=(True, []))
 
         # Mock get_artifact_path to avoid complex dependency chain
+        mock_artifact = Mock()
+        mock_artifact.template_path = "concrete/dto.py.jinja2"
+        type(mock_artifact).output_type = PropertyMock(return_value="file")
+        mock_artifact.type = "code"
+        mock_artifact.file_extension = ".py"
+        mock_artifact.name_suffix = "DTO"
+        mock_registry = Mock(spec=ArtifactRegistryConfig)
+        mock_registry.get_artifact.return_value = mock_artifact
+
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
+                registry=mock_registry,
                 fs_adapter=mock_fs_adapter,
                 validation_service=mock_validation_service,
             )
@@ -88,6 +100,7 @@ class TestArtifactManagerCore:
     def test_validate_artifact_delegates_to_scaffolder(self) -> None:
         """Test that validate_artifact delegates to scaffolder."""
         mock_scaffolder = Mock(spec=TemplateScaffolder)
+        mock_scaffolder.registry = Mock(spec=ArtifactRegistryConfig)
         mock_scaffolder.validate.return_value = True
 
         manager = ArtifactManager(scaffolder=mock_scaffolder)
@@ -99,14 +112,15 @@ class TestArtifactManagerCore:
     def test_validation_error_propagates(self) -> None:
         """Test that validation errors propagate correctly."""
         mock_scaffolder = Mock(spec=TemplateScaffolder)
+        mock_scaffolder.registry = Mock(spec=ArtifactRegistryConfig)
         mock_scaffolder.validate.side_effect = ValidationError("Missing field")
 
         manager = ArtifactManager(scaffolder=mock_scaffolder)
         with pytest.raises(ValidationError):
             manager.validate_artifact("dto", name="Test")
 
-    def test_not_singleton(self) -> None:
+    def test_not_singleton(self, tmp_path: Path) -> None:
         """Test that ArtifactManager is NOT a singleton."""
-        manager1 = ArtifactManager()
-        manager2 = ArtifactManager()
+        manager1 = make_artifact_manager(tmp_path)
+        manager2 = make_artifact_manager(tmp_path)
         assert manager1 is not manager2

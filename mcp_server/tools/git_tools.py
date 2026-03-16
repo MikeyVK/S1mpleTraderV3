@@ -3,6 +3,7 @@
 import json
 import subprocess
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, ClassVar
 
 import anyio
@@ -657,11 +658,7 @@ class GetParentBranchTool(BaseTool):
 
     def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
         if self._state_engine is None:
-            workspace_root = Path.cwd()
-            self._state_engine = phase_state_engine.PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=project_manager.ProjectManager(workspace_root=workspace_root),
-            )
+            raise ValueError("PhaseStateEngine must be injected for git tools that inspect state")
         return self._state_engine
 
     @property

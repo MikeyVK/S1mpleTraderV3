@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from mcp_server.managers.artifact_manager import ArtifactManager
+from tests.mcp_server.test_support import make_artifact_manager
 
 
 class TestArtifactManagerMetadataEnrichment:
@@ -20,7 +21,7 @@ class TestArtifactManagerMetadataEnrichment:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create manager with mocked collaborators."""
-        manager = ArtifactManager(workspace_root=str(tmp_path))
+        manager = make_artifact_manager(tmp_path)
         # Mock scaffolder to capture enriched context
         manager.scaffolder = Mock()
         header = "# SCAFFOLD: dto:abc123 | 2026-01-24T10:00:00Z | test.py"
@@ -128,7 +129,7 @@ class TestArtifactManagerNullTemplate:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create manager with workspace_root set."""
-        return ArtifactManager(workspace_root=str(tmp_path))
+        return make_artifact_manager(tmp_path)
 
     @pytest.mark.asyncio
     async def test_scaffold_raises_config_error_for_null_template_path(
@@ -162,7 +163,7 @@ class TestArtifactManagerTierChainExtraction:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create manager with mocked collaborators."""
-        manager = ArtifactManager(workspace_root=str(tmp_path))
+        manager = make_artifact_manager(tmp_path)
         # Mock scaffolder to capture version_hash computation
         manager.scaffolder = Mock()
         header = "# SCAFFOLD: dto:abc123 | 2026-01-24T10:00:00Z | test.py"

@@ -232,15 +232,10 @@ class TestScopeResolutionProject:
             ],
         )
 
-        manager = make_qa_manager(tmp_path)
         cfg = _project_scope_config(include_globs=["mcp_server/*.py"])
+        manager = make_qa_manager(tmp_path, quality_config=cfg)
 
-        with patch(
-            "mcp_server.managers.qa_manager.QualityConfig.load",
-            return_value=cfg,
-        ):
-            # RED: _resolve_scope does not exist yet → AttributeError
-            result = manager._resolve_scope("project")
+        result = manager._resolve_scope("project")
 
         assert "mcp_server/alpha.py" in result or "mcp_server\\alpha.py" in result
 
@@ -251,14 +246,10 @@ class TestScopeResolutionProject:
             ["pkg/z_last.py", "pkg/a_first.py", "pkg/m_middle.py"],
         )
 
-        manager = make_qa_manager(tmp_path)
         cfg = _project_scope_config(include_globs=["pkg/*.py"])
+        manager = make_qa_manager(tmp_path, quality_config=cfg)
 
-        with patch(
-            "mcp_server.managers.qa_manager.QualityConfig.load",
-            return_value=cfg,
-        ):
-            result = manager._resolve_scope("project")
+        result = manager._resolve_scope("project")
 
         assert result == sorted(result)
 
@@ -266,15 +257,11 @@ class TestScopeResolutionProject:
         """Overlapping globs do not produce duplicate paths."""
         _make_workspace(tmp_path, ["src/util.py"])
 
-        manager = make_qa_manager(tmp_path)
         # Two overlapping globs both match src/util.py
         cfg = _project_scope_config(include_globs=["src/*.py", "src/util.py"])
+        manager = make_qa_manager(tmp_path, quality_config=cfg)
 
-        with patch(
-            "mcp_server.managers.qa_manager.QualityConfig.load",
-            return_value=cfg,
-        ):
-            result = manager._resolve_scope("project")
+        result = manager._resolve_scope("project")
 
         assert result.count(result[0]) == 1 if result else True
 
@@ -282,24 +269,16 @@ class TestScopeResolutionProject:
         """When include_globs is empty, scope=project returns []."""
         _make_workspace(tmp_path, ["mcp_server/foo.py"])
 
-        manager = make_qa_manager(tmp_path)
         cfg = _project_scope_config(include_globs=[])
+        manager = make_qa_manager(tmp_path, quality_config=cfg)
 
-        with patch(
-            "mcp_server.managers.qa_manager.QualityConfig.load",
-            return_value=cfg,
-        ):
-            result = manager._resolve_scope("project")
+        result = manager._resolve_scope("project")
 
         assert result == []
 
     def test_project_scope_no_workspace_root_returns_empty(self) -> None:
         """When workspace_root is None, scope=project returns [] (graceful no-op)."""
         manager = make_qa_manager()
-
-        with patch(
-            "mcp_server.managers.qa_manager.QualityConfig.load",
-        ):
-            result = manager._resolve_scope("project")
+        result = manager._resolve_scope("project")
 
         assert result == []

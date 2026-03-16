@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tests for PhaseStateEngine auto-recovery (Mode 2).
 
 Issue #39: Mode 2 - Auto-recovery of missing state.json from git commits.

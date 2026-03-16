@@ -21,6 +21,7 @@ class ServerSettings(BaseModel):
     name: str = "st3-workflow"
     version: str = "1.0.0"
     workspace_root: str = Field(default_factory=os.getcwd)
+    config_root: str | None = None
 
 
 class GitHubSettings(BaseModel):

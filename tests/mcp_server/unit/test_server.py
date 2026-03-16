@@ -12,18 +12,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
-from mcp_server.config.git_config import GitConfig
-from mcp_server.config.workflows import WorkflowConfig
-from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.server import MCPServer
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.git_tools import CreateBranchTool
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
 from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 def _bootstrap_workspace_configs(workspace_root: Path) -> None:
@@ -38,8 +34,10 @@ def _patch_server_settings(
 ) -> None:
     """Configure a Settings class mock for server tests."""
     resolved_workspace_root = workspace_root or str(Path(__file__).resolve().parents[3])
+    resolved_config_root = str(Path(resolved_workspace_root) / ".st3")
     mock.from_env.return_value.server.name = "test-server"
     mock.from_env.return_value.server.workspace_root = resolved_workspace_root
+    mock.from_env.return_value.server.config_root = resolved_config_root
     mock.from_env.return_value.github.token = token
     mock.from_env.return_value.github.owner = "test"
     mock.from_env.return_value.github.repo = "repo"
@@ -215,21 +213,15 @@ class TestServerToolRegistration:
 
         _bootstrap_workspace_configs(tmp_path)
 
-        project_manager = ProjectManager(
-            workspace_root=tmp_path,
-            workflow_config=WorkflowConfig.load(Path(".st3/workflows.yaml")),
-        )
+        project_manager = make_project_manager(tmp_path)
         project_manager.initialize_project(
             issue_number=257,
             issue_title="Cycle 5 enforcement",
             workflow_name="feature",
         )
-        state_engine = PhaseStateEngine(
-            workspace_root=tmp_path,
+        state_engine = make_phase_state_engine(
+            tmp_path,
             project_manager=project_manager,
-            git_config=GitConfig.from_file(tmp_path / ".st3" / "git.yaml"),
-            workflow_config=WorkflowConfig.load(tmp_path / ".st3" / "workflows.yaml"),
-            workphases_config=WorkphasesConfig(tmp_path / ".st3" / "workphases.yaml"),
             state_repository=InMemoryStateRepository(),
         )
         state_engine.initialize_branch(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tests for PhaseStateEngine state.json persistence.
 
 Issue #85: Single-branch state model - state.json should contain ONLY current branch.

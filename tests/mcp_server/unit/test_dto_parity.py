@@ -42,6 +42,7 @@ import pytest
 
 # Project modules
 from mcp_server.managers.artifact_manager import ArtifactManager
+from tests.mcp_server.test_support import make_artifact_manager
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class TestDTOParityHappyPath:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create ArtifactManager with test workspace."""
-        return ArtifactManager(workspace_root=str(tmp_path))
+        return make_artifact_manager(tmp_path)
 
     def _validate_smoke_test(self, v1_output: str, v2_output: str) -> None:
         """Shared smoke test validation logic.

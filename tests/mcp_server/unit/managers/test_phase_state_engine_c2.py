@@ -136,6 +136,11 @@ class TestOnExitPlanningPhase:
             issue_title="No planning gate",
             workflow_name="feature",
         )
+        engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
         # No planning_deliverables AND no exit_requires → must NOT raise
         engine.on_exit_planning_phase(branch="feature/230-test", issue_number=230)
 

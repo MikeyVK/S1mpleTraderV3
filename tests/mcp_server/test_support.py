@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from mcp_server.config.compat_roots import get_candidate_config_roots, resolve_config_root as resolve_runtime_config_root
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.policy_engine import PolicyEngine
@@ -38,38 +39,63 @@ from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool
 from mcp_server.tools.pr_tools import CreatePRInput
 
 
-def resolve_config_root(workspace_root: Path | str | None = None) -> Path:
-    """Resolve the .st3 config root for one workspace under test."""
-    if workspace_root is not None:
-        root = Path(workspace_root)
-        direct = root if root.name == ".st3" else root / ".st3"
-        if direct.exists():
-            return direct
-
-    repo_root = Path.cwd()
-    repo_st3 = repo_root / ".st3"
-    if repo_st3.exists():
-        return repo_st3
-
-    raise FileNotFoundError("Could not locate .st3 config root for test support")
+def _candidate_config_roots(workspace_root: Path | str | None = None) -> list[Path]:
+    """Return workspace-first candidate .st3 roots from the shared runtime resolver."""
+    return get_candidate_config_roots(workspace_root)
 
 
-def make_config_loader(workspace_root: Path | str | None = None) -> ConfigLoader:
+def resolve_config_root(
+    workspace_root: Path | str | None = None,
+    required_paths: tuple[str | Path, ...] = (),
+) -> Path:
+    """Resolve the best .st3 config root for one workspace under test."""
+    return resolve_runtime_config_root(
+        preferred_root=workspace_root,
+        required_files=required_paths,
+    )
+
+
+def make_config_loader(
+    workspace_root: Path | str | None = None,
+    required_paths: tuple[str | Path, ...] = (),
+) -> ConfigLoader:
     """Create a ConfigLoader for the requested workspace."""
-    return ConfigLoader(resolve_config_root(workspace_root))
+    return ConfigLoader(resolve_config_root(workspace_root, required_paths=required_paths))
+
+
+def _load_config(
+    workspace_root: Path | str | None,
+    required_path: str | Path,
+    load_method: str,
+    **kwargs: object,
+) -> object:
+    """Load one config file with workspace-first, file-specific fallback."""
+    loader = make_config_loader(workspace_root, required_paths=(required_path,))
+    return getattr(loader, load_method)(**kwargs)
 
 
 def load_issue_tool_dependencies(workspace_root: Path | str | None = None) -> dict[str, object]:
     """Load explicit issue-tool dependencies through ConfigLoader."""
-    loader = make_config_loader(workspace_root)
     return {
-        "issue_config": loader.load_issue_config(),
-        "git_config": loader.load_git_config(),
-        "label_config": loader.load_label_config(),
-        "scope_config": loader.load_scope_config(),
-        "milestone_config": loader.load_milestone_config(),
-        "contributor_config": loader.load_contributor_config(),
-        "workflow_config": loader.load_workflow_config(),
+        "issue_config": _load_config(workspace_root, "issues.yaml", "load_issue_config"),
+        "git_config": _load_config(workspace_root, "git.yaml", "load_git_config"),
+        "label_config": _load_config(workspace_root, "labels.yaml", "load_label_config"),
+        "scope_config": _load_config(workspace_root, "scopes.yaml", "load_scope_config"),
+        "milestone_config": _load_config(
+            workspace_root,
+            "milestones.yaml",
+            "load_milestone_config",
+        ),
+        "contributor_config": _load_config(
+            workspace_root,
+            "contributors.yaml",
+            "load_contributor_config",
+        ),
+        "workflow_config": _load_config(
+            workspace_root,
+            "workflows.yaml",
+            "load_workflow_config",
+        ),
     }
 
 
@@ -88,30 +114,45 @@ def configure_create_issue_input(workspace_root: Path | str | None = None) -> No
 
 def configure_create_branch_input(workspace_root: Path | str | None = None) -> GitConfig:
     """Configure CreateBranchInput validators with explicit git config."""
-    git_config = make_config_loader(workspace_root).load_git_config()
+    git_config = _load_config(workspace_root, "git.yaml", "load_git_config")
     CreateBranchInput.configure(git_config)
     return git_config
 
 
 def configure_create_pr_input(workspace_root: Path | str | None = None) -> GitConfig:
     """Configure CreatePRInput validators with explicit git config."""
-    git_config = make_config_loader(workspace_root).load_git_config()
+    git_config = _load_config(workspace_root, "git.yaml", "load_git_config")
     CreatePRInput.configure(git_config)
     return git_config
 
 
 def make_git_manager(workspace_root: Path | str | None = None) -> GitManager:
     """Build a GitManager with explicit GitConfig."""
-    return GitManager(git_config=make_config_loader(workspace_root).load_git_config())
+    git_config = _load_config(workspace_root, "git.yaml", "load_git_config")
+    return GitManager(git_config=git_config)
 
 
-def make_project_manager(workspace_root: Path | str) -> ProjectManager:
-    """Build a ProjectManager with explicit WorkflowConfig."""
-    loader = make_config_loader(workspace_root)
+def load_workflow_config(workspace_root: Path | str | None = None) -> WorkflowConfig:
+    """Load WorkflowConfig through the shared ConfigLoader helper."""
+    return _load_config(workspace_root, "workflows.yaml", "load_workflow_config")
+
+
+def make_project_manager(
+    workspace_root: Path | str,
+    workflow_config: WorkflowConfig | None = None,
+    git_manager: GitManager | None = None,
+) -> ProjectManager:
+    """Build a ProjectManager with explicit workflow config injection."""
+    resolved_workflow_config = workflow_config or load_workflow_config(workspace_root)
+    resolved_git_manager = git_manager
+    if resolved_git_manager is None:
+        git_roots = _candidate_config_roots(workspace_root)
+        if any((candidate / "git.yaml").exists() for candidate in git_roots):
+            resolved_git_manager = make_git_manager(workspace_root)
     return ProjectManager(
         workspace_root=workspace_root,
-        workflow_config=loader.load_workflow_config(),
-        git_manager=make_git_manager(workspace_root),
+        workflow_config=resolved_workflow_config,
+        git_manager=resolved_git_manager,
     )
 
 
@@ -121,7 +162,6 @@ def make_phase_state_engine(
     state_repository: object | None = None,
 ) -> PhaseStateEngine:
     """Build a PhaseStateEngine with explicit config objects."""
-    loader = make_config_loader(workspace_root)
     manager = project_manager or make_project_manager(workspace_root)
     kwargs: dict[str, object] = {}
     if state_repository is not None:
@@ -129,9 +169,13 @@ def make_phase_state_engine(
     return PhaseStateEngine(
         workspace_root=workspace_root,
         project_manager=manager,
-        git_config=loader.load_git_config(),
-        workflow_config=loader.load_workflow_config(),
-        workphases_config=loader.load_workphases_config(),
+        git_config=_load_config(workspace_root, "git.yaml", "load_git_config"),
+        workflow_config=_load_config(workspace_root, "workflows.yaml", "load_workflow_config"),
+        workphases_config=_load_config(
+            workspace_root,
+            "workphases.yaml",
+            "load_workphases_config",
+        ),
         **kwargs,
     )
 
@@ -141,7 +185,6 @@ def make_phase_config_context(
     issue_number: int | None = None,
 ) -> PhaseConfigContext:
     """Build a PhaseConfigContext explicitly from config and optional deliverables."""
-    loader = make_config_loader(workspace_root)
     planning_deliverables = None
     workspace_path = Path(workspace_root)
     deliverables_path = workspace_path / ".st3" / "deliverables.json"
@@ -152,15 +195,26 @@ def make_phase_config_context(
         if isinstance(candidate, dict):
             planning_deliverables = candidate
     return PhaseConfigContext(
-        workphases=loader.load_workphases_config(),
-        phase_contracts=loader.load_phase_contracts_config(),
+        workphases=_load_config(
+            workspace_root,
+            "workphases.yaml",
+            "load_workphases_config",
+        ),
+        phase_contracts=_load_config(
+            workspace_root,
+            Path("config") / "phase_contracts.yaml",
+            "load_phase_contracts_config",
+        ),
         planning_deliverables=planning_deliverables,
     )
 
 
 def make_policy_engine(workspace_root: Path | str | None = None) -> PolicyEngine:
     """Build a PolicyEngine with explicit config objects."""
-    config_root = resolve_config_root(workspace_root)
+    config_root = resolve_config_root(
+        workspace_root,
+        required_paths=("policies.yaml", "git.yaml", "workflows.yaml", "artifacts.yaml"),
+    )
     loader = ConfigLoader(config_root)
     artifact_registry = loader.load_artifact_registry_config()
     project_structure = loader.load_project_structure_config(artifact_registry=artifact_registry)
@@ -180,9 +234,16 @@ def make_directory_policy_resolver(
     """Build a DirectoryPolicyResolver with explicit project structure config."""
     config = project_structure_config
     if config is None:
-        loader = make_config_loader(workspace_root)
-        config = loader.load_project_structure_config(
-            artifact_registry=loader.load_artifact_registry_config()
+        registry = _load_config(
+            workspace_root,
+            "artifacts.yaml",
+            "load_artifact_registry_config",
+        )
+        config = _load_config(
+            workspace_root,
+            "project_structure.yaml",
+            "load_project_structure_config",
+            artifact_registry=registry,
         )
     return DirectoryPolicyResolver(config)
 
@@ -193,7 +254,11 @@ def make_template_scaffolder(
     renderer: object | None = None,
 ) -> TemplateScaffolder:
     """Build a TemplateScaffolder with explicit registry injection."""
-    resolved_registry = registry or make_config_loader(workspace_root).load_artifact_registry_config()
+    resolved_registry = registry or _load_config(
+        workspace_root,
+        "artifacts.yaml",
+        "load_artifact_registry_config",
+    )
     return TemplateScaffolder(registry=resolved_registry, renderer=renderer)
 
 
@@ -202,7 +267,11 @@ def make_metadata_parser(
     config: ScaffoldMetadataConfig | None = None,
 ) -> ScaffoldMetadataParser:
     """Build a ScaffoldMetadataParser with explicit metadata config."""
-    metadata_config = config or make_config_loader(workspace_root).load_scaffold_metadata_config()
+    metadata_config = config or _load_config(
+        workspace_root,
+        "scaffold_metadata.yaml",
+        "load_scaffold_metadata_config",
+    )
     return ScaffoldMetadataParser(metadata_config)
 
 
@@ -211,16 +280,28 @@ def make_qa_manager(
     quality_config: QualityConfig | None = None,
 ) -> QAManager:
     """Build a QAManager with explicit quality config injection."""
-    resolved_quality = quality_config or make_config_loader(workspace_root).load_quality_config()
+    resolved_quality = quality_config or _load_config(
+        workspace_root,
+        "quality.yaml",
+        "load_quality_config",
+    )
     resolved_workspace = Path(workspace_root) if workspace_root is not None else None
     return QAManager(workspace_root=resolved_workspace, quality_config=resolved_quality)
 
 
 def make_artifact_manager(workspace_root: Path | str) -> ArtifactManager:
     """Build an ArtifactManager with explicit registry and project structure config."""
-    loader = make_config_loader(workspace_root)
-    registry = loader.load_artifact_registry_config()
-    project_structure = loader.load_project_structure_config(artifact_registry=registry)
+    registry = _load_config(
+        workspace_root,
+        "artifacts.yaml",
+        "load_artifact_registry_config",
+    )
+    project_structure = _load_config(
+        workspace_root,
+        "project_structure.yaml",
+        "load_project_structure_config",
+        artifact_registry=registry,
+    )
     return ArtifactManager(
         workspace_root=workspace_root,
         registry=registry,

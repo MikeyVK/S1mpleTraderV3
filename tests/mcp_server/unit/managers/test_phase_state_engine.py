@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tests for PhaseStateEngine entry/exit hooks.
 
 Issue #146 Cycle 4: TDD phase lifecycle hooks.

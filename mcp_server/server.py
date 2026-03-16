@@ -23,7 +23,7 @@ from mcp.types import (
 from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
-from mcp_server.config.compat_roots import find_compatible_config_root
+from mcp_server.config.compat_roots import resolve_config_root
 from mcp_server.config.label_startup import validate_label_config_on_startup
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.settings import Settings
@@ -140,12 +140,15 @@ class MCPServer:
         self.template_registry = TemplateRegistry(registry_path=registry_path)
         lifecycle_logger.info("Template registry initialized")
 
-        config_root = find_compatible_config_root(
-            workspace_root,
+        explicit_config_root = settings.server.config_root
+        if explicit_config_root is not None and not str(explicit_config_root).strip():
+            explicit_config_root = None
+
+        config_root = resolve_config_root(
+            preferred_root=workspace_root,
+            explicit_root=explicit_config_root,
             required_files=("git.yaml", "workflows.yaml", "workphases.yaml"),
         )
-        if config_root is None:
-            raise FileNotFoundError("Could not locate a compatible .st3 config directory")
         config_loader = ConfigLoader(config_root=config_root)
         git_config = config_loader.load_git_config()
         workflow_config = config_loader.load_workflow_config()

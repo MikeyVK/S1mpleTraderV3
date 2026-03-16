@@ -16,6 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from mcp_server.tools.issue_tools import CreateIssueInput, IssueBody
+from tests.mcp_server.test_support import configure_create_issue_input
 
 # ---------------------------------------------------------------------------
 # Helper: minimal valid input
@@ -30,6 +31,11 @@ VALID_MINIMAL: dict = {
     "scope": "mcp-server",
     "body": VALID_BODY,
 }
+
+
+@pytest.fixture(autouse=True)
+def _configure_issue_input() -> None:
+    configure_create_issue_input()
 
 
 # ---------------------------------------------------------------------------

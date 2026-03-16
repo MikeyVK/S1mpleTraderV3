@@ -120,20 +120,24 @@ class ArtifactManager:
         self.workspace_root = Path(workspace_root).resolve() if workspace_root else None
 
         # Merge dependencies container with individual kwargs (kwargs take precedence)
-        deps = dependencies or ArtifactManagerDependencies()
-        registry = registry if registry is not None else deps.registry
-        scaffolder = scaffolder if scaffolder is not None else deps.scaffolder
+        deps = dependencies
+        registry = registry if registry is not None else (deps.registry if deps is not None else None)
+        scaffolder = scaffolder if scaffolder is not None else (deps.scaffolder if deps is not None else None)
         validation_service = (
-            validation_service if validation_service is not None else deps.validation_service
+            validation_service
+            if validation_service is not None
+            else (deps.validation_service if deps is not None else None)
         )
-        fs_adapter = fs_adapter if fs_adapter is not None else deps.fs_adapter
+        fs_adapter = fs_adapter if fs_adapter is not None else (deps.fs_adapter if deps is not None else None)
         template_registry = (
-            template_registry if template_registry is not None else deps.template_registry
+            template_registry
+            if template_registry is not None
+            else (deps.template_registry if deps is not None else None)
         )
         project_structure_config = (
             project_structure_config
             if project_structure_config is not None
-            else deps.project_structure_config
+            else (deps.project_structure_config if deps is not None else None)
         )
 
         fs_root = getattr(fs_adapter, "root_path", None)
@@ -143,15 +147,6 @@ class ArtifactManager:
         if isinstance(fs_root, str | os.PathLike):
             candidate_roots.append(Path(fs_root).resolve())
         candidate_roots.append(Path.cwd().resolve())
-
-        config_root = next(
-            (
-                candidate
-                for candidate in candidate_roots
-                if (candidate / ".st3" / "artifacts.yaml").exists()
-            ),
-            None,
-        )
 
         if registry is None and scaffolder is not None:
             registry = getattr(scaffolder, "registry", None)

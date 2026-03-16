@@ -4,159 +4,224 @@
 
 - Issue: #257
 - Branch: `feature/257-reorder-workflow-phases`
-- Werkitem: `C_LOADER.3` (Cycle 2c in planning)
-- Status bij overdracht: structureel ver gevorderd, maar nog **NOGO** als cycle-afsluiting
-- Reden NOGO: runtime-bewijs is nog niet hard genoeg; eerdere groene signalen waren onvoldoende voor eerlijke stop/go
+- Werkitem: `C_LOADER.3`
+- Status bij overdracht: **NOGO**
+- Reden NOGO: config-root en DI-contract zijn breed gelijkgetrokken, maar de MCP unit-suite heeft nog 10 open failures in tooltests
 
 ## Samenvatting
 
-Deze sessie stond in het teken van het echt sluiten van `C_LOADER.3` volgens de gerepareerde planning, niet van cosmetisch groen krijgen. De kern van het werk was:
+Deze sessie heeft de resterende `C_LOADER.3`-refactor vooral geconcentreerd op twee lijnen:
 
-1. productiecode opschonen zodat config/self-loading en fallback-construction buiten `config/` verdwijnen
-2. test-oppervlak mee refactoren binnen dezelfde blast radius zodat de QA-evidence nog betekenis heeft
-3. alleen richting GO bewegen als de structurele stop/go uit de planning werkelijk klopt
+1. runtime en tests laten resolven op een expliciete `config_root` in plaats van impliciete cwd/fallback-paden
+2. legacy unit-tests ombouwen naar expliciete injectie van config- en managerdependencies
 
-De planning voor `C_LOADER.3` is in deze sessie ook aangescherpt naar de reele scope: 26 productie- en composition-root files, inclusief `validation/` en `server.py`, met expliciete stop/go-criteria voor verboden self-loading, verboden manager-imports uit `mcp_server.config`, en volledige testpassage.
+De branch staat daardoor structureel verder dan aan het begin van de sessie, maar de cycle is nog niet afsluitbaar. De manager-, schema- en een groot deel van de server/test-support laag zijn inmiddels groen; de resterende failures zitten nu geconcentreerd in een kleinere tooltest-restset.
 
-## Wat Deze Sessie Is Gedaan
+## Wat Deze Sessie Heeft Opgeleverd
 
-### 1. Productie-opruiming naar expliciete DI
+### 1. Runtime `config_root` expliciet gemaakt
 
-De relevante productie-oppervlakken zijn breed opgeschoond zodat constructorinjectie de norm wordt en verborgen config-loading uit execute-paden verdwijnt.
+De composition root en compat-resolving zijn aangepast zodat runtime en tests dezelfde definitie van config-root gebruiken.
 
-Belangrijkste lijnen:
+Belangrijkste wijzigingen:
 
-- `GitManager` vraagt nu expliciet een `GitConfig`
-- `ProjectManager` vraagt nu expliciet een `WorkflowConfig` en gebruikt optioneel een geinjecteerde `GitManager`
-- `PhaseStateEngine` vraagt nu expliciet `GitConfig`, `WorkflowConfig` en `WorkphasesConfig`
-- `QAManager` draait nu op geinjecteerde `QualityConfig`
-- `ArtifactManager` en `TemplateScaffolder` zijn strakker naar expliciete registry/config-injectie gezet
-- `PolicyEngine` en `DirectoryPolicyResolver` zijn ontdaan van verborgen fallback-loading
-- `server.py` is omgezet naar een duidelijke composition root die config eenmalig laadt en vervolgens managers/tools injecteert
-- diverse tools zijn omgezet van zelf managers/config bouwen naar gebruik van geinjecteerde dependencies
-
-Hiermee is de structurele richting van `C_LOADER.3` in lijn gebracht met het plandoel:
-
-> geen `from_file()` / `load()` / fallback construction buiten `config/`, en geen directe manager-importclosure uit `mcp_server.config` in productie-managers.
-
-### 2. Testblast-radius bewust mee gemigreerd
-
-Omdat deze productie-refactor constructoroppervlakken en composition-root wiring veranderde, is een groot deel van het testoppervlak mee aangepast binnen dezelfde cycle. Dat was nodig om te voorkomen dat tests groen blijven via oude verborgen coupling.
-
-Belangrijkste zet:
-
-- nieuw gedeeld builder/support-bestand: `tests/mcp_server/test_support.py`
-
-Deze helpers centraliseren DI-first setup voor onder meer:
-
-- `make_project_manager`
-- `make_phase_state_engine`
-- `make_qa_manager`
-- `make_git_manager`
-- `make_phase_config_context`
-- `make_artifact_manager`
-- `make_policy_engine`
-- create-issue / create-branch / create-pr input configuratie
-
-Daarnaast is `tests/mcp_server/conftest.py` aangepast zodat tests tool-input configuratie resetten in plaats van terug te vallen op singleton-resetgedrag.
-
-### 3. Grote constructor-migratie in tests
-
-Een brede set testfiles is aangepast om oude patronen zoals directe `ProjectManager(...)`, `PhaseStateEngine(...)`, `QAManager(...)` of impliciete config-loading te vervangen door expliciete builders of expliciet geladen config-objecten.
-
-De laatste migratiegolf in deze sessie zat vooral in:
-
-- cycle tools tests
-- discovery/work-context tests
-- phase-state-engine testfamilie
-- state repository tests
-- cross-machine en workflow e2e tests
-- server/tool wiring tests
-
-Na die migratie is de resterende constructor-oppervlakte sterk teruggebracht. De relevante resterende hits waren op het moment van overdracht nog hoofdzakelijk:
-
-- `tests/mcp_server/test_support.py` zelf, bewust als builderlaag
-- `tests/mcp_server/unit/managers/test_project_manager.py`
-- `tests/mcp_server/unit/test_server.py`
-
-Dat is dus geen brede verspreide legacy-schade meer, maar een kleine restset die gericht beoordeeld kan worden.
-
-## Belangrijkste Gewijzigde Productie-Oppervlakken
-
-De belangrijkste productie-aanpassingen van deze sessie zitten rond:
-
+- `mcp_server/config/compat_roots.py`
+  - nieuwe publieke helpers `get_candidate_config_roots(...)` en `resolve_config_root(...)`
+- `mcp_server/config/settings.py`
+  - `ServerSettings.config_root: str | None = None`
 - `mcp_server/server.py`
-- `mcp_server/managers/git_manager.py`
-- `mcp_server/managers/project_manager.py`
-- `mcp_server/managers/phase_state_engine.py`
-- `mcp_server/managers/qa_manager.py`
-- `mcp_server/managers/artifact_manager.py`
-- `mcp_server/managers/enforcement_runner.py`
-- `mcp_server/managers/phase_contract_resolver.py`
-- `mcp_server/core/policy_engine.py`
-- `mcp_server/core/directory_policy_resolver.py`
-- `mcp_server/scaffolding/metadata.py`
-- `mcp_server/scaffolders/template_scaffolder.py`
-- diverse toolmodules onder `mcp_server/tools/`
-- `mcp_server/validation/python_validator.py`
-- nieuw compat-bestand: `mcp_server/config/compat_roots.py`
-- verbrede schema-export in `mcp_server/schemas/__init__.py`
+  - server composeert nu via `resolve_config_root(preferred_root=workspace_root, explicit_root=settings.server.config_root, required_files=(...))`
+- `mcp_server/tools/git_tools.py`
+  - verboden fallback-construction voor `GetParentBranchTool` verwijderd; state-engine moet nu expliciet geïnjecteerd zijn
 
-## Huidige Beoordeling Tegen C_LOADER.3
+### 2. Gedeelde test-support naar dezelfde resolver omgebouwd
 
-### Wat er sterk uitziet
+`tests/mcp_server/test_support.py` is uitgebreid tot de centrale builderlaag voor de huidige DI-first contracten.
 
-- de plandoelstelling voor productie-DI is inhoudelijk serieus aangepakt
-- de composition root in `server.py` is explicieter geworden
-- het grootste deel van de oude zelfladende constructor-coupling is uit de bedoelde productie-oppervlakken gehaald
-- editor-diagnostics op recent aangepakte files waren herhaaldelijk schoon
-- brede grep- en constructor-checks hebben de resterende schuld sterk versmald
-- de testblast-radius is niet genegeerd, maar bewust meegetrokken in dezelfde cycle
+Belangrijkste helpers/aanpassingen:
 
-### Wat nog niet hard genoeg bewezen is
+- `_load_config(...)` voor file-specifieke config loading
+- `load_workflow_config(...)`
+- `make_project_manager(...)`
+- `make_phase_state_engine(...)`
+- `make_qa_manager(...)`
+- `make_artifact_manager(...)`
+- `configure_create_issue_input(...)`
+- `configure_create_pr_input(...)`
+- resolver in test-support hergebruikt nu de runtime helper in plaats van parallelle padlogica
 
-De cycle mag nog niet als GO worden gemarkeerd. De ontbrekende schakel is niet vooral statisch, maar operationeel:
+### 3. Testblast-radius meegetrokken naar expliciete injectie
 
-- een gerichte runtime-testuitvoering leverde geen bruikbare bewijsvoering op, maar effectief een lege uitkomst (`0 passed, 0 failed`)
-- daardoor is er nog geen overtuigend bewijs dat de nieuw omgebouwde testoppervlakken ook echt als set correct draaien
-- branch-wide quality gates zijn na de laatste migratiegolf nog niet opnieuw als eindbewijs vastgelegd
-- de volledige `pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q` stop/go uit planning is nog niet hard afgevinkt
+De grootste ombouw zat in unit-tests die nog uitgingen van hidden loading, singleton state of constructor-fallbacks.
 
-Kort gezegd: structureel staat het werk er veel beter voor, maar de bewijslaag is nog onvoldoende om `C_LOADER.3` eerlijk af te sluiten.
+Belangrijkste clusters die zijn aangepast:
 
-## Waar De Volgende Sessie Moet Oppakken
+- `tests/mcp_server/unit/test_server.py`
+  - gebruikt gedeelde builders
+  - mocked settings zetten nu expliciet `server.config_root`
+- `tests/mcp_server/unit/managers/test_project_manager.py`
+  - lokale workflow-loader verwijderd
+  - gebruikt `load_workflow_config(...)` en `make_project_manager(...)`
+- `tests/mcp_server/unit/managers/test_baseline_advance.py`
+  - `QualityConfig.load`-patching verwijderd ten gunste van directe injectie
+- `tests/mcp_server/unit/managers/test_scope_resolution.py`
+- `tests/mcp_server/unit/managers/test_auto_scope_resolution.py`
+- `tests/mcp_server/unit/managers/test_autofix_propagation.py`
+- `tests/mcp_server/unit/managers/test_feature_flag_v2.py`
+- `tests/mcp_server/unit/managers/test_artifact_manager*.py`
+- `tests/mcp_server/unit/schemas/test_*_v2_parity.py`
+- `tests/mcp_server/unit/test_dto_parity.py`
+- `tests/mcp_server/unit/tools/test_create_issue_input.py`
+  - validatorconfig wordt nu per test via autouse fixture gezet
+- `tests/mcp_server/unit/tools/test_git_checkout_state_sync.py`
+  - test injecteert nu direct de state-engine in plaats van oude patchtargets te verwachten
+- `tests/mcp_server/unit/tools/test_cycle_tools.py`
+  - mocked server settings zetten nu expliciet `server.config_root`
 
-### Directe eerstvolgende stap
+### 4. ArtifactManager-contract aangescherpt
 
-Voer geen nieuwe brede refactor meer uit voordat het bestaande werk eerst als bewijsbaar pakket is gevalideerd.
+De huidige testlaag is uitgelijnd op het feit dat `ArtifactManager` geen impliciete registry-loading meer doet.
 
-De eerstvolgende werkgang hoort te zijn:
+Dat zie je terug in:
 
-1. herbevestig de resterende constructor/self-loading hits op de kleine restset
-2. draai gerichte runtime-tests op de recent gemigreerde clusters tot er echte uitvoer is
-3. draai daarna pas de bredere relevante testset / branchbrede gates
-4. bepaal pas daarna GO/NOGO voor `C_LOADER.3`
+- expliciete registry/project-structure injectie via `make_artifact_manager(...)`
+- metadata/registry tests geven nu een echte string `template_path` mee waar tier extraction op kan draaien
+- directory-resolution tests voldoen nu aan het huidige `ProjectStructureConfig`-contract
 
-### Concreet aandachtspunt
+## Verificatie Deze Sessie
 
-Het belangrijkste risico is nu een valse positieve afsluiting. Alles in deze overdracht moet gelezen worden vanuit dat uitgangspunt:
+### Gerichte subsets groen
 
-- niet aannemen dat structurele grep-cleanliness gelijk staat aan cycle-closure
-- niet aannemen dat eerdere groene tests nog representatief zijn na de DI-refactor
-- niet terugvallen op oude optimistische overdrachten als bron van waarheid
-- runtime-evidence is de beslissende ontbrekende stap
+Bevestigd groen tijdens deze sessie:
+
+- `pytest tests/mcp_server/unit/test_server.py tests/mcp_server/unit/managers/test_project_manager.py tests/mcp_server/tools/test_pr_tools_config.py`
+  - `34 passed`
+- `pytest tests/mcp_server/managers tests/mcp_server/tools`
+  - `18 passed`
+- `pytest tests/mcp_server/unit/managers/test_artifact_manager.py tests/mcp_server/unit/managers/test_artifact_manager_registry.py tests/mcp_server/unit/managers/test_directory_resolution.py tests/mcp_server/unit/managers/test_phase_state_engine_c2.py -q`
+  - `19 passed`
+- `pytest tests/mcp_server/unit/schemas/test_code_artifact_v2_parity.py tests/mcp_server/unit/schemas/test_doc_artifact_v2_parity.py tests/mcp_server/unit/schemas/test_tracking_artifact_v2_parity.py tests/mcp_server/unit/test_dto_parity.py -q`
+  - `65 passed, 2 skipped, 2 xfailed`
+- `pytest tests/mcp_server/unit/tools/test_create_issue_input.py -q`
+  - `46 passed`
+
+### Actuele brede status
+
+De meest bruikbare brede check aan het einde van de sessie was seriële uitvoering zonder xdist-noise:
+
+- `pytest -n0 tests/mcp_server/unit -q`
+  - resultaat: `10 failed, 1537 passed, 9 skipped, 2 xfailed`
+
+Er was daarnaast eerder een xdist-gerelateerde Windows workercrash; voor deze overdracht geldt daarom de seriële run als waarheid, niet de parallelle run.
+
+## Open Failures Bij Overdracht
+
+De unit-suite is nu teruggebracht tot 10 failures in 4 clusters.
+
+### Cluster 1. `test_cycle_tools.py`
+
+Open failures:
+
+- `tests/mcp_server/unit/tools/test_cycle_tools.py::TestCycleTools::test_call_tool_post_enforcement_commits_state_files_after_cycle_transition`
+- `tests/mcp_server/unit/tools/test_cycle_tools.py::TestCycleTools::test_call_tool_force_cycle_post_enforcement_returns_warning`
+
+Probleem:
+
+- tests zetten wel `server.config_root`, maar hun tijdelijke `.st3` bevat nog niet alle vereiste files (`git.yaml`, `workflows.yaml`, `workphases.yaml`)
+- daardoor faalt `resolve_config_root(...)` correct met `FileNotFoundError`
+
+Benodigde vervolgstap:
+
+- testfixture/bootstrap uitbreiden zodat de temp workspace een complete minimale config-root heeft
+  of
+- serverconstructie in de test laten wijzen naar een bestaande complete `.st3`
+
+### Cluster 2. `test_git_pull_tool_behavior.py`
+
+Open failures:
+
+- `tests/mcp_server/unit/tools/test_git_pull_tool_behavior.py::test_git_pull_success_syncs_phase_state`
+- `tests/mcp_server/unit/tools/test_git_pull_tool_behavior.py::test_git_pull_phase_sync_failure_is_non_fatal`
+
+Probleem:
+
+- test patcht nog `mcp_server.tools.git_pull_tool.Path.cwd`
+- die patchtarget bestaat niet meer in de huidige toolimplementatie
+
+Benodigde vervolgstap:
+
+- test herschrijven naar expliciete state-engine injectie, analoog aan `test_git_checkout_state_sync.py`
+
+### Cluster 3. `test_quality_tools.py`
+
+Open failures:
+
+- `TestRunQualityGatesScopeGuardC41::test_scope_files_pass_run_does_not_advance_baseline`
+- `TestRunQualityGatesScopeGuardC41::test_non_auto_pass_runs_do_not_reset_auto_failed_state[branch]`
+- `TestRunQualityGatesScopeGuardC41::test_non_auto_pass_runs_do_not_reset_auto_failed_state[project]`
+- `TestRunQualityGatesFailedSubsetC42::test_auto_mixed_result_accumulates_only_failing_subset`
+- `TestRunQualityGatesFailedSubsetC42::test_auto_mixed_result_must_not_accumulate_full_resolved_set`
+
+Probleem:
+
+- deze tests patchen nog `QualityConfig.load`
+- `QAManager` draait nu op expliciet geïnjecteerde `QualityConfig`
+
+Benodigde vervolgstap:
+
+- tests omzetten naar dezelfde directe config-injectie als al gedaan is in `test_baseline_advance.py` en `test_scope_resolution.py`
+
+### Cluster 4. `test_scaffold_artifact.py`
+
+Open failure:
+
+- `tests/mcp_server/unit/tools/test_scaffold_artifact.py::TestScaffoldArtifactTool::test_manager_optional_di`
+
+Probleem:
+
+- test verwacht nog dat `ScaffoldArtifactTool()` zonder manager een impliciete `ArtifactManager()` kan bouwen
+- dat mag niet meer sinds registry-injectie verplicht is
+
+Benodigde vervolgstap:
+
+- test aanpassen naar expliciete managerinjectie
+  of
+- constructorcontract van tool herzien als die implicit path toch gewenst is
+
+## Beoordeling Tegen `C_LOADER.3`
+
+### Wat nu overtuigend beter is
+
+- runtime en tests gebruiken nu dezelfde config-root-resolutie
+- servermocks die een fake config-root meegaven zijn gecorrigeerd naar expliciete waarden
+- DI-first contract is doorgetrokken in de belangrijkste manager- en schema-testlagen
+- de resterende failures zijn geen diffuse branchbrede regressie meer, maar een smalle restset in tools
+
+### Waarom nog steeds NOGO
+
+`C_LOADER.3` is nog niet sluitbaar omdat de bewijslaag nog openstaat:
+
+- brede MCP unit-suite is nog niet groen
+- de open failures zitten precies in de resterende legacy-testaannames rond config-root en expliciete injectie
+- er is dus nog geen eerlijke stop/go voor deze cycle
 
 ## Aanbevolen Vervolgvolgorde
 
-1. Controleer de kleine restset in `test_project_manager.py` en `test_server.py` nog eenmaal op legacy constructorvormen versus intentionele expliciete config-injectie.
-2. Draai daarna gerichte testselecties op de laatst gemigreerde files, zodat je echte pass/fail-uitvoer krijgt in plaats van een lege run.
-3. Als die stabiel zijn, voer de bredere `tests/mcp_server/` validatie uit die in de planning als stop/go voor `C_LOADER.3` staat.
-4. Werk pas daarna de cycle-status en eventuele QA-overdracht bij.
+1. Maak `test_cycle_tools.py` temp-config-root compleet of laat de tests naar een complete `.st3` resolven.
+2. Zet `test_git_pull_tool_behavior.py` om naar expliciete injected state-engine, net als checkout.
+3. Verwijder de laatste `QualityConfig.load`-patches uit `test_quality_tools.py`.
+4. Beslis in `test_scaffold_artifact.py` expliciet of implicit manager-constructie nog onderdeel van het contract mag zijn; zo niet, pas de test aan.
+5. Draai opnieuw `pytest -n0 tests/mcp_server/unit -q`.
+6. Pas daarna opnieuw de bredere `tests/mcp_server`-stop/go voor `C_LOADER.3` bepalen.
 
 ## Eerlijke Eindconclusie
 
-Deze sessie heeft de cycle inhoudelijk veel dichter bij echte closure gebracht. Vooral productie-DI, composition-root wiring en de meeverhuisde testblast-radius zijn stevig opgeruimd. Maar zonder overtuigende runtime-uitvoering is dit nog geen verifieerbare GO.
+Deze sessie heeft de branch inhoudelijk verder gebracht: expliciete `config_root`, gedeelde DI-first test-support en een grote opruiming van legacy unit-tests zijn geland. De branch is daardoor beter gestructureerd en de failure-surface is sterk versmald.
 
-De juiste overdrachtsboodschap is daarom:
+De cycle is echter nog niet klaar voor GO. De actuele, seriële waarheid is:
 
-**`C_LOADER.3` is structureel sterk verbeterd, maar op dit moment nog NOGO tot de runtime-bewijslaag opnieuw hard is gemaakt.**
+**`pytest -n0 tests/mcp_server/unit -q` => 10 failed, 1537 passed, 9 skipped, 2 xfailed**
+
+Daarmee is de juiste overdrachtsboodschap:
+
+**`C_LOADER.3` is duidelijk verder gestabiliseerd, maar blijft bij overdracht NOGO totdat de laatste tooltest-restset is rechtgetrokken en de brede unit-validatie volledig groen is.**

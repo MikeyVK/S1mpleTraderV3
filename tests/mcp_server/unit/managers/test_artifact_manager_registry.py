@@ -9,10 +9,11 @@ RED phase: Tests that scaffold_artifact() integrates with TemplateRegistry:
 """
 
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import pytest
 
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.template_registry import TemplateRegistry
@@ -40,6 +41,14 @@ class TestArtifactManagerRegistryIntegration:
         )
 
         mock_registry = Mock(spec=TemplateRegistry)
+        mock_artifact = Mock()
+        mock_artifact.template_path = "concrete/dto.py.jinja2"
+        type(mock_artifact).output_type = PropertyMock(return_value="file")
+        mock_artifact.type = "code"
+        mock_artifact.file_extension = ".py"
+        mock_artifact.name_suffix = "DTO"
+        mock_config_registry = Mock(spec=ArtifactRegistryConfig)
+        mock_config_registry.get_artifact.return_value = mock_artifact
         mock_fs_adapter = Mock()
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
@@ -49,6 +58,7 @@ class TestArtifactManagerRegistryIntegration:
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
+                registry=mock_config_registry,
                 fs_adapter=mock_fs_adapter,
                 validation_service=mock_validation_service,
             )
@@ -76,6 +86,15 @@ class TestArtifactManagerRegistryIntegration:
             content="# SCAFFOLD: dto:abc123ef | 2026-01-23 | test.py\n", file_name="test.py"
         )
 
+        mock_artifact = Mock()
+        mock_artifact.template_path = "concrete/dto.py.jinja2"
+        type(mock_artifact).output_type = PropertyMock(return_value="file")
+        mock_artifact.type = "code"
+        mock_artifact.file_extension = ".py"
+        mock_artifact.name_suffix = "DTO"
+        mock_config_registry = Mock(spec=ArtifactRegistryConfig)
+        mock_config_registry.get_artifact.return_value = mock_artifact
+
         mock_fs_adapter = Mock()
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
@@ -85,6 +104,7 @@ class TestArtifactManagerRegistryIntegration:
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
+                registry=mock_config_registry,
                 fs_adapter=mock_fs_adapter,
                 validation_service=mock_validation_service,
             )
@@ -113,6 +133,15 @@ class TestArtifactManagerRegistryIntegration:
             content='"""Test."""\nclass Test:\n    pass\n', file_name="test.py"
         )
 
+        mock_artifact = Mock()
+        mock_artifact.template_path = "concrete/dto.py.jinja2"
+        type(mock_artifact).output_type = PropertyMock(return_value="file")
+        mock_artifact.type = "code"
+        mock_artifact.file_extension = ".py"
+        mock_artifact.name_suffix = "DTO"
+        mock_config_registry = Mock(spec=ArtifactRegistryConfig)
+        mock_config_registry.get_artifact.return_value = mock_artifact
+
         mock_fs_adapter = Mock()
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
@@ -122,6 +151,7 @@ class TestArtifactManagerRegistryIntegration:
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
+                registry=mock_config_registry,
                 fs_adapter=mock_fs_adapter,
                 validation_service=mock_validation_service,
             )
@@ -150,6 +180,15 @@ class TestArtifactManagerRegistryIntegration:
             content='"""Test."""\nclass Test:\n    pass\n', file_name="test.py"
         )
 
+        mock_artifact = Mock()
+        mock_artifact.template_path = "concrete/dto.py.jinja2"
+        type(mock_artifact).output_type = PropertyMock(return_value="file")
+        mock_artifact.type = "code"
+        mock_artifact.file_extension = ".py"
+        mock_artifact.name_suffix = "DTO"
+        mock_config_registry = Mock(spec=ArtifactRegistryConfig)
+        mock_config_registry.get_artifact.return_value = mock_artifact
+
         mock_fs_adapter = Mock()
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
@@ -159,6 +198,7 @@ class TestArtifactManagerRegistryIntegration:
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
+                registry=mock_config_registry,
                 fs_adapter=mock_fs_adapter,
                 validation_service=mock_validation_service,
             )

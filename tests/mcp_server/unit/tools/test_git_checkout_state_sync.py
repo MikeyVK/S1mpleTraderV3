@@ -1,6 +1,6 @@
 """Tests for GitCheckoutTool state synchronization with PhaseStateEngine."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -31,16 +31,9 @@ class TestGitCheckoutStateSync:
             required_phases=["research", "planning", "design", "implementation"],
             transitions=[],
         )
+        tool._state_engine = mock_engine
 
-        with (
-            patch(
-                "mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine",
-                return_value=mock_engine,
-            ),
-            patch("mcp_server.tools.git_tools.project_manager.ProjectManager"),
-            patch("pathlib.Path.cwd", return_value=Mock()),
-        ):
-            result = await tool.execute(params)
+        result = await tool.execute(params)
 
         mock_manager.checkout.assert_called_once_with("feature/123-test")
         mock_engine.get_state.assert_called_once_with("feature/123-test")
@@ -61,16 +54,9 @@ class TestGitCheckoutStateSync:
 
         mock_engine = Mock()
         mock_engine.get_state.side_effect = ValueError("State sync failed")
+        tool._state_engine = mock_engine
 
-        with (
-            patch(
-                "mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine",
-                return_value=mock_engine,
-            ),
-            patch("mcp_server.tools.git_tools.project_manager.ProjectManager"),
-            patch("pathlib.Path.cwd", return_value=Mock()),
-        ):
-            result = await tool.execute(params)
+        result = await tool.execute(params)
 
         mock_manager.checkout.assert_called_once_with("feature/456-test")
         assert isinstance(result, ToolResult)
@@ -94,16 +80,9 @@ class TestGitCheckoutStateSync:
             current_phase="unknown",
             transitions=[],
         )
+        tool._state_engine = mock_engine
 
-        with (
-            patch(
-                "mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine",
-                return_value=mock_engine,
-            ),
-            patch("mcp_server.tools.git_tools.project_manager.ProjectManager"),
-            patch("pathlib.Path.cwd", return_value=Mock()),
-        ):
-            result = await tool.execute(params)
+        result = await tool.execute(params)
 
         mock_manager.checkout.assert_called_once_with("main")
         mock_engine.get_state.assert_called_once_with("main")

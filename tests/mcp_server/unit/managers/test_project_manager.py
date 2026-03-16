@@ -12,13 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.managers import git_manager
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
-
-
-def _load_workflow_config() -> WorkflowConfig:
-    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
+from tests.mcp_server.test_support import load_workflow_config, make_project_manager
 
 
 class TestProjectManagerWorkflows:
@@ -38,22 +34,12 @@ class TestProjectManagerWorkflows:
 
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
-        """Create ProjectManager instance.
-
-        Args:
-            workspace_root: Path to workspace root
-
-        Returns:
-            ProjectManager instance
-        """
-        return ProjectManager(
-            workspace_root=workspace_root,
-            workflow_config=_load_workflow_config(),
-        )
+        """Create ProjectManager instance."""
+        return make_project_manager(workspace_root)
 
     def test_workflows_loaded_from_yaml(self) -> None:
         """Test that workflows are loaded from workflows.yaml."""
-        workflow_config = _load_workflow_config()
+        workflow_config = load_workflow_config()
         assert "feature" in workflow_config.workflows
         assert "bug" in workflow_config.workflows
         assert "hotfix" in workflow_config.workflows
@@ -62,7 +48,7 @@ class TestProjectManagerWorkflows:
 
     def test_feature_workflow_has_6_phases(self) -> None:
         """Test feature workflow from workflows.yaml."""
-        workflow = _load_workflow_config().get_workflow("feature")
+        workflow = load_workflow_config().get_workflow("feature")
         assert len(workflow.phases) == 6
         expected = [
             "research",
@@ -77,7 +63,7 @@ class TestProjectManagerWorkflows:
 
     def test_hotfix_workflow_has_3_phases_autonomous(self) -> None:
         """Test hotfix workflow from workflows.yaml."""
-        workflow = _load_workflow_config().get_workflow("hotfix")
+        workflow = load_workflow_config().get_workflow("hotfix")
         assert len(workflow.phases) == 3
         assert workflow.phases == ["implementation", "validation", "documentation"]
         assert workflow.default_execution_mode == "autonomous"
@@ -309,10 +295,7 @@ phases:
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(
-            workspace_root=workspace_root,
-            workflow_config=_load_workflow_config(),
-        )
+        return make_project_manager(workspace_root, workflow_config=load_workflow_config())
 
     def test_get_project_plan_includes_current_phase_from_commit_scope(
         self, manager: ProjectManager
@@ -374,10 +357,7 @@ class TestPlanningDeliverablesSchema:
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(
-            workspace_root=workspace_root,
-            workflow_config=_load_workflow_config(),
-        )
+        return make_project_manager(workspace_root, workflow_config=load_workflow_config())
 
     def test_planning_deliverables_stored_in_projects_json(self, manager: ProjectManager) -> None:
         """Test that planning_deliverables are persisted to deliverables.json.
