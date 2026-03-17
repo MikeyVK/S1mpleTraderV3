@@ -11,7 +11,8 @@ import pytest
 import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
@@ -168,8 +169,9 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
 
     # Initialize GitManager with tmp_path and ScopeDecoder
     git_adapter = GitAdapter(repo_path=str(git_repo))
-    GitConfig.reset_instance()
-    git_config = GitConfig.from_file(str(git_repo / ".st3" / "git.yaml"))
+    git_config = ConfigLoader(git_repo / ".st3" / "config").load_git_config(
+        config_path=git_repo / ".st3" / "config" / "git.yaml"
+    )
     git_manager = GitManager(
         git_config=git_config,
         adapter=git_adapter,

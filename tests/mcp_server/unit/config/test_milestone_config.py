@@ -1,23 +1,14 @@
-"""Unit tests for MilestoneConfig singleton (Issue #149, Cycle 1).
-
-@layer: tests
-@dependencies: mcp_server.config.milestone_config
-@responsibilities: Verify MilestoneConfig loads milestones.yaml (including empty list),
-                   validate_milestone() permissive when list empty, singleton behaviour.
-"""
+"""Unit tests for MilestoneConfig loader-based access (Issue #149, Cycle 1)."""
 
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mcp_server.config.milestone_config import MilestoneConfig
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import MilestoneConfig
+from mcp_server.core.exceptions import ConfigError
 
 _EMPTY_MILESTONES_YAML = {"version": "1.0", "milestones": []}
 
@@ -28,6 +19,10 @@ _POPULATED_MILESTONES_YAML = {
         {"number": 2, "title": "v2.0", "state": "closed"},
     ],
 }
+
+
+def _load_milestone_config(config_path: Path) -> MilestoneConfig:
+    return ConfigLoader(config_path.parent).load_milestone_config(config_path=config_path)
 
 
 @pytest.fixture(name="empty_milestones_path")
@@ -49,30 +44,17 @@ def _populated_milestones_path() -> Path:
 
 
 @pytest.fixture(name="empty_milestone_config")
-def _empty_milestone_config(empty_milestones_path: Path) -> Generator[MilestoneConfig, None, None]:
-    MilestoneConfig.reset_instance()
-    cfg = MilestoneConfig.from_file(str(empty_milestones_path))
-    yield cfg
-    MilestoneConfig.reset_instance()
+def _empty_milestone_config(empty_milestones_path: Path) -> MilestoneConfig:
+    return _load_milestone_config(empty_milestones_path)
 
 
 @pytest.fixture(name="populated_milestone_config")
-def _populated_milestone_config(
-    populated_milestones_path: Path,
-) -> Generator[MilestoneConfig, None, None]:
-    MilestoneConfig.reset_instance()
-    cfg = MilestoneConfig.from_file(str(populated_milestones_path))
-    yield cfg
-    MilestoneConfig.reset_instance()
-
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+def _populated_milestone_config(populated_milestones_path: Path) -> MilestoneConfig:
+    return _load_milestone_config(populated_milestones_path)
 
 
 class TestMilestoneConfigFromFile:
-    """Loading and singleton behaviour."""
+    """Loading behaviour through ConfigLoader."""
 
     def test_from_file_loads_empty_list(self, empty_milestone_config: MilestoneConfig) -> None:
         assert empty_milestone_config.milestones == []
@@ -85,15 +67,13 @@ class TestMilestoneConfigFromFile:
         assert "v2.0" in titles
 
     def test_from_file_raises_on_missing_file(self) -> None:
-        MilestoneConfig.reset_instance()
-        with pytest.raises(FileNotFoundError, match="Milestone config not found"):
-            MilestoneConfig.from_file(".st3/nonexistent_milestones.yaml")
+        with pytest.raises(ConfigError, match="Config file not found"):
+            _load_milestone_config(Path(".st3/nonexistent_milestones.yaml"))
 
-    def test_singleton_returns_same_instance(self, empty_milestones_path: Path) -> None:
-        MilestoneConfig.reset_instance()
-        cfg1 = MilestoneConfig.from_file(str(empty_milestones_path))
-        cfg2 = MilestoneConfig.from_file(str(empty_milestones_path))
-        assert cfg1 is cfg2
+    def test_repeated_loads_are_equivalent(self, empty_milestones_path: Path) -> None:
+        cfg1 = _load_milestone_config(empty_milestones_path)
+        cfg2 = _load_milestone_config(empty_milestones_path)
+        assert cfg1 == cfg2
 
 
 class TestMilestoneConfigValidateMilestone:
@@ -102,7 +82,6 @@ class TestMilestoneConfigValidateMilestone:
     def test_validate_milestone_always_true_when_list_empty(
         self, empty_milestone_config: MilestoneConfig
     ) -> None:
-        """Permissive: any title passes when milestones list is empty."""
         assert empty_milestone_config.validate_milestone("v99.0") is True
         assert empty_milestone_config.validate_milestone("anything") is True
 

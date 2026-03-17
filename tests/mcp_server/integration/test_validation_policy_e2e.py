@@ -14,7 +14,11 @@ import logging
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
+
+
+def _load_artifact_registry(config_path):
+    return ConfigLoader(config_path.parent).load_artifact_registry_config(config_path=config_path)
 from mcp_server.core.exceptions import ValidationError
 from tests.mcp_server.fixtures.artifact_test_harness import (
     ArtifactIdentity,
@@ -55,8 +59,7 @@ class {{ name }}DTO:
     create_template(temp_workspace, "components/dto_invalid.py.jinja2", invalid_template)
 
     # Reload registry
-    ArtifactRegistryConfig.reset_instance()
-    fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
+    fresh_registry = _load_artifact_registry(artifacts_yaml_file)
 
     # Update manager registry
     artifact_manager.registry = fresh_registry
@@ -112,8 +115,7 @@ async def test_invalid_doc_artifact_warns_writes_file(
     create_template(temp_workspace, "documents/design_minimal.md.jinja2", minimal_template)
 
     # Reload registry
-    ArtifactRegistryConfig.reset_instance()
-    fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
+    fresh_registry = _load_artifact_registry(artifacts_yaml_file)
 
     artifact_manager.registry = fresh_registry
     artifact_manager.scaffolder.registry = fresh_registry
@@ -191,8 +193,7 @@ class {{{{ name }}}}DTO(BaseModel):
     create_template(temp_workspace, "components/dto_valid.py.jinja2", valid_template)
 
     # Reload registry
-    ArtifactRegistryConfig.reset_instance()
-    fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
+    fresh_registry = _load_artifact_registry(artifacts_yaml_file)
 
     artifact_manager.registry = fresh_registry
     artifact_manager.scaffolder.registry = fresh_registry

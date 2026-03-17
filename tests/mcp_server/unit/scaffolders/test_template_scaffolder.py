@@ -19,7 +19,8 @@ from pathlib import Path
 # Third-party
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
@@ -29,7 +30,7 @@ from mcp_server.scaffolding.renderer import JinjaRenderer
 @pytest.fixture(name="registry")
 def artifact_registry() -> ArtifactRegistryConfig:
     """Provide artifact registry configuration."""
-    return ArtifactRegistryConfig.from_file()
+    return ConfigLoader(Path(".st3/config")).load_artifact_registry_config()
 
 
 @pytest.fixture(name="real_renderer")

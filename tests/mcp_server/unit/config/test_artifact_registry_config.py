@@ -1,29 +1,30 @@
 """Unit tests for ArtifactRegistryConfig (Issue #56, Cycle 1).
 
 Tests configuration loading from artifacts.yaml with:
-- Singleton pattern
+- Loader-based access
 - Field validation
 - Error handling (missing file, invalid YAML)
 - LLM-friendly error messages
-
-Author: AI Agent
-Created: 2024
 """
 
-from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 
-from mcp_server.config.artifact_registry_config import (
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import (
     ArtifactDefinition,
     ArtifactRegistryConfig,
     ArtifactType,
     StateMachine,
 )
 from mcp_server.core.exceptions import ConfigError
+
+
+def _load_artifact_registry(config_path: Path) -> ArtifactRegistryConfig:
+    return ConfigLoader(config_path.parent).load_artifact_registry_config(config_path=config_path)
 
 
 @pytest.fixture
@@ -54,51 +55,39 @@ def minimal_yaml() -> dict[str, Any]:
 def temp_yaml_file(minimal_yaml: dict[str, Any], tmp_path: Path) -> Path:
     """Create temporary artifacts.yaml file."""
     file_path = tmp_path / "artifacts.yaml"
-    with open(file_path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(minimal_yaml, f)
+    file_path.write_text(yaml.safe_dump(minimal_yaml), encoding="utf-8")
     return file_path
 
 
-@pytest.fixture(autouse=True)
-def reset_singleton() -> Generator[None, None, None]:
-    """Reset singleton before each test."""
-    ArtifactRegistryConfig.reset_instance()
-    yield
-    ArtifactRegistryConfig.reset_instance()
-
-
 class TestArtifactRegistryConfigLoading:
-    """Test configuration loading and singleton pattern."""
+    """Test configuration loading behaviour."""
 
     def test_loads_from_file(self, temp_yaml_file: Path) -> None:
         """Config loads from artifacts.yaml."""
-        config = ArtifactRegistryConfig.from_file(temp_yaml_file)
+        config = _load_artifact_registry(temp_yaml_file)
 
         assert config.version == "1.0"
         assert len(config.artifact_types) == 1
         assert config.artifact_types[0].type_id == "dto"
 
-    def test_singleton_pattern(self, temp_yaml_file: Path) -> None:
-        """Subsequent calls return cached instance."""
-        config1 = ArtifactRegistryConfig.from_file(temp_yaml_file)
-        config2 = ArtifactRegistryConfig.from_file(temp_yaml_file)
+    def test_repeated_loads_are_equivalent(self, temp_yaml_file: Path) -> None:
+        """Subsequent loads should be value-equivalent."""
+        config1 = _load_artifact_registry(temp_yaml_file)
+        config2 = _load_artifact_registry(temp_yaml_file)
 
-        assert config1 is config2
+        assert config1 == config2
 
-    def test_reset_instance_clears_singleton(self, temp_yaml_file: Path) -> None:
-        """reset_instance() clears cached instance."""
-        config1 = ArtifactRegistryConfig.from_file(temp_yaml_file)
-        ArtifactRegistryConfig.reset_instance()
-        config2 = ArtifactRegistryConfig.from_file(temp_yaml_file)
+    def test_repeated_loads_return_fresh_objects(self, temp_yaml_file: Path) -> None:
+        """Loader-based reads should not rely on a singleton cache."""
+        config1 = _load_artifact_registry(temp_yaml_file)
+        config2 = _load_artifact_registry(temp_yaml_file)
 
         assert config1 is not config2
 
-    def test_missing_file_raises_config_error(
-        self,
-    ) -> None:
+    def test_missing_file_raises_config_error(self) -> None:
         """ConfigError raised when file not found."""
         with pytest.raises(ConfigError) as exc_info:
-            ArtifactRegistryConfig.from_file(Path("nonexistent.yaml"))
+            _load_artifact_registry(Path("nonexistent.yaml"))
 
         assert "not found" in str(exc_info.value)
         assert "Fix:" in str(exc_info.value)
@@ -106,20 +95,20 @@ class TestArtifactRegistryConfigLoading:
     def test_empty_file_raises_config_error(self, tmp_path: Path) -> None:
         """ConfigError raised on empty YAML."""
         empty_file = tmp_path / "empty.yaml"
-        empty_file.write_text("")
+        empty_file.write_text("", encoding="utf-8")
 
         with pytest.raises(ConfigError) as exc_info:
-            ArtifactRegistryConfig.from_file(empty_file)
+            _load_artifact_registry(empty_file)
 
         assert "Empty" in str(exc_info.value)
 
     def test_invalid_yaml_syntax(self, tmp_path: Path) -> None:
         """ConfigError raised on invalid YAML syntax."""
         invalid_file = tmp_path / "invalid.yaml"
-        invalid_file.write_text("invalid: yaml: syntax: error:")
+        invalid_file.write_text("invalid: yaml: syntax: error:", encoding="utf-8")
 
         with pytest.raises(ConfigError) as exc_info:
-            ArtifactRegistryConfig.from_file(invalid_file)
+            _load_artifact_registry(invalid_file)
 
         assert "Invalid YAML" in str(exc_info.value)
         assert "Fix:" in str(exc_info.value)
@@ -135,7 +124,6 @@ class TestArtifactDefinitionValidation:
             "artifact_types": [
                 {
                     "type": "code",
-                    # Missing type_id, name, description, file_extension
                     "state_machine": {
                         "states": ["CREATED"],
                         "initial_state": "CREATED",
@@ -145,11 +133,10 @@ class TestArtifactDefinitionValidation:
         }
 
         invalid_file = tmp_path / "invalid.yaml"
-        with open(invalid_file, "w", encoding="utf-8") as f:
-            yaml.safe_dump(invalid_data, f)
+        invalid_file.write_text(yaml.safe_dump(invalid_data), encoding="utf-8")
 
-        with pytest.raises(ConfigError):  # Pydantic validation error wrapped by from_file
-            ArtifactRegistryConfig.from_file(invalid_file)
+        with pytest.raises(ConfigError):
+            _load_artifact_registry(invalid_file)
 
     def test_type_id_must_be_lowercase(self) -> None:
         """type_id must be lowercase with underscores."""
@@ -172,9 +159,7 @@ class TestArtifactDefinitionValidation:
         assert "lowercase" in str(exc_info.value)
         assert "Fix:" in str(exc_info.value)
 
-    def test_initial_state_must_be_in_states(
-        self,
-    ) -> None:
+    def test_initial_state_must_be_in_states(self) -> None:
         """initial_state must exist in states list."""
         with pytest.raises(ValueError) as exc_info:
             StateMachine(
@@ -192,7 +177,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_get_artifact_by_type_id(self, temp_yaml_file: Path) -> None:
         """get_artifact() returns definition by type_id."""
-        config = ArtifactRegistryConfig.from_file(temp_yaml_file)
+        config = _load_artifact_registry(temp_yaml_file)
         artifact = config.get_artifact("dto")
 
         assert artifact.type_id == "dto"
@@ -200,7 +185,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_get_artifact_not_found(self, temp_yaml_file: Path) -> None:
         """get_artifact() raises ConfigError for unknown type_id."""
-        config = ArtifactRegistryConfig.from_file(temp_yaml_file)
+        config = _load_artifact_registry(temp_yaml_file)
 
         with pytest.raises(ConfigError) as exc_info:
             config.get_artifact("unknown")
@@ -211,7 +196,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_list_type_ids_all(self, temp_yaml_file: Path) -> None:
         """list_type_ids() returns all type_ids."""
-        config = ArtifactRegistryConfig.from_file(temp_yaml_file)
+        config = _load_artifact_registry(temp_yaml_file)
         type_ids = config.list_type_ids()
 
         assert type_ids == ["dto"]
@@ -247,10 +232,9 @@ class TestArtifactRegistryConfigMethods:
         }
 
         mixed_file = tmp_path / "mixed.yaml"
-        with open(mixed_file, "w", encoding="utf-8") as f:
-            yaml.safe_dump(mixed_data, f)
+        mixed_file.write_text(yaml.safe_dump(mixed_data), encoding="utf-8")
 
-        config = ArtifactRegistryConfig.from_file(mixed_file)
+        config = _load_artifact_registry(mixed_file)
 
         code_types = config.list_type_ids(ArtifactType.CODE)
         doc_types = config.list_type_ids(ArtifactType.DOC)
@@ -282,10 +266,9 @@ class TestArtifactDefinitionFields:
         }
 
         file_path = tmp_path / "required.yaml"
-        with open(file_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(data, f)
+        file_path.write_text(yaml.safe_dump(data), encoding="utf-8")
 
-        config = ArtifactRegistryConfig.from_file(file_path)
+        config = _load_artifact_registry(file_path)
         artifact = config.get_artifact("dto")
 
         assert artifact.type == ArtifactType.CODE
@@ -306,15 +289,12 @@ class TestArtifactDefinitionFields:
                     "name": "Worker",
                     "description": "Test worker",
                     "file_extension": ".py",
-                    # Optional LEGACY fields
                     "scaffolder_class": "WorkerScaffolder",
                     "scaffolder_module": "mcp_server.scaffolders.worker",
-                    # Optional template fields
                     "template_path": "templates/worker.py.jinja2",
                     "fallback_template": "templates/generic.py.jinja2",
                     "name_suffix": "Worker",
                     "generate_test": True,
-                    # Optional scaffolding fields
                     "required_fields": ["name", "input_dto"],
                     "optional_fields": ["dependencies"],
                     "state_machine": {
@@ -326,21 +306,17 @@ class TestArtifactDefinitionFields:
         }
 
         file_path = tmp_path / "optional.yaml"
-        with open(file_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(data, f)
+        file_path.write_text(yaml.safe_dump(data), encoding="utf-8")
 
-        config = ArtifactRegistryConfig.from_file(file_path)
+        config = _load_artifact_registry(file_path)
         artifact = config.get_artifact("worker")
 
-        # LEGACY fields
         assert artifact.scaffolder_class == "WorkerScaffolder"
         assert artifact.scaffolder_module == "mcp_server.scaffolders.worker"
-        # Template fields
         assert artifact.template_path == "templates/worker.py.jinja2"
         assert artifact.fallback_template == "templates/generic.py.jinja2"
         assert artifact.name_suffix == "Worker"
         assert artifact.generate_test is True
-        # Scaffolding fields
         assert artifact.required_fields == ["name", "input_dto"]
         assert artifact.optional_fields == ["dependencies"]
 
@@ -364,10 +340,9 @@ class TestArtifactDefinitionFields:
         }
 
         file_path = tmp_path / "defaults.yaml"
-        with open(file_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(data, f)
+        file_path.write_text(yaml.safe_dump(data), encoding="utf-8")
 
-        config = ArtifactRegistryConfig.from_file(file_path)
+        config = _load_artifact_registry(file_path)
         artifact = config.get_artifact("reference")
 
         assert artifact.scaffolder_class is None
@@ -385,7 +360,7 @@ class TestStateMachineDefinition:
 
     def test_state_machine_parsed(self, temp_yaml_file: Path) -> None:
         """State machine definitions parsed correctly."""
-        config = ArtifactRegistryConfig.from_file(temp_yaml_file)
+        config = _load_artifact_registry(temp_yaml_file)
         artifact = config.get_artifact("dto")
 
         assert artifact.state_machine.states == ["CREATED"]
@@ -413,10 +388,9 @@ class TestStateMachineDefinition:
         }
 
         file_path = tmp_path / "transitions.yaml"
-        with open(file_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(data, f)
+        file_path.write_text(yaml.safe_dump(data), encoding="utf-8")
 
-        config = ArtifactRegistryConfig.from_file(file_path)
+        config = _load_artifact_registry(file_path)
         artifact = config.get_artifact("research")
 
         assert len(artifact.state_machine.valid_transitions) == 1

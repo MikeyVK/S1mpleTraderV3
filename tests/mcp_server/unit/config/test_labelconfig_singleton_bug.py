@@ -74,7 +74,7 @@ labels:
     color: "1D76DB"
 freeform_exceptions: []
 label_patterns:
-  - pattern: "^parent:issue-\\d+$"
+  - pattern: '^parent:issue-\\d+$'
     description: "Parent issue reference"
     color: "EDEDED"
     example: "parent:issue-18"

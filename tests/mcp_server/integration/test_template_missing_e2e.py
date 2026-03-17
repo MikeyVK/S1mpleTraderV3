@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
@@ -44,7 +44,7 @@ async def test_template_missing_error_propagates_through_call_chain(
     - message contains template path
     """
     # Arrange: Add artifact type with non-existent template to registry
-    artifacts_yaml = temp_workspace / ".st3" / "artifacts.yaml"
+    artifacts_yaml = temp_workspace / ".st3" / "config" / "artifacts.yaml"
     content = artifacts_yaml.read_text(encoding="utf-8")
 
     # Add dto_missing artifact type with non-existent template
@@ -71,12 +71,15 @@ async def test_template_missing_error_propagates_through_call_chain(
     artifacts_yaml.write_text(content, encoding="utf-8")
 
     # Reload registry to pick up new artifact type
-    ArtifactRegistryConfig.reset_instance()
+    fresh_registry = ConfigLoader(artifacts_yaml.parent).load_artifact_registry_config(
+        config_path=artifacts_yaml
+    )
 
     # Reinitialize manager with updated registry (hermetic fixture uses temp workspace)
     # The artifact_manager fixture already has temp renderer injected
     # We just need to reload the registry
-    artifact_manager.scaffolder.registry = ArtifactRegistryConfig.from_file(artifacts_yaml)
+    artifact_manager.scaffolder.registry = fresh_registry
+    artifact_manager.registry = fresh_registry
 
     # Create tool with real manager (no mocks!)
     tool = ScaffoldArtifactTool(manager=artifact_manager)
@@ -99,27 +102,27 @@ async def test_template_missing_error_propagates_through_call_chain(
 
     # Assert: Error contract preserved through entire call chain
     assert result.is_error is True, "Expected error result"
-    assert result.error_code == "ERR_CONFIG", (
-        f"Expected ERR_CONFIG (artifact type not in registry), got {result.error_code}"
+    assert result.error_code == "ERR_EXECUTION", (
+        f"Expected ERR_EXECUTION (template resolution failure), got {result.error_code}"
     )
 
-    # Verify hints populated (registry suggestions from ConfigError)
+    # Verify hints populated for template recovery
     assert result.hints is not None, "Expected hints to be populated"
     assert len(result.hints) > 0, "Expected at least one hint"
 
-    # Hints should mention registry, artifacts.yaml, or available types
     hints_text = " ".join(result.hints).lower()
     assert any(
-        keyword in hints_text for keyword in ["registry", "artifacts.yaml", "available", "check"]
-    ), f"Expected registry-related hints, got: {result.hints}"
+        keyword in hints_text
+        for keyword in ["template", "does_not_exist", "check", "fallback", "path"]
+    ), f"Expected template-related hints, got: {result.hints}"
 
-    # Verify message contains artifact type information (not template - error happens before
-    # rendering)
+    # Verify message contains template path information now that the registry reload succeeds
     assert result.content is not None
     assert len(result.content) > 0
     message = result.content[0]["text"]
-    assert "dto_missing" in message, f"Expected artifact type name in message, got: {message}"
-    assert "artifacts.yaml" in message, f"Expected config file reference in message, got: {message}"
-
-    # Note: No file_path expectation - ExecutionError does not have file_path
-    # (only ConfigError has file_path in exceptions.py contract)
+    assert "does_not_exist.py.jinja2" in message, (
+        f"Expected missing template path in message, got: {message}"
+    )
+    assert "dto_missing" in message or "template" in message.lower(), (
+        f"Expected artifact/template context in message, got: {message}"
+    )

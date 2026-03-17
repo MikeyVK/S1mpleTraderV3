@@ -1,23 +1,27 @@
 """Tests for GitConfig (Issue #55)."""
 
+from pathlib import Path
+
 import pytest
 
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
+from mcp_server.core.exceptions import ConfigError
+
+
+def _load_git_config(config_path: Path | None = None) -> GitConfig:
+    if config_path is None:
+        return ConfigLoader(Path(".st3/config")).load_git_config()
+    return ConfigLoader(config_path.parent).load_git_config(config_path=config_path)
 
 
 class TestGitConfig:
     """Test GitConfig loading and validation."""
 
-    def teardown_method(self) -> None:
-        """Reset singleton after each test."""
-        GitConfig.reset_instance()
-
     def test_load_git_yaml_success(self) -> None:
         """Test loading existing git.yaml file."""
-        # GREEN: Now that GitConfig exists, test successful loading
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
-        # Verify all conventions loaded correctly
         assert config.branch_types == [
             "feature",
             "bug",
@@ -39,76 +43,64 @@ class TestGitConfig:
         assert config.default_base_branch == "main"
 
     def test_git_yaml_not_found(self) -> None:
-        """Test FileNotFoundError when git.yaml doesn't exist."""
-        with pytest.raises(FileNotFoundError, match="Git config not found"):
-            GitConfig.from_file(".st3/nonexistent.yaml")
+        """Test ConfigError when git.yaml doesn't exist."""
+        with pytest.raises(ConfigError, match="Config file not found"):
+            _load_git_config(Path(".st3/nonexistent.yaml"))
 
-    def test_singleton_pattern(self) -> None:
-        """Test singleton behavior - same instance returned."""
-        config1 = GitConfig.from_file(".st3/git.yaml")
-        config2 = GitConfig.from_file(".st3/git.yaml")
+    def test_repeated_loads_are_equivalent(self) -> None:
+        """Repeated loads of the same file should be value-equivalent."""
+        config1 = _load_git_config()
+        config2 = _load_git_config()
 
-        assert config1 is config2  # Same object instance
+        assert config1 == config2
 
-    # REFACTOR: Test helper methods for GitManager integration
     def test_has_branch_type(self) -> None:
         """Test has_branch_type() helper (Convention #1)."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
-        # Valid types
         assert config.has_branch_type("feature") is True
         assert config.has_branch_type("bug") is True
         assert config.has_branch_type("fix") is True
         assert config.has_branch_type("hotfix") is True
         assert config.has_branch_type("epic") is True
-
-        # Invalid types
-        assert config.has_branch_type("FEATURE") is False  # Case-sensitive
+        assert config.has_branch_type("FEATURE") is False
 
     def test_validate_branch_name(self) -> None:
         """Test validate_branch_name() helper (Convention #5)."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
-        # Valid names (kebab-case)
         assert config.validate_branch_name("feature-123-name") is True
         assert config.validate_branch_name("fix-bug") is True
         assert config.validate_branch_name("epic-76-tooling") is True
-
-        # Invalid names
-        assert config.validate_branch_name("Feature-123") is False  # Uppercase
-        assert config.validate_branch_name("feature_123") is False  # Underscore
-        assert config.validate_branch_name("feature/123") is False  # Slash
+        assert config.validate_branch_name("Feature-123") is False
+        assert config.validate_branch_name("feature_123") is False
+        assert config.validate_branch_name("feature/123") is False
 
     def test_has_phase(self) -> None:
         """Test has_phase() helper (Convention #2)."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
-        # Valid phases
         assert config.has_phase("red") is True
         assert config.has_phase("green") is True
         assert config.has_phase("docs") is True
-
-        # Invalid phases
         assert config.has_phase("test") is False
-        assert config.has_phase("RED") is False  # Case-sensitive
+        assert config.has_phase("RED") is False
 
     def test_get_prefix(self) -> None:
         """Test get_prefix() helper (Convention #3)."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
-        # Valid mappings
         assert config.get_prefix("red") == "test"
         assert config.get_prefix("green") == "feat"
         assert config.get_prefix("refactor") == "refactor"
         assert config.get_prefix("docs") == "docs"
 
-        # Invalid phase should raise KeyError
         with pytest.raises(KeyError):
             config.get_prefix("invalid")
 
     def test_extract_issue_number_returns_int_for_supported_branch_names(self) -> None:
         """extract_issue_number() should parse the numeric issue id from branch names."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
         assert config.extract_issue_number("feature/42-test-branch") == 42
         assert config.extract_issue_number("fix/7-hot-patch") == 7
@@ -116,7 +108,7 @@ class TestGitConfig:
 
     def test_extract_issue_number_returns_none_for_invalid_branch_names(self) -> None:
         """extract_issue_number() should degrade gracefully when no issue id is present."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
         assert config.extract_issue_number("main") is None
         assert config.extract_issue_number("feature/no-number") is None
@@ -124,13 +116,10 @@ class TestGitConfig:
 
     def test_is_protected(self) -> None:
         """Test is_protected() helper (Convention #4)."""
-        config = GitConfig.from_file(".st3/git.yaml")
+        config = _load_git_config()
 
-        # Protected branches
         assert config.is_protected("main") is True
         assert config.is_protected("master") is True
         assert config.is_protected("develop") is True
-
-        # Unprotected branches
         assert config.is_protected("feature-123") is False
-        assert config.is_protected("Main") is False  # Case-sensitive
+        assert config.is_protected("Main") is False

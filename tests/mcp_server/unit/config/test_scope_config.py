@@ -1,28 +1,23 @@
-"""Unit tests for ScopeConfig singleton (Issue #149, Cycle 1).
-
-@layer: tests
-@dependencies: mcp_server.config.scope_config
-@responsibilities: Verify ScopeConfig loads scopes.yaml (flat list), has_scope(),
-                   singleton behaviour, case-sensitivity.
-"""
+"""Unit tests for ScopeConfig loader-based access (Issue #149, Cycle 1)."""
 
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mcp_server.config.scope_config import ScopeConfig
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ScopeConfig
+from mcp_server.core.exceptions import ConfigError
 
 _MINIMAL_SCOPES_YAML = {
     "version": "1.0",
     "scopes": ["architecture", "mcp-server", "platform", "tooling", "workflow", "documentation"],
 }
+
+
+def _load_scope_config(config_path: Path) -> ScopeConfig:
+    return ConfigLoader(config_path.parent).load_scope_config(config_path=config_path)
 
 
 @pytest.fixture(name="scopes_yaml_path")
@@ -35,20 +30,12 @@ def _scopes_yaml_path() -> Path:
 
 
 @pytest.fixture(name="scope_config")
-def _scope_config(scopes_yaml_path: Path) -> Generator[ScopeConfig, None, None]:
-    ScopeConfig.reset_instance()
-    cfg = ScopeConfig.from_file(str(scopes_yaml_path))
-    yield cfg
-    ScopeConfig.reset_instance()
-
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+def _scope_config(scopes_yaml_path: Path) -> ScopeConfig:
+    return _load_scope_config(scopes_yaml_path)
 
 
 class TestScopeConfigFromFile:
-    """Loading and singleton behaviour."""
+    """Loading behaviour through ConfigLoader."""
 
     def test_from_file_loads_scopes(self, scope_config: ScopeConfig) -> None:
         assert "tooling" in scope_config.scopes
@@ -56,15 +43,13 @@ class TestScopeConfigFromFile:
         assert "documentation" in scope_config.scopes
 
     def test_from_file_raises_on_missing_file(self) -> None:
-        ScopeConfig.reset_instance()
-        with pytest.raises(FileNotFoundError, match="Scope config not found"):
-            ScopeConfig.from_file(".st3/nonexistent_scopes.yaml")
+        with pytest.raises(ConfigError, match="Config file not found"):
+            _load_scope_config(Path(".st3/nonexistent_scopes.yaml"))
 
-    def test_singleton_returns_same_instance(self, scopes_yaml_path: Path) -> None:
-        ScopeConfig.reset_instance()
-        cfg1 = ScopeConfig.from_file(str(scopes_yaml_path))
-        cfg2 = ScopeConfig.from_file(str(scopes_yaml_path))
-        assert cfg1 is cfg2
+    def test_repeated_loads_are_equivalent(self, scopes_yaml_path: Path) -> None:
+        cfg1 = _load_scope_config(scopes_yaml_path)
+        cfg2 = _load_scope_config(scopes_yaml_path)
+        assert cfg1 == cfg2
 
 
 class TestScopeConfigHasScope:

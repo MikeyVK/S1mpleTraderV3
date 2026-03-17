@@ -8,12 +8,13 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.scaffold_metadata_config import (
-    CommentPattern,
-    ConfigError,
-    MetadataField,
-    ScaffoldMetadataConfig,
-)
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import CommentPattern, MetadataField, ScaffoldMetadataConfig
+from mcp_server.core.exceptions import ConfigError
+
+
+def _load_scaffold_metadata_config(config_file):
+    return ConfigLoader(config_file.parent).load_scaffold_metadata_config(config_path=config_file)
 
 
 class TestCommentPattern:
@@ -150,7 +151,7 @@ metadata_fields:
             encoding="utf-8",
         )
 
-        config = ScaffoldMetadataConfig.from_file(config_file)
+        config = _load_scaffold_metadata_config(config_file)
 
         assert len(config.comment_patterns) == 2
         assert len(config.metadata_fields) == 4  # No path field anymore
@@ -176,7 +177,7 @@ metadata_fields:
             encoding="utf-8",
         )
 
-        config = ScaffoldMetadataConfig.from_file(config_file)
+        config = _load_scaffold_metadata_config(config_file)
         pattern = config.get_pattern("hash")
 
         assert pattern is not None
@@ -201,7 +202,7 @@ metadata_fields:
             encoding="utf-8",
         )
 
-        config = ScaffoldMetadataConfig.from_file(config_file)
+        config = _load_scaffold_metadata_config(config_file)
         pattern = config.get_pattern("nonexistent")
 
         assert pattern is None
@@ -229,7 +230,7 @@ metadata_fields:
             encoding="utf-8",
         )
 
-        config = ScaffoldMetadataConfig.from_file(config_file)
+        config = _load_scaffold_metadata_config(config_file)
         field = config.get_field("version")
 
         assert field is not None
@@ -255,7 +256,7 @@ metadata_fields:
             encoding="utf-8",
         )
 
-        config = ScaffoldMetadataConfig.from_file(config_file)
+        config = _load_scaffold_metadata_config(config_file)
         field = config.get_field("nonexistent")
 
         assert field is None
@@ -266,14 +267,14 @@ metadata_fields:
         config_file.write_text("invalid: [yaml", encoding="utf-8")
 
         with pytest.raises(ConfigError, match="Invalid YAML"):
-            ScaffoldMetadataConfig.from_file(config_file)
+            _load_scaffold_metadata_config(config_file)
 
     def test_missing_file_raises_config_error(self, tmp_path):
         """Missing config file should raise ConfigError with hint."""
         nonexistent = tmp_path / "nonexistent.yaml"
 
         with pytest.raises(ConfigError, match="Config file not found"):
-            ScaffoldMetadataConfig.from_file(nonexistent)
+            _load_scaffold_metadata_config(nonexistent)
 
     def test_missing_required_fields_fails(self, tmp_path):
         """RED: Missing required config keys should fail with ConfigError."""
@@ -290,7 +291,7 @@ comment_patterns:
         )
 
         with pytest.raises(ConfigError, match="Config validation failed"):
-            ScaffoldMetadataConfig.from_file(config_file)
+            _load_scaffold_metadata_config(config_file)
 
     def test_empty_patterns_list_fails(self, tmp_path):
         """RED: Empty comment patterns should fail with ConfigError."""
@@ -308,4 +309,4 @@ metadata_fields:
         )
 
         with pytest.raises(ConfigError, match="Config validation failed"):
-            ScaffoldMetadataConfig.from_file(config_file)
+            _load_scaffold_metadata_config(config_file)

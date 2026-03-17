@@ -217,7 +217,10 @@ def introspect_template_with_inheritance(template_root: Path, template_path: str
     full_path = template_root / template_path
 
     if not full_path.exists():
-        raise TemplateNotFound(template_path)
+        raise ExecutionError(
+            f"Template not found: {template_path}",
+            recovery=["Check template directory structure"],
+        )
 
 
     chain = TemplateAnalyzer(template_root).get_inheritance_chain(full_path)

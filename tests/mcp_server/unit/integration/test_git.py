@@ -1,10 +1,12 @@
 """Tests for Git integration."""
 
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.managers.git_manager import GitManager
 
@@ -17,8 +19,7 @@ def _mock_git_adapter_fixture() -> Mock:
 
 @pytest.fixture(name="git_config")
 def _git_config_fixture() -> GitConfig:
-    GitConfig.reset_instance()
-    return GitConfig.from_file(".st3/git.yaml")
+    return ConfigLoader(Path(".st3/config")).load_git_config()
 
 
 def test_git_manager_create_branch_valid(mock_git_adapter: Mock, git_config: GitConfig) -> None:

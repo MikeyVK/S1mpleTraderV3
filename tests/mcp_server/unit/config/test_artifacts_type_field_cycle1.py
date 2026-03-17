@@ -15,10 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import (
-    ArtifactRegistryConfig,
-    ArtifactType,
-)
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig, ArtifactType
 
 
 @pytest.fixture
@@ -33,7 +31,9 @@ def artifacts_config() -> ArtifactRegistryConfig:
             raise FileNotFoundError("Could not find .st3 directory")
 
     artifacts_yaml = project_root / ".st3" / "config" / "artifacts.yaml"
-    return ArtifactRegistryConfig.from_file(artifacts_yaml)
+    return ConfigLoader(artifacts_yaml.parent).load_artifact_registry_config(
+        config_path=artifacts_yaml
+    )
 
 
 class TestArtifactsTypeField:

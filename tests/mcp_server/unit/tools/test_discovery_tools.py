@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
 from mcp_server.config.settings import Settings
 from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.config.workphases_config import WorkphasesConfig
@@ -47,7 +48,7 @@ def load_workflow_config() -> WorkflowConfig:
 
 
 def load_git_config() -> GitConfig:
-    return GitConfig.from_file(Path(".st3/git.yaml"))
+    return ConfigLoader(Path(".st3/config")).load_git_config()
 
 
 def load_workphases_config() -> WorkphasesConfig:

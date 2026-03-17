@@ -9,7 +9,8 @@ from unittest.mock import MagicMock
 # Third-party
 import pytest
 
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 
 # Module under test
@@ -19,8 +20,7 @@ from mcp_server.managers.git_manager import GitManager
 @pytest.fixture
 def git_config() -> GitConfig:
     """Fixture for project git config."""
-    GitConfig.reset_instance()
-    return GitConfig.from_file(".st3/git.yaml")
+    return ConfigLoader(Path(".st3/config")).load_git_config()
 
 
 class TestGitManagerValidation:
@@ -40,8 +40,7 @@ class TestGitManagerValidation:
 
     def test_init_default(self) -> None:
         """Test initialization with default adapter."""
-        GitConfig.reset_instance()
-        mgr = GitManager(git_config=GitConfig.from_file(".st3/git.yaml"))
+        mgr = GitManager(git_config=ConfigLoader(Path(".st3/config")).load_git_config())
         assert mgr.adapter is not None
 
     def test_get_status(self, manager: GitManager, mock_adapter: MagicMock) -> None:

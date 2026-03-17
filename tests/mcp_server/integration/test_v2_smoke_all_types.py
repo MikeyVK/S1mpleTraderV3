@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 # Project
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 # ---------------------------------------------------------------------------
@@ -29,18 +29,6 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 # ---------------------------------------------------------------------------
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-
-
-@pytest.fixture(autouse=True)
-def _reset_registry_singleton() -> None:  # type: ignore[return]
-    """Reset ArtifactRegistryConfig singleton before/after each test.
-
-    Prevents cross-test contamination when monkeypatch changes CWD
-    and a different artifacts.yaml is loaded.
-    """
-    ArtifactRegistryConfig.reset_instance()
-    yield
-    ArtifactRegistryConfig.reset_instance()
 
 
 @pytest.fixture(name="v2_manager")
@@ -70,7 +58,9 @@ def _v2_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ArtifactMana
     # ephemeral writes go to tmp_path/.st3/temp/ (not project root)
     monkeypatch.chdir(tmp_path)
 
-    registry = ArtifactRegistryConfig.from_file(artifacts_path)
+    registry = ConfigLoader(artifacts_path.parent).load_artifact_registry_config(
+        config_path=artifacts_path
+    )
     return ArtifactManager(workspace_root=str(tmp_path), registry=registry)
 
 

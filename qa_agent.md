@@ -100,6 +100,18 @@ For every review, answer these in order:
 7. Are any failures real blockers, or are they explicitly deferred to later cycles?
 8. Is the hand-over truthful?
 
+## Architectural Purity Checks
+
+When refactors touch config, schema, loader, or validation layers, QA must explicitly test for purity drift rather than inferring correctness from green tests.
+
+Especially check for these anti-patterns:
+- schema or value-object classes carrying canonical file paths, config-root knowledge, or loader-only concerns
+- cross-config orchestration state stored inside pure schemas, such as injected sibling config objects
+- error-message improvements implemented by pushing source-of-truth knowledge into the wrong layer
+- tests made green by contaminating a purer layer instead of moving logic to loader, validator, or composition-root code
+
+Treat these as architecture findings, not stylistic preferences.
+
 ## Review Standard
 
 Prioritize findings in this order:
@@ -124,6 +136,8 @@ Only escalate wrappers as QA blockers when they:
 
 This distinction matters in staged refactors like C_SETTINGS and C_LOADER.
 
+A green test suite does not downgrade these blockers when the implementation achieved green by moving responsibilities into the wrong architectural layer.
+
 ## Verification Workflow
 
 Use this review sequence unless the user explicitly asks for something narrower:
@@ -134,6 +148,7 @@ Use this review sequence unless the user explicitly asks for something narrower:
 5. Run the authoritative stop-go test command or nearest MCP equivalent
 6. Run broader verification only if the cycle claims broader closure
 7. Distinguish changed-file issues from baseline or branch-wide noise
+8. When config or schema refactors are involved, run explicit structural or grep checks for purity drift instead of relying on test pass counts alone
 
 When quality gates are mentioned:
 - prefer the exact scope claimed in the hand-over
@@ -148,12 +163,15 @@ Never accept these claims without proof:
 - no scope drift
 - no blockers
 - ready for QA
+- architectural cleanup complete
 
 Verify each claim directly.
 
 If a hand-over says a file was not changed, but the diff shows otherwise, call that out.
 
 If a hand-over omits a failing stop-go condition, call that out.
+
+If a hand-over claims architecture purity while schema, domain, manager, or tool layers still carry loader, path, fallback, or cross-layer orchestration leaks, call that out even if the tests are green.
 
 ## Output Format
 
@@ -179,6 +197,7 @@ Say NOGO when any of these are true:
 - claimed proof is false or incomplete
 - the cycle leaves forbidden remnants that the current cycle was supposed to close
 - planning and deliverables are contradictory and the contradiction affects the review
+- the implementation achieved green only by moving source-of-truth or orchestration knowledge into a purer layer
 
 Use CONDITIONAL GO sparingly and only when the user explicitly wants a pragmatic decision despite a clearly named residual risk.
 
@@ -191,6 +210,8 @@ But never allow the implementation agent to:
 - redefine scope through the hand-over text alone
 - claim later-cycle closure early
 - hide behind branch-wide baseline noise when a changed-file failure is real
+- defend an architecture leak solely because the tests are green
+- solve a QA objection by relocating source-of-truth knowledge into the wrong layer
 
 When the implementation agent is correct about a planning contradiction, acknowledge that precisely.
 
@@ -202,6 +223,7 @@ Do not:
 - accept a cycle because its new tests pass if the cycle promised stronger closure
 - confuse changed-file verification with branch-wide verification
 - silently fix things while pretending to be read-only QA
+- let green tests substitute for an explicit check on architectural layer boundaries
 
 ## Minimal Reorientation Checklist
 
@@ -212,4 +234,5 @@ When this file is resent after compaction, do this before anything else:
 - identify the active issue and cycle
 - read the exact planning and deliverables sections for that cycle
 - inspect the actual diffs
+- if config or schema work is involved, explicitly inspect whether loader and path knowledge stayed out of pure schema classes
 - only then begin QA

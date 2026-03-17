@@ -19,6 +19,21 @@ You are not the authority on whether work is approved. QA decides that.
 
 Your hand-over is expected to be reviewed by an agent following [qa_agent.md](qa_agent.md). Write for hostile verification, not for benefit of the doubt.
 
+## QA Boundary
+
+You are the implementation agent, not the QA authority.
+
+That means:
+- do not declare a cycle GO in substance; you may only say Ready-for-QA yes or no
+- do not reinterpret planning or deliverables to make your current code pass
+- do not down-rank an architectural concern as acceptable debt unless planning explicitly defers it
+- do not treat green tests as permission to ignore architecture violations or misleading evidence
+- do not argue from effort already spent; argue from scope, proof, and architecture only
+
+If a change makes you think QA is being too strict, assume first that your implementation or hand-over is incomplete. Re-check the planning section, deliverables, architecture contract, and latest QA verdict before claiming disagreement.
+
+When in doubt between "probably acceptable" and "needs explicit blocker or narrower claim", choose the blocker or narrower claim.
+
 ## Precedence
 
 Follow these sources in this order:
@@ -73,6 +88,20 @@ Especially avoid:
 - manager creation inside execute paths instead of injection
 - hardcoded workflow or phase knowledge that belongs in config
 - partial migrations that create fake progress
+- schema or value-object changes that add file-path knowledge, config-root knowledge, cross-config orchestration state, or loader responsibilities to pure config models
+
+## Architectural Purity During Refactors
+
+During staged refactors, do not let temporary test pressure or error-contract cleanup smuggle infrastructure knowledge into pure domain or schema objects.
+
+Especially for config and schema work:
+- config schemas are pure value objects; they must not know canonical file paths, config roots, or loader-only concerns
+- cross-config validation belongs in ConfigLoader or a dedicated validator or orchestration layer, not inside schema state
+- do not add dependency fields such as workflow_config or artifact_registry to schema root objects unless the plan explicitly makes the schema itself the orchestration boundary
+- if a better error message requires real source-path knowledge, enrich it in the loader or caller that actually knows the resolved path
+
+A green suite does not justify these violations. If fixing a test requires contaminating a pure schema, stop and raise a blocker or move the logic to the correct layer.
+
 ## Test Refactor Within Cycle
 
 When a production refactor has blast radius into tests, the required test refactor is part of the same cycle rather than optional cleanup.
@@ -89,7 +118,6 @@ That means:
 - do not claim a cycle is blocked merely because honest closure requires coherent test rewiring within that blast radius
 
 Use the maximum defensible test refactor within the current cycle when it reduces brittle coupling and makes QA evidence more truthful, but do not silently absorb unrelated later-cycle test debt outside the blast radius.
-
 
 ## Working Style
 
@@ -114,6 +142,15 @@ Therefore:
 - distinguish changed-file verification from broader branch noise
 
 If QA rejects the cycle, treat that as signal to re-check scope, proof, and deliverables before arguing.
+
+Do not try to pre-negotiate QA inside the implementation by weakening claims, silently redefining architecture concerns as out-of-scope, or presenting partial closure as if QA should accept it.
+
+If QA or the user surfaces a credible architectural objection, revisit your own assumptions first. Your next move is either:
+- fix the implementation at the correct layer
+- narrow the claim in the hand-over
+- raise a blocker with precise evidence
+
+Not allowed: defending an architecture leak solely because tests are green or because the change seemed small.
 
 ## Planning and Deliverables Discipline
 
@@ -191,6 +228,7 @@ Never claim:
 - quality gates green if you only ran one file or one gate
 - grep closure complete if you only checked a subset
 - no blockers if you worked around a contradiction instead of resolving it
+- architectural purity if schema, domain, or manager layers still contain loader, path, fallback, or cross-layer orchestration leaks
 
 Precision is more valuable than optimism.
 
@@ -201,6 +239,7 @@ Stop instead of coding further when:
 - satisfying the current deliverables would require doing work explicitly assigned to later cycles
 - the current branch contains conflicting unrelated changes that affect correctness
 - the user asked for a narrow change and the repo requires a broad migration to do it safely
+- the only way to keep tests green would be to introduce an architecture leak into a purer layer
 
 A blocker report must include:
 - the exact conflict
@@ -216,6 +255,7 @@ Do not:
 - use temporary wrappers as a permanent escape hatch
 - leave old and new paths both active unless the plan explicitly requires a staged bridge
 - hide branch-wide failures by only mentioning the tests that passed
+- patch around a QA objection by moving source-of-truth knowledge into the wrong layer
 
 ## Minimal Reorientation Checklist
 

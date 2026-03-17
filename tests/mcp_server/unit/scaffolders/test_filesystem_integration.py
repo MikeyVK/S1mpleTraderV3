@@ -11,9 +11,9 @@ from the filesystem via JinjaRenderer.
 from unittest.mock import Mock
 
 import pytest
-from jinja2.exceptions import TemplateNotFound
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.core.exceptions import ExecutionError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 
@@ -59,8 +59,7 @@ class TestTemplateReading:
         assert len(result.content) > 0
 
     def test_ioerror_becomes_config_error(self, scaffolder_fixture, registry):
-        """Non-existent template should raise TemplateNotFound during introspection."""
-        # Test with non-existent template
+        """Non-existent template should raise ExecutionError during introspection."""
         artifact = Mock()
         artifact.type_id = "test"
         artifact.required_fields = ["name"]
@@ -68,6 +67,5 @@ class TestTemplateReading:
         artifact.fallback_template = None
         registry.get_artifact.return_value = artifact
 
-        # TemplateNotFound raised during introspection
-        with pytest.raises(TemplateNotFound):
+        with pytest.raises(ExecutionError, match="Template not found"):
             scaffolder_fixture.scaffold("test", name="Test")

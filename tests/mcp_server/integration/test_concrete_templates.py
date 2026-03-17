@@ -11,7 +11,14 @@ Documents requirement that 5 concrete templates must exist and scaffold successf
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from pathlib import Path
+
+
+
+def _load_artifact_registry(config_path: Path | None = None):
+    loader = ConfigLoader(Path(".st3/config") if config_path is None else config_path.parent)
+    return loader.load_artifact_registry_config(config_path=config_path)
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.template_config import get_template_root
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
@@ -76,7 +83,7 @@ class TestScaffoldedOutputCodingStandards:
         RED: This test WILL FAIL until tier1_base_code adds module_docstring block.
         """
         # Setup scaffolder
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -152,7 +159,7 @@ class TestScaffoldedOutputCodingStandards:
         RED: This test WILL FAIL until tier1_base_code adds section headers.
         """
         # Setup scaffolder
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -190,7 +197,7 @@ class TestScaffoldedOutputCodingStandards:
         RED: This test WILL FAIL until both features are implemented.
         """
         # Setup scaffolder
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -239,7 +246,7 @@ class TestWorkerIWorkerLifecyclePattern:
 
         RED: This test WILL FAIL until worker.py.jinja2 exists with IWorkerLifecycle pattern.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -271,7 +278,7 @@ class TestWorkerIWorkerLifecyclePattern:
 
         RED: This test WILL FAIL until template generates protocol implementation.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -296,7 +303,7 @@ class TestWorkerIWorkerLifecyclePattern:
 
         RED: This test WILL FAIL until template generates V3 construction pattern.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -330,7 +337,7 @@ class TestWorkerIWorkerLifecyclePattern:
 
         RED: This test WILL FAIL until template generates initialize() method.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -363,7 +370,7 @@ class TestWorkerIWorkerLifecyclePattern:
 
         RED: This test WILL FAIL until template generates shutdown() method.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -395,7 +402,7 @@ class TestWorkerIWorkerLifecyclePattern:
 
         RED: This test WILL FAIL until template generates name property.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
