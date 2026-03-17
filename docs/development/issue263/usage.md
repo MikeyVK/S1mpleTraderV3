@@ -14,7 +14,8 @@ On this branch, the orchestration layer is intentionally small.
 It gives you:
 - `@imp` for implementation work
 - `@qa` for read-only verification
-- `SessionStart` context injection when you open a new chat
+- A generic `SessionStart` hook for all sessions (branch + changed files)
+- Agent-specific `SessionStart` hooks for `@imp` (snapshot recovery, handover) and `@qa` (handover, review guidance)
 - `PreCompact` snapshotting before context compaction
 - slash prompts for starting work, resuming after compaction, preparing handover, and requesting QA review
 
@@ -225,8 +226,9 @@ Recommended rule:
 - use the fenced copy-paste prompt blocks as the primary exchange format between `@imp` and `@qa`
 - use `.copilot/session-state.json` as recovery support when compaction happens
 
-To reduce stale-state confusion, the SessionStart hook now ignores snapshots unless they are both recent and relevant to the current changed files.
-That means a fresh chat with no meaningful current worktree delta should not automatically hydrate itself from old recovery state.
+To reduce stale-state confusion, the agent-specific SessionStart hooks ignore snapshots unless they are both recent and relevant to the current changed files.
+That means a fresh `@imp` or `@qa` chat with no meaningful current worktree delta will not automatically hydrate itself from old recovery state.
+The generic workspace hook always runs regardless, and provides branch and changed files unconditionally.
 
 ## 9. Fallback If Hooks Or Agents Feel Stale
 

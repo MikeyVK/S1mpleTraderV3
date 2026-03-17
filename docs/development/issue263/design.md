@@ -126,24 +126,27 @@ This is enough to support the real implementation scenario without pretending to
 
 ## 5. Hook Design
 
-### 5.1 SessionStart Hook
+### 5.1 SessionStart Hooks
 
-**Responsibility:** inject a short, implementation-focused context summary at the start of a chat session.
+The `SessionStart` event fires for every session, but not all context is relevant to all sessions. The hook layer is therefore split into three scripts:
 
-**Inputs:**
-- VS Code hook event payload
-- local lightweight recovery snapshot if present
-- git working tree summary if available
+**Workspace hook** (`session_start.py`) — fires for all sessions via `.github/hooks/session-start.json`:
+- Injects branch name and changed files
+- Contains no role-specific or snapshot logic
 
-**Output:**
-A short instruction block such as:
-- current branch if detectable
-- changed files summary if detectable
-- active role if previously known
-- pending handover presence if known
-- recommendation to use `@imp` for coding or `@qa` for verification
+**`@imp` agent hook** (`session_start_imp.py`) — fires only when `@imp` starts, via `hooks:` in `imp.agent.md`:
+- Reads `.copilot/session-state.json` snapshot (if fresh and relevant)
+- Injects: last user goal, files in scope, pending handover, handover prompt block
+- Recommends `/start-implementation` or `/prepare-handover` depending on snapshot state
 
-**Must not do:**
+**`@qa` agent hook** (`session_start_qa.py`) — fires only when `@qa` starts, via `hooks:` in `qa.agent.md`:
+- Reads `.copilot/session-state.json` snapshot (if fresh and relevant)
+- Injects: implementation goal, implementation scope, pending handover
+- Recommends `/request-qa-review` or asks `@imp` for a handover first
+
+This split ensures that imp→qa context is never injected into unrelated sessions.
+
+**All three hooks must not:**
 - load project workflow state
 - infer issue phases
 - parse repo-specific manifests
@@ -286,13 +289,16 @@ These prompts are useful because they encode behavior, not project-specific stat
 
 The compact design needs only this file family:
 
-- `.github/hooks/session-start.json`
-- `.github/hooks/pre-compact.json`
-- `.github/agents/imp.agent.md`
-- `.github/agents/qa.agent.md`
+- `.github/hooks/session-start.json` — workspace-level `SessionStart` config
+- `.github/hooks/pre-compact.json` — workspace-level `PreCompact` config
+- `.github/agents/imp.agent.md` — includes agent-specific `SessionStart` hook
+- `.github/agents/qa.agent.md` — includes agent-specific `SessionStart` hook
+- `scripts/copilot_hooks/session_start.py` — generic: branch + changed files (all sessions)
+- `scripts/copilot_hooks/session_start_imp.py` — impl-specific: snapshot recovery, handover (only `@imp`)
+- `scripts/copilot_hooks/session_start_qa.py` — QA-specific: handover detection, review guidance (only `@qa`)
+- `scripts/copilot_hooks/pre_compact.py` — transcript-based snapshot writer (all sessions)
 - optional `.github/prompts/resume-implementation.prompt.md`
 - optional `.github/prompts/prepare-handover.prompt.md`
-- a tiny hook implementation package or script folder
 
 Not required:
 - researcher or writer agents
