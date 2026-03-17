@@ -8,13 +8,13 @@ hooks:
     - type: command
       cwd: "."
       command: "python3 ./scripts/copilot_hooks/session_start_imp.py"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start_imp.py"
+      windows: "python .\\scripts\\copilot_hooks\\session_start_imp.py"
       timeout: 15
   PreCompact:
     - type: command
       cwd: "."
       command: "python3 ./scripts/copilot_hooks/pre_compact_agent.py"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact_agent.py"
+      windows: "python .\\scripts\\copilot_hooks\\pre_compact_agent.py"
       timeout: 15
 ---
 
