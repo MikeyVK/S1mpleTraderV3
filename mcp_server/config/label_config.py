@@ -76,7 +76,7 @@ class LabelConfig(BaseModel):
         if config_path is None:
             if cls._instance is not None:
                 return cls._instance
-            config_path = Path(".st3/labels.yaml")
+            config_path = Path(".st3/config/labels.yaml")
 
         if not config_path.exists():
             raise FileNotFoundError(f"Label configuration not found: {config_path}")

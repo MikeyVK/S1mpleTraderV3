@@ -33,7 +33,7 @@ class ProjectStructureConfig(BaseModel):
         if self.artifact_registry is None:
             raise ConfigError(
                 "Artifact registry is required for project structure cross-validation",
-                file_path=".st3/artifacts.yaml",
+                file_path=".st3/config/artifacts.yaml",
             )
         valid_types = set(self.artifact_registry.list_type_ids())
         for directory_path, policy in self.directories.items():
@@ -43,7 +43,7 @@ class ProjectStructureConfig(BaseModel):
                     f"Directory '{directory_path}' references unknown artifact types: "
                     f"{sorted(invalid_types)}. Valid types from artifacts.yaml: "
                     f"{sorted(valid_types)}",
-                    file_path=".st3/project_structure.yaml",
+                    file_path=".st3/config/project_structure.yaml",
                 )
 
     def _validate_component_types(self) -> None:
@@ -54,7 +54,7 @@ class ProjectStructureConfig(BaseModel):
             if policy.parent is not None and policy.parent not in self.directories:
                 raise ConfigError(
                     f"Directory '{directory_path}' references unknown parent: '{policy.parent}'",
-                    file_path=".st3/project_structure.yaml",
+                    file_path=".st3/config/project_structure.yaml",
                 )
 
     def get_directory(self, path: str) -> DirectoryPolicy | None:

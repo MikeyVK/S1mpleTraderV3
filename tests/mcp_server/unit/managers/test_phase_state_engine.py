@@ -289,11 +289,12 @@ class TestResearchExitGate:
     """
 
     def _workphases_yaml(self, tmp_path: Path, research_exit_requires: list | None = None) -> Path:
-        """Write a minimal workphases.yaml to tmp_path / .st3 / workphases.yaml."""
+        """Write a minimal workphases.yaml to tmp_path / .st3 / config / workphases.yaml."""
         content: dict = {"version": "1.0", "phases": {"research": {}}}
         if research_exit_requires is not None:
             content["phases"]["research"]["exit_requires"] = research_exit_requires
-        path = tmp_path / ".st3" / "workphases.yaml"
+        path = tmp_path / ".st3" / "config" / "workphases.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.dump(content))
         return path

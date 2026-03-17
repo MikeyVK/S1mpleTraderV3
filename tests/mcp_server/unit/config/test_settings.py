@@ -33,6 +33,9 @@ logging:
   level: "WARNING"
 """)
     monkeypatch.setenv("MCP_CONFIG_PATH", str(config_file))
+    monkeypatch.delenv("MCP_SERVER_NAME", raising=False)
+    monkeypatch.delenv("MCP_WORKSPACE_ROOT", raising=False)
+    monkeypatch.delenv("MCP_CONFIG_ROOT", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
     settings = Settings.from_env()
     assert settings.server.name == "yaml-server"

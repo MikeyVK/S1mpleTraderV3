@@ -202,7 +202,7 @@ def make_phase_config_context(
         ),
         phase_contracts=_load_config(
             workspace_root,
-            Path("config") / "phase_contracts.yaml",
+            "phase_contracts.yaml",
             "load_phase_contracts_config",
         ),
         planning_deliverables=planning_deliverables,

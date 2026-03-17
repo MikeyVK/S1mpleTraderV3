@@ -81,7 +81,7 @@ class PhaseStateEngine:
         self.state_file = self.workspace_root / ".st3" / "state.json"
         self.project_manager = project_manager
 
-        workspace_workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        workspace_workphases_path = self.workspace_root / ".st3" / "config" / "workphases.yaml"
         if not workspace_workphases_path.exists():
             relaxed_payload = workphases_config.model_dump()
             for phase_definition in relaxed_payload.get("phases", {}).values():

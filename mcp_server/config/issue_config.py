@@ -18,7 +18,7 @@ class IssueConfig(_IssueConfigSchema):
     singleton_instance: ClassVar[IssueConfig | None] = None
 
     @classmethod
-    def from_file(cls, path: str = ".st3/issues.yaml") -> IssueConfig:
+    def from_file(cls, path: str = ".st3/config/issues.yaml") -> IssueConfig:
         if cls.singleton_instance is not None:
             return cls.singleton_instance
 
@@ -26,7 +26,7 @@ class IssueConfig(_IssueConfigSchema):
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Issue config not found: {path}. "
-                "Create .st3/issues.yaml with issue type conventions."
+                "Create .st3/config/issues.yaml with issue type conventions."
             )
 
         loader = ConfigLoader(config_root=config_path.parent)

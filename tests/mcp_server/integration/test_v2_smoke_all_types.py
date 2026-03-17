@@ -61,15 +61,17 @@ def _v2_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ArtifactMana
     monkeypatch.setenv("TEMPLATE_ROOT", str(template_root))
 
     # Hermetic workspace: copy production artifacts.yaml so registry loads correctly
-    st3_dir = tmp_path / ".st3"
-    st3_dir.mkdir()
-    shutil.copy(_PROJECT_ROOT / ".st3" / "artifacts.yaml", st3_dir / "artifacts.yaml")
+    config_dir = tmp_path / ".st3" / "config"
+    config_dir.mkdir(parents=True)
+    artifacts_path = config_dir / "artifacts.yaml"
+    shutil.copy(_PROJECT_ROOT / ".st3" / "config" / "artifacts.yaml", artifacts_path)
 
-    # CWD → tmp_path: registry loads from tmp_path/.st3/artifacts.yaml,
+    # CWD → tmp_path: registry loads from tmp_path/.st3/config/artifacts.yaml,
     # ephemeral writes go to tmp_path/.st3/temp/ (not project root)
     monkeypatch.chdir(tmp_path)
 
-    return ArtifactManager(workspace_root=str(tmp_path))
+    registry = ArtifactRegistryConfig.from_file(artifacts_path)
+    return ArtifactManager(workspace_root=str(tmp_path), registry=registry)
 
 
 # ---------------------------------------------------------------------------

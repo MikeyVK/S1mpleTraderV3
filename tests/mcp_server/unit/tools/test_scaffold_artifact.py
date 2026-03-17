@@ -90,16 +90,14 @@ class TestScaffoldArtifactTool:
         assert not result.is_error
         assert "design.md" in result.content[0]["text"]
 
-    def test_manager_optional_di(self):
-        """Should allow manager dependency injection."""
-        # With custom manager
+    def test_manager_requires_explicit_di(self):
+        """Should require explicit manager dependency injection."""
         custom_manager = MagicMock()
         tool = ScaffoldArtifactTool(manager=custom_manager)
         assert tool.manager is custom_manager
 
-        # Without manager (creates default)
-        tool_default = ScaffoldArtifactTool()
-        assert tool_default.manager is not None
+        with pytest.raises(ValueError, match="ArtifactManager must be injected"):
+            ScaffoldArtifactTool()
 
     @pytest.mark.asyncio
     async def test_validation_error_returns_error_result(self, tool, mock_manager):
@@ -129,7 +127,7 @@ class TestScaffoldArtifactTool:
         """Should return error result on config error."""
         mock_manager.scaffold_artifact.side_effect = ConfigError(
             "No valid directory found for artifact type: dto",
-            file_path=".st3/project_structure.yaml",
+            file_path=".st3/config/project_structure.yaml",
         )
 
         input_data = ScaffoldArtifactInput(artifact_type="dto", name="User")

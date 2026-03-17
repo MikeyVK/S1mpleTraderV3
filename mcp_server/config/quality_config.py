@@ -43,12 +43,12 @@ class QualityConfig(_QualityConfigSchema):
 
     @classmethod
     def load(cls, path: Path | None = None) -> QualityConfig:
-        config_path = Path(".st3/quality.yaml") if path is None else Path(path)
+        config_path = Path(".st3/config/quality.yaml") if path is None else Path(path)
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Quality config not found: {config_path}\n"
-                "Expected location: .st3/quality.yaml\n"
-                "Hint: Add .st3/quality.yaml to define available gate tools"
+                "Expected location: .st3/config/quality.yaml\n"
+                "Hint: Add .st3/config/quality.yaml to define available gate tools"
             )
 
         loader = ConfigLoader(config_root=config_path.parent)

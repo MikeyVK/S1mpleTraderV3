@@ -18,7 +18,7 @@ class MilestoneConfig(_MilestoneConfigSchema):
     singleton_instance: ClassVar[MilestoneConfig | None] = None
 
     @classmethod
-    def from_file(cls, path: str = ".st3/milestones.yaml") -> MilestoneConfig:
+    def from_file(cls, path: str = ".st3/config/milestones.yaml") -> MilestoneConfig:
         if cls.singleton_instance is not None:
             return cls.singleton_instance
 
@@ -26,7 +26,7 @@ class MilestoneConfig(_MilestoneConfigSchema):
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Milestone config not found: {path}. "
-                "Create .st3/milestones.yaml (empty list is valid)."
+                "Create .st3/config/milestones.yaml (empty list is valid)."
             )
 
         loader = ConfigLoader(config_root=config_path.parent)

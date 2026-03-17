@@ -103,11 +103,11 @@ class ArtifactRegistryConfig(BaseModel):
         raise ConfigError(
             f"Artifact type '{type_id}' not found in registry. "
             f"Available types: {available}. Fix: Check spelling or add new type "
-            "to .st3/artifacts.yaml.",
+            "to .st3/config/artifacts.yaml.",
             hints=[
                 f"Check spelling: '{type_id}' not found",
                 f"Available types: {available}",
-                "Add new type to .st3/artifacts.yaml if needed",
+                "Add new type to .st3/config/artifacts.yaml if needed",
             ],
         )
 

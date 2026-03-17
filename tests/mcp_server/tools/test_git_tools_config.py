@@ -13,20 +13,12 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.tools.git_tools import CreateBranchInput
 
 
 class TestGitToolsConfigIntegration:
     """Test git_tools Field validators use GitConfig (Conventions #7-8)."""
-
-    def setup_method(self) -> None:
-        """Reset GitConfig singleton before each test."""
-        GitConfig.reset_instance()
-
-    def teardown_method(self) -> None:
-        """Reset GitConfig singleton after each test."""
-        GitConfig.reset_instance()
 
     def test_create_branch_respects_custom_branch_types(self) -> None:
         """Convention #7: CreateBranchInput.branch_type adapts to git.yaml.
@@ -55,7 +47,7 @@ class TestGitToolsConfigIntegration:
 
         try:
             # Load custom config and inject it into the input validator
-            git_config = GitConfig.from_file(temp_path)
+            git_config = ConfigLoader(Path(temp_path).parent).load_git_config(config_path=Path(temp_path))
             CreateBranchInput.configure(git_config)
 
             # "hotfix" should pass (in custom config)

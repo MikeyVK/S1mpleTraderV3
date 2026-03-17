@@ -23,7 +23,7 @@ from tests.mcp_server.test_support import make_phase_state_engine, make_project_
 
 
 def _load_workflow_config() -> WorkflowConfig:
-    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
+    return WorkflowConfig.load(Path(".st3/config/workflows.yaml"))
 
 
 class TestPhaseStateEngineMode2:

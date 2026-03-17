@@ -6,7 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mcp_server.config.label_config import LabelConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import LabelConfig
 from mcp_server.tools.label_tools import (
     AddLabelsInput,
     AddLabelsTool,
@@ -41,10 +42,7 @@ labels:
     yaml_file = tmp_path / "labels.yaml"
     yaml_file.write_text(yaml_content)
 
-    LabelConfig.reset()
-    config = LabelConfig.load(yaml_file)
-    yield config
-    LabelConfig.reset()
+    yield ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
 
 
 @pytest.mark.asyncio

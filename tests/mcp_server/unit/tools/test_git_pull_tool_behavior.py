@@ -41,20 +41,14 @@ async def test_git_pull_success_syncs_phase_state() -> None:
 
     manager = Mock()
     manager.get_current_branch.return_value = "feature/94-missing-git-tools"
-    tool = GitPullTool(manager=manager)
 
     mock_engine = Mock()
+    tool = GitPullTool(manager=manager, state_engine=mock_engine)
     mock_engine.get_state.return_value = {"current_phase": "tdd"}
 
     run_sync = AsyncMock(side_effect=["Pulled from origin", {"current_phase": "tdd"}])
 
     with (
-        patch("mcp_server.tools.git_pull_tool.Path.cwd", return_value=Path(".")),
-        patch("mcp_server.tools.git_pull_tool.project_manager.ProjectManager"),
-        patch(
-            "mcp_server.tools.git_pull_tool.phase_state_engine.PhaseStateEngine",
-            return_value=mock_engine,
-        ),
         patch("mcp_server.tools.git_pull_tool.anyio.to_thread.run_sync", new=run_sync),
     ):
         result = await tool.execute(GitPullInput(remote="origin", rebase=False))
@@ -73,20 +67,14 @@ async def test_git_pull_phase_sync_failure_is_non_fatal() -> None:
 
     manager = Mock()
     manager.get_current_branch.return_value = "feature/94-missing-git-tools"
-    tool = GitPullTool(manager=manager)
 
     mock_engine = Mock()
+    tool = GitPullTool(manager=manager, state_engine=mock_engine)
     mock_engine.get_state.side_effect = ValueError("sync failed")
 
     run_sync = AsyncMock(side_effect=["Pulled from origin", ValueError("sync failed")])
 
     with (
-        patch("mcp_server.tools.git_pull_tool.Path.cwd", return_value=Path(".")),
-        patch("mcp_server.tools.git_pull_tool.project_manager.ProjectManager"),
-        patch(
-            "mcp_server.tools.git_pull_tool.phase_state_engine.PhaseStateEngine",
-            return_value=mock_engine,
-        ),
         patch("mcp_server.tools.git_pull_tool.anyio.to_thread.run_sync", new=run_sync),
     ):
         result = await tool.execute(GitPullInput(remote="origin", rebase=False))

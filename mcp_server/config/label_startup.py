@@ -39,7 +39,7 @@ def validate_label_config_on_startup(config_path: str | None = None) -> None:
 
     except FileNotFoundError:
         logger.warning(
-            "labels.yaml not found at .st3/labels.yaml. "
+            "labels.yaml not found at .st3/config/labels.yaml. "
             "Label validation will fail until file is created."
         )
     except ValueError as e:

@@ -126,5 +126,6 @@ def test_title_too_long_is_refused_before_api_call() -> None:
 
 def test_milestone_accepted_when_milestones_yaml_is_empty() -> None:
     """Milestone validation is permissive when milestones.yaml has no entries."""
+    configure_create_issue_input()
     params = make_input(milestone="any-future-milestone")
     assert params.milestone == "any-future-milestone"

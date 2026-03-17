@@ -124,9 +124,6 @@ class MCPServer:
         # Log server startup
         lifecycle_logger.info("MCP server starting")
 
-        # Validate label configuration at startup
-        validate_label_config_on_startup()
-
         # Initialize template registry (Issue #72 Task 1.6)
         workspace_root = Path(settings.server.workspace_root)
         self._workspace_root = workspace_root
@@ -149,6 +146,10 @@ class MCPServer:
             explicit_root=explicit_config_root,
             required_files=("git.yaml", "workflows.yaml", "workphases.yaml"),
         )
+
+        # Validate label configuration against the same explicit config root the server will use.
+        validate_label_config_on_startup(str(config_root / "labels.yaml"))
+
         config_loader = ConfigLoader(config_root=config_root)
         git_config = config_loader.load_git_config()
         workflow_config = config_loader.load_workflow_config()

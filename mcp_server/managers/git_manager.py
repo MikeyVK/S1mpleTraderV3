@@ -23,7 +23,7 @@ class GitManager:
     ) -> None:
         self.adapter = adapter or GitAdapter()
         self._git_config = git_config
-        self._workphases_path = workphases_path or Path(".st3/workphases.yaml")
+        self._workphases_path = workphases_path or Path(".st3/config/workphases.yaml")
 
     @property
     def git_config(self) -> GitConfig:

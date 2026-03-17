@@ -211,9 +211,9 @@ class TestForcePhaseTransitionToolSkippedGatesResponse:
     @pytest.fixture
     def workspace_with_gates(self, tmp_path: Path) -> Path:
         """Workspace with workphases.yaml that has exit_requires on planning."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -230,9 +230,9 @@ phases:
     @pytest.fixture
     def workspace_no_gates(self, tmp_path: Path) -> Path:
         """Workspace with workphases.yaml that has no gates defined."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -326,9 +326,9 @@ class TestForceTransitionResponseFormat:
 
     def _setup_workspace(self, tmp_path: Path, *, with_gate_key: bool = True) -> tuple[Path, str]:
         """Build workspace with workphases.yaml gate + optional planning_deliverables key."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -428,9 +428,9 @@ phases:
         self, tmp_path: Path
     ) -> None:
         """No gates defined → only ✅ in response, no ⚠️ or ACTION REQUIRED (GAP-17/D10.3)."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:

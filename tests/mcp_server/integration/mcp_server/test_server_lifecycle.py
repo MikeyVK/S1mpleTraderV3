@@ -6,13 +6,27 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.config.settings import GitHubSettings, LogSettings, ServerSettings, Settings
 from mcp_server.server import MCPServer
+
+
+def _make_test_settings(audit_log: Path) -> Settings:
+    """Build real settings with repo config and test-local audit log."""
+    workspace_root = Path(__file__).resolve().parents[4]
+    return Settings(
+        server=ServerSettings(
+            name="test-server",
+            workspace_root=str(workspace_root),
+            config_root=str(workspace_root / ".st3" / "config"),
+        ),
+        logging=LogSettings(level="INFO", audit_log=str(audit_log)),
+        github=GitHubSettings(owner="test", repo="repo", token=None),
+    )
 
 
 @pytest.mark.asyncio
 async def test_server_startup_logged_to_audit(tmp_path: Path) -> None:
     """Test that server startup is logged to audit log."""
-    # Set up temporary audit log
     audit_log = tmp_path / "test_audit.log"
 
     with patch("mcp_server.managers.github_manager.GitHubAdapter") as mock_adapter_class:
@@ -20,26 +34,13 @@ async def test_server_startup_logged_to_audit(tmp_path: Path) -> None:
         mock_adapter.list_issues.return_value = []
         mock_adapter_class.return_value = mock_adapter
 
-        with patch("mcp_server.server.Settings") as mock_settings_cls:
-            mock_settings_cls.from_env.return_value.server.name = "test-server"
-            mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
-            mock_settings_cls.from_env.return_value.github.token = None
-            mock_settings_cls.from_env.return_value.github.owner = "test"
-            mock_settings_cls.from_env.return_value.github.repo = "repo"
-            mock_settings_cls.from_env.return_value.logging.level = "INFO"
-            mock_settings_cls.from_env.return_value.logging.audit_log = str(audit_log)
+        _server = MCPServer(settings=_make_test_settings(audit_log))
 
-            # Create server (triggers __init__ which calls setup_logging with audit_log)
-            _server = MCPServer()
-
-    # Check that audit log was created and contains startup entry
     assert audit_log.exists(), "Audit log should be created"
 
-    # Read and parse audit log
     log_lines = audit_log.read_text().strip().split("\n")
     log_entries = [json.loads(line) for line in log_lines if line]
 
-    # Should have at least one startup message
     startup_entries = [
         entry
         for entry in log_entries
@@ -54,7 +55,6 @@ async def test_server_startup_logged_to_audit(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_server_shutdown_logged_to_audit(tmp_path: Path) -> None:
     """Test that server shutdown is logged to audit log."""
-    # Set up temporary audit log
     audit_log = tmp_path / "test_audit.log"
 
     with patch("mcp_server.managers.github_manager.GitHubAdapter") as mock_adapter_class:
@@ -62,27 +62,12 @@ async def test_server_shutdown_logged_to_audit(tmp_path: Path) -> None:
         mock_adapter.list_issues.return_value = []
         mock_adapter_class.return_value = mock_adapter
 
-        with patch("mcp_server.server.Settings") as mock_settings_cls:
-            mock_settings_cls.from_env.return_value.server.name = "test-server"
-            mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
-            mock_settings_cls.from_env.return_value.github.token = None
-            mock_settings_cls.from_env.return_value.github.owner = "test"
-            mock_settings_cls.from_env.return_value.github.repo = "repo"
-            mock_settings_cls.from_env.return_value.logging.level = "INFO"
-            mock_settings_cls.from_env.return_value.logging.audit_log = str(audit_log)
+        server = MCPServer(settings=_make_test_settings(audit_log))
+        await server.shutdown()
 
-            server = MCPServer()
-
-            # Simulate shutdown by explicitly calling a cleanup method
-            # (we'll implement this in the GREEN phase)
-            if hasattr(server, "shutdown"):
-                await server.shutdown()
-
-    # Read audit log
     log_lines = audit_log.read_text().strip().split("\n")
     log_entries = [json.loads(line) for line in log_lines if line]
 
-    # Should have shutdown message
     shutdown_entries = [
         entry
         for entry in log_entries

@@ -23,7 +23,7 @@ class OperationPoliciesConfig(_OperationPoliciesConfigSchema):
     @classmethod
     def from_file(
         cls,
-        config_path: str = ".st3/policies.yaml",
+        config_path: str = ".st3/config/policies.yaml",
         workflow_config: WorkflowConfig | None = None,
     ) -> OperationPoliciesConfig:
         if cls.singleton_instance is not None:

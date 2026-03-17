@@ -16,16 +16,7 @@ from pathlib import Path
 import pytest
 
 # Local
-from mcp_server.config.label_config import LabelConfig
 from mcp_server.config.label_startup import validate_label_config_on_startup
-
-
-@pytest.fixture(autouse=True)
-def reset_labelconfig_singleton() -> Iterator[None]:
-    """Reset LabelConfig singleton before each test for isolation."""
-    LabelConfig.reset()
-    yield
-    LabelConfig.reset()
 
 
 class TestStartupValidation:

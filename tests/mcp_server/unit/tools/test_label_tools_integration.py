@@ -15,7 +15,8 @@ from unittest.mock import Mock
 import pytest
 
 # Local
-from mcp_server.config.label_config import LabelConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import LabelConfig
 from mcp_server.tools.label_tools import (
     AddLabelsInput,
     AddLabelsTool,
@@ -36,6 +37,12 @@ class _MockLabel:  # pylint: disable=too-few-public-methods
         self.description = description
 
 
+def _load_label_config(tmp_path: Path, yaml_content: str) -> LabelConfig:
+    yaml_file = tmp_path / "labels.yaml"
+    yaml_file.write_text(yaml_content)
+    return ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
+
+
 class TestCreateLabelToolValidation:
     """Tests for CreateLabelTool validation hooks."""
 
@@ -47,11 +54,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         tool = CreateLabelTool(manager=Mock(), label_config=label_config)
         params = CreateLabelInput(name="invalid-name", color="FF0000")
@@ -67,11 +70,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         tool = CreateLabelTool(manager=Mock(), label_config=label_config)
         params = CreateLabelInput(name="type:bug", color="#FF0000")
@@ -89,11 +88,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.create_label = Mock(return_value=_MockLabel(name="type:bug", color="FF0000"))
@@ -115,11 +110,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.create_label = Mock(
@@ -144,11 +135,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         tool = AddLabelsTool(manager=Mock(), label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["undefined-label"])
@@ -168,11 +155,7 @@ labels:
   - name: "priority:high"
     color: "D93F0B"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
@@ -190,11 +173,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
@@ -216,11 +195,7 @@ labels:
   - name: "good first issue"
     color: "7057FF"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
@@ -241,11 +216,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -274,11 +245,7 @@ labels:
   - name: "type:new"
     color: "FF0000"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -302,11 +269,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         # Create mock label with attributes (not Mock object)
         class MockLabel:
@@ -339,11 +302,7 @@ labels:
     color: "1D76DB"
     description: "YAML description"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -373,11 +332,7 @@ labels:
     color: "1D76DB"
     description: "Test"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -400,11 +355,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -432,11 +383,7 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
 """
-        yaml_file = tmp_path / "labels.yaml"
-        yaml_file.write_text(yaml_content)
-
-        LabelConfig.reset()
-        label_config = LabelConfig.load(yaml_file)
+        label_config = _load_label_config(tmp_path, yaml_content)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(side_effect=Exception("API Error"))

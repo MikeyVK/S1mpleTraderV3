@@ -20,7 +20,7 @@ class ContributorConfig(_ContributorConfigSchema):
     singleton_instance: ClassVar[ContributorConfig | None] = None
 
     @classmethod
-    def from_file(cls, path: str = ".st3/contributors.yaml") -> ContributorConfig:
+    def from_file(cls, path: str = ".st3/config/contributors.yaml") -> ContributorConfig:
         if cls.singleton_instance is not None:
             return cls.singleton_instance
 
@@ -28,7 +28,7 @@ class ContributorConfig(_ContributorConfigSchema):
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Contributor config not found: {path}. "
-                "Create .st3/contributors.yaml (empty list is valid)."
+                "Create .st3/config/contributors.yaml (empty list is valid)."
             )
 
         loader = ConfigLoader(config_root=config_path.parent)

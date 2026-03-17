@@ -154,22 +154,22 @@ class TestWorkflowConfigLoading:
         """Test loading with default path when file doesn't exist.
 
         Expected behavior:
-        - Uses default path .st3/workflows.yaml
+        - Uses default path .st3/config/workflows.yaml
         - Raises FileNotFoundError
-        - Error message mentions .st3/workflows.yaml
+        - Error message mentions .st3/config/workflows.yaml
 
         Args:
             tmp_path: Pytest tmp_path fixture
             monkeypatch: Pytest monkeypatch fixture for changing working directory
         """
-        # Change to tmp_path so .st3/workflows.yaml doesn't exist
+        # Change to tmp_path so .st3/config/workflows.yaml doesn't exist
         monkeypatch.chdir(tmp_path)
 
         with pytest.raises(FileNotFoundError) as exc_info:
             WorkflowConfig.load()  # No path argument = default
 
         error_msg = str(exc_info.value)
-        assert ".st3/workflows.yaml" in error_msg
+        assert ".st3/config/workflows.yaml" in error_msg
 
     def test_load_invalid_yaml(self, invalid_yaml: Path) -> None:
         """Test loading malformed YAML file.
@@ -456,7 +456,7 @@ class TestRepositoryWorkflowPhases:
 
     def test_repo_workflows_use_implementation_instead_of_tdd(self) -> None:
         """Feature and hotfix workflows must use implementation after cycle 1 rename."""
-        config = WorkflowConfig.load(Path(".st3/workflows.yaml"))
+        config = WorkflowConfig.load(Path(".st3/config/workflows.yaml"))
 
         feature_phases = config.get_workflow("feature").phases
         hotfix_phases = config.get_workflow("hotfix").phases

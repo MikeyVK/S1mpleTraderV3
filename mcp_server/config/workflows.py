@@ -23,14 +23,14 @@ class WorkflowConfig(_WorkflowConfigSchema):
 
     @classmethod
     def load(cls, path: Path | None = None) -> WorkflowConfig:
-        config_path = Path(".st3/workflows.yaml") if path is None else Path(path)
+        config_path = Path(".st3/config/workflows.yaml") if path is None else Path(path)
         if path is None and cls.singleton_instance is not None:
             return cls.singleton_instance
 
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Workflow config not found: {config_path}\n"
-                f"Expected location: .st3/workflows.yaml\n"
+                f"Expected location: .st3/config/workflows.yaml\n"
                 f"Hint: Initialize workflows with default config"
             )
 
@@ -49,8 +49,8 @@ class WorkflowConfig(_WorkflowConfigSchema):
         return instance
 
     @classmethod
-    def from_file(cls, path: str = ".st3/workflows.yaml") -> WorkflowConfig:
-        if cls.singleton_instance is None or path != ".st3/workflows.yaml":
+    def from_file(cls, path: str = ".st3/config/workflows.yaml") -> WorkflowConfig:
+        if cls.singleton_instance is None or path != ".st3/config/workflows.yaml":
             return cls.load(Path(path))
         return cls.singleton_instance
 

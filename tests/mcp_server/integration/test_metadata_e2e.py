@@ -207,7 +207,8 @@ class TestMetadataEndToEnd:
         template_registry = TemplateRegistry(registry_path=registry_path)
 
         # Create manager WITH registry DI
-        manager = ArtifactManager(workspace_root=str(tmp_path), template_registry=template_registry)
+        manager = make_artifact_manager(tmp_path)
+        manager.template_registry = template_registry
 
         # 1. Scaffold artifact
         result = await manager.scaffold_artifact(

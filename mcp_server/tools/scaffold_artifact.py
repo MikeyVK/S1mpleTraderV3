@@ -48,11 +48,12 @@ class ScaffoldArtifactTool(BaseTool):
     name = "scaffold_artifact"
     description = "Scaffold any artifact type (code or document) from unified registry."
     args_model = ScaffoldArtifactInput
-
     def __init__(self, manager: ArtifactManager | None = None) -> None:
-        """Initialize tool with injected or default artifact manager."""
+        """Initialize tool with an explicitly injected artifact manager."""
         super().__init__()
-        self.manager = manager or ArtifactManager()
+        if manager is None:
+            raise ValueError("ArtifactManager must be injected for scaffold_artifact")
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:

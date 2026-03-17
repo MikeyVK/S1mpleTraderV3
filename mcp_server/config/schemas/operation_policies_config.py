@@ -60,7 +60,7 @@ class OperationPoliciesConfig(BaseModel):
         if self.workflow_config is None:
             raise ConfigError(
                 "Workflow config is required for phase cross-validation",
-                file_path=".st3/workflows.yaml",
+                file_path=".st3/config/workflows.yaml",
             )
 
         for workflow in self.workflow_config.workflows.values():
@@ -73,7 +73,7 @@ class OperationPoliciesConfig(BaseModel):
                     f"Operation '{operation_id}' references unknown phases: "
                     f"{sorted(invalid_phases)}. Valid phases from workflows.yaml: "
                     f"{sorted(valid_phases)}",
-                    file_path=".st3/policies.yaml",
+                    file_path=".st3/config/policies.yaml",
                 )
 
     def get_operation_policy(self, operation_id: str) -> OperationPolicy:

@@ -38,12 +38,12 @@ class ArtifactRegistryConfig(_ArtifactRegistryConfigSchema):
         try:
             return super().get_artifact(type_id)
         except ConfigError as exc:
-            file_path = str(self._file_path or Path(".st3/artifacts.yaml"))
+            file_path = str(self._file_path or Path(".st3/config/artifacts.yaml"))
             raise ConfigError(exc.message, file_path=file_path, hints=exc.hints) from exc
 
     @classmethod
     def from_file(cls, file_path: Path | None = None) -> ArtifactRegistryConfig:
-        config_path = Path(".st3/artifacts.yaml") if file_path is None else Path(file_path)
+        config_path = Path(".st3/config/artifacts.yaml") if file_path is None else Path(file_path)
         if cls._instance is not None and cls._file_path == config_path:
             return cls._instance
 

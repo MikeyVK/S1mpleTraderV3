@@ -8,6 +8,7 @@ from typing import Any, TypeVar
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from mcp_server.config.compat_roots import normalize_config_file_path, normalize_config_root
 from mcp_server.config.schemas import (
     ArtifactRegistryConfig,
     ContributorConfig,
@@ -34,7 +35,7 @@ class ConfigLoader:
     """Single YAML reader for migrated config schemas."""
 
     def __init__(self, config_root: Path) -> None:
-        self.config_root = Path(config_root)
+        self.config_root = normalize_config_root(config_root)
 
     def load_git_config(self, config_path: Path | None = None) -> GitConfig:
         data, resolved_path = self._load_yaml("git.yaml", config_path=config_path)
@@ -60,14 +61,12 @@ class ConfigLoader:
         self,
         config_path: Path | None = None,
     ) -> ArtifactRegistryConfig:
-        resolved_path = (
-            Path(config_path) if config_path is not None else self.config_root / "artifacts.yaml"
-        )
+        resolved_path = self._resolve_yaml_path("artifacts.yaml", config_path=config_path)
         if not resolved_path.exists():
             raise ConfigError(
                 "Artifact registry not found: "
-                f"{resolved_path}. Expected: .st3/artifacts.yaml. "
-                "Fix: Create .st3/artifacts.yaml manually or restore from backup.",
+                f"{resolved_path}. Expected: .st3/config/artifacts.yaml. "
+                "Fix: Create .st3/config/artifacts.yaml manually or restore from backup.",
                 file_path=str(resolved_path),
             )
 
@@ -187,7 +186,7 @@ class ConfigLoader:
 
     def load_enforcement_config(self, config_path: Path | None = None) -> EnforcementConfig:
         data, resolved_path = self._load_yaml(
-            Path("config") / "enforcement.yaml",
+            "enforcement.yaml",
             config_path=config_path,
             allow_missing=True,
         )
@@ -198,10 +197,15 @@ class ConfigLoader:
         config_path: Path | None = None,
     ) -> PhaseContractsConfig:
         data, resolved_path = self._load_yaml(
-            Path("config") / "phase_contracts.yaml",
+            "phase_contracts.yaml",
             config_path=config_path,
         )
         return self._validate_schema(PhaseContractsConfig, data, resolved_path)
+
+    def _resolve_yaml_path(self, file_name: str | Path, config_path: Path | None = None) -> Path:
+        if config_path is None:
+            return self.config_root / file_name
+        return normalize_config_file_path(config_path)
 
     def _load_yaml(
         self,
@@ -209,9 +213,7 @@ class ConfigLoader:
         config_path: Path | None = None,
         allow_missing: bool = False,
     ) -> tuple[dict[str, Any], Path]:
-        resolved_path = (
-            Path(config_path) if config_path is not None else self.config_root / file_name
-        )
+        resolved_path = self._resolve_yaml_path(file_name, config_path=config_path)
 
         if not resolved_path.exists():
             if allow_missing:

@@ -403,15 +403,11 @@ class TestRunQualityGatesScopeGuardC41:
     @pytest.mark.asyncio
     async def test_scope_files_pass_run_does_not_advance_baseline(self) -> None:
         """RED: scope='files' pass run must not call baseline advance path."""
-        manager = make_qa_manager(Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
 
         with (
             patch.object(manager, "_resolve_scope", return_value=["backend/__init__.py"]),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",
@@ -437,15 +433,11 @@ class TestRunQualityGatesScopeGuardC41:
     @pytest.mark.parametrize("scope", ["branch", "project"])
     async def test_non_auto_pass_runs_do_not_reset_auto_failed_state(self, scope: str) -> None:
         """RED: scope='branch'/'project' pass runs must not hit auto baseline mutation path."""
-        manager = make_qa_manager(Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
 
         with (
             patch.object(manager, "_resolve_scope", return_value=["backend/__init__.py"]),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",
@@ -491,17 +483,13 @@ class TestRunQualityGatesFailedSubsetC42:
     @pytest.mark.asyncio
     async def test_auto_mixed_result_accumulates_only_failing_subset(self) -> None:
         """RED: only failing file(s) should be sent to failed_files accumulator."""
-        manager = make_qa_manager(Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
         resolved_files = ["a.py", "b.py"]
 
         with (
             patch.object(manager, "_resolve_scope", return_value=resolved_files),
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",
@@ -534,17 +522,13 @@ class TestRunQualityGatesFailedSubsetC42:
     @pytest.mark.asyncio
     async def test_auto_mixed_result_must_not_accumulate_full_resolved_set(self) -> None:
         """RED: accumulator input must not equal full evaluated set when only subset fails."""
-        manager = make_qa_manager(Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
         resolved_files = ["a.py", "b.py"]
 
         with (
             patch.object(manager, "_resolve_scope", return_value=resolved_files),
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",

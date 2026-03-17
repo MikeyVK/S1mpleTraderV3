@@ -2,11 +2,13 @@
 # ruff: noqa: ANN001, ANN201
 
 import asyncio
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
-from mcp_server.config.label_config import LabelConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import LabelConfig
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
 from mcp_server.tools.pr_tools import (
@@ -33,7 +35,7 @@ def mock_adapter():
 
 
 @pytest.fixture
-def test_label_config(tmp_path):
+def test_label_config(tmp_path: Path) -> LabelConfig:
     """Create a temp label config with test labels."""
     yaml_content = """version: "1.0"
 labels:
@@ -45,15 +47,11 @@ labels:
     yaml_file = tmp_path / "labels.yaml"
     yaml_file.write_text(yaml_content)
 
-    LabelConfig.reset()
-    label_config = LabelConfig.load(yaml_file)
-    yield label_config
-    LabelConfig.reset()
+    return ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
 
 
 def test_create_pr_tool(mock_adapter, mock_git_config) -> None:
     """Test CreatePRTool creates PR and returns correct response."""
-    # Setup mock
     mock_pr = Mock()
     mock_pr.number = 123
     mock_pr.html_url = "http://github.com/owner/repo/pull/123"
@@ -73,7 +71,7 @@ def test_create_pr_tool(mock_adapter, mock_git_config) -> None:
     )
 
 
-def test_add_labels_tool(mock_adapter, test_label_config) -> None:
+def test_add_labels_tool(mock_adapter, test_label_config: LabelConfig) -> None:
     """Test AddLabelsTool adds labels and returns confirmation."""
     manager = GitHubManager(adapter=mock_adapter)
     tool = AddLabelsTool(manager=manager, label_config=test_label_config)

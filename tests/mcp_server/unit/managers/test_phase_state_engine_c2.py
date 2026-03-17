@@ -25,10 +25,10 @@ from mcp_server.managers.state_repository import InMemoryStateRepository
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
-    """Temporary workspace root with .st3/workphases.yaml providing exit_requires."""
-    st3 = tmp_path / ".st3"
-    st3.mkdir()
-    (st3 / "workphases.yaml").write_text(
+    """Temporary workspace root with .st3/config/workphases.yaml providing exit_requires."""
+    config_dir = tmp_path / ".st3" / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "workphases.yaml").write_text(
         """
 phases:
   planning:
@@ -128,7 +128,7 @@ class TestOnExitPlanningPhase:
         A phase with no exit_requires in workphases.yaml must pass unconditionally.
         """
         # Write workphases.yaml WITHOUT exit_requires on planning
-        (workspace_root / ".st3" / "workphases.yaml").write_text(
+        (workspace_root / ".st3" / "config" / "workphases.yaml").write_text(
             "phases:\n  planning:\n    display_name: Planning\n"
         )
         project_manager.initialize_project(

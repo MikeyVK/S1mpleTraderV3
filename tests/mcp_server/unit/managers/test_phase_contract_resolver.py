@@ -25,7 +25,7 @@ def workspace_root(tmp_path: Path) -> Path:
     config_dir = st3_dir / "config"
     config_dir.mkdir(parents=True)
 
-    (st3_dir / "workphases.yaml").write_text(
+    (config_dir / "workphases.yaml").write_text(
         """
 phases:
   planning:
@@ -141,7 +141,7 @@ class TestPhaseConfigContext:
         config_dir = st3_dir / "config"
         config_dir.mkdir(parents=True)
 
-        (st3_dir / "workphases.yaml").write_text(
+        (config_dir / "workphases.yaml").write_text(
             "phases:\n  implementation:\n    display_name: Implementation\n",
             encoding="utf-8",
         )
@@ -170,7 +170,7 @@ workflows:
         config_dir = st3_dir / "config"
         config_dir.mkdir(parents=True)
 
-        (st3_dir / "workphases.yaml").write_text(
+        (config_dir / "workphases.yaml").write_text(
             "phases:\n  planning:\n    display_name: Planning\n",
             encoding="utf-8",
         )

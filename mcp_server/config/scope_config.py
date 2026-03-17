@@ -16,14 +16,14 @@ class ScopeConfig(_ScopeConfigSchema):
     _loaded_path: ClassVar[Path | None] = None
 
     @classmethod
-    def from_file(cls, path: str = ".st3/scopes.yaml") -> ScopeConfig:
+    def from_file(cls, path: str = ".st3/config/scopes.yaml") -> ScopeConfig:
         config_path = Path(path)
         if cls.singleton_instance is not None and cls._loaded_path == config_path:
             return cls.singleton_instance
 
         if not config_path.exists():
             raise FileNotFoundError(
-                f"Scope config not found: {path}. Create .st3/scopes.yaml with valid scope names."
+                f"Scope config not found: {path}. Create .st3/config/scopes.yaml with valid scope names."
             )
 
         loader = ConfigLoader(config_root=config_path.parent)

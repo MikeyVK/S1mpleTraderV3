@@ -42,27 +42,37 @@ class Settings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "Settings":
-        """Load settings from environment variables and optional YAML config file.
-
-        Reads YAML path from MCP_CONFIG_PATH env var (defaults to mcp_config.yaml).
-        Env vars LOG_LEVEL and GITHUB_TOKEN override YAML values.
-        """
+        """Load settings from env vars with optional MCP_CONFIG_PATH overlay."""
         config_data: dict[str, Any] = {}
 
-        path = Path(os.environ.get("MCP_CONFIG_PATH", "mcp_config.yaml"))
+        path_value = os.environ.get("MCP_CONFIG_PATH")
+        if path_value:
+            path = Path(path_value)
+            if path.exists():
+                with path.open(encoding="utf-8") as file_handle:
+                    config_data = yaml.safe_load(file_handle) or {}
 
-        if path.exists():
-            with open(path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f) or {}
+        server_data = config_data.setdefault("server", {})
+        github_data = config_data.setdefault("github", {})
+        logging_data = config_data.setdefault("logging", {})
 
+        if env_name := os.environ.get("MCP_SERVER_NAME"):
+            server_data["name"] = env_name
+        if env_workspace_root := os.environ.get("MCP_WORKSPACE_ROOT"):
+            server_data["workspace_root"] = env_workspace_root
+        if env_config_root := os.environ.get("MCP_CONFIG_ROOT"):
+            server_data["config_root"] = env_config_root
+
+        if env_owner := os.environ.get("GITHUB_OWNER"):
+            github_data["owner"] = env_owner
+        if env_repo := os.environ.get("GITHUB_REPO"):
+            github_data["repo"] = env_repo
+        if env_project_number := os.environ.get("GITHUB_PROJECT_NUMBER"):
+            github_data["project_number"] = int(env_project_number)
         if env_token := os.environ.get("GITHUB_TOKEN"):
-            if "github" not in config_data:
-                config_data["github"] = {}
-            config_data["github"]["token"] = env_token
+            github_data["token"] = env_token
 
         if env_log_level := os.environ.get("LOG_LEVEL"):
-            if "logging" not in config_data:
-                config_data["logging"] = {}
-            config_data["logging"]["level"] = env_log_level
+            logging_data["level"] = env_log_level
 
         return cls(**config_data)

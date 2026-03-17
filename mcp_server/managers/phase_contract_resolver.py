@@ -11,7 +11,7 @@ from mcp_server.core.exceptions import ConfigError
 from mcp_server.schemas import CheckSpec, PhaseContractsConfig, WorkphasesConfig
 
 _PHASE_CONTRACTS_DISPLAY_PATH = ".st3/config/phase_contracts.yaml"
-_WORKPHASES_DISPLAY_PATH = ".st3/workphases.yaml"
+_WORKPHASES_DISPLAY_PATH = ".st3/config/workphases.yaml"
 _DELIVERABLES_DISPLAY_PATH = ".st3/deliverables.json"
 
 

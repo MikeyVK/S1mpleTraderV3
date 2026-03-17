@@ -817,7 +817,7 @@ class ArtifactManager:
         if self._project_structure_config is None:
             raise ConfigError(
                 "ProjectStructureConfig must be injected to resolve artifact directories",
-                file_path=".st3/project_structure.yaml",
+                file_path=".st3/config/project_structure.yaml",
             )
         resolver = DirectoryPolicyResolver(self._project_structure_config)
         valid_dirs = resolver.find_directories_for_artifact(artifact_type)
@@ -825,7 +825,7 @@ class ArtifactManager:
         if not valid_dirs:
             raise ConfigError(
                 f"No valid directory found for artifact type: {artifact_type}",
-                file_path=".st3/project_structure.yaml",
+                file_path=".st3/config/project_structure.yaml",
             )
 
         # Use first directory

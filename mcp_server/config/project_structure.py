@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.project_structure_config import (
     DirectoryPolicy,
@@ -23,15 +22,16 @@ class ProjectStructureConfig(_ProjectStructureConfigSchema):
     _instance: ClassVar[ProjectStructureConfig | None] = None
 
     @classmethod
-    def from_file(cls, config_path: str = ".st3/project_structure.yaml") -> ProjectStructureConfig:
+    def from_file(cls, config_path: str = ".st3/config/project_structure.yaml") -> ProjectStructureConfig:
         if cls._instance is not None:
             return cls._instance
 
         path = Path(config_path)
         loader = ConfigLoader(config_root=path.parent)
+        artifact_registry = loader.load_artifact_registry_config()
         loaded = loader.load_project_structure_config(
             config_path=path,
-            artifact_registry=ArtifactRegistryConfig.from_file(),
+            artifact_registry=artifact_registry,
         )
         instance = cls.model_validate(loaded.model_dump())
         instance.artifact_registry = loaded.artifact_registry

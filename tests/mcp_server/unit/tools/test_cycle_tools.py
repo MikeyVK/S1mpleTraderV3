@@ -4,6 +4,7 @@
 """Unit tests for the renamed cycle tools module and dispatch hooks."""
 
 from pathlib import Path
+from shutil import copytree
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -57,7 +58,7 @@ class TestCycleTools:
     ) -> None:
         """Dispatch post-hook should commit state files after a successful cycle transition."""
         config_dir = tmp_path / ".st3" / "config"
-        config_dir.mkdir(parents=True, exist_ok=True)
+        copytree(Path.cwd() / ".st3" / "config", config_dir, dirs_exist_ok=True)
         (config_dir / "enforcement.yaml").write_text(
             """
             enforcement:
@@ -127,7 +128,7 @@ class TestCycleTools:
         ):
             mock_settings_cls.from_env.return_value.server.name = "test-server"
             mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
-            mock_settings_cls.from_env.return_value.server.config_root = str(tmp_path / ".st3")
+            mock_settings_cls.from_env.return_value.server.config_root = str(tmp_path / ".st3" / "config")
             mock_settings_cls.from_env.return_value.github.token = None
             mock_settings_cls.from_env.return_value.github.owner = "test"
             mock_settings_cls.from_env.return_value.github.repo = "repo"
@@ -166,10 +167,13 @@ class TestCycleTools:
         tmp_path: Path,
     ) -> None:
         """Force cycle transitions should warn on hook failures instead of blocking."""
+        config_dir = tmp_path / ".st3" / "config"
+        copytree(Path.cwd() / ".st3" / "config", config_dir, dirs_exist_ok=True)
+
         with patch("mcp_server.server.Settings") as mock_settings_cls:
             mock_settings_cls.from_env.return_value.server.name = "test-server"
             mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
-            mock_settings_cls.from_env.return_value.server.config_root = str(tmp_path / ".st3")
+            mock_settings_cls.from_env.return_value.server.config_root = str(tmp_path / ".st3" / "config")
             mock_settings_cls.from_env.return_value.github.token = None
             mock_settings_cls.from_env.return_value.github.owner = "test"
             mock_settings_cls.from_env.return_value.github.repo = "repo"

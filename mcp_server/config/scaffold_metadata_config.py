@@ -22,7 +22,7 @@ class ScaffoldMetadataConfig(_ScaffoldMetadataConfigSchema):
 
     @classmethod
     def from_file(cls, path: Path | None = None) -> ScaffoldMetadataConfig:
-        config_path = Path(".st3/scaffold_metadata.yaml") if path is None else Path(path)
+        config_path = Path(".st3/config/scaffold_metadata.yaml") if path is None else Path(path)
         loader = ConfigLoader(config_root=config_path.parent)
         loaded = loader.load_scaffold_metadata_config(config_path=config_path)
         return cls.model_validate(loaded.model_dump())
