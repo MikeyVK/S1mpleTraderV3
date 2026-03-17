@@ -32,8 +32,7 @@ def test_scaffold_artifact_tool_preserves_error_contract(
 
     assert result.is_error is True
     assert result.error_code == "ERR_CONFIG"
-    assert result.file_path is not None
-    assert result.file_path.endswith("artifacts.yaml")
+    assert result.file_path is None
 
     assert result.content
     assert "nonexistent_type" in result.content[0]["text"]

@@ -40,8 +40,10 @@ from mcp_server.managers import enforcement_runner, phase_contract_resolver
 def config_root(tmp_path: Path) -> Path:
     """Create a minimal config root covering all 15 migrated schemas."""
 
+    config_dir = tmp_path / ".st3" / "config"
+
     def write_yaml(relative_path: str, data: dict[str, Any]) -> None:
-        target = tmp_path / relative_path
+        target = config_dir / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
@@ -227,9 +229,9 @@ def config_root(tmp_path: Path) -> Path:
             ],
         },
     )
-    write_yaml("config/enforcement.yaml", {"enforcement": []})
+    write_yaml("enforcement.yaml", {"enforcement": []})
     write_yaml(
-        "config/phase_contracts.yaml",
+        "phase_contracts.yaml",
         {
             "workflows": {
                 "feature": {
@@ -249,7 +251,7 @@ def config_root(tmp_path: Path) -> Path:
         },
     )
 
-    return tmp_path
+    return config_dir
 
 
 def test_config_loader_exists() -> None:
@@ -290,26 +292,33 @@ def test_loader_exposes_all_fifteen_schema_methods() -> None:
 def test_loader_loads_all_fifteen_migrated_schema_instances(config_root: Path) -> None:
     """ConfigLoader must construct all 15 migrated schema types."""
     loader = ConfigLoader(config_root=config_root)
+    workflow_config = loader.load_workflow_config()
+    artifact_registry = loader.load_artifact_registry_config()
 
     assert isinstance(loader.load_git_config(), GitConfig)
     assert isinstance(loader.load_label_config(), LabelConfig)
     assert isinstance(loader.load_scope_config(), ScopeConfig)
-    assert isinstance(loader.load_workflow_config(), WorkflowConfig)
+    assert isinstance(workflow_config, WorkflowConfig)
     assert isinstance(loader.load_workphases_config(), WorkphasesConfig)
-    assert isinstance(loader.load_artifact_registry_config(), ArtifactRegistryConfig)
+    assert isinstance(artifact_registry, ArtifactRegistryConfig)
     assert isinstance(loader.load_contributor_config(), ContributorConfig)
     assert isinstance(loader.load_issue_config(), IssueConfig)
     assert isinstance(loader.load_milestone_config(), MilestoneConfig)
-    assert isinstance(loader.load_operation_policies_config(), OperationPoliciesConfig)
-    assert isinstance(loader.load_project_structure_config(), ProjectStructureConfig)
+    assert isinstance(
+        loader.load_operation_policies_config(workflow_config=workflow_config),
+        OperationPoliciesConfig,
+    )
+    assert isinstance(
+        loader.load_project_structure_config(artifact_registry=artifact_registry),
+        ProjectStructureConfig,
+    )
     assert isinstance(loader.load_quality_config(), QualityConfig)
     assert isinstance(loader.load_scaffold_metadata_config(), ScaffoldMetadataConfig)
     assert isinstance(loader.load_enforcement_config(), EnforcementConfig)
     assert isinstance(loader.load_phase_contracts_config(), PhaseContractsConfig)
 
 
-def test_all_fifteen_schema_classes_have_no_self_loading_methods() -> None:
-    """Pure schema classes must not contain self-loading or singleton state."""
+def _assert_no_self_loading_methods() -> None:
     for schema_cls in (
         GitConfig,
         LabelConfig,
@@ -341,6 +350,48 @@ def test_all_fifteen_schema_classes_have_no_self_loading_methods() -> None:
             assert forbidden_attr not in schema_cls.__dict__, (
                 f"{schema_cls.__name__}.{forbidden_attr} must not exist in config.schemas. "
                 "Singleton cache state belongs to legacy compatibility wrappers only."
+            )
+
+
+def _assert_schema_package_has_no_hardcoded_config_paths() -> None:
+    schema_dir = Path(inspect.getfile(scaffold_schema)).parent
+    for schema_file in schema_dir.rglob("*.py"):
+        source = schema_file.read_text(encoding="utf-8")
+        assert ".st3/config/" not in source, (
+            f"{schema_file.name} must not hardcode config-root paths in schema code"
+        )
+
+
+def test_all_fifteen_schema_classes_have_no_self_loading_methods() -> None:
+    """Pure schema classes must not contain self-loading or singleton state."""
+    _assert_no_self_loading_methods()
+
+
+def test_no_from_file_on_any_config_schema() -> None:
+    """Planning alias for the structural delete guard used in C_LOADER.4 proof."""
+    _assert_no_self_loading_methods()
+
+
+def test_no_hardcoded_config_paths_in_schema_package() -> None:
+    """Schema package must not embed canonical config-root path knowledge."""
+    _assert_schema_package_has_no_hardcoded_config_paths()
+
+
+def test_no_cross_config_dependency_fields_on_schema_roots() -> None:
+    """Root config schemas must not carry cross-config dependency state."""
+    assert "artifact_registry" not in ProjectStructureConfig.model_fields
+    assert "workflow_config" not in OperationPoliciesConfig.model_fields
+
+
+def test_no_schema_orchestration_methods_on_schema_roots() -> None:
+    """Cross-config orchestration belongs in ConfigLoader, not schema value objects."""
+    for schema_cls, forbidden_methods in (
+        (ProjectStructureConfig, ("validate_artifact_types", "validate_parent_references")),
+        (OperationPoliciesConfig, ("validate_phases",)),
+    ):
+        for method_name in forbidden_methods:
+            assert method_name not in schema_cls.__dict__, (
+                f"{schema_cls.__name__}.{method_name}() must live in loader/validator layer"
             )
 
 

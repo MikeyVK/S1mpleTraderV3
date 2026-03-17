@@ -37,10 +37,8 @@ async def test_config_error_preserves_contract(artifact_manager: ArtifactManager
     # Verify error structure
     assert result.is_error, "Expected error result"
     assert result.error_code == "ERR_CONFIG", "Expected config error code"
-    # This ConfigError happens to have empty hints list (not None)
-    # The important thing is error_code and file_path are preserved
-    assert result.file_path is not None, "Expected file path"
-    assert result.file_path.endswith("artifacts.yaml"), "Expected artifacts.yaml file path"
+    # Pure schema lookup no longer carries source-path knowledge.
+    assert result.file_path is None, "Unexpected file path on pure schema lookup error"
     # Check message contains helpful information
     assert "nonexistent_type" in result.content[0]["text"]
 

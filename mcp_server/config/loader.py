@@ -137,8 +137,8 @@ class ConfigLoader:
             },
         }
         config = self._validate_schema(OperationPoliciesConfig, payload, resolved_path)
-        config.workflow_config = workflow_config or self.load_workflow_config()
-        config.validate_phases()
+        effective_workflow_config = workflow_config or self.load_workflow_config()
+        self._validate_operation_policy_phases(config, effective_workflow_config, resolved_path)
         return config
 
     def load_project_structure_config(
@@ -165,9 +165,13 @@ class ConfigLoader:
             },
         }
         config = self._validate_schema(ProjectStructureConfig, payload, resolved_path)
-        config.artifact_registry = artifact_registry or self.load_artifact_registry_config()
-        config.validate_artifact_types()
-        config.validate_parent_references()
+        effective_artifact_registry = artifact_registry or self.load_artifact_registry_config()
+        self._validate_project_structure_artifact_types(
+            config,
+            effective_artifact_registry,
+            resolved_path,
+        )
+        self._validate_project_structure_parent_references(config, resolved_path)
         return config
 
     def load_quality_config(self, config_path: Path | None = None) -> QualityConfig:
@@ -201,6 +205,55 @@ class ConfigLoader:
             config_path=config_path,
         )
         return self._validate_schema(PhaseContractsConfig, data, resolved_path)
+
+    def _validate_operation_policy_phases(
+        self,
+        config: OperationPoliciesConfig,
+        workflow_config: WorkflowConfig,
+        resolved_path: Path,
+    ) -> None:
+        valid_phases: set[str] = set()
+        for workflow in workflow_config.workflows.values():
+            valid_phases.update(workflow.phases)
+
+        for operation_id, policy in config.operations.items():
+            invalid_phases = set(policy.allowed_phases) - valid_phases
+            if invalid_phases:
+                raise ConfigError(
+                    f"Operation '{operation_id}' references unknown phases: "
+                    f"{sorted(invalid_phases)}. Valid phases from workflow config: "
+                    f"{sorted(valid_phases)}",
+                    file_path=str(resolved_path),
+                )
+
+    def _validate_project_structure_artifact_types(
+        self,
+        config: ProjectStructureConfig,
+        artifact_registry: ArtifactRegistryConfig,
+        resolved_path: Path,
+    ) -> None:
+        valid_types = set(artifact_registry.list_type_ids())
+        for directory_path, policy in config.directories.items():
+            invalid_types = set(policy.allowed_artifact_types) - valid_types
+            if invalid_types:
+                raise ConfigError(
+                    f"Directory '{directory_path}' references unknown artifact types: "
+                    f"{sorted(invalid_types)}. Valid types from artifact registry: "
+                    f"{sorted(valid_types)}",
+                    file_path=str(resolved_path),
+                )
+
+    def _validate_project_structure_parent_references(
+        self,
+        config: ProjectStructureConfig,
+        resolved_path: Path,
+    ) -> None:
+        for directory_path, policy in config.directories.items():
+            if policy.parent is not None and policy.parent not in config.directories:
+                raise ConfigError(
+                    f"Directory '{directory_path}' references unknown parent: '{policy.parent}'",
+                    file_path=str(resolved_path),
+                )
 
     def _resolve_yaml_path(self, file_name: str | Path, config_path: Path | None = None) -> Path:
         if config_path is None:

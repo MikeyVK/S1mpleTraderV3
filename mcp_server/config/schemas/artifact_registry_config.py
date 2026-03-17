@@ -93,7 +93,6 @@ class ArtifactRegistryConfig(BaseModel):
 
     version: str = Field(..., description="Schema version")
     artifact_types: list[ArtifactDefinition] = Field(..., description="All artifact definitions")
-
     def get_artifact(self, type_id: str) -> ArtifactDefinition:
         for artifact in self.artifact_types:
             if artifact.type_id == type_id:
@@ -102,12 +101,11 @@ class ArtifactRegistryConfig(BaseModel):
         available = ", ".join(artifact.type_id for artifact in self.artifact_types)
         raise ConfigError(
             f"Artifact type '{type_id}' not found in registry. "
-            f"Available types: {available}. Fix: Check spelling or add new type "
-            "to .st3/config/artifacts.yaml.",
+            f"Available types: {available}. Fix: Check spelling or add a matching artifact definition.",
             hints=[
                 f"Check spelling: '{type_id}' not found",
                 f"Available types: {available}",
-                "Add new type to .st3/config/artifacts.yaml if needed",
+                "Add a matching artifact definition if needed",
             ],
         )
 

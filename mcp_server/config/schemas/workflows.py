@@ -40,7 +40,7 @@ class WorkflowConfig(BaseModel):
             raise ValueError(
                 f"Unknown workflow: '{name}'\n"
                 f"Available workflows: {available}\n"
-                "Hint: Add workflow definition to .st3/config/workflows.yaml"
+                "Hint: Add a matching workflow definition to the workflow configuration"
             )
         return workflows_dict[name]
 

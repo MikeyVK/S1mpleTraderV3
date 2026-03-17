@@ -7,9 +7,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator
 
-from mcp_server.config.schemas.workflows import WorkflowConfig
-from mcp_server.core.exceptions import ConfigError
-
 
 class OperationPolicy(BaseModel):
     """Single operation policy definition."""
@@ -53,28 +50,6 @@ class OperationPoliciesConfig(BaseModel):
     """Operation policies configuration value object."""
 
     operations: dict[str, OperationPolicy] = Field(...)
-    workflow_config: WorkflowConfig | None = Field(default=None, exclude=True)
-
-    def validate_phases(self) -> None:
-        valid_phases: set[str] = set()
-        if self.workflow_config is None:
-            raise ConfigError(
-                "Workflow config is required for phase cross-validation",
-                file_path=".st3/config/workflows.yaml",
-            )
-
-        for workflow in self.workflow_config.workflows.values():
-            valid_phases.update(workflow.phases)
-
-        for operation_id, policy in self.operations.items():
-            invalid_phases = set(policy.allowed_phases) - valid_phases
-            if invalid_phases:
-                raise ConfigError(
-                    f"Operation '{operation_id}' references unknown phases: "
-                    f"{sorted(invalid_phases)}. Valid phases from workflows.yaml: "
-                    f"{sorted(valid_phases)}",
-                    file_path=".st3/config/policies.yaml",
-                )
 
     def get_operation_policy(self, operation_id: str) -> OperationPolicy:
         if operation_id not in self.operations:
