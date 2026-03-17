@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "cwd": ".",
+        "command": "python3 ./scripts/copilot_hooks/session_start.py",
+        "windows": ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start.py",
+        "timeout": 15
+      }
+    ]
+  }
+}

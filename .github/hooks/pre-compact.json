@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "type": "command",
+        "cwd": ".",
+        "command": "python3 ./scripts/copilot_hooks/pre_compact.py",
+        "windows": ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact.py",
+        "timeout": 15
+      }
+    ]
+  }
+}

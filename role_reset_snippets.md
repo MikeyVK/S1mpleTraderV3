@@ -5,16 +5,18 @@ Gebruik deze korte reset-prompts direct na context compaction.
 ## QA Reset
 
 ```text
-Gebruik qa_agent.md als rolhandleiding voor deze sessie.
-Ga ervan uit dat je context leeg of onbetrouwbaar is en voer eerst de startup-procedure uit die in qa_agent.md staat.
+Gebruik @qa als actieve rol voor deze sessie.
+Gebruik `.github/agents/qa.agent.md` als rolhandleiding.
+Ga ervan uit dat je context leeg of onbetrouwbaar is en voer eerst de startup-procedure uit die in dat bestand staat.
 Doe daarna strikte read-only QA op de hand-over die ik hierna stuur.
 ```
 
 ## Implementation Reset
 
 ```text
-Gebruik imp_agent.md als rolhandleiding voor deze sessie.
-Ga ervan uit dat je context leeg of onbetrouwbaar is en voer eerst de startup-procedure uit die in imp_agent.md staat.
+Gebruik @imp als actieve rol voor deze sessie.
+Gebruik `.github/agents/imp.agent.md` als rolhandleiding.
+Ga ervan uit dat je context leeg of onbetrouwbaar is en voer eerst de startup-procedure uit die in dat bestand staat.
 Implementeer daarna alleen de taak of cycle die ik hierna stuur, binnen planning en deliverables.
 ```
 
