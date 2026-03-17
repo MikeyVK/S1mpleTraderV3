@@ -203,15 +203,23 @@ If that flow feels natural, the orchestration is already doing its job.
 
 ## 8. Session State And Recovery
 
-The file `.copilot/session-state.json` is created by the `PreCompact` hook.
+The `PreCompact` hook runs at two scopes, writing to separate locations:
 
-That means:
-- it is written when VS Code triggers `PreCompact` before context compaction
-- it can also be written during explicit synthetic tests when the hook script is invoked manually
-- it is not the primary source of truth for the project
-- it is a small orchestration-private recovery cache
+**Workspace-level hook** (`pre_compact.py`, fires for all sessions):
+- Derives a `chat_id` from the conversation's `transcript_path` stem.
+- Writes a lightweight snapshot (goal, files, timestamp) to `.copilot/sessions/{chat_id}.json`.
+- Each chat gets its own file — multiple parallel generic chats never overwrite each other.
+- Does **not** write to `session-state.json`, so it never contaminates agent recovery state.
 
-What it is good for:
+**Agent-level hook** (`pre_compact_agent.py`, fires only for `@imp` and `@qa`):
+- Writes a richer snapshot (goal, role, files, pending handover, handover prompt block) to `.copilot/sessions/{chat_id}.json` — overrides the workspace version.
+- Also writes to `.copilot/session-state.json` — the shared cross-session handover file.
+- Agent `SessionStart` hooks read from `session-state.json` to recover context.
+
+Both hooks fire for agent sessions; there is no native "skip" mechanism in VS Code for workspace hooks.
+The different write paths ensure there is no conflict: workspace manages per-chat files, agents manage the shared handover state.
+
+What `.copilot/session-state.json` is good for:
 - restoring the last user goal after compaction
 - restoring files in scope
 - restoring a pending hand-over summary

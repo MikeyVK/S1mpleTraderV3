@@ -156,12 +156,30 @@ This split ensures that imp→qa context is never injected into unrelated sessio
 
 **Responsibility:** store the minimum information needed to resume implementation work after compaction.
 
-**What it stores:**
+**Two-tier write strategy:**
+
+The `PreCompact` hook fires at two scopes:
+
+1. **Workspace-level** (`pre_compact.py`, fires for all sessions):
+   - Derives a `chat_id` from the `transcript_path` stem in the event payload.
+   - Writes a lightweight snapshot (goal + files + timestamp) to `.copilot/sessions/{chat_id}.json`.
+   - **Never writes to `session-state.json`** — prevents multiple parallel generic chats from overwriting each other.
+
+2. **Agent-level** (`pre_compact_agent.py`, fires only for `@imp` and `@qa`):
+   - Derives the same `chat_id` and writes a richer snapshot to `.copilot/sessions/{chat_id}.json` (overrides workspace version).
+   - **Also writes to `.copilot/session-state.json`** — the shared cross-session handover file that agent `SessionStart` hooks read.
+
+This split means the workspace hook is a true generic fallback that never pollutes agent state.
+
+**What it stores (per-chat file):**
 - timestamp
-- active role
+- active role (if detectable from transcript)
 - last user goal summary
 - files in scope mentioned in conversation
+
+**What the agent hook additionally stores (in `session-state.json`):**
 - optional pending handover summary
+- handover prompt block (copy-paste fenced block if present in transcript)
 
 **What it must not store:**
 - project workflow phase
@@ -291,12 +309,13 @@ The compact design needs only this file family:
 
 - `.github/hooks/session-start.json` — workspace-level `SessionStart` config
 - `.github/hooks/pre-compact.json` — workspace-level `PreCompact` config
-- `.github/agents/imp.agent.md` — includes agent-specific `SessionStart` hook
-- `.github/agents/qa.agent.md` — includes agent-specific `SessionStart` hook
+- `.github/agents/imp.agent.md` — includes agent-specific `SessionStart` and `PreCompact` hooks
+- `.github/agents/qa.agent.md` — includes agent-specific `SessionStart` and `PreCompact` hooks
 - `scripts/copilot_hooks/session_start.py` — generic: branch + changed files (all sessions)
 - `scripts/copilot_hooks/session_start_imp.py` — impl-specific: snapshot recovery, handover (only `@imp`)
 - `scripts/copilot_hooks/session_start_qa.py` — QA-specific: handover detection, review guidance (only `@qa`)
-- `scripts/copilot_hooks/pre_compact.py` — transcript-based snapshot writer (all sessions)
+- `scripts/copilot_hooks/pre_compact.py` — workspace: per-chat snapshot writer to `.copilot/sessions/{chat_id}.json`
+- `scripts/copilot_hooks/pre_compact_agent.py` — agent: dual-write (per-chat + `session-state.json`, `@imp` and `@qa` only)
 - optional `.github/prompts/resume-implementation.prompt.md`
 - optional `.github/prompts/prepare-handover.prompt.md`
 
