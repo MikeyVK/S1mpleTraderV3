@@ -3,6 +3,13 @@ name: qa
 description: QA role wrapper for VS Code orchestration on this repository.
 argument-hint: Point to the latest implementation handover or describe the exact surface that needs review.
 target: vscode
+hooks:
+  SessionStart:
+    - type: command
+      cwd: "."
+      command: "python3 ./scripts/copilot_hooks/session_start_qa.py"
+      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start_qa.py"
+      timeout: 15
 ---
 
 # QA Agent Wrapper

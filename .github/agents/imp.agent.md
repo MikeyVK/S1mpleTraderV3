@@ -3,6 +3,13 @@ name: imp
 description: Implementation role wrapper for VS Code orchestration on this repository.
 argument-hint: Describe the implementation task, expected files, and any constraints or test target.
 target: vscode
+hooks:
+  SessionStart:
+    - type: command
+      cwd: "."
+      command: "python3 ./scripts/copilot_hooks/session_start_imp.py"
+      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start_imp.py"
+      timeout: 15
 ---
 
 # Implementation Agent Wrapper
