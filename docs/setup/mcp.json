@@ -1,0 +1,21 @@
+{
+  "servers": {
+    "st3-workflow": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "mcp_server.core.proxy"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "LOG_LEVEL": "INFO",
+        "MCP_SERVER_NAME": "st3-workflow",
+        "MCP_WORKSPACE_ROOT": "${workspaceFolder}",
+        "MCP_CONFIG_ROOT": "${workspaceFolder}/.st3/config",
+        "GITHUB_OWNER": "MikeyVK",
+        "GITHUB_REPO": "S1mpleTraderV3",
+        "GITHUB_PROJECT_NUMBER": "1",
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    }
+  }
+}
