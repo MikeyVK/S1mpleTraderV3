@@ -83,9 +83,9 @@ def tool_error_handler(func: Callable[..., Awaitable[T]]) -> Callable[..., Await
                         "resource": {
                             "uri": "schema://validation",
                             "mimeType": "application/json",
-                            "text": json.dumps(exc.schema.to_dict(), indent=2)
-                        }
-                    }
+                            "text": json.dumps(exc.schema.to_dict(), indent=2),
+                        },
+                    },
                 ]
                 result = cast(
                     T,

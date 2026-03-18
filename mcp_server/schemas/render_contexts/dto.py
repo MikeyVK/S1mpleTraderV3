@@ -24,7 +24,8 @@ class DTORenderContext(BaseRenderContext, DTOContext):
 
     Inherits:
         - dto_name, fields (from DTOContext)
-        - output_path, scaffold_created, template_id, version_hash (from LifecycleMixin via BaseRenderContext)
+        - output_path, scaffold_created, template_id, version_hash
+          (from LifecycleMixin via BaseRenderContext)
 
     Note:
         V2 template (dto_v2.py.jinja2) uses {{ dto_name }} directly.

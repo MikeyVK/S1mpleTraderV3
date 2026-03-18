@@ -36,12 +36,12 @@ def jinja_env():
 class TestTier3PatternPythonMocking:
     """Test suite for tier3_pattern_python_mocking macro library."""
 
-    def test_template_exists(self, jinja_env):
+    def test_template_exists(self, jinja_env) -> None:
         """Test that template exists and loads."""
         template = jinja_env.get_template("tier3_pattern_python_mocking.jinja2")
         assert template is not None
 
-    def test_template_has_no_extends(self):
+    def test_template_has_no_extends(self) -> None:
         """Test that template follows macro library pattern (no extends, no blocks)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -57,7 +57,7 @@ class TestTier3PatternPythonMocking:
         no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
-    def test_template_has_metadata(self):
+    def test_template_has_metadata(self) -> None:
         """Test that template contains TEMPLATE_METADATA."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -71,7 +71,7 @@ class TestTier3PatternPythonMocking:
         assert "enforcement: ARCHITECTURAL" in content
         assert "provides_macros: [pattern_mock_imports]" in content
 
-    def test_macro_pattern_mock_imports_exists(self):
+    def test_macro_pattern_mock_imports_exists(self) -> None:
         """Test that pattern_mock_imports macro is defined."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -83,7 +83,7 @@ class TestTier3PatternPythonMocking:
         content = template_path.read_text(encoding="utf-8")
         assert "{% macro pattern_mock_imports()" in content
 
-    def test_macro_generates_mock_imports(self, jinja_env):
+    def test_macro_generates_mock_imports(self, jinja_env) -> None:
         """Test that pattern_mock_imports macro generates correct imports."""
         template_str = """
 {% import "tier3_pattern_python_mocking.jinja2" as mocking_p %}
@@ -99,7 +99,7 @@ class TestTier3PatternPythonMocking:
         assert "AsyncMock" in result
         assert "patch" in result
 
-    def test_macro_can_be_imported(self, jinja_env):
+    def test_macro_can_be_imported(self, jinja_env) -> None:
         """Test that template can be imported and macro is accessible."""
         template_str = """
 {% import "tier3_pattern_python_mocking.jinja2" as mocking_p %}
@@ -111,7 +111,7 @@ class TestTier3PatternPythonMocking:
         assert result is not None
         assert "unittest.mock" in result
 
-    def test_template_has_changelog(self):
+    def test_template_has_changelog(self) -> None:
         """Test that template documents refactor from blocks to macros."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -125,7 +125,7 @@ class TestTier3PatternPythonMocking:
         assert "2.0.0" in content
         assert "Refactor from" in content
 
-    def test_macro_output_is_valid_python(self, jinja_env):
+    def test_macro_output_is_valid_python(self, jinja_env) -> None:
         """Test that macro generates valid Python import statement."""
         template_str = """
 {% import "tier3_pattern_python_mocking.jinja2" as mocking_p %}
@@ -138,7 +138,7 @@ class TestTier3PatternPythonMocking:
         assert result.startswith("from unittest.mock import")
         assert "," in result  # Multiple imports comma-separated
 
-    def test_template_minimal_content(self):
+    def test_template_minimal_content(self) -> None:
         """Test that template has minimal content (1 macro, no example code)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent

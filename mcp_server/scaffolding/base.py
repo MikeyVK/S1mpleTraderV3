@@ -1,4 +1,5 @@
 """Result types for scaffolding operations."""
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -11,6 +12,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class ScaffoldResult:
     """Result of a scaffold operation."""
+
     content: str
     file_name: str | None = None
 

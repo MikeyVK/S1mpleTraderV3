@@ -18,10 +18,10 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 # (no standard library imports needed)
 
 # Third-party
-import pytest
-
 # Project modules
 from pathlib import Path
+
+import pytest
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import ArtifactRegistryConfig

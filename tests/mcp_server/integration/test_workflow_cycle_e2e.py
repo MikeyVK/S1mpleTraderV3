@@ -12,7 +12,6 @@ import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.loader import ConfigLoader
-from mcp_server.config.schemas import GitConfig
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager

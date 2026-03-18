@@ -15,8 +15,8 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 from mcp_server.managers.state_repository import InMemoryStateRepository
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

@@ -5,6 +5,8 @@ Tests the Pydantic models that load and validate .st3/scaffold_metadata.yaml.
 Following TDD: These tests are written BEFORE implementation (RED phase).
 """
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -13,14 +15,14 @@ from mcp_server.config.schemas import CommentPattern, MetadataField, ScaffoldMet
 from mcp_server.core.exceptions import ConfigError
 
 
-def _load_scaffold_metadata_config(config_file):
+def _load_scaffold_metadata_config(config_file: Path) -> ScaffoldMetadataConfig:
     return ConfigLoader(config_file.parent).load_scaffold_metadata_config(config_path=config_file)
 
 
 class TestCommentPattern:
     """Test comment pattern model validation."""
 
-    def test_valid_hash_pattern(self):
+    def test_valid_hash_pattern(self) -> None:
         """RED: Hash pattern should validate (2-line format)."""
         pattern = CommentPattern(
             syntax="hash",
@@ -31,7 +33,7 @@ class TestCommentPattern:
         assert pattern.syntax == "hash"
         assert pattern.prefix == r"#\s*"
 
-    def test_valid_double_slash_pattern(self):
+    def test_valid_double_slash_pattern(self) -> None:
         """RED: Double-slash pattern should validate (2-line format)."""
         pattern = CommentPattern(
             syntax="double_slash",
@@ -41,7 +43,7 @@ class TestCommentPattern:
         )
         assert pattern.syntax == "double_slash"
 
-    def test_invalid_syntax_fails(self):
+    def test_invalid_syntax_fails(self) -> None:
         """RED: Invalid syntax should raise ValidationError."""
         with pytest.raises(ValidationError):
             CommentPattern(
@@ -51,14 +53,14 @@ class TestCommentPattern:
                 metadata_line_regex="^#.*$",
             )
 
-    def test_empty_prefix_fails(self):
+    def test_empty_prefix_fails(self) -> None:
         """RED: Empty prefix should fail validation."""
         with pytest.raises(ValidationError):
             CommentPattern(
                 syntax="hash", prefix="", filepath_line_regex="^#.*$", metadata_line_regex="^#.*$"
             )
 
-    def test_invalid_regex_pattern_fails(self):
+    def test_invalid_regex_pattern_fails(self) -> None:
         """Regex pattern must be compilable."""
         with pytest.raises(ValidationError, match="Invalid regex pattern"):
             CommentPattern(
@@ -72,35 +74,35 @@ class TestCommentPattern:
 class TestMetadataField:
     """Test metadata field model validation."""
 
-    def test_valid_template_field(self):
+    def test_valid_template_field(self) -> None:
         """RED: Template field should validate."""
         field = MetadataField(name="template", format_regex=r"^[a-z0-9_-]+$", required=True)
         assert field.name == "template"
         assert field.required is True
 
-    def test_valid_timestamp_field(self):
+    def test_valid_timestamp_field(self) -> None:
         """RED: Timestamp field with ISO format should validate."""
         field = MetadataField(
             name="created", format_regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", required=True
         )
         assert field.name == "created"
 
-    def test_optional_path_field(self):
+    def test_optional_path_field(self) -> None:
         """RED: Optional path field should validate."""
         field = MetadataField(name="path", format_regex=r"^[a-zA-Z0-9_/.-]+$", required=False)
         assert field.required is False
 
-    def test_invalid_name_fails(self):
+    def test_invalid_name_fails(self) -> None:
         """RED: Empty field name should fail."""
         with pytest.raises(ValidationError):
             MetadataField(name="", format_regex=".*", required=True)
 
-    def test_invalid_regex_fails(self):
+    def test_invalid_regex_fails(self) -> None:
         """RED: Empty regex should fail validation."""
         with pytest.raises(ValidationError):
             MetadataField(name="template", format_regex="", required=True)
 
-    def test_invalid_regex_pattern_fails(self):
+    def test_invalid_regex_pattern_fails(self) -> None:
         """Field regex must be compilable."""
         with pytest.raises(ValidationError, match="Invalid regex pattern"):
             MetadataField(
@@ -113,7 +115,7 @@ class TestMetadataField:
 class TestScaffoldMetadataConfig:
     """Test main configuration model."""
 
-    def test_load_from_valid_yaml(self, tmp_path):
+    def test_load_from_valid_yaml(self, tmp_path: Path) -> None:
         """RED: Should load valid YAML config (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(
@@ -158,7 +160,7 @@ metadata_fields:
         assert config.comment_patterns[0].syntax == "hash"
         assert config.metadata_fields[0].name == "template"
 
-    def test_get_pattern_by_syntax(self, tmp_path):
+    def test_get_pattern_by_syntax(self, tmp_path: Path) -> None:
         """RED: Should retrieve pattern by syntax (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(
@@ -183,7 +185,7 @@ metadata_fields:
         assert pattern is not None
         assert pattern.syntax == "hash"
 
-    def test_get_pattern_not_found_returns_none(self, tmp_path):
+    def test_get_pattern_not_found_returns_none(self, tmp_path: Path) -> None:
         """RED: Should return None for unknown syntax (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(
@@ -207,7 +209,7 @@ metadata_fields:
 
         assert pattern is None
 
-    def test_get_field_by_name(self, tmp_path):
+    def test_get_field_by_name(self, tmp_path: Path) -> None:
         """RED: Should retrieve field by name (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(
@@ -237,7 +239,7 @@ metadata_fields:
         assert field.name == "version"
         assert field.required is True
 
-    def test_get_field_not_found_returns_none(self, tmp_path):
+    def test_get_field_not_found_returns_none(self, tmp_path: Path) -> None:
         """RED: Should return None for unknown field (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(
@@ -261,7 +263,7 @@ metadata_fields:
 
         assert field is None
 
-    def test_invalid_yaml_fails(self, tmp_path):
+    def test_invalid_yaml_fails(self, tmp_path: Path) -> None:
         """RED: Invalid YAML should raise ConfigError with hint."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("invalid: [yaml", encoding="utf-8")
@@ -269,14 +271,14 @@ metadata_fields:
         with pytest.raises(ConfigError, match="Invalid YAML"):
             _load_scaffold_metadata_config(config_file)
 
-    def test_missing_file_raises_config_error(self, tmp_path):
+    def test_missing_file_raises_config_error(self, tmp_path: Path) -> None:
         """Missing config file should raise ConfigError with hint."""
         nonexistent = tmp_path / "nonexistent.yaml"
 
         with pytest.raises(ConfigError, match="Config file not found"):
             _load_scaffold_metadata_config(nonexistent)
 
-    def test_missing_required_fields_fails(self, tmp_path):
+    def test_missing_required_fields_fails(self, tmp_path: Path) -> None:
         """RED: Missing required config keys should fail with ConfigError."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(
@@ -293,7 +295,7 @@ comment_patterns:
         with pytest.raises(ConfigError, match="Config validation failed"):
             _load_scaffold_metadata_config(config_file)
 
-    def test_empty_patterns_list_fails(self, tmp_path):
+    def test_empty_patterns_list_fails(self, tmp_path: Path) -> None:
         """RED: Empty comment patterns should fail with ConfigError."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text(

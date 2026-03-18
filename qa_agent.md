@@ -112,6 +112,27 @@ Especially check for these anti-patterns:
 
 Treat these as architecture findings, not stylistic preferences.
 
+## Suppression Audit
+
+`gate1_formatting` in `.st3/config/quality.yaml` runs ruff **without** `--ignore-noqa`. This means per-line `# noqa: CODE` annotations on individual lines are honoured — which is correct for permitted narrow cases like `# noqa: ANN401` on `**kwargs: Any` parameters. However, **file-level `# ruff: noqa:` headers** at the top of a file also bypass the gate entirely, making it report green while entire categories are suppressed across the whole file.
+
+**QA must always grep for file-level headers before accepting a Gate 1 pass:**
+
+```powershell
+Select-String -Path "tests/mcp_server/**/*.py","mcp_server/**/*.py" -Pattern "^# ruff: noqa:"
+```
+
+Any match is an automatic **NOGO**. File-level `# ruff: noqa:` headers are global disables — they are not proportional suppressions. Per `docs/coding_standards/QUALITY_GATES.md`: "Tests held to same quality bar as production code." Per `TYPE_CHECKING_PLAYBOOK.md`: "No global disables."
+
+**Permitted narrow per-line suppressions** (not a NOGO):
+- `# noqa: ANN401` on a single `**kwargs: Any` parameter with a rationale comment present
+- `# type: ignore[import-untyped]` on untyped third-party imports
+- `# type: ignore[attr-defined]` in compat-wrapper shims in `mcp_server/config/` (never in `mcp_server/config/schemas/`)
+
+**Not permitted:**
+- File-level `# ruff: noqa:` headers of any kind in `tests/` or `mcp_server/`
+- Any `# type: ignore` without an error-code specifier
+
 ## Review Standard
 
 Prioritize findings in this order:

@@ -28,7 +28,7 @@ class TestArtifactManagerRegistryIntegration:
         monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
 
     @pytest.mark.asyncio
-    async def test_scaffold_artifact_saves_to_registry(self):
+    async def test_scaffold_artifact_saves_to_registry(self) -> None:
         """Should call registry.save_version() when scaffolding artifact.
 
         REQUIREMENT (Task 1.1c): Every scaffold operation must write registry entry
@@ -74,7 +74,7 @@ class TestArtifactManagerRegistryIntegration:
         mock_registry.save_version.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_scaffold_artifact_computes_version_hash_before_rendering(self):
+    async def test_scaffold_artifact_computes_version_hash_before_rendering(self) -> None:
         """Should compute version_hash and inject into template context.
 
         REQUIREMENT: version_hash must be computed BEFORE rendering so it can
@@ -121,7 +121,7 @@ class TestArtifactManagerRegistryIntegration:
         assert len(call_args[1]["version_hash"]) == 8  # 8-char hash
 
     @pytest.mark.asyncio
-    async def test_scaffold_artifact_includes_artifact_type_in_context(self):
+    async def test_scaffold_artifact_includes_artifact_type_in_context(self) -> None:
         """Should inject artifact_type into context for SCAFFOLD header.
 
         REQUIREMENT: Template needs artifact_type for SCAFFOLD header format:
@@ -169,7 +169,7 @@ class TestArtifactManagerRegistryIntegration:
         # After Task 1.1c, should also have 'artifact_type'
 
     @pytest.mark.asyncio
-    async def test_registry_yaml_created_if_not_exists(self):
+    async def test_registry_yaml_created_if_not_exists(self) -> None:
         """Should create .st3/template_registry.yaml on first scaffold operation.
 
         REQUIREMENT: Registry file should be auto-created, not require manual setup.

@@ -16,7 +16,7 @@ TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding
 class TestTier0BaseArtifactRendering:
     """Test Tier 0 base template rendering with different formats (2-line SCAFFOLD)."""
 
-    def test_render_python_format_uses_hash_comment(self):
+    def test_render_python_format_uses_hash_comment(self) -> None:
         """Should use # comment style for Python format (2-line SCAFFOLD)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -42,7 +42,7 @@ class TestTier0BaseArtifactRendering:
         assert "<!--" not in result
         assert "-->" not in result
 
-    def test_render_yaml_format_uses_hash_comment(self):
+    def test_render_yaml_format_uses_hash_comment(self) -> None:
         """Should use # comment style for YAML format (2-line SCAFFOLD)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -60,7 +60,7 @@ class TestTier0BaseArtifactRendering:
         assert "template=workflow" in lines[1]
         assert "version=c5d6e7f8" in lines[1]
 
-    def test_render_markdown_format_uses_html_comment(self):
+    def test_render_markdown_format_uses_html_comment(self) -> None:
         """Should use <!-- --> comment style for Markdown format (2-line SCAFFOLD)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -83,7 +83,7 @@ class TestTier0BaseArtifactRendering:
         assert "created=2026-01-23T09:15:00Z" in lines[1]
         assert lines[1].endswith(" -->")
 
-    def test_render_shell_format_uses_hash_comment(self):
+    def test_render_shell_format_uses_hash_comment(self) -> None:
         """Should use # comment style for shell format (2-line SCAFFOLD)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -100,7 +100,7 @@ class TestTier0BaseArtifactRendering:
         assert lines[0] == "# scripts/deploy.sh"
         assert "template=script" in lines[1]
 
-    def test_render_unknown_format_uses_html_comment(self):
+    def test_render_unknown_format_uses_html_comment(self) -> None:
         """Should default to # comment for unknown formats (only markdown uses HTML)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -122,7 +122,7 @@ class TestTier0BaseArtifactRendering:
 class TestTier0BaseArtifactBlocks:
     """Test Tier 0 block structure for inheritance."""
 
-    def test_has_scaffold_metadata_block(self):
+    def test_has_scaffold_metadata_block(self) -> None:
         """Should render 2-line SCAFFOLD format correctly."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -142,7 +142,7 @@ class TestTier0BaseArtifactBlocks:
         assert "template=test" in lines[1]
         assert "version=12345678" in lines[1]
 
-    def test_has_content_block(self):
+    def test_has_content_block(self) -> None:
         """Should define empty content block for child templates."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -163,7 +163,7 @@ class TestTier0BaseArtifactBlocks:
 class TestTier0BaseArtifactMetadata:
     """Test TEMPLATE_METADATA structure."""
 
-    def test_template_has_metadata_comment(self):
+    def test_template_has_metadata_comment(self) -> None:
         """Should have TEMPLATE_METADATA in Jinja2 comment."""
         template_path = TEMPLATE_DIR / "tier0_base_artifact.jinja2"
         content = template_path.read_text(encoding="utf-8")
@@ -173,7 +173,7 @@ class TestTier0BaseArtifactMetadata:
         assert 'version: "2.3.0"' in content  # Updated to current version
         assert "tier: tier0" in content  # Updated to match actual metadata
 
-    def test_metadata_lists_required_variables(self):
+    def test_metadata_lists_required_variables(self) -> None:
         """Should document required variables in metadata."""
         template_path = TEMPLATE_DIR / "tier0_base_artifact.jinja2"
         content = template_path.read_text(encoding="utf-8")
@@ -185,7 +185,7 @@ class TestTier0BaseArtifactMetadata:
         assert "output_path" in content
         assert "format" in content
 
-    def test_metadata_lists_exported_blocks(self):
+    def test_metadata_lists_exported_blocks(self) -> None:
         """Should document exported blocks in metadata (uses 'provides' in introspection)."""
         template_path = TEMPLATE_DIR / "tier0_base_artifact.jinja2"
         content = template_path.read_text(encoding="utf-8")

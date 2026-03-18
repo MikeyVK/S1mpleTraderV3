@@ -36,12 +36,12 @@ def jinja_env():
 class TestTier3PatternPythonLifecycle:
     """Test suite for tier3_pattern_python_lifecycle macro library."""
 
-    def test_template_exists(self, jinja_env):
+    def test_template_exists(self, jinja_env) -> None:
         """Verify tier3_pattern_python_lifecycle.jinja2 exists and loads."""
         template = jinja_env.get_template("tier3_pattern_python_lifecycle.jinja2")
         assert template is not None
 
-    def test_template_has_no_extends_or_blocks(self):
+    def test_template_has_no_extends_or_blocks(self) -> None:
         """Verify template is a MACRO LIBRARY (no extends, no blocks)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -57,7 +57,7 @@ class TestTier3PatternPythonLifecycle:
         no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
-    def test_template_has_metadata(self):
+    def test_template_has_metadata(self) -> None:
         """Verify TEMPLATE_METADATA with ARCHITECTURAL enforcement."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -73,7 +73,7 @@ class TestTier3PatternPythonLifecycle:
         assert "tier: 3" in content
         assert "category: pattern" in content
 
-    def test_required_macros_exist(self):
+    def test_required_macros_exist(self) -> None:
         """Verify lifecycle macros are defined."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -90,7 +90,7 @@ class TestTier3PatternPythonLifecycle:
         assert "{% macro pattern_lifecycle_initialize" in content
         assert "{% macro pattern_lifecycle_shutdown" in content
 
-    def test_macros_render_expected_signatures(self, jinja_env):
+    def test_macros_render_expected_signatures(self, jinja_env) -> None:
         """Verify lifecycle macros render imports + method signatures."""
         template = jinja_env.get_template("tier3_pattern_python_lifecycle.jinja2")
 

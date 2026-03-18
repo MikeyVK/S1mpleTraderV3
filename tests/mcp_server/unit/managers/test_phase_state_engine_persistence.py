@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Tests for PhaseStateEngine state.json persistence.
 
 Issue #85: Single-branch state model - state.json should contain ONLY current branch.
@@ -10,12 +8,19 @@ Tests verify:
 3. State is immediately written and readable after get_state()
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
 
 
 class TestPhaseStateEnginePersistence:

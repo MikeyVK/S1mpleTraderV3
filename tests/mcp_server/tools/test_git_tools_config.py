@@ -47,7 +47,9 @@ class TestGitToolsConfigIntegration:
 
         try:
             # Load custom config and inject it into the input validator
-            git_config = ConfigLoader(Path(temp_path).parent).load_git_config(config_path=Path(temp_path))
+            git_config = ConfigLoader(Path(temp_path).parent).load_git_config(
+                config_path=Path(temp_path)
+            )
             CreateBranchInput.configure(git_config)
 
             # "hotfix" should pass (in custom config)

@@ -1,5 +1,4 @@
 """Unit tests for pr_tools.py."""
-# ruff: noqa: ANN001, ANN201
 
 from unittest.mock import MagicMock
 
@@ -16,19 +15,19 @@ from mcp_server.tools.pr_tools import (
 
 
 @pytest.fixture
-def mock_git_config():
+def mock_git_config() -> MagicMock:
     git_config = MagicMock()
     git_config.default_base_branch = "main"
     return git_config
 
 
 @pytest.fixture
-def mock_github_manager():
+def mock_github_manager() -> MagicMock:
     return MagicMock()
 
 
 @pytest.mark.asyncio
-async def test_create_pr_tool(mock_github_manager, mock_git_config):
+async def test_create_pr_tool(mock_github_manager: MagicMock, mock_git_config: MagicMock) -> None:
     tool = CreatePRTool(manager=mock_github_manager, git_config=mock_git_config)
     mock_github_manager.create_pr.return_value = {"number": 1, "url": "http://github.com/pr/1"}
 
@@ -42,7 +41,7 @@ async def test_create_pr_tool(mock_github_manager, mock_git_config):
 
 
 @pytest.mark.asyncio
-async def test_list_prs_tool(mock_github_manager, mock_git_config):
+async def test_list_prs_tool(mock_github_manager: MagicMock, mock_git_config: MagicMock) -> None:
     tool = ListPRsTool(manager=mock_github_manager, git_config=mock_git_config)
     # Mock PR objects with minimal attributes
     pr1 = MagicMock(number=10, title="PR 10", state="open")
@@ -60,7 +59,7 @@ async def test_list_prs_tool(mock_github_manager, mock_git_config):
 
 
 @pytest.mark.asyncio
-async def test_merge_pr_tool(mock_github_manager, mock_git_config):
+async def test_merge_pr_tool(mock_github_manager: MagicMock, mock_git_config: MagicMock) -> None:
     tool = MergePRTool(manager=mock_github_manager, git_config=mock_git_config)
     mock_github_manager.merge_pr.return_value = {"sha": "commitsHA123"}
 

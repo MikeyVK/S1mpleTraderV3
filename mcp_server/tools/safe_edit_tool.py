@@ -37,6 +37,7 @@ from mcp_server.validation.validation_service import ValidationService
 @dataclass
 class EditResponse:
     """Parameters for building edit response."""
+
     passed: bool
     issues: str
     diff: str
@@ -45,6 +46,7 @@ class EditResponse:
 @dataclass
 class SearchReplaceParams:
     """Parameters for search/replace operation."""
+
     search: str
     replace: str
     regex: bool = False
@@ -67,7 +69,7 @@ class LineEdit(BaseModel):
             "New content for the line range. "
             "⚠️ MUST include trailing newline (\\n) unless intentionally joining with next line. "
             "Example: 'def foo():\\n' not 'def foo():'"
-        )
+        ),
     )
 
     @model_validator(mode="after")
@@ -110,7 +112,7 @@ class SafeEditInput(BaseModel):
             "⚠️ CRITICAL: Bundle ALL edits for the same file in ONE call! "
             "Multiple sequential calls will cause race conditions. "
             "File-level mutex protection enforces sequential execution."
-        )
+        ),
     )
     insert_lines: list[InsertLine] | None = Field(
         None, description="List of line insert operations"
@@ -258,11 +260,7 @@ class SafeEditTool(BaseTool):
                     passed, issues_text = await self._validate(params.path, new_content)
 
                     # Build response object
-                    response = EditResponse(
-                        passed=passed,
-                        issues=issues_text,
-                        diff=diff_output
-                    )
+                    response = EditResponse(passed=passed, issues=issues_text, diff=diff_output)
 
                     # Handle verify_only mode
                     if params.mode == "verify_only":
@@ -279,7 +277,6 @@ class SafeEditTool(BaseTool):
                 f"❌ File '{params.path}' is already being edited. "
                 "Please wait or bundle multiple edits in one call using line_edits list."
             )
-
 
     def _read_original(self, params: SafeEditInput) -> str | ToolResult:
         """Read original file content or return error for new files with incompatible modes."""
@@ -320,9 +317,7 @@ class SafeEditTool(BaseTool):
             "Must provide 'content', 'line_edits', 'insert_lines', or 'search' + 'replace'"
         )
 
-    def _handle_line_edits(
-        self, original: str, line_edits: list[LineEdit]
-    ) -> str | ToolResult:
+    def _handle_line_edits(self, original: str, line_edits: list[LineEdit]) -> str | ToolResult:
         """Handle line_edits mode."""
         try:
             return self._apply_line_edits(original, line_edits)
@@ -380,9 +375,7 @@ class SafeEditTool(BaseTool):
             text = f"**Diff Preview:**\n```diff\n{response.diff}\n```\n\n{text}"
         return ToolResult.text(text)
 
-    def _write_and_respond(
-        self, path: str, content: str, response: EditResponse
-    ) -> ToolResult:
+    def _write_and_respond(self, path: str, content: str, response: EditResponse) -> ToolResult:
         """Write file and build success response."""
         try:
             file_path = Path(path)
@@ -392,8 +385,7 @@ class SafeEditTool(BaseTool):
             status = "✅ File saved successfully."
             if not response.passed:
                 status += (
-                    f"\n⚠️ Saved with validation warnings (Mode: interactive):"
-                    f"{response.issues}"
+                    f"\n⚠️ Saved with validation warnings (Mode: interactive):{response.issues}"
                 )
             elif response.issues:
                 status += f"\nℹ️ Saved with non-blocking issues:{response.issues}"

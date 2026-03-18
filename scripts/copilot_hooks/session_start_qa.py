@@ -4,15 +4,14 @@ from __future__ import annotations
 # The workspace-level session_start.py already injects branch and changed files.
 # This script adds QA-specific context: pending handover from snapshot, implementation
 # scope, and review recommendations.  It is invoked via hooks: in qa.agent.md.
-
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 SNAPSHOT_RELATIVE_PATH = Path(".copilot") / "session-state.json"
+JsonObject = dict[str, object]
 MAX_FILES_IN_SCOPE = 8
 MAX_GOAL_LENGTH = 280
 MAX_HANDOVER_LENGTH = 400
@@ -49,8 +48,7 @@ def main() -> None:
         pending_handover_summary = as_clean_text(snapshot.get("pending_handover_summary"))
         if pending_handover_summary:
             context_lines.append(
-                "- Pending handover: "
-                f"{truncate(pending_handover_summary, MAX_HANDOVER_LENGTH)}"
+                f"- Pending handover: {truncate(pending_handover_summary, MAX_HANDOVER_LENGTH)}"
             )
 
         handover_prompt_block = as_clean_text(snapshot.get("handover_prompt_block"))
@@ -62,23 +60,24 @@ def main() -> None:
 
         if pending_handover_summary or handover_prompt_block:
             context_lines.append(
-                "- Recommended next step: use /request-qa-review to start a structured review of the implementation hand-over."
+                "- Recommended next step: use /request-qa-review to start "
+                "a structured review of the implementation hand-over."
             )
         else:
             context_lines.append(
-                "- No hand-over found in snapshot. Ask @imp to /prepare-handover before starting review."
+                "- No hand-over found in snapshot. Ask @imp to "
+                "/prepare-handover before starting review."
             )
     elif snapshot:
-        context_lines.append(
-            "- Snapshot ignored: stale or not relevant to current changed files."
-        )
+        context_lines.append("- Snapshot ignored: stale or not relevant to current changed files.")
         context_lines.append(
             "- Recommended next step: ask @imp for a structured hand-over before starting review."
         )
     else:
         context_lines.append("- No implementation snapshot found.")
         context_lines.append(
-            "- Recommended next step: ask @imp to complete implementation and /prepare-handover first."
+            "- Recommended next step: ask @imp to complete implementation "
+            "and /prepare-handover first."
         )
 
     output = {
@@ -127,7 +126,7 @@ def run_git_command(workspace_root: Path, command: list[str]) -> str:
     return completed.stdout.strip()
 
 
-def read_json_file(path: Path) -> dict[str, Any]:
+def read_json_file(path: Path) -> JsonObject:
     if not path.exists():
         return {}
     try:
@@ -136,7 +135,7 @@ def read_json_file(path: Path) -> dict[str, Any]:
         return {}
 
 
-def is_usable_snapshot(snapshot: dict[str, Any], changed_files: list[str]) -> bool:
+def is_usable_snapshot(snapshot: JsonObject, changed_files: list[str]) -> bool:
     timestamp = snapshot.get("timestamp")
     if not isinstance(timestamp, str) or not timestamp.strip():
         return False
@@ -145,8 +144,8 @@ def is_usable_snapshot(snapshot: dict[str, Any], changed_files: list[str]) -> bo
     except ValueError:
         return False
     if snapshot_time.tzinfo is None:
-        snapshot_time = snapshot_time.replace(tzinfo=timezone.utc)
-    age = datetime.now(timezone.utc) - snapshot_time.astimezone(timezone.utc)
+        snapshot_time = snapshot_time.replace(tzinfo=UTC)
+    age = datetime.now(UTC) - snapshot_time.astimezone(UTC)
     if age.total_seconds() > SNAPSHOT_MAX_AGE_HOURS * 3600:
         return False
 
@@ -162,14 +161,14 @@ def is_usable_snapshot(snapshot: dict[str, Any], changed_files: list[str]) -> bo
     return True
 
 
-def as_clean_text(value: Any) -> str:
+def as_clean_text(value: object) -> str:
     if not isinstance(value, str):
         return ""
     normalized = " ".join(value.split())
     return normalized.strip()
 
 
-def as_string_list(value: Any) -> list[str]:
+def as_string_list(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
     items: list[str] = []

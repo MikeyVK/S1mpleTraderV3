@@ -1,4 +1,5 @@
 """GitHub resources."""
+
 import json
 
 from mcp_server.managers.github_manager import GitHubManager

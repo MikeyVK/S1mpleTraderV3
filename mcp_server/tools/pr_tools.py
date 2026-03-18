@@ -1,10 +1,8 @@
 """GitHub PR tools."""
 
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, model_validator
-
-from typing import ClassVar
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager

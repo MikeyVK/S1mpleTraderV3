@@ -3,7 +3,6 @@
 Also covers input schema helpers for 100% module coverage.
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

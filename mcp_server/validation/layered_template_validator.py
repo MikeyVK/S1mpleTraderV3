@@ -5,6 +5,7 @@ Layered template validator with three-tier enforcement model.
 @layer: Validation
 @dependencies: [template_analyzer, base]
 """
+
 # Standard library
 import re
 from pathlib import Path
@@ -35,11 +36,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         - Source: Specific templates guidelines section
     """
 
-    def __init__(
-        self,
-        template_type: str,
-        template_analyzer: TemplateAnalyzer
-    ) -> None:
+    def __init__(self, template_type: str, template_analyzer: TemplateAnalyzer) -> None:
         """
         Initialize validator for specific template type.
 
@@ -74,11 +71,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
 
         return merged
 
-    async def validate(
-        self,
-        path: str,
-        content: str | None = None
-    ) -> ValidationResult:
+    async def validate(self, path: str, content: str | None = None) -> ValidationResult:
         """
         Validate file against template rules using three-tier model.
 
@@ -103,12 +96,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
                 return ValidationResult(
                     passed=False,
                     score=0.0,
-                    issues=[
-                        ValidationIssue(
-                            message=f"Failed to read file: {e}",
-                            severity="error"
-                        )
-                    ]
+                    issues=[ValidationIssue(message=f"Failed to read file: {e}", severity="error")],
                 )
 
         # Tier 1: Format validation (base template) - STRICT
@@ -152,40 +140,44 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
 
         # Check SCAFFOLD patterns with OR logic
         if scaffold_patterns:
-            import re
             scaffold_found = any(
-                re.search(pattern, content, re.MULTILINE)
-                for pattern in scaffold_patterns
+                re.search(pattern, content, re.MULTILINE) for pattern in scaffold_patterns
             )
             if not scaffold_found:
-                patterns_list = ', '.join(scaffold_patterns)
-                issues.append(ValidationIssue(
-                    message=(
-                        f"Required SCAFFOLD header not found "
-                        f"(expected one of: {patterns_list})"
-                    ),
-                    code="scaffold_header_missing",
-                    severity="error",
-                    line=0
-                ))
+                patterns_list = ", ".join(scaffold_patterns)
+                issues.append(
+                    ValidationIssue(
+                        message=(
+                            f"Required SCAFFOLD header not found (expected one of: {patterns_list})"
+                        ),
+                        code="scaffold_header_missing",
+                        severity="error",
+                        line=0,
+                    )
+                )
 
         # Check other rules individually (AND logic)
         for rule in other_rules:
             # Handle both string patterns and dict rules
             if isinstance(rule, str):
                 # String pattern - check if content matches
-                import re
                 if not re.search(rule, content, re.MULTILINE):
-                    issues.append(ValidationIssue(
-                        message=f"Required pattern not found: {rule}",
-                        code="pattern_match",
-                        severity="error",
-                        line=0
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            message=f"Required pattern not found: {rule}",
+                            code="pattern_match",
+                            severity="error",
+                            line=0,
+                        )
+                    )
             elif isinstance(rule, dict):
                 rule_name = rule.get("rule", "")
-                if rule_name in ["frontmatter_presence", "separator_structure",
-                                 "required_sections", "link_definitions"]:
+                if rule_name in [
+                    "frontmatter_presence",
+                    "separator_structure",
+                    "required_sections",
+                    "link_definitions",
+                ]:
                     # Format rules for documents
                     issue = self._check_pattern(content, rule)
                     if issue:
@@ -217,9 +209,14 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
 
             if isinstance(rule, dict):
                 rule_name = rule.get("rule", "")
-                if rule_name in ["base_class", "required_properties",
-                                 "execute_method", "required_imports",
-                                 "frozen_config", "field_validators"]:
+                if rule_name in [
+                    "base_class",
+                    "required_properties",
+                    "execute_method",
+                    "required_imports",
+                    "frozen_config",
+                    "field_validators",
+                ]:
                     # Architectural rules for components
                     issue = self._check_pattern(content, rule)
                     if issue:
@@ -257,10 +254,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         return issues
 
     def _check_pattern(
-        self,
-        content: str,
-        rule: dict[str, Any],
-        severity: str = "error"
+        self, content: str, rule: dict[str, Any], severity: str = "error"
     ) -> ValidationIssue | None:
         """
         Check if content matches rule pattern.
@@ -279,16 +273,12 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
 
         if not re.search(pattern, content, re.MULTILINE):
             return ValidationIssue(
-                message=f"{rule.get('description', 'Rule violation')}",
-                severity=severity
+                message=f"{rule.get('description', 'Rule violation')}", severity=severity
             )
 
         return None
 
-    def _create_result(
-        self,
-        issues: list[ValidationIssue]
-    ) -> ValidationResult:
+    def _create_result(self, issues: list[ValidationIssue]) -> ValidationResult:
         """
         Create ValidationResult from issues.
 
@@ -323,5 +313,5 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
             score=score,
             issues=issues,
             agent_hint=self.metadata.get("agent_hint"),
-            content_guidance=self.metadata.get("content_guidance")
+            content_guidance=self.metadata.get("content_guidance"),
         )

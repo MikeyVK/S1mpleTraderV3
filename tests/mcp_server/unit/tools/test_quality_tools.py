@@ -14,9 +14,9 @@ from pydantic import ValidationError
 
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
-from tests.mcp_server.test_support import make_qa_manager
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _summary_text(result: ToolResult) -> str:

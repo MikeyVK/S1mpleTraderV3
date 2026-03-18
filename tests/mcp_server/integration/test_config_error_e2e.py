@@ -13,10 +13,11 @@ from pathlib import Path
 import pytest
 
 from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ConfigError
 
 
-def _load_artifact_registry(config_path: Path):
+def _load_artifact_registry(config_path: Path) -> ArtifactRegistryConfig:
     return ConfigLoader(config_path.parent).load_artifact_registry_config(config_path=config_path)
 
 
@@ -38,7 +39,7 @@ def test_config_error_for_missing_required_field(tmp_path: Path) -> None:
     """ConfigError raised when artifacts.yaml missing required fields."""
     incomplete_yaml = tmp_path / "incomplete_artifacts.yaml"
     incomplete_yaml.write_text(
-        '''version: "1.0"
+        """version: "1.0"
 artifact_types:
   - type: doc
     type_id: test
@@ -49,7 +50,7 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-''',
+""",
         encoding="utf-8",
     )
 

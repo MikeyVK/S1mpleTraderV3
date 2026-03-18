@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any
 
 from mcp_server.schemas import (
-    QualityConfig,
     JsonViolationsParsing,
+    QualityConfig,
     QualityGate,
     TextViolationsParsing,
     ViolationDTO,

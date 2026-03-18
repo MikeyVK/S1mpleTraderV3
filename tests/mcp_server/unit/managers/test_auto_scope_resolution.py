@@ -15,7 +15,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mcp_server.managers.qa_manager import QAManager
 from tests.mcp_server.test_support import make_qa_manager
 
 

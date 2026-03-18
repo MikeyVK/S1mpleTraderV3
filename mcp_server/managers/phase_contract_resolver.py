@@ -23,7 +23,6 @@ class PhaseConfigContext:
     phase_contracts: PhaseContractsConfig
     planning_deliverables: dict[str, Any] | None = None
 
-
     @staticmethod
     def _load_planning_deliverables(
         workspace_root: Path,

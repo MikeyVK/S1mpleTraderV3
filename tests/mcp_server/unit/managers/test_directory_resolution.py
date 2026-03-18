@@ -13,7 +13,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 class TestDirectoryResolution:
     """Test get_artifact_path() method."""
 
-    def test_get_artifact_path_returns_full_path(self):
+    def test_get_artifact_path_returns_full_path(self) -> None:
         """get_artifact_path() returns complete path with filename."""
         mock_registry = Mock(spec=ArtifactRegistryConfig)
         artifact = Mock()
@@ -28,7 +28,10 @@ class TestDirectoryResolution:
         mock_resolver = Mock()
         mock_resolver.find_directories_for_artifact.return_value = ["mcp_server/dtos"]
 
-        with patch("mcp_server.managers.artifact_manager.DirectoryPolicyResolver", return_value=mock_resolver):
+        with patch(
+            "mcp_server.managers.artifact_manager.DirectoryPolicyResolver",
+            return_value=mock_resolver,
+        ):
             path = manager.get_artifact_path("dto", "User")
 
         # Check path components instead of absolute equality (Windows vs Unix)
@@ -37,7 +40,7 @@ class TestDirectoryResolution:
         assert "dtos" in path.parts
         assert path.is_absolute()
 
-    def test_uses_first_directory_when_multiple(self):
+    def test_uses_first_directory_when_multiple(self) -> None:
         """When multiple directories allow artifact, use first one."""
         mock_registry = Mock(spec=ArtifactRegistryConfig)
         artifact = Mock()
@@ -50,12 +53,15 @@ class TestDirectoryResolution:
         mock_resolver = Mock()
         mock_resolver.find_directories_for_artifact.return_value = ["dir1", "dir2"]
 
-        with patch("mcp_server.managers.artifact_manager.DirectoryPolicyResolver", return_value=mock_resolver):
+        with patch(
+            "mcp_server.managers.artifact_manager.DirectoryPolicyResolver",
+            return_value=mock_resolver,
+        ):
             path = manager.get_artifact_path("test", "Name")
 
         assert "dir1" in str(path)
 
-    def test_error_when_no_directory_found(self):
+    def test_error_when_no_directory_found(self) -> None:
         """ConfigError raised when no valid directory."""
         mock_registry = Mock(spec=ArtifactRegistryConfig)
         artifact = Mock()
@@ -68,7 +74,10 @@ class TestDirectoryResolution:
         mock_resolver.find_directories_for_artifact.return_value = []
 
         with (
-            patch("mcp_server.managers.artifact_manager.DirectoryPolicyResolver", return_value=mock_resolver),
+            patch(
+                "mcp_server.managers.artifact_manager.DirectoryPolicyResolver",
+                return_value=mock_resolver,
+            ),
             pytest.raises(ConfigError),
         ):
             manager.get_artifact_path("unknown", "Test")

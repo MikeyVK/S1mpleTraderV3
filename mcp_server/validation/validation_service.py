@@ -16,6 +16,7 @@ import re
 from pathlib import Path
 
 # Project imports
+from mcp_server.config.template_config import get_template_root
 from mcp_server.validation.base import BaseValidator
 from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator
@@ -40,16 +41,8 @@ class ValidationService:
     """
 
     def __init__(self) -> None:
-        """Initialize validation service and register validators.
-
-        Note: Lazy import of get_template_root to avoid circular dependency.
-        """
-        from mcp_server.config.template_config import (
-            get_template_root,  # pylint: disable=import-outside-toplevel
-        )
-        self.template_analyzer = TemplateAnalyzer(
-            template_root=get_template_root()
-        )
+        """Initialize validation service and register validators."""
+        self.template_analyzer = TemplateAnalyzer(template_root=get_template_root())
         self._setup_validators()
 
     def _setup_validators(self) -> None:
@@ -61,20 +54,16 @@ class ValidationService:
 
         # Register pattern-based validators using LayeredTemplateValidator
         ValidatorRegistry.register_pattern(
-            r".*_workers?\.py$",
-            LayeredTemplateValidator("worker", self.template_analyzer)
+            r".*_workers?\.py$", LayeredTemplateValidator("worker", self.template_analyzer)
         )
         ValidatorRegistry.register_pattern(
-            r".*_tools?\.py$",
-            LayeredTemplateValidator("tool", self.template_analyzer)
+            r".*_tools?\.py$", LayeredTemplateValidator("tool", self.template_analyzer)
         )
         ValidatorRegistry.register_pattern(
-            r".*_dtos?\.py$",
-            LayeredTemplateValidator("dto", self.template_analyzer)
+            r".*_dtos?\.py$", LayeredTemplateValidator("dto", self.template_analyzer)
         )
         ValidatorRegistry.register_pattern(
-            r".*_adapters?\.py$",
-            LayeredTemplateValidator("adapter", self.template_analyzer)
+            r".*_adapters?\.py$", LayeredTemplateValidator("adapter", self.template_analyzer)
         )
 
     async def validate(self, path: str, content: str) -> tuple[bool, str]:
@@ -185,14 +174,12 @@ class ValidationService:
         validators = ValidatorRegistry.get_validators(path)
 
         # Filter for test files
-        is_test = "tests/" in path.replace("\\", "/") or Path(
-            path
-        ).name.startswith("test_")
+        is_test = "tests/" in path.replace("\\", "/") or Path(path).name.startswith("test_")
         if is_test:
             validators = [
-                v for v in validators
-                if not isinstance(v, LayeredTemplateValidator)
-                or v.template_type == "base"
+                v
+                for v in validators
+                if not isinstance(v, LayeredTemplateValidator) or v.template_type == "base"
             ]
 
         # Python fallback logic: Add base template if no template validator
@@ -201,9 +188,7 @@ class ValidationService:
                 isinstance(v, LayeredTemplateValidator) for v in validators
             )
             if not has_template_validator:
-                validators.append(
-                    LayeredTemplateValidator("base", self.template_analyzer)
-                )
+                validators.append(LayeredTemplateValidator("base", self.template_analyzer))
 
         return validators
 

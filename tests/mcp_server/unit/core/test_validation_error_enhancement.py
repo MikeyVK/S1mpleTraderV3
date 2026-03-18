@@ -27,25 +27,16 @@ from mcp_server.scaffolding.template_introspector import TemplateSchema
 @pytest.fixture(name="sample_schema")
 def fixture_sample_schema() -> TemplateSchema:
     """Provides sample TemplateSchema for testing"""
-    return TemplateSchema(
-        required=["name", "description"],
-        optional=["frozen"]
-    )
+    return TemplateSchema(required=["name", "description"], optional=["frozen"])
 
 
 class TestValidationErrorEnhancement:
     """Tests for ValidationError to_resource_dict() enhancement."""
 
-    def test_to_resource_dict_includes_schema(
-        self,
-        sample_schema: TemplateSchema
-    ) -> None:
+    def test_to_resource_dict_includes_schema(self, sample_schema: TemplateSchema) -> None:
         """RED: to_resource_dict() returns dict with artifact_type and schema"""
         # Arrange
-        error = ValidationError(
-            message="Missing required fields",
-            schema=sample_schema
-        )
+        error = ValidationError(message="Missing required fields", schema=sample_schema)
 
         # Act
         result = error.to_resource_dict("dto")
@@ -56,16 +47,10 @@ class TestValidationErrorEnhancement:
         assert result["schema"]["required"] == ["name", "description"]
         assert result["schema"]["optional"] == ["frozen"]
 
-    def test_to_resource_dict_includes_validation(
-        self,
-        sample_schema: TemplateSchema
-    ) -> None:
+    def test_to_resource_dict_includes_validation(self, sample_schema: TemplateSchema) -> None:
         """RED: to_resource_dict() includes validation details (missing/provided)"""
         # Arrange - create error with missing/provided tracking
-        error = ValidationError(
-            message="Missing required fields",
-            schema=sample_schema
-        )
+        error = ValidationError(message="Missing required fields", schema=sample_schema)
         # Simulate scaffolder setting these attributes
         error.missing = ["description"]
         error.provided = ["name"]
@@ -78,15 +63,10 @@ class TestValidationErrorEnhancement:
         assert result["validation"]["missing"] == ["description"]
         assert result["validation"]["provided"] == ["name"]
 
-    def test_to_resource_dict_handles_none_schema(
-        self
-    ) -> None:
+    def test_to_resource_dict_handles_none_schema(self) -> None:
         """RED: to_resource_dict() handles None schema gracefully"""
         # Arrange
-        error = ValidationError(
-            message="Validation failed",
-            schema=None
-        )
+        error = ValidationError(message="Validation failed", schema=None)
 
         # Act
         result = error.to_resource_dict("dto")

@@ -5,6 +5,7 @@ Template metadata analyzer for extracting validation rules from Jinja2 templates
 @layer: Validation
 @dependencies: [jinja2, yaml]
 """
+
 # Standard library
 import re
 from pathlib import Path
@@ -65,14 +66,12 @@ class TemplateAnalyzer:
         try:
             source = template_path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError) as e:
-            raise ValueError(
-                f"Failed to read template {template_path}: {e}"
-            ) from e
+            raise ValueError(f"Failed to read template {template_path}: {e}") from e
 
         # Extract TEMPLATE_METADATA from Jinja2 comment block
         # Supports both {# TEMPLATE_METADATA ... #} and {#- TEMPLATE_METADATA ... -#}
         # Pattern captures the full "TEMPLATE_METADATA: ..." YAML block
-        pattern = r'\{#-?\s*(TEMPLATE_METADATA:.*?)\s*-?#\}'
+        pattern = r"\{#-?\s*(TEMPLATE_METADATA:.*?)\s*-?#\}"
         match = re.search(pattern, source, re.DOTALL)
 
         if not match:
@@ -86,14 +85,10 @@ class TemplateAnalyzer:
         try:
             yaml_dict = yaml.safe_load(metadata_yaml)
         except yaml.YAMLError as e:
-            raise ValueError(
-                f"Failed to parse TEMPLATE_METADATA in {template_path}: {e}"
-            ) from e
+            raise ValueError(f"Failed to parse TEMPLATE_METADATA in {template_path}: {e}") from e
 
         if not isinstance(yaml_dict, dict):
-            raise ValueError(
-                f"TEMPLATE_METADATA must be a dict, got {type(yaml_dict)}"
-            )
+            raise ValueError(f"TEMPLATE_METADATA must be a dict, got {type(yaml_dict)}")
 
         # Extract the actual metadata from under TEMPLATE_METADATA key
         metadata: dict[str, Any] = yaml_dict.get("TEMPLATE_METADATA", {})
@@ -182,11 +177,7 @@ class TemplateAnalyzer:
 
         return chain
 
-    def merge_metadata(
-        self,
-        child: dict[str, Any],
-        parent: dict[str, Any]
-    ) -> dict[str, Any]:
+    def merge_metadata(self, child: dict[str, Any], parent: dict[str, Any]) -> dict[str, Any]:
         """
         Merge child and parent metadata, with child taking precedence.
 
@@ -207,8 +198,7 @@ class TemplateAnalyzer:
         merged: dict[str, Any] = {}
 
         # Child overrides for scalar values
-        for key in ["enforcement", "level", "version", "purpose",
-                    "agent_hint", "content_guidance"]:
+        for key in ["enforcement", "level", "version", "purpose", "agent_hint", "content_guidance"]:
             if key in child:
                 merged[key] = child[key]
             elif key in parent:
@@ -225,12 +215,8 @@ class TemplateAnalyzer:
 
             # Merge guidelines
             child_guidelines = child.get("validates", {}).get("guidelines", [])
-            parent_guidelines = parent.get("validates", {}).get(
-                "guidelines", []
-            )
-            merged["validates"]["guidelines"] = (
-                child_guidelines + parent_guidelines
-            )
+            parent_guidelines = parent.get("validates", {}).get("guidelines", [])
+            merged["validates"]["guidelines"] = child_guidelines + parent_guidelines
 
         # Union of variables
         child_vars = set(child.get("variables", []))

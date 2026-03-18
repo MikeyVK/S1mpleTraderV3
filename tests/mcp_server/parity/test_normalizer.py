@@ -30,19 +30,19 @@ from tests.mcp_server.parity.normalization import (
 class TestNormalizerWhitespace:
     """Test whitespace normalizer edge cases."""
 
-    def test_crlf_to_lf_conversion(self):
+    def test_crlf_to_lf_conversion(self) -> None:
         """CRLF line endings convert to LF."""
         input_text = "line1\r\nline2\r\nline3"
         expected = "line1\nline2\nline3"
         assert normalize_whitespace(input_text) == expected
 
-    def test_trailing_whitespace_removal(self):
+    def test_trailing_whitespace_removal(self) -> None:
         """Trailing spaces removed from each line."""
         input_text = "line1   \nline2\t\nline3 "
         expected = "line1\nline2\nline3"
         assert normalize_whitespace(input_text) == expected
 
-    def test_empty_lines_preserved(self):
+    def test_empty_lines_preserved(self) -> None:
         """Empty lines preserved (no whitespace collapse)."""
         input_text = "line1\n\nline2\n\nline3"
         expected = "line1\n\nline2\n\nline3"
@@ -52,13 +52,13 @@ class TestNormalizerWhitespace:
 class TestNormalizerImports:
     """Test Python import sorter."""
 
-    def test_stdlib_sorted_alphabetically(self):
+    def test_stdlib_sorted_alphabetically(self) -> None:
         """Standard library imports sorted A-Z."""
         input_text = "import sys\nimport os\nimport re"
         expected = "import os\nimport re\nimport sys"
         assert normalize_imports(input_text) == expected
 
-    def test_third_party_sorted_separately(self):
+    def test_third_party_sorted_separately(self) -> None:
         """Third-party imports sorted in separate group."""
         input_text = "from pydantic import BaseModel\nfrom typing import Any\nimport pytest"
         # Within each block, imports sorted alphabetically
@@ -68,7 +68,7 @@ class TestNormalizerImports:
         assert len(lines) == 3
         assert all(line in result for line in input_text.split("\n"))
 
-    def test_local_imports_preserved(self):
+    def test_local_imports_preserved(self) -> None:
         """Project modules group preserved at end."""
         input_text = (
             "# Standard library\nimport os\n\n# Project modules\nfrom backend.core import Base"
@@ -80,19 +80,19 @@ class TestNormalizerImports:
         assert "import os" in result
         assert "from backend.core import Base" in result
 
-    def test_empty_string_normalization(self):
+    def test_empty_string_normalization(self) -> None:
         """Empty string remains empty after normalization."""
         input_text = ""
         expected = ""
         assert normalize_imports(input_text) == expected
 
-    def test_no_imports_content(self):
+    def test_no_imports_content(self) -> None:
         """Content without imports remains unchanged."""
         input_text = "# Comment\ndef my_function():\n    pass\n"
         expected = "# Comment\ndef my_function():\n    pass\n"
         assert normalize_imports(input_text) == expected
 
-    def test_multiple_import_blocks(self):
+    def test_multiple_import_blocks(self) -> None:
         """Multiple import blocks each sorted separately."""
         input_text = "import sys\nimport os\n\n# Some code\nvar = 1\n\nimport re\nimport ast"
         result = normalize_imports(input_text)
@@ -111,20 +111,20 @@ class TestNormalizerImports:
 class TestNormalizerTimestamps:
     """Test timestamp masking for SCAFFOLD metadata."""
 
-    def test_iso8601_masked(self):
+    def test_iso8601_masked(self) -> None:
         """ISO8601 timestamps replaced with <TIMESTAMP>."""
         input_text = "created=2026-02-17T08:23Z updated=2026-01-15T10:30:00Z"
         expected = "created=<TIMESTAMP> updated=<TIMESTAMP>"
         assert normalize_timestamps(input_text) == expected
 
-    def test_version_hash_preserved(self):
+    def test_version_hash_preserved(self) -> None:
         """Version hashes unchanged (abc123 stays abc123)."""
         input_text = "version=abc123 created=2026-02-17T08:23Z"
         result = normalize_timestamps(input_text)
         assert "version=abc123" in result
         assert "<TIMESTAMP>" in result
 
-    def test_multiple_timestamps_masked(self):
+    def test_multiple_timestamps_masked(self) -> None:
         """All timestamps in file masked (created + updated)."""
         input_text = (
             "# template=dto version=f35abd82 created=2026-02-17T08:23Z updated=2026-02-17T09:15:00Z"
@@ -137,7 +137,7 @@ class TestNormalizerTimestamps:
 class TestNormalizeOutput:
     """Test full normalization pipeline."""
 
-    def test_python_file_full_pipeline(self, sample_python_output):
+    def test_python_file_full_pipeline(self, sample_python_output) -> None:
         """Python files: whitespace + timestamps + imports normalized."""
         result = normalize_output(sample_python_output, file_type="python")
         # Should apply: whitespace + timestamps + imports
@@ -145,7 +145,7 @@ class TestNormalizeOutput:
         assert "<TIMESTAMP>" in result  # Timestamps masked
         # Imports sorted (hard to verify without parsing)
 
-    def test_markdown_file_pipeline(self, sample_markdown_output):
+    def test_markdown_file_pipeline(self, sample_markdown_output) -> None:
         """Markdown files: whitespace + timestamps (no import sorting)."""
         result = normalize_output(sample_markdown_output, file_type="markdown")
         # Should apply: whitespace + timestamps (NO import sorting)
@@ -156,21 +156,21 @@ class TestNormalizeOutput:
 class TestEquivalence:
     """Test semantic equivalence validator."""
 
-    def test_identical_content_passes(self):
+    def test_identical_content_passes(self) -> None:
         """Exact match passes without assertion."""
         v1 = "test content\nline2"
         v2 = "test content\nline2"
         # Should not raise
         assert_equivalent(v1, v2)
 
-    def test_allowed_diffs_ignored(self):
+    def test_allowed_diffs_ignored(self) -> None:
         """Differences in allow_diffs list do not fail."""
         v1 = "version=abc123 created=2026-01-01T00:00:00Z"
         v2 = "version=abc123 created=2026-02-01T00:00:00Z"
         # Timestamps differ, but allowed
         assert_equivalent(v1, v2, allow_diffs=["created="])
 
-    def test_semantic_difference_fails(self):
+    def test_semantic_difference_fails(self) -> None:
         """Non-whitelisted differences raise AssertionError."""
         v1 = "test content A"
         v2 = "test content B"

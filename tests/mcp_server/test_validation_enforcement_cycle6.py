@@ -12,7 +12,7 @@ from mcp_server.validation.template_analyzer import TemplateAnalyzer
 class TestValidationEnforcementConsistency:
     """Test template enforcement levels (Cycle 6)."""
 
-    def test_tier0_has_strict_enforcement(self):
+    def test_tier0_has_strict_enforcement(self) -> None:
         """tier0_base_artifact must have STRICT enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -25,7 +25,7 @@ class TestValidationEnforcementConsistency:
             "tier0 templates must use STRICT enforcement (blocks save on violations)"
         )
 
-    def test_tier1_has_strict_enforcement(self):
+    def test_tier1_has_strict_enforcement(self) -> None:
         """tier1_base_document must have STRICT enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -38,7 +38,7 @@ class TestValidationEnforcementConsistency:
             "tier1 templates must use STRICT enforcement (blocks save on violations)"
         )
 
-    def test_tier2_has_architectural_enforcement(self):
+    def test_tier2_has_architectural_enforcement(self) -> None:
         """tier2_base_markdown must have STRICT enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -52,7 +52,7 @@ class TestValidationEnforcementConsistency:
             "tier2 templates must use STRICT enforcement (BASE template = structural)"
         )
 
-    def test_design_template_has_guideline_enforcement(self):
+    def test_design_template_has_guideline_enforcement(self) -> None:
         """concrete/design.md.jinja2 must have GUIDELINE enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -66,7 +66,7 @@ class TestValidationEnforcementConsistency:
             "(content guidance, warnings only)"
         )
 
-    def test_concrete_code_templates_have_guideline_enforcement(self):
+    def test_concrete_code_templates_have_guideline_enforcement(self) -> None:
         """Concrete code templates (worker, dto, service) must have GUIDELINE enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -86,7 +86,7 @@ class TestValidationEnforcementConsistency:
                 f"but {template_name} has {metadata.get('enforcement')}"
             )
 
-    def test_strict_enforcement_blocks_on_missing_sections(self):
+    def test_strict_enforcement_blocks_on_missing_sections(self) -> None:
         """STRICT enforcement should block save when required sections missing."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -109,7 +109,7 @@ class TestValidationEnforcementConsistency:
             "STRICT templates must define required blocks"
         )
 
-    def test_guideline_enforcement_shows_warnings_only(self):
+    def test_guideline_enforcement_shows_warnings_only(self) -> None:
         """GUIDELINE enforcement should show warnings but not block save."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
@@ -125,7 +125,7 @@ class TestValidationEnforcementConsistency:
         guidelines = metadata["validates"].get("guidelines", [])
         assert len(guidelines) > 0, "GUIDELINE templates should define guidelines"
 
-    def test_tier_chain_traceable_via_extends(self):
+    def test_tier_chain_traceable_via_extends(self) -> None:
         """Template inheritance chain should be traceable via extends field."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)

@@ -161,17 +161,17 @@ This split ensures that imp→qa context is never injected into unrelated sessio
 The `PreCompact` hook fires at two scopes:
 
 1. **Workspace-level** (`pre_compact.py`, fires for all sessions):
-   - Derives a `chat_id` from the `transcript_path` stem in the event payload.
-   - Writes a lightweight snapshot (goal + files + timestamp) to `.copilot/sessions/{chat_id}.json`.
+   - Performs no snapshot persistence.
+   - Leaves standard chats dependent on VS Code's built-in compaction summary.
    - **Never writes to `session-state.json`** — prevents multiple parallel generic chats from overwriting each other.
 
 2. **Agent-level** (`pre_compact_agent.py`, fires only for `@imp` and `@qa`):
-   - Derives the same `chat_id` and writes a richer snapshot to `.copilot/sessions/{chat_id}.json` (overrides workspace version).
+   - Derives a `chat_id` from the `transcript_path` stem in the event payload and writes a richer snapshot to `.copilot/sessions/{chat_id}.json`.
    - **Also writes to `.copilot/session-state.json`** — the shared cross-session handover file that agent `SessionStart` hooks read.
 
-This split means the workspace hook is a true generic fallback that never pollutes agent state.
+This split means the workspace hook stays neutral while agent sessions own persistence.
 
-**What it stores (per-chat file):**
+**What the agent hook stores (per-chat file):**
 - timestamp
 - active role (if detectable from transcript)
 - last user goal summary
@@ -314,7 +314,7 @@ The compact design needs only this file family:
 - `scripts/copilot_hooks/session_start.py` — generic: branch + changed files (all sessions)
 - `scripts/copilot_hooks/session_start_imp.py` — impl-specific: snapshot recovery, handover (only `@imp`)
 - `scripts/copilot_hooks/session_start_qa.py` — QA-specific: handover detection, review guidance (only `@qa`)
-- `scripts/copilot_hooks/pre_compact.py` — workspace: per-chat snapshot writer to `.copilot/sessions/{chat_id}.json`
+- `scripts/copilot_hooks/pre_compact.py` — workspace: neutral `PreCompact` hook with no snapshot persistence
 - `scripts/copilot_hooks/pre_compact_agent.py` — agent: dual-write (per-chat + `session-state.json`, `@imp` and `@qa` only)
 - optional `.github/prompts/resume-implementation.prompt.md`
 - optional `.github/prompts/prepare-handover.prompt.md`

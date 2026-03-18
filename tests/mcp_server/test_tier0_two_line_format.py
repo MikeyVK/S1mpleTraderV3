@@ -19,7 +19,7 @@ TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding
 class TestTier0TwoLineScaffoldFormat:
     """Test Tier 0 2-line SCAFFOLD format (Cycle 2)."""
 
-    def test_python_format_two_line_scaffold(self):
+    def test_python_format_two_line_scaffold(self) -> None:
         """Python format must use 2-line SCAFFOLD (no SCAFFOLD: prefix)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -46,7 +46,7 @@ class TestTier0TwoLineScaffoldFormat:
         # NO "SCAFFOLD:" anywhere
         assert "SCAFFOLD:" not in result
 
-    def test_markdown_format_two_line_scaffold(self):
+    def test_markdown_format_two_line_scaffold(self) -> None:
         """Markdown format must use 2-line HTML comment SCAFFOLD."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
@@ -74,7 +74,7 @@ class TestTier0TwoLineScaffoldFormat:
         # NO "SCAFFOLD:" anywhere
         assert "SCAFFOLD:" not in result
 
-    def test_yaml_format_two_line_scaffold(self):
+    def test_yaml_format_two_line_scaffold(self) -> None:
         """YAML format must use 2-line SCAFFOLD with # comments."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")

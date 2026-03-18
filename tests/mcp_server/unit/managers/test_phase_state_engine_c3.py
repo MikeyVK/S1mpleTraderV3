@@ -76,9 +76,7 @@ def project_manager_with_gates(workspace_root: Path) -> ProjectManager:
 def engine_with_gates(
     workspace_root: Path, project_manager_with_gates: ProjectManager
 ) -> PhaseStateEngine:
-    return make_phase_state_engine(
-        workspace_root, project_manager=project_manager_with_gates
-    )
+    return make_phase_state_engine(workspace_root, project_manager=project_manager_with_gates)
 
 
 @pytest.fixture

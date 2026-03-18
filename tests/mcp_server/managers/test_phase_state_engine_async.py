@@ -1,4 +1,3 @@
-# ruff: noqa: ANN401
 # tests/mcp_server/managers/test_phase_state_engine_async.py
 """
 Tests for async-safe state.json operations in PhaseStateEngine.
@@ -14,14 +13,14 @@ Fix: Use write_text() instead of open()+flush().
 
 import ast
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
-from tests.mcp_server.test_support import make_phase_state_engine
 
 import pytest
 
 from mcp_server.managers.state_repository import BranchState
+from tests.mcp_server.test_support import make_phase_state_engine
 
 
 class TestSaveStateNonBlocking:
@@ -38,9 +37,6 @@ class TestSaveStateNonBlocking:
         The new implementation should use:
             self.state_file.write_text(json.dumps(state, indent=2))
         """
-        from mcp_server.managers.phase_state_engine import (  # noqa: PLC0415
-            PhaseStateEngine,
-        )
         from mcp_server.managers.project_manager import (  # noqa: PLC0415
             ProjectManager,
         )
@@ -75,9 +71,6 @@ class TestSaveStateNonBlocking:
         We patch the builtin open() to detect if flush() is called.
         The new implementation should NOT use open() at all.
         """
-        from mcp_server.managers.phase_state_engine import (  # noqa: PLC0415
-            PhaseStateEngine,
-        )
         from mcp_server.managers.project_manager import (  # noqa: PLC0415
             ProjectManager,
         )
@@ -101,7 +94,7 @@ class TestSaveStateNonBlocking:
         original_open = open
         open_was_called = False
 
-        def tracking_open(*args: Any, **kwargs: Any) -> Any:
+        def tracking_open(*args: object, **kwargs: object) -> object:
             nonlocal open_was_called
             open_was_called = True
             return original_open(*args, **kwargs)
@@ -152,7 +145,9 @@ class TestPhaseToolsAsyncSafe:
         run_sync_was_called = False
         original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
+        async def tracking_run_sync(
+            func: Callable[..., object], *args: object, **kwargs: object
+        ) -> object:
             nonlocal run_sync_was_called
             run_sync_was_called = True
             return await original_run_sync(func, *args, **kwargs)
@@ -199,7 +194,9 @@ class TestPhaseToolsAsyncSafe:
         run_sync_was_called = False
         original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
+        async def tracking_run_sync(
+            func: Callable[..., object], *args: object, **kwargs: object
+        ) -> object:
             nonlocal run_sync_was_called
             run_sync_was_called = True
             return await original_run_sync(func, *args, **kwargs)

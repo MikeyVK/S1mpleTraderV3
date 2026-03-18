@@ -28,7 +28,7 @@ def scaffolder_with_registry(registry):
 class TestTemplateRegistryLoading:
     """Tests for artifact registry integration."""
 
-    def test_loads_artifact_from_registry(self, scaffolder_fixture, registry):
+    def test_loads_artifact_from_registry(self, scaffolder_fixture, registry) -> None:
         """Should load artifact definition from registry."""
         artifact = Mock()
         artifact.type_id = "dto"
@@ -57,7 +57,7 @@ class TestTemplateRegistryLoading:
         # Called in validate() and scaffold()
         assert registry.get_artifact.call_count == 2
 
-    def test_uses_template_path_from_artifact(self, scaffolder_fixture, registry):
+    def test_uses_template_path_from_artifact(self, scaffolder_fixture, registry) -> None:
         """Should use template_path from artifact definition."""
         artifact = Mock()
         artifact.type_id = "worker"
@@ -83,7 +83,7 @@ class TestTemplateRegistryLoading:
         assert hasattr(result, "content")
         assert "TestWorker" in result.content
 
-    def test_error_when_no_template_defined(self, scaffolder_fixture, registry):
+    def test_error_when_no_template_defined(self, scaffolder_fixture, registry) -> None:
         """Should raise error when artifact has no template defined."""
         artifact = Mock()
         artifact.type_id = "broken"

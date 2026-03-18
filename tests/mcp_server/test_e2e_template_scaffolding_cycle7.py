@@ -84,7 +84,7 @@ def _render_full_design_doc() -> str:
 class TestScaffoldDesignDocumentE2E:
     """Test complete design document scaffolding end-to-end (Cycle 7)."""
 
-    def test_e2e_tier0_scaffold_metadata(self):
+    def test_e2e_tier0_scaffold_metadata(self) -> None:
         """Validate tier0 SCAFFOLD metadata in 2-line format."""
         result = _render_full_design_doc()
 
@@ -100,7 +100,7 @@ class TestScaffoldDesignDocumentE2E:
         # NO "SCAFFOLD:" prefix
         assert "SCAFFOLD:" not in result
 
-    def test_e2e_tier1_universal_document_structure(self):
+    def test_e2e_tier1_universal_document_structure(self) -> None:
         """Validate tier1 universal document structure elements."""
         result = _render_full_design_doc()
 
@@ -131,7 +131,7 @@ class TestScaffoldDesignDocumentE2E:
         assert "## Version History" in result
         assert "| Version | Date | Author | Changes |" in result
 
-    def test_e2e_tier2_markdown_patterns(self):
+    def test_e2e_tier2_markdown_patterns(self) -> None:
         """Validate tier2 Markdown-specific patterns (NO frontmatter, link definitions)."""
         result = _render_full_design_doc()
 
@@ -152,7 +152,7 @@ class TestScaffoldDesignDocumentE2E:
         history_pos = result.find("## Version History")
         assert link_pos < history_pos, "Link definitions must come before Version History"
 
-    def test_e2e_concrete_design_template_structure(self):
+    def test_e2e_concrete_design_template_structure(self) -> None:
         """Validate concrete DESIGN_TEMPLATE numbered sections."""
         result = _render_full_design_doc()
 
@@ -176,7 +176,7 @@ class TestScaffoldDesignDocumentE2E:
         assert "### 2.2. Option B: 5-Tier Hierarchy" in result
         assert "Layered templates with inheritance" in result
 
-    def test_e2e_concrete_design_chosen_design_section(self):
+    def test_e2e_concrete_design_chosen_design_section(self) -> None:
         """Validate concrete DESIGN_TEMPLATE Chosen Design section."""
         result = _render_full_design_doc()
 
@@ -196,7 +196,7 @@ class TestScaffoldDesignDocumentE2E:
         assert "How to handle template versioning?" in result
         assert "Migration path for existing files?" in result
 
-    def test_e2e_with_missing_optional_fields(self):
+    def test_e2e_with_missing_optional_fields(self) -> None:
         """E2E test with minimal required fields (edge case)."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -233,7 +233,7 @@ class TestScaffoldDesignDocumentE2E:
         assert "## 4. Open Questions" not in result
         assert "None" in result  # related_docs defaults to "None"
 
-    def test_e2e_guideline_enforcement(self):
+    def test_e2e_guideline_enforcement(self) -> None:
         """Validate that design template uses GUIDELINE enforcement (not STRICT)."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)

@@ -38,9 +38,7 @@ def test_research_md_imports_seven_patterns() -> None:
     ]
 
     for pattern in required_patterns:
-        assert f'import "{pattern}.jinja2"' in content, (
-            f"research.md missing import: {pattern}"
-        )
+        assert f'import "{pattern}.jinja2"' in content, f"research.md missing import: {pattern}"
 
 
 def test_planning_md_imports_six_patterns() -> None:
@@ -58,9 +56,7 @@ def test_planning_md_imports_six_patterns() -> None:
     ]
 
     for pattern in required_patterns:
-        assert f'import "{pattern}.jinja2"' in content, (
-            f"planning.md missing import: {pattern}"
-        )
+        assert f'import "{pattern}.jinja2"' in content, f"planning.md missing import: {pattern}"
 
 
 def test_design_md_imports_seven_patterns() -> None:
@@ -79,6 +75,4 @@ def test_design_md_imports_seven_patterns() -> None:
     ]
 
     for pattern in required_patterns:
-        assert f'import "{pattern}.jinja2"' in content, (
-            f"design.md missing import: {pattern}"
-        )
+        assert f'import "{pattern}.jinja2"' in content, f"design.md missing import: {pattern}"

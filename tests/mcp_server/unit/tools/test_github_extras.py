@@ -1,5 +1,4 @@
 """Tests for PR and Label tools."""
-# ruff: noqa: ANN001, ANN201
 
 import asyncio
 from pathlib import Path
@@ -22,14 +21,14 @@ from mcp_server.tools.pr_tools import (
 
 
 @pytest.fixture
-def mock_git_config():
+def mock_git_config() -> Mock:
     git_config = Mock()
     git_config.default_base_branch = "main"
     return git_config
 
 
 @pytest.fixture
-def mock_adapter():
+def mock_adapter() -> Mock:
     """Create a mock GitHub adapter for testing."""
     return Mock()
 
@@ -50,7 +49,7 @@ labels:
     return ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
 
 
-def test_create_pr_tool(mock_adapter, mock_git_config) -> None:
+def test_create_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     """Test CreatePRTool creates PR and returns correct response."""
     mock_pr = Mock()
     mock_pr.number = 123
@@ -71,7 +70,7 @@ def test_create_pr_tool(mock_adapter, mock_git_config) -> None:
     )
 
 
-def test_add_labels_tool(mock_adapter, test_label_config: LabelConfig) -> None:
+def test_add_labels_tool(mock_adapter: Mock, test_label_config: LabelConfig) -> None:
     """Test AddLabelsTool adds labels and returns confirmation."""
     manager = GitHubManager(adapter=mock_adapter)
     tool = AddLabelsTool(manager=manager, label_config=test_label_config)
@@ -84,7 +83,7 @@ def test_add_labels_tool(mock_adapter, test_label_config: LabelConfig) -> None:
     mock_adapter.add_labels.assert_called_with(456, ["bug", "high-priority"])
 
 
-def test_list_prs_tool(mock_adapter, mock_git_config) -> None:
+def test_list_prs_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     """Test ListPRsTool lists pull requests with formatting."""
     mock_base = Mock()
     mock_base.ref = "main"
@@ -111,7 +110,7 @@ def test_list_prs_tool(mock_adapter, mock_git_config) -> None:
     mock_adapter.list_prs.assert_called_with(state="open", base=None, head=None)
 
 
-def test_merge_pr_tool(mock_adapter, mock_git_config) -> None:
+def test_merge_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     """Test MergePRTool merges PRs and returns confirmation."""
     mock_adapter.merge_pr.return_value = {"merged": True, "sha": "abc123", "message": "Merged"}
 

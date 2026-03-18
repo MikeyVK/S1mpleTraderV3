@@ -1,4 +1,4 @@
-# SCAFFOLD: integration_test:smoke135 | 2026-02-19T00:00:00Z | tests/integration/test_v2_smoke_all_types.py
+# SCAFFOLD: integration_test:smoke135 | 2026-02-19T00:00:00Z
 """Integration Step 1: V2 pipeline smoke test for all 16 artifact types.
 
 Validates that PYDANTIC_SCAFFOLDING_ENABLED=true produces non-empty output
@@ -116,7 +116,8 @@ _SMOKE_CASES: list[tuple[str, dict, bool, str]] = [
         {
             "module_under_test": "mcp_server.schemas.contexts.dto",
             "test_class_name": "TestSmokeDTOContext",
-            # Explicitly provide imported_classes: default=[] renders `from x import ` (syntax error)
+            # Provide imported_classes explicitly: default=[] would render
+            # `from x import ` and produce invalid syntax.
             "imported_classes": ["DTOContext"],
         },
         False,
@@ -219,7 +220,7 @@ _SMOKE_CASES: list[tuple[str, dict, bool, str]] = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "artifact_type,context_kwargs,is_ephemeral,file_ext",
+    "artifact_type,context_kwargs,_is_ephemeral,file_ext",
     _SMOKE_CASES,
     ids=[case[0] for case in _SMOKE_CASES],
 )
@@ -228,7 +229,7 @@ async def test_v2_smoke_produces_nonempty_output(
     tmp_path: Path,
     artifact_type: str,
     context_kwargs: dict,
-    is_ephemeral: bool,
+    _is_ephemeral: bool,
     file_ext: str,
 ) -> None:
     """V2 pipeline produces a non-empty string for every registered artifact type.

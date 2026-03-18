@@ -12,7 +12,6 @@ import pytest
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers.phase_contract_resolver import (
     CheckSpec,
-    PhaseConfigContext,
     PhaseContractResolver,
 )
 from tests.mcp_server.test_support import make_phase_config_context

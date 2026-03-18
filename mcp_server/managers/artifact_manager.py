@@ -121,14 +121,24 @@ class ArtifactManager:
 
         # Merge dependencies container with individual kwargs (kwargs take precedence)
         deps = dependencies
-        registry = registry if registry is not None else (deps.registry if deps is not None else None)
-        scaffolder = scaffolder if scaffolder is not None else (deps.scaffolder if deps is not None else None)
+        registry = (
+            registry if registry is not None else (deps.registry if deps is not None else None)
+        )
+        scaffolder = (
+            scaffolder
+            if scaffolder is not None
+            else (deps.scaffolder if deps is not None else None)
+        )
         validation_service = (
             validation_service
             if validation_service is not None
             else (deps.validation_service if deps is not None else None)
         )
-        fs_adapter = fs_adapter if fs_adapter is not None else (deps.fs_adapter if deps is not None else None)
+        fs_adapter = (
+            fs_adapter
+            if fs_adapter is not None
+            else (deps.fs_adapter if deps is not None else None)
+        )
         template_registry = (
             template_registry
             if template_registry is not None

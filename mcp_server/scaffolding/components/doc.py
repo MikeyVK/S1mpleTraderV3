@@ -1,4 +1,5 @@
 """Design Document Scaffolder Component."""
+
 from typing import Any
 
 from mcp_server.scaffolding.base import BaseScaffolder
@@ -26,17 +27,11 @@ class DesignDocScaffolder(BaseScaffolder):
             template_path = "documents/design.md.jinja2"
 
         try:
-            return str(self.renderer.render(
-                template_path,
-                title=name,
-                **kwargs
-            ))
+            return str(self.renderer.render(template_path, title=name, **kwargs))
         except Exception as e:
             # Fallback to generic document template
             if "not found" in str(e).lower():
-                return str(self.renderer.render(
-                    "documents/generic.md.jinja2",
-                    title=name,
-                    **kwargs
-                ))
+                return str(
+                    self.renderer.render("documents/generic.md.jinja2", title=name, **kwargs)
+                )
             raise

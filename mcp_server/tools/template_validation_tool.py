@@ -1,4 +1,5 @@
 """Tool for validating file structure against templates."""
+
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -10,11 +11,12 @@ from mcp_server.validation.template_validator import TemplateValidator
 
 class TemplateValidationInput(BaseModel):
     """Input for TemplateValidationTool."""
+
     path: str = Field(..., description="Absolute path to the file")
     template_type: str = Field(
         ...,
         description="Type of template to validate against",
-        pattern="^(worker|tool|dto|adapter|base)$"
+        pattern="^(worker|tool|dto|adapter|base)$",
     )
 
 
@@ -22,10 +24,7 @@ class TemplateValidationTool(BaseTool):
     """Tool to validate a file against a specific template."""
 
     name = "validate_template"
-    description = (
-        "Validate a file's structure against a project template "
-        "(worker, tool, dto, etc.)"
-    )
+    description = "Validate a file's structure against a project template (worker, tool, dto, etc.)"
     args_model = TemplateValidationInput
 
     @property
@@ -39,7 +38,8 @@ class TemplateValidationTool(BaseTool):
             val_result = await validator.validate(params.path)
 
             status = (
-                "✅ Template Validation Passed" if val_result.passed
+                "✅ Template Validation Passed"
+                if val_result.passed
                 else "❌ Template Validation Failed"
             )
             details = ""

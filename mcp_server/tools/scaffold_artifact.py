@@ -48,6 +48,7 @@ class ScaffoldArtifactTool(BaseTool):
     name = "scaffold_artifact"
     description = "Scaffold any artifact type (code or document) from unified registry."
     args_model = ScaffoldArtifactInput
+
     def __init__(self, manager: ArtifactManager | None = None) -> None:
         """Initialize tool with an explicitly injected artifact manager."""
         super().__init__()

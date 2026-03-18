@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Tests for PhaseStateEngine auto-recovery (Mode 2).
 
 Issue #39: Mode 2 - Auto-recovery of missing state.json from git commits.
@@ -13,13 +11,20 @@ Tests verify:
 6. Safe fallback to first phase
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
 
 from mcp_server.config.workflows import WorkflowConfig
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
 
 
 def _load_workflow_config() -> WorkflowConfig:

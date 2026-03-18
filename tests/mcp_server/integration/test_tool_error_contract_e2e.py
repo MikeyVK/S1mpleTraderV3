@@ -14,6 +14,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
@@ -46,8 +47,6 @@ async def test_config_error_preserves_contract(artifact_manager: ArtifactManager
 @pytest.mark.asyncio
 async def test_validation_error_preserves_contract(artifact_manager: ArtifactManager) -> None:
     """Test ValidationError contract preserved through tool layer."""
-    from mcp_server.core.exceptions import ValidationError
-
     tool = ScaffoldArtifactTool(manager=artifact_manager)
 
     # Mock manager to raise ValidationError
@@ -78,8 +77,6 @@ async def test_validation_error_preserves_contract(artifact_manager: ArtifactMan
 @pytest.mark.asyncio
 async def test_execution_error_preserves_contract(artifact_manager: ArtifactManager) -> None:
     """Test ExecutionError contract preserved through tool layer."""
-    from mcp_server.core.exceptions import ExecutionError
-
     tool = ScaffoldArtifactTool(manager=artifact_manager)
 
     # Mock manager to raise ExecutionError

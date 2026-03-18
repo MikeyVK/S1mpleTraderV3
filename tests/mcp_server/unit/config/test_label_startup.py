@@ -9,7 +9,6 @@ Tests early detection of configuration issues at server startup.
 
 # Standard library
 import logging
-from collections.abc import Iterator
 from pathlib import Path
 
 # Third-party

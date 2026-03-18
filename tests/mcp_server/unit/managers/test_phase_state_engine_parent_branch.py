@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Tests for PhaseStateEngine with parent_branch tracking.
 
 Issue #79: Tests for parent_branch in state management.
@@ -7,13 +5,20 @@ Issue #79: Tests for parent_branch in state management.
 - Auto-recovery includes parent_branch from deliverables.json
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from mcp_server.managers.project_manager import ProjectInitOptions
 from mcp_server.managers.state_repository import FileStateRepository, InMemoryStateRepository
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
 
 
 class TestPhaseStateEngineParentBranch:

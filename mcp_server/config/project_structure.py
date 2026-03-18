@@ -22,7 +22,9 @@ class ProjectStructureConfig(_ProjectStructureConfigSchema):
     _instance: ClassVar[ProjectStructureConfig | None] = None
 
     @classmethod
-    def from_file(cls, config_path: str = ".st3/config/project_structure.yaml") -> ProjectStructureConfig:
+    def from_file(
+        cls, config_path: str = ".st3/config/project_structure.yaml"
+    ) -> ProjectStructureConfig:
         if cls._instance is not None:
             return cls._instance
 
@@ -34,7 +36,7 @@ class ProjectStructureConfig(_ProjectStructureConfigSchema):
             artifact_registry=artifact_registry,
         )
         instance = cls.model_validate(loaded.model_dump())
-        instance.artifact_registry = loaded.artifact_registry
+        instance.artifact_registry = loaded.artifact_registry  # type: ignore[attr-defined]
         cls._instance = instance
         return instance
 

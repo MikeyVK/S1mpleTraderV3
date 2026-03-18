@@ -17,13 +17,13 @@ import pytest
 from pydantic import ValidationError
 
 from mcp_server.core.interfaces import IStateReader, IStateRepository
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 from mcp_server.managers.state_repository import (
     BranchState,
     FileStateRepository,
     InMemoryStateRepository,
 )
 from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestBranchState:

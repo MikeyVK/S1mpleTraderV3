@@ -7,14 +7,14 @@ and that legacy tools have been properly removed.
 from mcp_server.server import MCPServer
 
 
-def test_scaffold_artifact_tool_registered():
+def test_scaffold_artifact_tool_registered() -> None:
     """Verify ScaffoldArtifactTool is registered in server tools list."""
     server = MCPServer()
     tool_names = [type(t).__name__ for t in server.tools]
     assert "ScaffoldArtifactTool" in tool_names, f"ScaffoldArtifactTool not found in {tool_names}"
 
 
-def test_legacy_scaffold_tools_not_registered():
+def test_legacy_scaffold_tools_not_registered() -> None:
     """Verify legacy scaffold tools are NOT registered."""
     server = MCPServer()
     tool_names = [type(t).__name__ for t in server.tools]
@@ -26,7 +26,7 @@ def test_legacy_scaffold_tools_not_registered():
     )
 
 
-def test_scaffold_artifact_tool_has_correct_name():
+def test_scaffold_artifact_tool_has_correct_name() -> None:
     """Verify tool name matches expected MCP tool name."""
     server = MCPServer()
     scaffold_tools = [t for t in server.tools if type(t).__name__ == "ScaffoldArtifactTool"]
@@ -35,7 +35,7 @@ def test_scaffold_artifact_tool_has_correct_name():
     assert tool.name == "scaffold_artifact", f"Expected name 'scaffold_artifact', got '{tool.name}'"
 
 
-def test_transition_cycle_tool_registered():
+def test_transition_cycle_tool_registered() -> None:
     """Verify TransitionCycleTool is registered in server tools list (Issue #146)."""
     server = MCPServer()
     tool_names = [type(t).__name__ for t in server.tools]
@@ -44,7 +44,7 @@ def test_transition_cycle_tool_registered():
     )
 
 
-def test_force_cycle_transition_tool_registered():
+def test_force_cycle_transition_tool_registered() -> None:
     """Verify ForceCycleTransitionTool is registered in server tools list (Issue #146)."""
     server = MCPServer()
     tool_names = [type(t).__name__ for t in server.tools]
@@ -53,7 +53,7 @@ def test_force_cycle_transition_tool_registered():
     )
 
 
-def test_transition_cycle_tool_has_correct_name():
+def test_transition_cycle_tool_has_correct_name() -> None:
     """Verify TransitionCycleTool MCP name matches expected value (Issue #146)."""
     server = MCPServer()
     tools = [t for t in server.tools if type(t).__name__ == "TransitionCycleTool"]
@@ -63,7 +63,7 @@ def test_transition_cycle_tool_has_correct_name():
     )
 
 
-def test_force_cycle_transition_tool_has_correct_name():
+def test_force_cycle_transition_tool_has_correct_name() -> None:
     """Verify ForceCycleTransitionTool MCP name matches expected value (Issue #146)."""
     server = MCPServer()
     tools = [t for t in server.tools if type(t).__name__ == "ForceCycleTransitionTool"]

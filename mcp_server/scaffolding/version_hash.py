@@ -1,4 +1,4 @@
-﻿"""
+"""
 Version hash computation for template registry (Issue #72 Task 1.2).
 
 Computes deterministic 8-character hashes from artifact type and tier chain versions.
@@ -36,12 +36,12 @@ def extract_template_version(template_path: Path) -> str:
 
         # Extract TEMPLATE_METADATA block
         # Pattern matches: {#- TEMPLATE_METADATA: ... -#}
-        metadata_pattern = r'\{#-?\s*TEMPLATE_METADATA:(.*?)-?#\}'
+        metadata_pattern = r"\{#-?\s*TEMPLATE_METADATA:(.*?)-?#\}"
         match = re.search(metadata_pattern, content, re.DOTALL)
 
         if not match:
             # Fallback: try simple {#- Version: X.X.X -#} format
-            version_pattern = r'\{#-\s*Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*-?#\}'
+            version_pattern = r"\{#-\s*Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*-?#\}"
             version_match = re.search(version_pattern, content)
             if version_match:
                 return version_match.group(1)
@@ -66,7 +66,7 @@ def compute_version_hash(
     artifact_type: str,
     template_file: str,
     tier_chain: list[tuple[str, str]],
-    template_root: Path | None = None
+    template_root: Path | None = None,
 ) -> str:
     """
     Compute 8-char SHA256 hash of tier version chain.

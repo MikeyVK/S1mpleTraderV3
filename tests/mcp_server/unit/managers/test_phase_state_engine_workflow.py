@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """RED tests for PhaseStateEngine workflow validation.
 
 Issue #50 - Step 3: PhaseStateEngine Integration
@@ -10,11 +8,18 @@ Tests workflow-based phase transition validation:
 - Force transitions (bypass validation with skip_reason)
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
 
 
 class TestPhaseStateEngineTransitions:

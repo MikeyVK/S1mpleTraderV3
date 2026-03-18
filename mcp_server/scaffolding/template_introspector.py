@@ -19,7 +19,6 @@ from pathlib import Path
 
 import jinja2
 from jinja2 import meta, nodes
-from jinja2.exceptions import TemplateNotFound
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
@@ -132,9 +131,7 @@ def introspect_template(env: jinja2.Environment, template_source: str) -> Templa
     )
 
 
-def _classify_variables(
-    ast: nodes.Template, variables: set[str]
-) -> tuple[list[str], list[str]]:
+def _classify_variables(ast: nodes.Template, variables: set[str]) -> tuple[list[str], list[str]]:
     """Classify variables as required or optional based on AST usage patterns.
 
     Conservative algorithm - if unclear, mark as required (fail fast).
@@ -162,7 +159,11 @@ def _classify_variables(
                 optional_vars.add(var_name)
 
         # Variables with |default(...) filter are optional
-        if isinstance(node, nodes.Filter) and node.name == "default" and isinstance(node.node, nodes.Name):
+        if (
+            isinstance(node, nodes.Filter)
+            and node.name == "default"
+            and isinstance(node.node, nodes.Name)
+        ):
             var_name = node.node.name
             if var_name in variables:
                 optional_vars.add(var_name)
@@ -221,7 +222,6 @@ def introspect_template_with_inheritance(template_root: Path, template_path: str
             f"Template not found: {template_path}",
             recovery=["Check template directory structure"],
         )
-
 
     chain = TemplateAnalyzer(template_root).get_inheritance_chain(full_path)
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_root))

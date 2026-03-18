@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Tests for PhaseStateEngine entry/exit hooks.
 
 Issue #146 Cycle 4: TDD phase lifecycle hooks.
@@ -8,8 +6,11 @@ Issue #229 Cycle 7: Per-phase deliverable gate on design exit (GAP-11/D7.2).
 Issue #229 Cycle 9: Per-phase deliverable gates for validation and documentation exit (GAP-16).
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import yaml
@@ -17,6 +18,9 @@ import yaml
 from mcp_server.managers.deliverable_checker import DeliverableCheckError
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
 
 
 class TestTDDPhaseHooks:
@@ -87,7 +91,11 @@ class TestTDDPhaseHooks:
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager, state_repository=InMemoryStateRepository())
+        state_engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Initialize branch in design phase
         state_engine.initialize_branch(
@@ -120,7 +128,11 @@ class TestTDDPhaseHooks:
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager, state_repository=InMemoryStateRepository())
+        state_engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Initialize project WITHOUT planning deliverables
         project_manager.initialize_project(
@@ -147,7 +159,11 @@ class TestTDDPhaseHooks:
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager, state_repository=InMemoryStateRepository())
+        state_engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Initialize in TDD phase at cycle 3
         state_engine.initialize_branch(
@@ -173,7 +189,11 @@ class TestTDDPhaseHooks:
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager, state_repository=InMemoryStateRepository())
+        state_engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Initialize in TDD phase at cycle 2 (not completed)
         state_engine.initialize_branch(
@@ -231,7 +251,11 @@ class TestTransitionHooksWiring:
         branch = "feature/999-hook-wiring"
 
         project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager, state_repository=InMemoryStateRepository())
+        state_engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Initialize branch in design phase
         state_engine.initialize_branch(
@@ -258,7 +282,11 @@ class TestTransitionHooksWiring:
         branch = "feature/999-hook-wiring"
 
         project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager, state_repository=InMemoryStateRepository())
+        state_engine = make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Initialize branch in TDD phase at cycle 2
         state_engine.initialize_branch(
@@ -307,7 +335,9 @@ class TestResearchExitGate:
             issue_title="Research exit gate test",
             workflow_name="feature",
         )
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
         engine.initialize_branch(
             branch=f"feature/{issue_number}-test",
             issue_number=issue_number,
@@ -319,7 +349,9 @@ class TestResearchExitGate:
         self._workphases_yaml(tmp_path, research_exit_requires=None)
         self._setup_project(tmp_path, issue_number=300)
         manager = make_project_manager(tmp_path)
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
 
         # Must not raise
         engine.on_exit_research_phase(branch="feature/300-test", issue_number=300)
@@ -344,7 +376,9 @@ class TestResearchExitGate:
         (doc_dir / "my-research-notes.md").write_text("# Research")
 
         manager = make_project_manager(tmp_path)
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
 
         # Must not raise
         engine.on_exit_research_phase(branch="feature/301-test", issue_number=301)
@@ -365,7 +399,9 @@ class TestResearchExitGate:
 
         # No matching file created
         manager = make_project_manager(tmp_path)
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
 
         with pytest.raises(DeliverableCheckError):
             engine.on_exit_research_phase(branch="feature/302-test", issue_number=302)
@@ -391,7 +427,9 @@ class TestResearchExitGate:
         (wrong_dir / "my-research.md").write_text("# Research")
 
         manager = make_project_manager(tmp_path)
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
 
         with pytest.raises(DeliverableCheckError):
             engine.on_exit_research_phase(branch="feature/303-test", issue_number=issue_number)
@@ -415,7 +453,9 @@ class TestResearchExitGate:
             issue_title="Transition wiring test",
             workflow_name="feature",
         )
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
         engine.initialize_branch(
             branch="feature/304-test",
             issue_number=issue_number,
@@ -446,7 +486,9 @@ class TestPerPhaseDeliverableGate:
             issue_title="Per-phase deliverable gate test",
             workflow_name="feature",
         )
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
         engine.initialize_branch(
             branch=f"feature/{issue_number}-test",
             issue_number=issue_number,
@@ -539,7 +581,9 @@ class TestValidationAndDocumentationExitGates:
             issue_title="Validation/documentation gate test",
             workflow_name="feature",
         )
-        engine = make_phase_state_engine(tmp_path, project_manager=manager, state_repository=InMemoryStateRepository())
+        engine = make_phase_state_engine(
+            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
+        )
         engine.initialize_branch(
             branch=f"feature/{issue_number}-test",
             issue_number=issue_number,

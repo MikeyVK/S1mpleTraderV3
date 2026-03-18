@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.server import MCPServer
+
 
 @pytest.fixture
 def server():
@@ -19,9 +21,5 @@ def server():
         mock_adapter = MagicMock()
         mock_adapter.list_issues.return_value = []
         mock_adapter_class.return_value = mock_adapter
-
-        # Now import and create the server with mocked dependencies
-        # pylint: disable=import-outside-toplevel
-        from mcp_server.server import MCPServer
 
         yield MCPServer()

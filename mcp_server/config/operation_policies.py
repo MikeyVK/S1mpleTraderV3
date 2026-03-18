@@ -36,7 +36,7 @@ class OperationPoliciesConfig(_OperationPoliciesConfigSchema):
             workflow_config=workflow_config,
         )
         instance = cls.model_validate(loaded.model_dump())
-        instance.workflow_config = loaded.workflow_config
+        instance.workflow_config = loaded.workflow_config  # type: ignore[attr-defined]
         cls.singleton_instance = instance
         return instance
 

@@ -22,8 +22,8 @@ TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding
 class TestTier1DocumentUniversalStructure:
     """Test tier1_base_document.jinja2 universal structure (Cycle 3)."""
 
-    def test_renders_status_and_phase_fields(self):
-        """Document must have Status, Version, Last Updated fields (Phase removed per BASE_TEMPLATE)."""
+    def test_renders_status_and_phase_fields(self) -> None:
+        """Document must have Status, Version, and Last Updated fields."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -46,7 +46,7 @@ class TestTier1DocumentUniversalStructure:
         assert "**Version:** 1.0" in result, "Version field missing"
         assert "**Last Updated:** 2026-01-26" in result, "Last Updated field missing"
 
-    def test_renders_purpose_section(self):
+    def test_renders_purpose_section(self) -> None:
         """Document must have Purpose section."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -66,7 +66,7 @@ class TestTier1DocumentUniversalStructure:
         assert "## Purpose" in result, "Purpose section missing"
         assert "Define the architecture for feature X" in result
 
-    def test_renders_scope_in_and_out(self):
+    def test_renders_scope_in_and_out(self) -> None:
         """Document must have Scope with In Scope and Out of Scope."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -89,7 +89,7 @@ class TestTier1DocumentUniversalStructure:
         assert "**Out of Scope:**" in result, "Out of Scope label missing"
         assert "Frontend implementation, Testing" in result
 
-    def test_renders_prerequisites_when_provided(self):
+    def test_renders_prerequisites_when_provided(self) -> None:
         """Prerequisites section should render when provided."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -111,7 +111,7 @@ class TestTier1DocumentUniversalStructure:
         assert "Research complete" in result
         assert "Stakeholder approval" in result
 
-    def test_omits_prerequisites_when_not_provided(self):
+    def test_omits_prerequisites_when_not_provided(self) -> None:
         """Prerequisites section should be omitted when not provided."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -130,7 +130,7 @@ class TestTier1DocumentUniversalStructure:
 
         assert "## Prerequisites" not in result
 
-    def test_renders_related_documentation(self):
+    def test_renders_related_documentation(self) -> None:
         """Document must have Related Documentation section with reference-style links."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -152,8 +152,8 @@ class TestTier1DocumentUniversalStructure:
         # Template uses reference-style links with auto-generated IDs
         assert "related-" in result  # Should have reference IDs
 
-    def test_renders_version_history_table(self):
-        """Document must have Version History table (column order: Version, Date, Author, Changes)."""
+    def test_renders_version_history_table(self) -> None:
+        """Document must have a Version History table with stable column order."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 

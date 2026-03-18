@@ -25,7 +25,7 @@ class TestResearchTemplate:
         env = Environment(loader=FileSystemLoader(template_dir))
         return env.get_template("concrete/research.md.jinja2")
 
-    def test_has_title_from_name_fallback(self, template):
+    def test_has_title_from_name_fallback(self, template) -> None:
         """Research doc should use 'name' parameter if 'title' not provided."""
         result = template.render(
             name="async-research",
@@ -37,7 +37,7 @@ class TestResearchTemplate:
         # Title should fallback to name
         assert "# async-research" in result
 
-    def test_has_multiline_header_fields(self, template):
+    def test_has_multiline_header_fields(self, template) -> None:
         """Header fields must be multi-line (Status, Version, Last Updated)."""
         result = template.render(
             name="test-research",
@@ -51,7 +51,7 @@ class TestResearchTemplate:
         assert "**Version:** 1.0" in result
         assert "**Last Updated:** 2026-01-27" in result
 
-    def test_no_frontmatter(self, template):
+    def test_no_frontmatter(self, template) -> None:
         """Research template must NOT have YAML frontmatter."""
         result = template.render(
             name="test-research",
@@ -65,7 +65,7 @@ class TestResearchTemplate:
         non_comment_lines = [line for line in lines if not line.startswith("<!--")]
         assert non_comment_lines[0].startswith("# ")
 
-    def test_has_proper_dividers_with_blank_lines(self, template):
+    def test_has_proper_dividers_with_blank_lines(self, template) -> None:
         """Dividers (---) must have blank line before AND after."""
         result = template.render(
             name="test-research",
@@ -88,7 +88,7 @@ class TestResearchTemplate:
             assert not lines[idx - 1].strip(), f"Missing blank line before divider at line {idx}"
             assert not lines[idx + 1].strip(), f"Missing blank line after divider at line {idx}"
 
-    def test_renders_problem_statement(self, template):
+    def test_renders_problem_statement(self, template) -> None:
         """Research doc must render problem statement."""
         result = template.render(
             name="test-research",
@@ -100,7 +100,7 @@ class TestResearchTemplate:
         assert "## Problem Statement" in result
         assert "Async data fetching is slow" in result
 
-    def test_renders_research_goals_as_list(self, template):
+    def test_renders_research_goals_as_list(self, template) -> None:
         """Research goals must render as bullet list."""
         result = template.render(
             name="test-research",
@@ -113,7 +113,7 @@ class TestResearchTemplate:
         assert "- Understand async patterns" in result
         assert "- Evaluate WebSocket" in result
 
-    def test_renders_open_questions_with_emoji(self, template):
+    def test_renders_open_questions_with_emoji(self, template) -> None:
         """Open questions must render with ❓ emoji."""
         result = template.render(
             name="test-research",
@@ -138,7 +138,7 @@ class TestPlanningTemplate:
         env = Environment(loader=FileSystemLoader(template_dir))
         return env.get_template("concrete/planning.md.jinja2")
 
-    def test_has_multiline_header_fields(self, template):
+    def test_has_multiline_header_fields(self, template) -> None:
         """Planning doc must have multi-line header fields."""
         result = template.render(
             name="test-planning",
@@ -151,7 +151,7 @@ class TestPlanningTemplate:
         assert "**Version:** 1.0" in result
         assert "**Last Updated:** 2026-01-27" in result
 
-    def test_renders_tdd_cycles(self, template):
+    def test_renders_tdd_cycles(self, template) -> None:
         """Planning doc must render TDD cycles with Goal/Tests/Success Criteria."""
         result = template.render(
             name="test-planning",
@@ -174,7 +174,7 @@ class TestPlanningTemplate:
         assert "**Success Criteria:**" in result
         assert "Client fetches data async" in result
 
-    def test_success_criteria_handles_string(self, template):
+    def test_success_criteria_handles_string(self, template) -> None:
         """Success criteria should handle string (not iterate characters)."""
         result = template.render(
             name="test-planning",
@@ -193,7 +193,7 @@ class TestPlanningTemplate:
         assert "This is a single string" in result
         assert "- T" not in result  # Would appear if iterating string
 
-    def test_success_criteria_handles_list(self, template):
+    def test_success_criteria_handles_list(self, template) -> None:
         """Success criteria should handle list of criteria."""
         result = template.render(
             name="test-planning",
@@ -222,7 +222,7 @@ class TestArchitectureTemplate:
         env = Environment(loader=FileSystemLoader(template_dir))
         return env.get_template("concrete/architecture.md.jinja2")
 
-    def test_has_multiline_header_fields(self, template):
+    def test_has_multiline_header_fields(self, template) -> None:
         """Architecture doc must have multi-line header fields."""
         result = template.render(
             name="test-architecture",
@@ -234,7 +234,7 @@ class TestArchitectureTemplate:
         assert "**Version:** 1.0" in result
         assert "**Last Updated:** 2026-01-27" in result
 
-    def test_renders_numbered_concept_sections(self, template):
+    def test_renders_numbered_concept_sections(self, template) -> None:
         """Architecture concepts must render as numbered sections (1., 2., etc.)."""
         result = template.render(
             name="test-architecture",
@@ -250,7 +250,7 @@ class TestArchitectureTemplate:
         assert "## 2. ConnectionPool" in result
         assert "Pool of connections" in result
 
-    def test_renders_constraints_and_decisions_table(self, template):
+    def test_renders_constraints_and_decisions_table(self, template) -> None:
         """Architecture doc must render Constraints & Decisions table."""
         result = template.render(
             name="test-architecture",
@@ -280,7 +280,7 @@ class TestReferenceTemplate:
         env = Environment(loader=FileSystemLoader(template_dir))
         return env.get_template("concrete/reference.md.jinja2")
 
-    def test_has_definitive_status(self, template):
+    def test_has_definitive_status(self, template) -> None:
         """Reference docs are always DEFINITIVE (post-implementation)."""
         result = template.render(
             name="test-reference",
@@ -292,7 +292,7 @@ class TestReferenceTemplate:
 
         assert "**Status:** DEFINITIVE" in result
 
-    def test_has_source_and_test_links(self, template):
+    def test_has_source_and_test_links(self, template) -> None:
         """Reference docs must have Source and Tests header fields."""
         result = template.render(
             name="test-reference",
@@ -305,7 +305,7 @@ class TestReferenceTemplate:
         assert "**Source:** [src/async_client.py][source]" in result
         assert "**Tests:** [tests/test_async_client.py][tests]" in result
 
-    def test_renders_api_reference_with_methods(self, template):
+    def test_renders_api_reference_with_methods(self, template) -> None:
         """API reference must render classes with methods."""
         result = template.render(
             name="test-reference",
@@ -334,7 +334,7 @@ class TestReferenceTemplate:
         assert "**Parameters:** url: str" in result
         assert "**Returns:** Response" in result
 
-    def test_renders_usage_examples_with_code_blocks(self, template):
+    def test_renders_usage_examples_with_code_blocks(self, template) -> None:
         """Usage examples must render with Python code blocks."""
         result = template.render(
             name="test-reference",

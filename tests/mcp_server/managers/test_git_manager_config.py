@@ -1,5 +1,4 @@
 """Tests for GitManager (Issue #55 integration)."""
-# ruff: noqa: ANN201
 
 from pathlib import Path
 from unittest.mock import MagicMock

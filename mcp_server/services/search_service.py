@@ -62,9 +62,7 @@ class SearchService:
         return score
 
     @staticmethod
-    def extract_snippet(
-        content: str, query: str, context_chars: int = 150
-    ) -> str:
+    def extract_snippet(content: str, query: str, context_chars: int = 150) -> str:
         """Extract snippet with context around query match.
 
         Args:
@@ -84,7 +82,7 @@ class SearchService:
             # No match - return beginning
             if len(content) <= context_chars * 2:
                 return content
-            return content[:context_chars * 2] + "..."
+            return content[: context_chars * 2] + "..."
 
         # Calculate snippet bounds
         start = max(0, pos - context_chars)
@@ -103,10 +101,7 @@ class SearchService:
 
     @staticmethod
     def search_index(
-        index: list[dict[str, Any]],
-        query: str,
-        max_results: int = 10,
-        scope: str | None = None
+        index: list[dict[str, Any]], query: str, max_results: int = 10, scope: str | None = None
     ) -> list[dict[str, Any]]:
         """Search document index.
 
@@ -137,9 +132,7 @@ class SearchService:
             # Create result with relevance and snippet
             result = {**doc}
             result["_relevance"] = relevance
-            result["_snippet"] = SearchService.extract_snippet(
-                doc.get("content", ""), query
-            )
+            result["_snippet"] = SearchService.extract_snippet(doc.get("content", ""), query)
             results.append(result)
 
         # Sort by relevance (descending)

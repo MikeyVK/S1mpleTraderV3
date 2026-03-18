@@ -36,7 +36,7 @@ class TestSearchServiceIntegration:
 
         return docs_dir
 
-    def test_end_to_end_search_flow(self, sample_docs_dir):
+    def test_end_to_end_search_flow(self, sample_docs_dir) -> None:
         """Test complete flow from indexing to search results."""
         # Build index
         index = DocumentIndexer.build_index(sample_docs_dir)
@@ -48,7 +48,7 @@ class TestSearchServiceIntegration:
         assert len(results) == 2
         assert all("Python" in r["title"] or "Python" in r["content"] for r in results)
 
-    def test_scope_filtering_works_with_real_docs(self, sample_docs_dir):
+    def test_scope_filtering_works_with_real_docs(self, sample_docs_dir) -> None:
         """Test scope filtering with real directory structure."""
         # Build index
         index = DocumentIndexer.build_index(sample_docs_dir)
@@ -60,7 +60,7 @@ class TestSearchServiceIntegration:
         assert len(results) >= 1
         assert all(r["scope"] == "architecture" for r in results)
 
-    def test_relevance_sorting_with_real_content(self, sample_docs_dir):
+    def test_relevance_sorting_with_real_content(self, sample_docs_dir) -> None:
         """Test relevance scoring with actual document content."""
         # Build index
         index = DocumentIndexer.build_index(sample_docs_dir)
@@ -76,7 +76,7 @@ class TestSearchServiceIntegration:
         top_result = results[0]
         assert "Python" in top_result["title"]
 
-    def test_snippet_extraction_from_real_docs(self, sample_docs_dir):
+    def test_snippet_extraction_from_real_docs(self, sample_docs_dir) -> None:
         """Test snippet extraction with real document content."""
         # Build index
         index = DocumentIndexer.build_index(sample_docs_dir)
@@ -88,7 +88,7 @@ class TestSearchServiceIntegration:
         assert all("_snippet" in r for r in results)
         assert all("Python" in r["_snippet"] or "python" in r["_snippet"] for r in results)
 
-    def test_empty_directory_returns_empty_index(self, tmp_path):
+    def test_empty_directory_returns_empty_index(self, tmp_path) -> None:
         """Test indexing empty directory."""
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
@@ -98,7 +98,7 @@ class TestSearchServiceIntegration:
 
         assert results == []
 
-    def test_handles_non_markdown_files(self, tmp_path):
+    def test_handles_non_markdown_files(self, tmp_path) -> None:
         """Test that non-.md files are ignored."""
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir()
@@ -113,7 +113,7 @@ class TestSearchServiceIntegration:
         assert len(index) == 1
         assert index[0]["path"] == "valid.md"
 
-    def test_nested_directory_structure(self, tmp_path):
+    def test_nested_directory_structure(self, tmp_path) -> None:
         """Test indexing deeply nested directories."""
         docs_dir = tmp_path / "docs"
         nested_dir = docs_dir / "level1" / "level2" / "level3"

@@ -1,4 +1,3 @@
-# ruff: noqa: ANN201
 """Comprehensive tests for template_config.py get_template_root() function.
 
 Tests cover:
@@ -23,7 +22,7 @@ from mcp_server.config.template_config import get_template_root
 class TestGetTemplateRoot:
     """Comprehensive tests for get_template_root() configuration function."""
 
-    def test_returns_default_template_root_when_no_env_var(self):
+    def test_returns_default_template_root_when_no_env_var(self) -> None:
         """Without TEMPLATE_ROOT env var, returns default mcp_server/scaffolding/templates."""
         # Arrange: Ensure TEMPLATE_ROOT is not set
         with patch.dict(os.environ, {}, clear=False):
@@ -40,7 +39,7 @@ class TestGetTemplateRoot:
             assert "scaffolding" in str(result), f"Expected scaffolding in path, got: {result}"
             assert result.exists(), f"Default template root must exist: {result}"
 
-    def test_returns_absolute_path(self):
+    def test_returns_absolute_path(self) -> None:
         """get_template_root() always returns absolute path (not relative)."""
         # Arrange
         with patch.dict(os.environ, {}, clear=False):
@@ -96,7 +95,7 @@ class TestGetTemplateRoot:
             assert result.is_absolute(), "Relative env var path must be resolved to absolute"
             assert result == custom_root.resolve()
 
-    def test_raises_filenotfound_when_env_var_path_missing(self):
+    def test_raises_filenotfound_when_env_var_path_missing(self) -> None:
         """Fail-fast: Raises FileNotFoundError if TEMPLATE_ROOT path doesn't exist."""
         # Arrange: Non-existent path
         nonexistent_path = "/this/path/does/not/exist/anywhere"
@@ -165,7 +164,7 @@ class TestGetTemplateRoot:
             # Verify it's NOT the default path
             assert "mcp_server" not in str(result) or "priority_templates" in str(result)
 
-    def test_returns_same_path_on_multiple_calls(self):
+    def test_returns_same_path_on_multiple_calls(self) -> None:
         """get_template_root() is deterministic (same input = same output)."""
         # Arrange
         with patch.dict(os.environ, {}, clear=False):
@@ -179,7 +178,7 @@ class TestGetTemplateRoot:
             # Assert
             assert result1 == result2, "get_template_root() should be deterministic"
 
-    def test_error_message_includes_path_when_missing(self):
+    def test_error_message_includes_path_when_missing(self) -> None:
         """FileNotFoundError includes the problematic path in error message."""
         # Arrange: Use Windows-compatible path (no leading slash on Windows)
         if os.name == "nt":

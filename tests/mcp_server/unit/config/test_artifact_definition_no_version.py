@@ -12,7 +12,7 @@ from mcp_server.config.artifact_registry_config import ArtifactDefinition
 class TestArtifactDefinitionNoVersion:
     """Test that version field is removed from ArtifactDefinition (Task 1.5b)."""
 
-    def test_artifact_definition_has_no_version_field(self):
+    def test_artifact_definition_has_no_version_field(self) -> None:
         """ArtifactDefinition should NOT have version field.
 
         REQUIREMENT (Task 1.5b): artifacts.yaml is selection config (which template),
@@ -40,7 +40,7 @@ class TestArtifactDefinitionNoVersion:
         # After Task 1.5b fix:
         assert not hasattr(artifact, "version")
 
-    def test_artifact_yaml_without_version_is_valid(self):
+    def test_artifact_yaml_without_version_is_valid(self) -> None:
         """artifacts.yaml entries should NOT require version field.
 
         REQUIREMENT: Version comes from template registry, not artifacts.yaml.
@@ -71,7 +71,7 @@ class TestArtifactDefinitionNoVersion:
 class TestArtifactManagerNoVersionContext:
     """Test that template_version is NOT injected into context (Task 1.5b)."""
 
-    def test_scaffold_context_has_no_template_version(self):
+    def test_scaffold_context_has_no_template_version(self) -> None:
         """scaffold_artifact() should NOT inject template_version into context.
 
         REQUIREMENT (Task 1.5b): Version comes from registry hash lookup, not artifact config.

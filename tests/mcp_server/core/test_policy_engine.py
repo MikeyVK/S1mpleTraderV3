@@ -2,7 +2,6 @@
 
 Tests Phase 4: Policy decision engine with config integration
 """
-# ruff: noqa: ANN201
 
 from tests.mcp_server.test_support import make_policy_engine
 
@@ -10,7 +9,7 @@ from tests.mcp_server.test_support import make_policy_engine
 class TestPolicyEngineConfigDriven:
     """Test suite for refactored config-driven PolicyEngine."""
 
-    def test_scaffold_allowed_in_implementation_phase(self):
+    def test_scaffold_allowed_in_implementation_phase(self) -> None:
         """Test scaffold operation allowed in implementation phase."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -23,14 +22,14 @@ class TestPolicyEngineConfigDriven:
         assert "scaffold" in decision.reason.lower()
         assert decision.operation == "scaffold"
 
-    def test_scaffold_blocked_in_review_phase(self):
+    def test_scaffold_blocked_in_review_phase(self) -> None:
         """Test scaffold operation blocked in review phase."""
         engine = make_policy_engine()
         decision = engine.decide(operation="scaffold", phase="review", context={})
         assert decision.allowed is False
         assert "review" in decision.reason.lower()
 
-    def test_create_file_blocked_for_backend_py(self):
+    def test_create_file_blocked_for_backend_py(self) -> None:
         """Test create_file blocked for backend Python files."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -42,7 +41,7 @@ class TestPolicyEngineConfigDriven:
         assert decision.allowed is False
         assert "blocked" in decision.reason.lower() or "scaffold" in decision.reason.lower()
 
-    def test_create_file_allowed_for_markdown(self):
+    def test_create_file_allowed_for_markdown(self) -> None:
         """Test create_file allowed for markdown files."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -50,7 +49,7 @@ class TestPolicyEngineConfigDriven:
         )
         assert decision.allowed is True
 
-    def test_commit_requires_configured_prefix(self):
+    def test_commit_requires_configured_prefix(self) -> None:
         """Test commit requires a configured commit prefix."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -59,7 +58,7 @@ class TestPolicyEngineConfigDriven:
         assert decision.allowed is False
         assert "prefix" in decision.reason.lower()
 
-    def test_commit_allowed_with_green_prefix(self):
+    def test_commit_allowed_with_green_prefix(self) -> None:
         """Test commit allowed with feat: prefix (green phase maps to feat:)."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -69,7 +68,7 @@ class TestPolicyEngineConfigDriven:
         )
         assert decision.allowed is True
 
-    def test_component_type_validation(self):
+    def test_component_type_validation(self) -> None:
         """Test component type validation in directory."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -81,7 +80,7 @@ class TestPolicyEngineConfigDriven:
         assert decision.allowed is False
         assert "service" in decision.reason.lower()
 
-    def test_allowed_extension_validation(self):
+    def test_allowed_extension_validation(self) -> None:
         """Test file extension validation."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -90,7 +89,7 @@ class TestPolicyEngineConfigDriven:
         # .txt should be allowed for docs directory
         assert decision.allowed is True
 
-    def test_audit_trail_logging(self):
+    def test_audit_trail_logging(self) -> None:
         """Test decisions are logged to audit trail."""
         engine = make_policy_engine()
         engine.decide(
@@ -104,7 +103,7 @@ class TestPolicyEngineConfigDriven:
         assert trail[0]["operation"] == "scaffold"
         assert trail[0]["allowed"] is True
 
-    def test_policy_decision_contains_directory_policy(self):
+    def test_policy_decision_contains_directory_policy(self) -> None:
         """Test PolicyDecision includes resolved directory policy."""
         engine = make_policy_engine()
         decision = engine.decide(
@@ -116,7 +115,7 @@ class TestPolicyEngineConfigDriven:
         assert decision.directory_policy is not None
         assert decision.directory_policy.path == "backend/dtos"
 
-    def test_error_handling_denies_by_default(self):
+    def test_error_handling_denies_by_default(self) -> None:
         """Test errors result in denied decision (fail-safe)."""
         engine = make_policy_engine()
         decision = engine.decide(

@@ -34,12 +34,12 @@ def jinja_env():
 class TestTier3PatternPythonDi:
     """Tests for the tier3 DI macro library template."""
 
-    def test_template_exists(self, jinja_env):
+    def test_template_exists(self, jinja_env) -> None:
         """Template exists and is loadable."""
         template = jinja_env.get_template("tier3_pattern_python_di.jinja2")
         assert template is not None
 
-    def test_template_has_no_extends_or_blocks(self):
+    def test_template_has_no_extends_or_blocks(self) -> None:
         """Template is a macro library: no extends/blocks (outside comments)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -55,7 +55,7 @@ class TestTier3PatternPythonDi:
         no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
-    def test_template_has_metadata_and_macros(self):
+    def test_template_has_metadata_and_macros(self) -> None:
         """Template includes metadata and required macro definitions."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -80,7 +80,7 @@ class TestTier3PatternPythonDi:
         assert "{% macro pattern_di_set_dependency" in content
         assert "{% macro pattern_di_set_capability" in content
 
-    def test_macros_render_expected_tokens(self, jinja_env):
+    def test_macros_render_expected_tokens(self, jinja_env) -> None:
         """Rendered macros contain expected DI tokens."""
         template = jinja_env.get_template("tier3_pattern_python_di.jinja2")
 

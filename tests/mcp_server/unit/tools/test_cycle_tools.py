@@ -128,7 +128,9 @@ class TestCycleTools:
         ):
             mock_settings_cls.from_env.return_value.server.name = "test-server"
             mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
-            mock_settings_cls.from_env.return_value.server.config_root = str(tmp_path / ".st3" / "config")
+            mock_settings_cls.from_env.return_value.server.config_root = str(
+                tmp_path / ".st3" / "config"
+            )
             mock_settings_cls.from_env.return_value.github.token = None
             mock_settings_cls.from_env.return_value.github.owner = "test"
             mock_settings_cls.from_env.return_value.github.repo = "repo"
@@ -173,7 +175,9 @@ class TestCycleTools:
         with patch("mcp_server.server.Settings") as mock_settings_cls:
             mock_settings_cls.from_env.return_value.server.name = "test-server"
             mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
-            mock_settings_cls.from_env.return_value.server.config_root = str(tmp_path / ".st3" / "config")
+            mock_settings_cls.from_env.return_value.server.config_root = str(
+                tmp_path / ".st3" / "config"
+            )
             mock_settings_cls.from_env.return_value.github.token = None
             mock_settings_cls.from_env.return_value.github.owner = "test"
             mock_settings_cls.from_env.return_value.github.repo = "repo"

@@ -12,15 +12,14 @@ from __future__ import annotations
 # The workspace-level hook writes only to location 1 (per-chat, lightweight).
 # This script additionally writes to location 2, which is the path that
 # session_start_imp.py and session_start_qa.py read for cross-chat recovery.
-
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 SHARED_SNAPSHOT_PATH = Path(".copilot") / "session-state.json"
+JsonObject = dict[str, object]
 SESSIONS_DIR = Path(".copilot") / "sessions"
 MAX_FILES_IN_SCOPE = 12
 MAX_GOAL_LENGTH = 400
@@ -60,13 +59,12 @@ def main() -> None:
         or extract_files_from_text_fragments(text_fragments)
         or as_string_list(previous_snapshot.get("files_in_scope"))
     )
-    pending_handover_summary = (
-        extract_pending_handover_summary(message_records)
-        or extract_handover_from_text_fragments(text_fragments)
-    )
+    pending_handover_summary = extract_pending_handover_summary(
+        message_records
+    ) or extract_handover_from_text_fragments(text_fragments)
     handover_prompt_block = extract_handover_prompt_block(message_records)
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     per_chat_snapshot = {
         "timestamp": now,
@@ -98,23 +96,25 @@ def main() -> None:
     )
 
     json.dump(
-        {"systemMessage": (
-            f"Saved agent snapshot to {per_chat_path.relative_to(workspace_root).as_posix()}"
-            f" and {SHARED_SNAPSHOT_PATH.as_posix()}."
-        )},
+        {
+            "systemMessage": (
+                f"Saved agent snapshot to {per_chat_path.relative_to(workspace_root).as_posix()}"
+                f" and {SHARED_SNAPSHOT_PATH.as_posix()}."
+            )
+        },
         sys.stdout,
         ensure_ascii=True,
     )
 
 
-def derive_chat_id(event: dict[str, Any]) -> str:
+def derive_chat_id(event: JsonObject) -> str:
     raw_path = event.get("transcript_path")
     if isinstance(raw_path, str) and raw_path.strip():
         return Path(raw_path).stem or "default"
     return "default"
 
 
-def read_transcript(event: dict[str, Any], workspace_root: Path) -> dict[str, Any]:
+def read_transcript(event: JsonObject, workspace_root: Path) -> JsonObject:
     raw_path = event.get("transcript_path")
     if not isinstance(raw_path, str) or not raw_path.strip():
         return {}
@@ -124,7 +124,7 @@ def read_transcript(event: dict[str, Any], workspace_root: Path) -> dict[str, An
     return read_json_file(candidate)
 
 
-def read_json_file(path: Path) -> dict[str, Any]:
+def read_json_file(path: Path) -> JsonObject:
     if not path.exists():
         return {}
     try:
@@ -133,7 +133,7 @@ def read_json_file(path: Path) -> dict[str, Any]:
         return {}
 
 
-def read_stdin_json() -> dict[str, Any]:
+def read_stdin_json() -> JsonObject:
     try:
         raw_input = sys.stdin.read()
     except OSError:
@@ -146,19 +146,19 @@ def read_stdin_json() -> dict[str, Any]:
         return {}
 
 
-def collect_message_records(payload: Any) -> list[dict[str, str]]:
+def collect_message_records(payload: object) -> list[dict[str, str]]:
     records: list[dict[str, str]] = []
     _visit_message_nodes(payload, records)
     return _deduplicate_records(records)
 
 
-def collect_text_fragments(payload: Any) -> list[str]:
+def collect_text_fragments(payload: object) -> list[str]:
     fragments: list[str] = []
     _visit_text_nodes(payload, fragments)
     return _deduplicate_fragments(fragments)
 
 
-def _visit_message_nodes(node: Any, records: list[dict[str, str]]) -> None:
+def _visit_message_nodes(node: object, records: list[dict[str, str]]) -> None:
     if isinstance(node, dict):
         role = as_clean_text(node.get("role"))
         text = _extract_text(node.get("content")) or _extract_text(node.get("text"))
@@ -171,7 +171,7 @@ def _visit_message_nodes(node: Any, records: list[dict[str, str]]) -> None:
             _visit_message_nodes(item, records)
 
 
-def _visit_text_nodes(node: Any, fragments: list[str]) -> None:
+def _visit_text_nodes(node: object, fragments: list[str]) -> None:
     if isinstance(node, str):
         text = as_clean_text(node)
         if text:
@@ -184,7 +184,7 @@ def _visit_text_nodes(node: Any, fragments: list[str]) -> None:
             _visit_text_nodes(item, fragments)
 
 
-def _extract_text(node: Any) -> str:
+def _extract_text(node: object) -> str:
     if isinstance(node, str):
         return as_clean_text(node)
     if isinstance(node, dict):
@@ -326,16 +326,18 @@ def _has_handover_shape(text: str) -> bool:
     return all(m in text for m in ["scope", "files", "proof", "out-of-scope", "open blockers"])
 
 
-def as_clean_text(value: Any) -> str:
+def as_clean_text(value: object) -> str:
     if not isinstance(value, str):
         return ""
     return " ".join(value.split()).strip()
 
 
-def as_string_list(value: Any) -> list[str]:
+def as_string_list(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
-    return [item.strip().replace("\\", "/") for item in value if isinstance(item, str) and item.strip()]
+    return [
+        item.strip().replace("\\", "/") for item in value if isinstance(item, str) and item.strip()
+    ]
 
 
 def truncate(value: str, limit: int) -> str:

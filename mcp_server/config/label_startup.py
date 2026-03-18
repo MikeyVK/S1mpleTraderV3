@@ -13,6 +13,7 @@ Validates labels.yaml at MCP server startup for early problem detection.
 
 # Standard library
 import logging
+from pathlib import Path
 
 # Local
 from mcp_server.config.label_config import LabelConfig
@@ -30,8 +31,6 @@ def validate_label_config_on_startup(config_path: str | None = None) -> None:
     Logs warnings but does NOT block startup.
     Tools will validate at operation time.
     """
-    from pathlib import Path
-
     try:
         path = Path(config_path) if config_path else None
         label_config = LabelConfig.load(path)
@@ -44,11 +43,9 @@ def validate_label_config_on_startup(config_path: str | None = None) -> None:
         )
     except ValueError as e:
         logger.error(
-            "Invalid labels.yaml configuration: %s. "
-            "Fix configuration before using label tools.", e
+            "Invalid labels.yaml configuration: %s. Fix configuration before using label tools.", e
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error(
-            "Unexpected error loading labels.yaml: %s. "
-            "Label tools may not function correctly.", e
+            "Unexpected error loading labels.yaml: %s. Label tools may not function correctly.", e
         )

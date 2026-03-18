@@ -12,13 +12,13 @@ from mcp_server.config.schemas import GitConfig
 from mcp_server.config.settings import Settings
 from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.config.workphases_config import WorkphasesConfig
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 from mcp_server.tools.discovery_tools import (
     GetWorkContextInput,
     GetWorkContextTool,
     SearchDocumentationInput,
     SearchDocumentationTool,
 )
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 def make_settings(workspace_root: Path | str = ".", github_token: str | None = None) -> Settings:

@@ -323,6 +323,5 @@ class TestIssue39CrossMachine:
         project_manager = make_project_manager(workspace_root)
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
-
         with pytest.raises(ValueError, match="Cannot extract issue number"):
             state_engine.get_state("invalid-branch-name")

@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
-
 _CANONICAL_CONFIG_DIR = Path(".st3") / "config"
 
 
@@ -127,12 +126,15 @@ def resolve_config_root(
         ):
             return explicit_candidate
         missing = [
-            file_name for file_name in required_files if not (explicit_candidate / file_name).exists()
+            file_name
+            for file_name in required_files
+            if not (explicit_candidate / file_name).exists()
         ]
         if missing:
             missing_text = ", ".join(str(file_name) for file_name in missing)
             raise FileNotFoundError(
-                f"Explicit config_root is missing required files: {missing_text} ({explicit_candidate})"
+                "Explicit config_root is missing required files: "
+                f"{missing_text} ({explicit_candidate})"
             )
         raise FileNotFoundError(f"Explicit config_root does not exist: {explicit_candidate}")
 

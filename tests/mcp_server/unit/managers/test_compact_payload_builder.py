@@ -18,7 +18,6 @@ C39 change (duration_ms contract):
 
 from __future__ import annotations
 
-from mcp_server.managers.qa_manager import QAManager
 from tests.mcp_server.test_support import make_qa_manager
 
 

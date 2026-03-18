@@ -1,4 +1,5 @@
 """Markdown validator implementation."""
+
 import re
 from pathlib import Path
 
@@ -31,25 +32,24 @@ class MarkdownValidator(BaseValidator):
         # Read content
         if content is None:
             if not file_path.exists():
-                return ValidationResult(passed=False, score=0.0, issues=[
-                    ValidationIssue("File not found")
-                ])
+                return ValidationResult(
+                    passed=False, score=0.0, issues=[ValidationIssue("File not found")]
+                )
             try:
                 text = file_path.read_text(encoding="utf-8")
             except OSError as e:
-                return ValidationResult(passed=False, score=0.0, issues=[
-                    ValidationIssue(f"Failed to read file: {e}")
-                ])
+                return ValidationResult(
+                    passed=False, score=0.0, issues=[ValidationIssue(f"Failed to read file: {e}")]
+                )
         else:
             text = content
 
         # Check 1: H1 Title
         h1_match = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
         if not h1_match:
-            issues.append(ValidationIssue(
-                message="Missing H1 title (start line with '# ')",
-                severity="error"
-            ))
+            issues.append(
+                ValidationIssue(message="Missing H1 title (start line with '# ')", severity="error")
+            )
 
         # Check 2: Broken Links
         # Only strict checks on relative file links, ignoring http/https/mailto
@@ -58,8 +58,9 @@ class MarkdownValidator(BaseValidator):
             link_target = match.group(2)
 
             # Skip external links and anchors
-            if (link_target.startswith(("http:", "https:", "mailto:", "st3:")) or
-                    link_target.startswith("#")):
+            if link_target.startswith(
+                ("http:", "https:", "mailto:", "st3:")
+            ) or link_target.startswith("#"):
                 continue
 
             # Handle absolute paths (rare in md, but possible) or relative
@@ -78,17 +79,17 @@ class MarkdownValidator(BaseValidator):
             # If strict check fails, flag it.
             if not resolved_path.exists():
                 # Line calculation (approximate)
-                line_no = text[:match.start()].count('\n') + 1
-                issues.append(ValidationIssue(
-                    message=f"Broken link: '{link_target}' not found at {resolved_path}",
-                    line=line_no,
-                    severity="warning"  # Warning for now, as context allows
-                ))
+                line_no = text[: match.start()].count("\n") + 1
+                issues.append(
+                    ValidationIssue(
+                        message=f"Broken link: '{link_target}' not found at {resolved_path}",
+                        line=line_no,
+                        severity="warning",  # Warning for now, as context allows
+                    )
+                )
 
         score = 10.0 if not issues else max(0.0, 10.0 - (len(issues) * 2))
 
         return ValidationResult(
-            passed=not [i for i in issues if i.severity == "error"],
-            score=score,
-            issues=issues
+            passed=not [i for i in issues if i.severity == "error"], score=score, issues=issues
         )

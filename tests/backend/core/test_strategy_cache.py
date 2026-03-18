@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 # Third-party
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 # Project modules
 from backend.core.interfaces.strategy_cache import (
@@ -151,7 +151,7 @@ class TestStrategyCache:
         anchor = cache.get_run_anchor()
 
         # Should not be able to modify
-        with pytest.raises(Exception):  # Pydantic raises ValidationError
+        with pytest.raises((AttributeError, TypeError, ValidationError)):
             anchor.timestamp = datetime.now(UTC)
 
     # --- set_result_dto Tests ---

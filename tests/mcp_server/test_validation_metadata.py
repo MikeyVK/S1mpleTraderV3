@@ -20,7 +20,7 @@ class TestTier0ValidationMetadata:
         """Get templates directory path."""
         return Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
-    def test_tier0_has_validation_metadata(self):
+    def test_tier0_has_validation_metadata(self) -> None:
         """Tier 0 template should have validation TEMPLATE_METADATA."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier0_base_artifact.jinja2"
@@ -33,7 +33,7 @@ class TestTier0ValidationMetadata:
         # validates.strict removed in v2.3.0 (descriptive strings, not machine-readable)
         # SCAFFOLD validation now handled by ScaffoldMetadataParser, not layered validator
 
-    def test_tier0_enforcement_strict(self):
+    def test_tier0_enforcement_strict(self) -> None:
         """Tier 0 should use STRICT enforcement (universal constraints)."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier0_base_artifact.jinja2"
@@ -42,7 +42,7 @@ class TestTier0ValidationMetadata:
 
         assert metadata["enforcement"] == "STRICT"
 
-    def test_tier0_validates_scaffold_pattern(self):
+    def test_tier0_validates_scaffold_pattern(self) -> None:
         """Tier 0 SCAFFOLD format documented in notes (not validates.strict)."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier0_base_artifact.jinja2"
@@ -64,7 +64,7 @@ class TestTier1ValidationMetadata:
         """Get templates directory path."""
         return Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
-    def test_tier1_code_has_validation_metadata(self):
+    def test_tier1_code_has_validation_metadata(self) -> None:
         """Tier 1 CODE template should have validation metadata."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier1_base_code.jinja2"
@@ -75,7 +75,7 @@ class TestTier1ValidationMetadata:
         assert "enforcement" in metadata
         assert metadata["enforcement"] == "STRICT"
 
-    def test_tier1_code_validates_imports_classes(self):
+    def test_tier1_code_validates_imports_classes(self) -> None:
         """Tier 1 CODE should validate import/class/function structure."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier1_base_code.jinja2"
@@ -87,7 +87,7 @@ class TestTier1ValidationMetadata:
         assert any("import" in rule.lower() or "from" in rule.lower() for rule in strict_rules)
         assert any("class" in rule.lower() for rule in strict_rules)
 
-    def test_tier1_document_has_validation_metadata(self):
+    def test_tier1_document_has_validation_metadata(self) -> None:
         """Tier 1 DOCUMENT template should have validation metadata."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier1_base_document.jinja2"
@@ -97,7 +97,7 @@ class TestTier1ValidationMetadata:
         assert metadata, "Tier 1 DOCUMENT should have TEMPLATE_METADATA"
         assert metadata["enforcement"] == "STRICT"
 
-    def test_tier1_document_validates_headings(self):
+    def test_tier1_document_validates_headings(self) -> None:
         """Tier 1 DOCUMENT should validate document structure."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier1_base_document.jinja2"
@@ -112,7 +112,7 @@ class TestTier1ValidationMetadata:
             structure_rules = validates["structure"]
             assert any("Purpose" in rule or "Scope" in rule for rule in structure_rules)
 
-    def test_tier2_python_has_validation_metadata(self):
+    def test_tier2_python_has_validation_metadata(self) -> None:
         """Tier 2 Python template should have validation metadata."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier2_base_python.jinja2"
@@ -123,7 +123,7 @@ class TestTier1ValidationMetadata:
         assert "enforcement" in metadata
         assert metadata["enforcement"] == "STRICT"  # Tier 0+1+2 are STRICT (Issue #72)
 
-    def test_tier2_python_validates_typing_docstrings(self):
+    def test_tier2_python_validates_typing_docstrings(self) -> None:
         """Tier 2 Python should validate type hints and docstrings."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier2_base_python.jinja2"
@@ -139,7 +139,7 @@ class TestTier1ValidationMetadata:
             for rule in strict_rules
         )
 
-    def test_tier2_markdown_has_validation_metadata(self):
+    def test_tier2_markdown_has_validation_metadata(self) -> None:
         """Tier 2 Markdown template should have validation metadata."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier2_base_markdown.jinja2"
@@ -149,7 +149,7 @@ class TestTier1ValidationMetadata:
         assert metadata, "Tier 2 Markdown should have TEMPLATE_METADATA"
         assert metadata["enforcement"] == "STRICT"  # Tier 0+1+2 are STRICT (Issue #72)
 
-    def test_tier2_yaml_has_validation_metadata(self):
+    def test_tier2_yaml_has_validation_metadata(self) -> None:
         """Tier 2 YAML template should have validation metadata."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier2_base_yaml.jinja2"
@@ -180,7 +180,7 @@ class TestValidationMetadataStructure:
             "tier2_base_yaml.jinja2",
         ],
     )
-    def test_all_templates_have_required_fields(self, template_file):
+    def test_all_templates_have_required_fields(self, template_file) -> None:
         """All base templates should have required validation metadata fields."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / template_file

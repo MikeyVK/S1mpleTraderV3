@@ -11,20 +11,21 @@ BaselineTestWorker - Worker implementation.
 
 # Standard library
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+
 import logging
+from typing import TYPE_CHECKING, Any
 
 # Third-party
 # (Add third-party imports here if needed)
-
 # Project modules
 from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
 from backend.utils.app_logger import LogEnricher
 from backend.utils.translator import Translator
 
 if TYPE_CHECKING:
-    from backend.core.interfaces.strategy_cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
+
+    from backend.core.interfaces.strategy_cache import IStrategyCache
 
 __all__ = ["BaselineTestWorker"]
 
@@ -52,7 +53,7 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
         self._name: str = build_spec.name
         self._config = build_spec.config
 
-        self._cache: "IStrategyCache | None" = None
+        self._cache: IStrategyCache | None = None
         self.logger: LogEnricher | None = None
         self._translator: Translator | None = None
 
@@ -81,9 +82,7 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
             WorkerInitializationError: If requirements not met
         """
         if strategy_cache is None:
-            raise WorkerInitializationError(
-                f"{self._name}: di.dependency.strategy_cache.required"
-            )
+            raise WorkerInitializationError(f"{self._name}: di.dependency.strategy_cache.required")
 
         self._cache = strategy_cache
 
@@ -99,8 +98,8 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
 
         # Use dot-notation keys for i18n (example key: app.start)
         # Pattern: translator.get(key, default=key)  (fallback is key itself)
-        # Special-case parameter display names: translator.get_param_name(param_path, default=param_path)
-
+        # Special-case parameter display names:
+        # translator.get_param_name(param_path, default=param_path)
 
         # Perform additional initialization here
 

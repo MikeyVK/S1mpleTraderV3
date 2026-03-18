@@ -23,7 +23,8 @@ class ScopeConfig(_ScopeConfigSchema):
 
         if not config_path.exists():
             raise FileNotFoundError(
-                f"Scope config not found: {path}. Create .st3/config/scopes.yaml with valid scope names."
+                f"Scope config not found: {path}. "
+                "Create .st3/config/scopes.yaml with valid scope names."
             )
 
         loader = ConfigLoader(config_root=config_path.parent)

@@ -6,6 +6,7 @@ Tests immutable label definition with color validation and YAML loading.
 @layer: Tests (Unit)
 @dependencies: [pytest, dataclasses, mcp_server.config.label_config]
 """
+
 # Standard library
 from dataclasses import FrozenInstanceError
 from pathlib import Path
@@ -13,7 +14,6 @@ from unittest.mock import Mock
 
 # Third-party
 import pytest
-from pydantic import ValidationError
 
 # Project modules
 from mcp_server.config.label_config import Label

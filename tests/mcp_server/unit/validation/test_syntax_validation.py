@@ -13,7 +13,7 @@ Tests verify:
 from mcp_server.validation.validation_service import ValidationService
 
 
-def test_validate_syntax_python_valid():
+def test_validate_syntax_python_valid() -> None:
     """GIVEN: Valid Python code, WHEN: validate_syntax(.py), THEN: passed=True."""
     service = ValidationService()
 
@@ -29,7 +29,7 @@ class TestDTO(BaseModel):
     assert not issues
 
 
-def test_validate_syntax_python_invalid():
+def test_validate_syntax_python_invalid() -> None:
     """GIVEN: Invalid Python syntax, WHEN: validate_syntax(.py), THEN: passed=False."""
     service = ValidationService()
 
@@ -45,7 +45,7 @@ class TestDTO:
     assert "line" in issues.lower()
 
 
-def test_validate_syntax_markdown_valid():
+def test_validate_syntax_markdown_valid() -> None:
     """GIVEN: Markdown with H1, WHEN: validate_syntax(.md), THEN: passed=True."""
     service = ValidationService()
 
@@ -59,7 +59,7 @@ Some content here.
     assert not issues
 
 
-def test_validate_syntax_markdown_missing_h1():
+def test_validate_syntax_markdown_missing_h1() -> None:
     """GIVEN: Markdown without H1, WHEN: validate_syntax(.md), THEN: passed=False."""
     service = ValidationService()
 
@@ -73,7 +73,7 @@ No H1 title!
     assert "h1" in issues.lower() or "title" in issues.lower()
 
 
-def test_validate_syntax_unknown_filetype_passes():
+def test_validate_syntax_unknown_filetype_passes() -> None:
     """GIVEN: Unknown filetype, WHEN: validate_syntax(), THEN: passed=True (no validation)."""
     service = ValidationService()
 

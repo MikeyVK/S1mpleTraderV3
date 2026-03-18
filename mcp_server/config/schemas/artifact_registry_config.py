@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from mcp_server.core.exceptions import ConfigError
 
 
-class ArtifactType(str, Enum):
+class ArtifactType(StrEnum):
     """Artifact category: code, documentation, or tracking."""
 
     CODE = "code"
@@ -93,6 +93,7 @@ class ArtifactRegistryConfig(BaseModel):
 
     version: str = Field(..., description="Schema version")
     artifact_types: list[ArtifactDefinition] = Field(..., description="All artifact definitions")
+
     def get_artifact(self, type_id: str) -> ArtifactDefinition:
         for artifact in self.artifact_types:
             if artifact.type_id == type_id:
@@ -101,7 +102,8 @@ class ArtifactRegistryConfig(BaseModel):
         available = ", ".join(artifact.type_id for artifact in self.artifact_types)
         raise ConfigError(
             f"Artifact type '{type_id}' not found in registry. "
-            f"Available types: {available}. Fix: Check spelling or add a matching artifact definition.",
+            "Available types: "
+            f"{available}. Fix: Check spelling or add a matching artifact definition.",
             hints=[
                 f"Check spelling: '{type_id}' not found",
                 f"Available types: {available}",

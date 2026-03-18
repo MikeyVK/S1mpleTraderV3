@@ -18,7 +18,6 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.project_tools import (
     InitializeProjectInput,
     InitializeProjectTool,
