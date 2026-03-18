@@ -11,13 +11,14 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_server.validation.validation_service import ValidationService
 from tests.mcp_server.test_support import make_template_scaffolder
 
 
 class TestTemplateRootConfiguration:
     """Tests for template root configuration behavior."""
 
-    def test_default_uses_tier_root(self):
+    def test_default_uses_tier_root(self) -> None:
         """When no config set, should use mcp_server/scaffolding/templates."""
         scaffolder = make_template_scaffolder()
 
@@ -29,26 +30,30 @@ class TestTemplateRootConfiguration:
             f"Expected tier-root {expected_tier_root}, got {actual_root}"
         )
 
-    def test_env_variable_overrides_default(self):
+    def test_env_variable_overrides_default(self) -> None:
         """When TEMPLATE_ROOT env var set, should use that path."""
         custom_path = Path("custom/template/path").resolve()
 
-        with patch.dict(os.environ, {"TEMPLATE_ROOT": str(custom_path)}):
-            with patch("pathlib.Path.exists", return_value=True):
-                scaffolder = make_template_scaffolder()
+        with (
+            patch.dict(os.environ, {"TEMPLATE_ROOT": str(custom_path)}),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            scaffolder = make_template_scaffolder()
 
-                # pylint: disable=protected-access
-                assert scaffolder._renderer.template_dir == custom_path
+            # pylint: disable=protected-access
+            assert scaffolder._renderer.template_dir == custom_path
 
-    def test_fail_fast_on_nonexistent_path(self):
+    def test_fail_fast_on_nonexistent_path(self) -> None:
         """When configured path doesn't exist, raise FileNotFoundError."""
         nonexistent_path = Path("/does/not/exist/templates")
 
-        with patch.dict(os.environ, {"TEMPLATE_ROOT": str(nonexistent_path)}):
-            with pytest.raises(FileNotFoundError, match="Template root.*does not exist"):
-                make_template_scaffolder()
+        with (
+            patch.dict(os.environ, {"TEMPLATE_ROOT": str(nonexistent_path)}),
+            pytest.raises(FileNotFoundError, match="Template root.*does not exist"),
+        ):
+            make_template_scaffolder()
 
-    def test_no_fallback_to_legacy_templates_dir(self):
+    def test_no_fallback_to_legacy_templates_dir(self) -> None:
         """Should NEVER fall back to mcp_server/templates (legacy)."""
         scaffolder = make_template_scaffolder()
 
@@ -60,11 +65,8 @@ class TestTemplateRootConfiguration:
             f"Should not use legacy templates/ dir, but got {actual_root}"
         )
 
-    def test_validation_service_uses_same_root(self):
+    def test_validation_service_uses_same_root(self) -> None:
         """ValidationService should use same template root as scaffolder."""
-        # Import in test to avoid module-level import
-        from mcp_server.validation.validation_service import ValidationService
-
         scaffolder = make_template_scaffolder()
         validation_service = ValidationService()
 
