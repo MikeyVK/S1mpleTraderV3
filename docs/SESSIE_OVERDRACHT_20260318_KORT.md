@@ -7,26 +7,43 @@ feature/257-reorder-workflow-phases
 #257
 
 ## Scope
-Laatste afronding van C_LOADER.4: de resterende Gate 0 formatter-blocker op tests/mcp_server/unit/scaffolders/test_template_root_config.py oplossen, proof opnieuw draaien en de bestaande overdracht aanvullen.
+Gerichte hook-surface follow-up op basis van de laatste QA-bevindingen:
+
+- `scripts/copilot_hooks/stop_handover_guard.py`
+- `tests/mcp_server/unit/utils/test_stop_handover_guard.py`
+- `scripts/copilot_hooks/pre_compact_agent.py`
+- `tests/mcp_server/unit/utils/test_pre_compact_agent.py`
+- `docs/SESSIE_OVERDRACHT_20260318_KORT.md`
+
+Doel van deze afronding:
+- Pyright-fix op de stop hook
+- format/lint-clean testoppervlak voor de stop hook
+- hand-over evidence terugbrengen naar wat op deze hook-scope echt bewezen is
 
 ## Gewijzigde bestanden
-- tests/mcp_server/unit/scaffolders/test_template_root_config.py
-- docs/SESSIE_OVERDRACHT_20260317b.md
+- scripts/copilot_hooks/stop_handover_guard.py
+- tests/mcp_server/unit/utils/test_stop_handover_guard.py
 - docs/SESSIE_OVERDRACHT_20260318_KORT.md
 
 ## Uitkomst
-- Ruff formatter gedraaid op exact 1 testbestand
-- Semantisch gecontroleerd: geen logica, imports, annotaties of assertions gewijzigd
-- Gate 0 check op het bestand groen
-- Branch quality gates groen
-- tests/mcp_server/unit/scaffolders/ groen
-- grep op file-level ruff-headers onder tests/mcp_server blijft leeg
+- `ROLE_REQUIREMENTS` in de stop hook is nu typed zodat membership checks op `heading` en `guide_line` als `str` worden behandeld, niet als `str | list[str]`
+- De stop-hook tests zijn opgeschoond zonder gedragswijziging
+- De korte hand-over claimt geen branch-wide green status meer op basis van verouderd, smaller proof
 
 ## Proof samengevat
-- ruff format --check: 1 file already formatted
-- run_quality_gates(scope="branch"): overall_pass = true
-- run_tests(path="tests/mcp_server/unit/scaffolders/"): 34 passed
-- Select-String op ^# ruff: noqa in tests/mcp_server/**/*.py: geen matches
+Deze overdracht claimt alleen bewijs op de actuele hook-scope.
+
+Bevestigd bewijs op deze surface:
+- parser regressietests groen:
+  - `pytest tests/mcp_server/unit/utils/test_pre_compact_agent.py tests/mcp_server/unit/utils/test_stop_handover_guard.py`
+  - resultaat: `6 passed`
+- quality gates groen op exact deze files:
+  - `run_quality_gates(scope="files", files=["scripts/copilot_hooks/pre_compact_agent.py", "tests/mcp_server/unit/utils/test_pre_compact_agent.py", "scripts/copilot_hooks/stop_handover_guard.py", "tests/mcp_server/unit/utils/test_stop_handover_guard.py"])`
+  - resultaat: Ruff Format, Ruff Strict Lint, Imports, Line Length en Pyright allemaal groen
+
+Niet langer geclaimd in deze korte overdracht:
+- branch-wide quality gates groen
+- branch-brede stop/go op basis van eerdere smallere checks
 
 ## Status
-C_LOADER.4 volledig klaar voor GO-beslissing.
+Hook-surface GO voor gerichte QA-verificatie.
