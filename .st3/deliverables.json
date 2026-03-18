@@ -1,7 +1,7 @@
 {
   "257": {
     "issue_number": 257,
-    "issue_title": "Reorder workflow phases: research → design → planning → tdd",
+    "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
     "workflow_name": "feature",
     "execution_mode": "interactive",
     "required_phases": [
@@ -24,7 +24,7 @@
             "deliverables": [
               {
                 "id": "D1.1",
-                "description": "tdd → implementation: present in .st3/workflows.yaml (H rename)",
+                "description": "tdd \u2192 implementation: present in .st3/workflows.yaml (H rename)",
                 "validates": {
                   "type": "contains_text",
                   "file": ".st3/workflows.yaml",
@@ -42,7 +42,7 @@
               },
               {
                 "id": "D1.3",
-                "description": "GitConfig.extract_issue_number() implemented (I3 — cohesion in GitConfig)",
+                "description": "GitConfig.extract_issue_number() implemented (I3 \u2014 cohesion in GitConfig)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/config/git_config.py",
@@ -83,7 +83,7 @@
               },
               {
                 "id": "D2.2",
-                "description": "BranchState frozen=True — CQS enforced at type-system level (E)",
+                "description": "BranchState frozen=True \u2014 CQS enforced at type-system level (E)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/state_repository.py",
@@ -117,7 +117,7 @@
               },
               {
                 "id": "D2.6",
-                "description": "PSE constructor receives IStateRepository — no direct file I/O in PSE (DIP, E)",
+                "description": "PSE constructor receives IStateRepository \u2014 no direct file I/O in PSE (DIP, E)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/phase_state_engine.py",
@@ -132,7 +132,7 @@
             "deliverables": [
               {
                 "id": "D3.1",
-                "description": "phase_contracts.yaml config file created in .st3/config/ (A — Config-First split)",
+                "description": "phase_contracts.yaml config file created in .st3/config/ (A \u2014 Config-First split)",
                 "validates": {
                   "type": "file_exists",
                   "file": ".st3/config/phase_contracts.yaml"
@@ -140,7 +140,7 @@
               },
               {
                 "id": "D3.2",
-                "description": "PhaseContractResolver implemented — SRP, no StateRepository dependency (D)",
+                "description": "PhaseContractResolver implemented \u2014 SRP, no StateRepository dependency (D)",
                 "validates": {
                   "type": "file_exists",
                   "file": "mcp_server/managers/phase_contract_resolver.py"
@@ -166,7 +166,7 @@
               },
               {
                 "id": "D3.5",
-                "description": "PhaseConfigContext facade — single injection point for tool layer (D5, G)",
+                "description": "PhaseConfigContext facade \u2014 single injection point for tool layer (D5, G)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/phase_contract_resolver.py",
@@ -181,7 +181,7 @@
             "deliverables": [
               {
                 "id": "D4.1",
-                "description": "PSE.get_state(branch) → BranchState added — composition root (J1)",
+                "description": "PSE.get_state(branch) \u2192 BranchState added \u2014 composition root (J1)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/phase_state_engine.py",
@@ -223,7 +223,7 @@
             "deliverables": [
               {
                 "id": "D5.1",
-                "description": "enforcement.yaml config file created in .st3/config/ (F — enforcement rules)",
+                "description": "enforcement.yaml config file created in .st3/config/ (F \u2014 enforcement rules)",
                 "validates": {
                   "type": "file_exists",
                   "file": ".st3/config/enforcement.yaml"
@@ -231,7 +231,7 @@
               },
               {
                 "id": "D5.2",
-                "description": "EnforcementRunner service implemented — SRP, no PSE dependency (F)",
+                "description": "EnforcementRunner service implemented \u2014 SRP, no PSE dependency (F)",
                 "validates": {
                   "type": "file_exists",
                   "file": "mcp_server/managers/enforcement_runner.py"
@@ -239,7 +239,7 @@
               },
               {
                 "id": "D5.3",
-                "description": "BaseTool.enforcement_event class variable added — declarative hook registration (F, Option C)",
+                "description": "BaseTool.enforcement_event class variable added \u2014 declarative hook registration (F, Option C)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/tools/base.py",
@@ -248,7 +248,7 @@
               },
               {
                 "id": "D5.4",
-                "description": "EnforcementRegistry referenced in enforcement_runner.py — plugin fail-fast at startup (F2)",
+                "description": "EnforcementRegistry referenced in enforcement_runner.py \u2014 plugin fail-fast at startup (F2)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/enforcement_runner.py",
@@ -256,14 +256,14 @@
                 }
               }
             ],
-            "exit_criteria": "End-to-end test: transition_phase triggers post-hook → state.json committed automatically; end-to-end test: create_branch with invalid base raises ToolResult error (not unhandled exception); EnforcementRunner unit tests have zero dependency on FileStateRepository or PSE; Pyright --strict passes on EnforcementRunner, EnforcementRegistry, BaseTool; full test suite green"
+            "exit_criteria": "End-to-end test: transition_phase triggers post-hook \u2192 state.json committed automatically; end-to-end test: create_branch with invalid base raises ToolResult error (not unhandled exception); EnforcementRunner unit tests have zero dependency on FileStateRepository or PSE; Pyright --strict passes on EnforcementRunner, EnforcementRegistry, BaseTool; full test suite green"
           },
           {
             "cycle_number": 6,
             "deliverables": [
               {
                 "id": "D6.1",
-                "description": "project_manager.py writes to deliverables.json — projects.json abolished (B, C)",
+                "description": "project_manager.py writes to deliverables.json \u2014 projects.json abolished (B, C)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/project_manager.py",
@@ -290,7 +290,7 @@
               },
               {
                 "id": "D6.4",
-                "description": "state.json removed from .gitignore — git-tracked per branch (B5)",
+                "description": "state.json removed from .gitignore \u2014 git-tracked per branch (B5)",
                 "validates": {
                   "type": "absent_text",
                   "file": ".gitignore",
@@ -307,7 +307,7 @@
                 }
               }
             ],
-            "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; KPIs 1–20 in research_config_first_pse.md all verifiable"
+            "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; KPIs 1\u201320 in research_config_first_pse.md all verifiable"
           }
         ]
       },
@@ -324,7 +324,7 @@
           },
           {
             "id": "DD.2",
-            "description": "design.md contains Key Design Decisions table for A–J",
+            "description": "design.md contains Key Design Decisions table for A\u2013J",
             "validates": {
               "type": "contains_text",
               "file": "docs/development/issue257/design.md",
@@ -337,7 +337,7 @@
         "deliverables": [
           {
             "id": "DV.1",
-            "description": "KPI section present in research_config_first_pse.md — 20 KPIs verifiable after Cycle 6",
+            "description": "KPI section present in research_config_first_pse.md \u2014 20 KPIs verifiable after Cycle 6",
             "validates": {
               "type": "contains_text",
               "file": "docs/development/issue257/research_config_first_pse.md",
@@ -350,12 +350,221 @@
         "deliverables": [
           {
             "id": "DDOC.1",
-            "description": "planning.md SCAFFOLD header present — template-tracked artifact",
+            "description": "planning.md SCAFFOLD header present \u2014 template-tracked artifact",
             "validates": {
               "type": "contains_text",
               "file": "docs/development/issue257/planning.md",
               "text": "<!-- template=planning"
             }
+          }
+        ]
+      }
+    }
+  },
+  "263": {
+    "issue_title": "Define VS Code orchestration boundaries",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "implementation",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "feature/257-reorder-workflow-phases",
+    "created_at": "2026-03-18T20:23:57.760796+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 5,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "c_pkg_1.scope_only_orchestration",
+                "description": "Only copilot_orchestration is in migration scope; mcp_server and ST3/backend remain out of scope",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/planning.md",
+                  "text": "Only `copilot_orchestration` is in migration scope"
+                }
+              },
+              {
+                "id": "c_pkg_1.future_model_context_only",
+                "description": "Future sibling-package model is architectural context only, not current migration scope",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
+                  "text": "future sibling-package model is architectural context only"
+                }
+              },
+              {
+                "id": "c_pkg_1.v1_shape_frozen",
+                "description": "Minimal acceptable V1 package fill is frozen as src/copilot_orchestration/hooks/",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
+                  "text": "Minimal acceptable V1 package fill"
+                }
+              }
+            ],
+            "exit_criteria": "Planning and research explicitly freeze the scope to copilot_orchestration only; future sibling-package model is context only; minimal V1 package fill is frozen as src/copilot_orchestration/hooks/."
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "c_pkg_2.package_root",
+                "description": "Package root created at src/copilot_orchestration/__init__.py",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "src/copilot_orchestration/__init__.py"
+                }
+              },
+              {
+                "id": "c_pkg_2.hooks_namespace",
+                "description": "Hooks namespace created at src/copilot_orchestration/hooks/__init__.py",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "src/copilot_orchestration/hooks/__init__.py"
+                }
+              },
+              {
+                "id": "c_pkg_2.pythonpath_extended",
+                "description": "src/ added to Python package discovery so from copilot_orchestration... imports resolve",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "pyproject.toml",
+                  "text": "src"
+                }
+              },
+              {
+                "id": "c_pkg_2.repo_scope_preserved",
+                "description": "No repo-wide src migration introduced during package root creation",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "docs/development/issue263/planning.md",
+                  "text": "Migrating mcp_server to src"
+                }
+              }
+            ],
+            "exit_criteria": "src/copilot_orchestration package root and hooks namespace exist; src/ is discoverable through package/test configuration; no collateral mcp_server or ST3/backend src migration is introduced."
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "c_pkg_3.workspace_session_start",
+                "description": "Workspace session_start relocated to src/copilot_orchestration/hooks/session_start.py",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "src/copilot_orchestration/hooks/session_start.py"
+                }
+              },
+              {
+                "id": "c_pkg_3.imp_qa_session_start",
+                "description": "Role-specific session_start hooks relocated to package-owned hooks namespace",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "src/copilot_orchestration/hooks/session_start_imp.py"
+                }
+              },
+              {
+                "id": "c_pkg_3.pre_compact_hooks",
+                "description": "PreCompact hooks relocated to package-owned hooks namespace",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "src/copilot_orchestration/hooks/pre_compact_agent.py"
+                }
+              },
+              {
+                "id": "c_pkg_3.stop_guard_relocated",
+                "description": "Stop handover guard relocated to src/copilot_orchestration/hooks/stop_handover_guard.py",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "src/copilot_orchestration/hooks/stop_handover_guard.py"
+                }
+              },
+              {
+                "id": "c_pkg_3.no_premature_split",
+                "description": "First run keeps hook-level decomposition intact without forcing final v2 module splits",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
+                  "text": "the first cleanup run is allowed to be structurally coarse"
+                }
+              }
+            ],
+            "exit_criteria": "All six existing hook implementations live under src/copilot_orchestration/hooks/ and ownership of orchestration logic is inside the package boundary without a premature final v2 split."
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "c_pkg_4.workspace_shim",
+                "description": "Workspace hook shims delegate to copilot_orchestration package code",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "scripts/copilot_hooks/session_start.py",
+                  "text": "copilot_orchestration"
+                }
+              },
+              {
+                "id": "c_pkg_4.role_shims",
+                "description": "Role-specific hook shims delegate to copilot_orchestration package code",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "scripts/copilot_hooks/session_start_imp.py",
+                  "text": "copilot_orchestration"
+                }
+              },
+              {
+                "id": "c_pkg_4.stop_shim",
+                "description": "Stop handover guard shim delegates to copilot_orchestration package code",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "scripts/copilot_hooks/stop_handover_guard.py",
+                  "text": "copilot_orchestration"
+                }
+              }
+            ],
+            "exit_criteria": "Repo-local hook scripts are reduced to entry shims while VS Code continues to call the same script paths and package-owned logic is visibly separated from entrypoints."
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "c_pkg_5.v1_claim_narrowed",
+                "description": "V1 migration claim remains narrow: seam established, not v2 complete",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
+                  "text": "deeper decomposition belongs to the later refactor"
+                }
+              },
+              {
+                "id": "c_pkg_5.v2_deferrals_explicit",
+                "description": "V2 deferrals are explicitly recorded as out of scope for the first run",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/planning.md",
+                  "text": "Deferrals to later v2 work are explicit"
+                }
+              },
+              {
+                "id": "c_pkg_5.repo_local_surfaces_preserved",
+                "description": "Repo-local guides, prompts, and wrappers remain outside the package boundary",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue263/planning.md",
+                  "text": "repo-specific agents/prompts/doctrine outside the package"
+                }
+              }
+            ],
+            "exit_criteria": "Deferrals to later v2 work are explicit, the migration claim stays truthful, and planning remains aligned with the coarse-grained first-run scope."
           }
         ]
       }
