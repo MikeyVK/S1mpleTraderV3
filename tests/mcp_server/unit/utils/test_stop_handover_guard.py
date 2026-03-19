@@ -1,22 +1,14 @@
 """Tests for the stop hook that enforces canonical handover blocks."""
 
 import json
-from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
 
+import copilot_orchestration.hooks.stop_handover_guard as _stop_guard_module
+
 
 def _load_stop_handover_guard_module() -> ModuleType:
-    module_path = (
-        Path(__file__).resolve().parents[4] / "scripts" / "copilot_hooks" / "stop_handover_guard.py"
-    )
-    spec = spec_from_file_location("stop_handover_guard", module_path)
-    assert spec is not None
-    assert spec.loader is not None
-
-    module = module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return _stop_guard_module
 
 
 def _event_for(transcript_path: str, *, stop_hook_active: bool = False) -> dict[str, object]:

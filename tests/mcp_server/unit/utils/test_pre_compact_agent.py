@@ -1,21 +1,12 @@
 """Regression tests for the agent PreCompact transcript parser."""
 
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 from types import ModuleType
+
+import copilot_orchestration.hooks.pre_compact_agent as _pre_compact_agent_module
 
 
 def _load_pre_compact_agent_module() -> ModuleType:
-    module_path = (
-        Path(__file__).resolve().parents[4] / "scripts" / "copilot_hooks" / "pre_compact_agent.py"
-    )
-    spec = spec_from_file_location("pre_compact_agent", module_path)
-    assert spec is not None
-    assert spec.loader is not None
-
-    module = module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return _pre_compact_agent_module
 
 
 class TestParseTranscriptContent:
