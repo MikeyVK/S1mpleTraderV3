@@ -30,14 +30,14 @@ requires = ["setuptools>=68.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["backend*", "tests*", "mcp_server*"]
+where = [".", "src"]
+include = ["backend*", "tests*", "mcp_server*", "copilot_orchestration*"]
 
 [tool.setuptools.package-data]
 mcp_server = ["scaffolding/templates/**/*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 testpaths = ["tests/mcp_server"]
 norecursedirs = [".git", ".vscode", "__pycache__", "docs", "results", "source_data", "frontends", "locales"]
 python_files = ["test_*.py"]
