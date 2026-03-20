@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.4  
+**Version:** 2.5  
 **Last Updated:** 2026-03-21
 
 ---
@@ -107,10 +107,10 @@ graph LR
         PKG["_default_requirements.yaml (package fallback)"]
     end
 
-    subgraph Hooks["Hook Layer (.copilot/hooks/)"]
-        UPS_IMP["detect_sub_role_imp.py (UserPromptSubmit)"]
-        UPS_QA["detect_sub_role_qa.py (UserPromptSubmit)"]
-        STOP["stop_handover_guard.py (Stop)"]
+    subgraph Hooks["Hook Layer (configured in agent frontmatter)"]
+        UPS["detect_sub_role.py<br/>(UserPromptSubmit)"]
+        COMPACT["notify_compaction.py<br/>(PreCompact)"]
+        STOP["stop_handover_guard.py<br/>(Stop)"]
     end
 
     subgraph State["Runtime State"]
@@ -120,7 +120,7 @@ graph LR
     subgraph Pkg["Package (copilot_orchestration/hooks/)"]
         LDR["SubRoleRequirementsLoader"]
         IFACE["ISubRoleRequirementsLoader (Protocol)"]
-        DS["detect_sub_role.py (detect_sub_role_and_persist)"]
+        PERSIST["detect_sub_role_and_persist()"]
     end
 
     IA --> PR
@@ -128,10 +128,10 @@ graph LR
     REQ --> LDR
     PKG --> LDR
     LDR -.implements.-> IFACE
-    UPS_IMP --> DS
-    UPS_QA --> DS
-    DS --> LDR
-    DS --> SF
+    UPS --> PERSIST
+    PERSIST --> LDR
+    PERSIST --> SF
+    COMPACT --> SF
     STOP --> LDR
     STOP --> SF
 ```
@@ -142,11 +142,12 @@ graph LR
 sequenceDiagram
     actor User
     participant VS as VS Code
-    participant UPS as detect_sub_role_imp/qa.py<br/>(UserPromptSubmit)
+    participant UPS as detect_sub_role.py<br/>(UserPromptSubmit)
     participant LDR as SubRoleRequirementsLoader
     participant SF as session-sub-role.json
     participant Agent as @imp / @qa agent
     participant STOP as stop_handover_guard.py<br/>(Stop)
+    participant COMPACT as notify_compaction.py<br/>(PreCompact)
 
     User->>VS: types prompt (e.g. "designer: update §9")
     VS->>UPS: fires UserPromptSubmit {prompt, session_id}
@@ -171,6 +172,11 @@ sequenceDiagram
         LDR-->>STOP: {requires_crosschat_block: false}
         STOP->>STOP: pass-through (no block required)
     end
+
+    Note over VS,COMPACT: PreCompact fires independently when VS Code compacts the context window
+    VS->>COMPACT: fires PreCompact {trigger, session_id}
+    COMPACT->>SF: read sub_role
+    COMPACT-->>VS: systemMessage: "Compacted. Sub-role: X. Use /resume-work."
 ```
 
 ---
@@ -775,75 +781,53 @@ sequenceDiagram
 
 ---
 
-## 13. Implementation Plan
+## 13. Component Inventory and Architecture Prerequisites
 
-### Pre-Step — Delete Misplaced V1 Tests (technical debt resolution)
+### Prerequisites — V1 Technical Debt (must be resolved before TDD)
 
-Before any TDD work begins, delete the two v1 test files that live in the wrong namespace and test v1 internals that the v2 refactor replaces entirely:
+Delete the two v1 test files that test internals which will not exist after the v2 refactor:
 
 ```
 tests/mcp_server/unit/utils/test_stop_handover_guard.py   ← delete
 tests/mcp_server/unit/utils/test_pre_compact_agent.py     ← delete
 ```
 
-These must be **deleted**, not relocated. They test the v1 `ROLE_REQUIREMENTS` dict and `parse_transcript_content` — neither of which will exist after the v2 refactor. Moving them carries the technical debt forward. See research §10.9 for the full rationale.
-
-New tests are written in the TDD phase under `tests/copilot_orchestration/unit/hooks/`.
+These test `ROLE_REQUIREMENTS` and `parse_transcript_content` — neither exists in v2. Moving them forward carries the technical debt. See research §10.9.
 
 ---
 
-### Step 1 — Sub-Role Sections in Role Guides (textual only)
-Add sub-role definitions and output format expectations to `imp_agent.md` and `qa_agent.md`. No code changes.
+### Files to Create (new)
 
-### Step 2 — argument-hint Updates
-Update `argument-hint` in both `.github/agents/imp.agent.md` and `.github/agents/qa.agent.md` to list available sub-roles. No code changes.
-
-### Step 3 — sub-role-requirements.yaml (canonical config)
-Create `.copilot/sub-role-requirements.yaml` with the structure defined in research §10.5, using the marker values from §6 as the authoritative source. Include package fallback `_default_requirements.yaml` in `copilot_orchestration/hooks/`. No hook code changes yet — config only.
-
-### Step 4 — SubRoleRequirementsLoader + ISubRoleRequirementsLoader Protocol
-Implement:
-- `copilot_orchestration/hooks/interfaces.py` — `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec` TypedDict
-- `copilot_orchestration/hooks/requirements_loader.py` — `SubRoleRequirementsLoader` concrete class; uses `PyYAML` for parsing and a `pydantic.BaseModel` for schema validation (see §9.2)
-
-Tests: `tests/copilot_orchestration/unit/hooks/test_requirements_loader.py`
-
-This step is the SSOT fix. All subsequent hook code uses the loader via DI.
-
-### Step 5 — UserPromptSubmit Hook (detect_sub_role.py + agent frontmatter)
-Implement (see §9.1 and §9.6):
-- `copilot_orchestration/hooks/detect_sub_role.py` — script entry point; reads `role` from `sys.argv[1]`, exports `detect_sub_role_and_persist(prompt, loader, role, session_id)`
-- `copilot_orchestration/hooks/notify_compaction.py` — PreCompact hook script (see §9.7)
-- `chat.useCustomAgentHooks = true` added to `.vscode/settings.json`
-
-Tests: `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py`
-
-### Step 6 — Stop Hook Refactored (stop_handover_guard.py)
-Refactor `stop_handover_guard.py`:
-- Remove `ROLE_REQUIREMENTS` dict and all transcript / first-message parsing
-- Accept `ISubRoleRequirementsLoader` via DI
-- Read sub-role from state file (with `session_id` staleness check)
-- Enforce per `loader.get_requirement(role, sub_role)`
-
-Tests: `tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py`
-
-### Step 7 — New Test Suite (copilot_orchestration namespace)
-Ensure `tests/copilot_orchestration/unit/hooks/__init__.py` exists. Verify full test coverage for:
-- `test_requirements_loader.py` — loader, Fail-Fast errors, fallback, DI contract
-- `test_detect_sub_role.py` — detection, idempotency, stale state, default
-- `test_stop_handover_guard.py` — pass-through, block enforcement, missing state
-
-Test matrix targets behavior-condition cases (≈12), not sub-role names. Fixture configs (test YAML files), not inline dicts.
-
-### Step 8 — Slash Prompt Restructuring
-Create or rename prompts per §10.1. For each sub-role prompt, add the full output format definition (section headings, field descriptions, example content) using the marker table in §6 as the authoritative source for required heading strings. The prompt files are the single authoritative source for format definitions — §6 specifies the markers that the stop hook validates against them.
-
-### Step 9 — Cleanup
-Remove deprecated `ROLE_REQUIREMENTS` dict and any remaining v1 transcript-parsing code. Verify backward compatibility. Run full quality gates.
+| File | Type | Purpose |
+|------|------|---------|
+| `copilot_orchestration/__init__.py` | Package init | New top-level package |
+| `copilot_orchestration/hooks/__init__.py` | Package init | Hook scripts package |
+| `copilot_orchestration/hooks/interfaces.py` | Interface | `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec`, `SessionSubRoleState` TypedDicts (§9.2, §9.5) |
+| `copilot_orchestration/hooks/requirements_loader.py` | Implementation | `SubRoleRequirementsLoader` — YAML + Pydantic validation, package fallback (§9.2, §9.3) |
+| `copilot_orchestration/hooks/detect_sub_role.py` | Hook script | Entry point (reads `sys.argv[1]` for role); exports `detect_sub_role_and_persist()` (§9.1, §9.6) |
+| `copilot_orchestration/hooks/notify_compaction.py` | Hook script | PreCompact hook; injects sub-role `systemMessage` after compaction (§9.7) |
+| `.copilot/sub-role-requirements.yaml` | Config | Canonical sub-role requirements per role (§9.3); `.copilot/` is the user-overridable location |
+| `copilot_orchestration/hooks/_default_requirements.yaml` | Config | Package fallback; used when `.copilot/` file is absent (§9.3) |
+| `tests/copilot_orchestration/__init__.py` | Test init | New test namespace |
+| `tests/copilot_orchestration/unit/__init__.py` | Test init | — |
+| `tests/copilot_orchestration/unit/hooks/__init__.py` | Test init | — |
+| `tests/copilot_orchestration/unit/hooks/test_requirements_loader.py` | Test | Loader, Fail-Fast, fallback, DI contract |
+| `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py` | Test | Detection, idempotency, stale state, default |
+| `tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py` | Test | Pass-through, block enforcement, missing state |
 
 ---
 
-Each step is independently testable and backward compatible. Steps 4–6 are the core TDD target. Steps 1–3 and 7–9 are textual or structural.
+### Files to Modify (existing)
+
+| File | Change |
+|------|--------|
+| `copilot_orchestration/hooks/stop_handover_guard.py` | Remove `ROLE_REQUIREMENTS` dict + transcript parsing; accept `ISubRoleRequirementsLoader` via DI; read sub-role from state file (§9.4) |
+| `.github/agents/imp.agent.md` | Add frontmatter hooks (UPS + PreCompact, see §9.6); update `argument-hint` with sub-role list |
+| `.github/agents/qa.agent.md` | Add frontmatter hooks (UPS + PreCompact, see §9.6); update `argument-hint` with sub-role list |
+| `imp_agent.md` | Add sub-role definitions + output format expectations per sub-role (§5.1) |
+| `qa_agent.md` | Add sub-role definitions + output format expectations per sub-role (§5.2) |
+| `.vscode/settings.json` | Add `"chat.useCustomAgentHooks": true` (§9.6 prerequisite) |
+| `.github/prompts/*.prompt.md` | Rename + revise prompt set to 6 prompts per §10.1; add output format definitions per §6 markers |
 
 ---
 
