@@ -199,6 +199,199 @@ That conclusion directly informs the compact design in `design.md`.
 
 ---
 
+---
+
+## 10. V2 Research: Sub-Role Orchestration (2026-03-19 / 2026-03-20)
+
+**Context:** After C_PKG.1–5 (coarse seam migration) were completed and verified, the decision was taken not to merge the v1 design but to refactor according to a v2 sub-role model. The branch phase was forced back to `research`. This section documents the findings from that research cycle.
+
+**Reference:** `docs/development/issue263/design_v2_sub_role_orchestration.md`
+
+---
+
+### 10.1 V2 Design: What Holds
+
+The v2 design document (`design_v2_sub_role_orchestration.md`) is architecturally sound on the following points:
+
+- **Sub-role model**: 6 `@imp` sub-roles (researcher, planner, designer, implementer, validator, documenter) and 5 `@qa` sub-roles (plan-reviewer, design-reviewer, verifier, validation-reviewer, doc-reviewer) cover the full development lifecycle without coupling to any specific workflow engine.
+- **Enforcement matrix**: only `implementer`, `validator` (imp) and `verifier` (qa) require a cross-chat handover block. All others pass through the stop hook without validation. This is correct: the handover block guards the role boundary, not phase completion.
+- **Authority separation**: hook is the enforcement authority, role guide is the behavioral authority, prompts are the UX connection. No single file owns all three.
+- **Implementation plan sequence** (§13, Steps 1–6): each step is independently deployable and backward compatible. The sequence is well-ordered.
+
+---
+
+### 10.2 V2 Design: What Needed Revision
+
+**Handoffs rejected entirely**
+
+The v2 design mentioned handoffs (VS Code 1.112 native feature) as a possible delivery mechanism for cross-chat handover blocks. Research showed two reasons to reject this:
+
+1. _Context pollution_: handoffs switch roles within the same conversation, passing the full conversation history to `@qa`. The friction of copy-paste is a quality gate, not a UX problem — it forces `@imp` to curate what counts as evidence.
+2. _Phase ≠ turn_: a phase is a multi-turn session. A handoff button appears after every turn. There is no mechanism for a handoff to know whether a phase is complete. The user is the sole phase-transition authority. This rejects handoffs for intra-role transitions (researcher→planner) as well as cross-role transitions.
+
+**Sub-role detection: transcript parsing replaced by UserPromptSubmit hook**
+
+The v2 design proposed `detect_sub_role()` in the Stop hook, parsing the transcript back to the first user message. VS Code 1.112 introduced the `UserPromptSubmit` hook which receives the prompt text directly as `{"prompt": "..."}` via stdin — no file I/O, no JSONL parsing, no first-message ambiguity.
+
+The revised approach:
+- `UserPromptSubmit` hook detects sub-role from prompt text → writes `.copilot/session-sub-role.json`
+- Hook is idempotent: if state file exists for current session, skip
+- Stop hook reads state file → validates per sub-role requirements
+
+This eliminates ~70% of the transcript-parsing complexity and handles the resume-after-compaction scenario correctly (first prompt after compaction sets the sub-role, not a recovered snapshot message).
+
+**NL detection without LLM**
+
+Two-step detection:
+1. `re.search(r'\b(researcher|planner|designer|implementer|validator|documenter|verifier)\b', prompt, re.IGNORECASE)` — covers canonical names and simple variations
+2. `difflib.get_close_matches` on words ≥ 7 chars with cutoff 0.85 — covers typos (`"researher"` → `researcher`, `"plannner"` → `planner`) without loading a language model
+
+Default on no match: `implementer` for `@imp`, `verifier` for `@qa` (strictest enforcement, safe default).
+
+---
+
+### 10.3 Hook Lifecycle: Precise Responsibility Allocation
+
+Each hook fires at a specific moment with a specific capability set. Conflating these leads to design errors.
+
+| Hook | Fires | Can inject into model | Knows sub-role |
+|---|---|---|---|
+| `SessionStart` | Once, before first user prompt | Yes (`additionalContext`) | No |
+| `UserPromptSubmit` | Every prompt, before agent response | No (only `systemMessage` to UI) | Yes (reads from prompt) |
+| `PreCompact` | Before compaction (may fire multiple times) | No | Yes (reads state file) |
+| `Stop` | End of every agent turn | No | Yes (reads state file) |
+
+**Critical constraint identified (Gap A):** The only hook that can inject context into the model (`SessionStart.additionalContext`) fires before the sub-role is known. The hook layer cannot inform the model of its sub-role. The model learns its sub-role exclusively from the user's prompt and static instructions (`imp_agent.md`). Hooks support detection and validation only — they do not instruct the model.
+
+**State file as coordination mechanism:** `.copilot/session-sub-role.json` is the shared state between:
+- `UserPromptSubmit` (writer on first prompt)
+- `PreCompact` (saves sub-role to survive compaction)
+- `Stop` (reader for enforcement decisions)
+
+State file must include `session_id` to detect stale data from a previous session. Mismatch → ignore file, use role default.
+
+---
+
+### 10.4 Stop Hook: Corrected Semantics
+
+**Gap B resolved:** The stop hook fires at the end of every agent turn, not when the user closes the chat. In a 30-turn research session it fires 30 times. For sub-roles with `requires_crosschat_block: false` the correct behavior is **pass-through** — no content validation. The hook guards the role-boundary handover, not phase completion. Phase completion is the user's decision.
+
+**Gap B consequence:** Testing the stop hook against specific sub-role names is fragile. The test matrix must test the rule engine, not the rules:
+
+- Tests use fixture configurations (inline dicts), not production `requirements.json`
+- Tests assert behavior given `requires_crosschat_block=true/false` — no sub-role names
+- If a project later makes `planner` require a block, no tests break
+
+Approximately 12 behavior-condition cases replace the earlier 27 name-based cases.
+
+---
+
+### 10.5 Canonical Requirements File (OQ-4 resolved)
+
+**Problem:** markers are currently hardcoded in `stop_handover_guard.py`. With 11 sub-roles, any marker change requires coordinated edits to hook code, prompt templates, and role guide — with no enforcement of consistency.
+
+**Solution:** `.copilot/sub-role-requirements.json` becomes the single source of truth. Structure:
+
+```json
+{
+  "version": "1",
+  "roles": {
+    "imp": {
+      "default_sub_role": "implementer",
+      "sub_roles": {
+        "researcher":  { "requires_crosschat_block": false },
+        "planner":     { "requires_crosschat_block": false },
+        "designer":    { "requires_crosschat_block": false },
+        "documenter":  { "requires_crosschat_block": false },
+        "implementer": {
+          "requires_crosschat_block": true,
+          "heading": "### Copy-Paste Prompt For QA Chat",
+          "block_prefix": "@qa Review the latest implementation work on this branch.",
+          "guide_line": "Use qa_agent.md as the project-specific QA guide.",
+          "markers": [
+            "Review target:",
+            "Implementation claim under review:",
+            "Proof provided by implementation:",
+            "QA focus:"
+          ]
+        },
+        "validator": {
+          "requires_crosschat_block": true,
+          "heading": "### Copy-Paste Prompt For QA Chat",
+          "markers": ["Validation target:", "Coverage claim:", "Proof provided:", "QA focus:"]
+        }
+      }
+    },
+    "qa": {
+      "default_sub_role": "verifier",
+      "sub_roles": {
+        "plan-reviewer":       { "requires_crosschat_block": false },
+        "design-reviewer":     { "requires_crosschat_block": false },
+        "validation-reviewer": { "requires_crosschat_block": false },
+        "doc-reviewer":        { "requires_crosschat_block": false },
+        "verifier": {
+          "requires_crosschat_block": true,
+          "heading": "### Copy-Paste Prompt For Implementation Chat",
+          "block_prefix": "@imp Address the latest QA findings on this branch.",
+          "guide_line": "Use imp_agent.md as the project-specific implementation guide.",
+          "markers": [
+            "Task:",
+            "Files likely in scope:",
+            "Findings to resolve:",
+            "Out of scope:",
+            "Proof expected:"
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+The package ships a `_default_requirements.json` as fallback. At runtime the hook looks for `.copilot/sub-role-requirements.json` (project-specific override) first, falls back to the package default. This keeps the package standalone and lets projects customize without forking.
+
+---
+
+### 10.6 Atomic Marker Migration (OQ-2 resolved)
+
+With the canonical requirements file, the migration from v1 hardcoded markers to v2 non-directive markers is a single atomic commit:
+
+1. Create `.copilot/sub-role-requirements.json` with v2 markers
+2. Rewrite hook to read markers from file instead of hardcoded dict — in the same commit
+3. Update prompts to use v2 marker language — in the same commit
+4. Remove `ROLE_REQUIREMENTS` dict from `stop_handover_guard.py`
+
+The hook and prompt are only out of sync if they are committed separately. A single commit eliminates the partial-state window.
+
+---
+
+### 10.7 Prompt Set Revision (OQ-1 resolved)
+
+From 7 current prompts to 6:
+
+| Current | V2 | Change |
+|---|---|---|
+| `start-implementation` | `/start-work` | Rename + add sub-role list to argument-hint |
+| `resume-implementation` | `/resume-work` | Rename + add state-file recovery step |
+| `prepare-handover` | `/prepare-handover` | Update markers to reference requirements file |
+| `request-qa-review` | `/request-review` | Rename + add sub-role context to startup protocol |
+| `prepare-implementation-brief` | keep | Add sub-role context (implementer/validator) |
+| `prepare-qa-brief` | keep | Add sub-role context (verifier) |
+| `plan-executionDirectiveBatchCoordination` | **removed** | Outside orchestration scope |
+
+The two brief prompts remain separate — merging loses role-specific structure for marginal gain.
+
+No `/transition-phase` prompt: phase transitions are compact, directed operations that do not need a prompt template.
+
+---
+
+### 10.8 Remaining Deferred Questions
+
+- **OQ-1 final prompt content**: prompt body changes depend on the wider workflow model being stable. Bodies are deferred to planning/design phase.
+- **Gap D (extension point)**: content validation beyond marker presence (e.g. "is research.md present after a researcher session?") is project-specific and must not be in the package. If needed, it requires a declared extension point. Not in scope for v2.
+
+---
+
 ## 8. Inputs for the Compact Design
 
 The compact design should now optimize for these constraints:
