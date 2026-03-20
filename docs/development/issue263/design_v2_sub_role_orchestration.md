@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.3  
+**Version:** 2.4  
 **Last Updated:** 2026-03-21
 
 ---
@@ -120,7 +120,7 @@ graph LR
     subgraph Pkg["Package (copilot_orchestration/hooks/)"]
         LDR["SubRoleRequirementsLoader"]
         IFACE["ISubRoleRequirementsLoader (Protocol)"]
-        DS["detect_sub_role.py (detect_and_persist)"]
+        DS["detect_sub_role.py (detect_sub_role_and_persist)"]
     end
 
     IA --> PR
@@ -150,10 +150,15 @@ sequenceDiagram
 
     User->>VS: types prompt (e.g. "designer: update §9")
     VS->>UPS: fires UserPromptSubmit {prompt, session_id}
-    UPS->>LDR: valid_sub_roles(role)
-    LDR-->>UPS: frozenset{"researcher","planner",...}
-    UPS->>UPS: regex + difflib detection → "designer"
-    UPS->>SF: write {session_id, role, sub_role, detected_at}
+    UPS->>SF: read (idempotency check)
+    alt session_id already matches
+        UPS->>VS: return immediately (detection already done this session)
+    else no file, JSONDecodeError, or session_id mismatch
+        UPS->>LDR: valid_sub_roles(role)
+        LDR-->>UPS: frozenset{"researcher","planner",...}
+        UPS->>UPS: regex + difflib detection → "designer"
+        UPS->>SF: write {session_id, role, sub_role, detected_at}
+    end
     VS->>Agent: delivers prompt to agent
 
     Agent->>Agent: produces response
@@ -265,15 +270,21 @@ This section specifies only what the **stop hook needs**: the required markers p
 
 > **Rule:** A sub-role's marker list here is the authoritative source for `sub-role-requirements.yaml`. The prompt file for that sub-role must use these exact heading strings. If they diverge, the stop hook will fail silently on the wrong markers.
 
+> **Design property — rename without code impact:** Sub-role names are config-driven. `valid_sub_roles(role)`, `default_sub_role(role)`, and `get_requirement(role, sub_role)` all read from YAML. Renaming a sub-role requires only a YAML edit, a role-guide update, and matching prompt file updates — no Python code changes. This applies to both @imp and @qa sub-roles including their defaults.
+
 ---
 
 ## 7. Cross-Chat Block Language
 
-### 7.1. Design Principle — Non-Directive
+### 7.1. imp → qa: Facts, Not Instructions
 
-The cross-chat block carries **facts**, not instructions. The receiving agent's role guide already defines how to respond. The block must not contain imperatives like "Verify…", "Check whether…", "Return findings first…", "Required fixes:", or "Return requirement:".
+The `imp → qa` cross-chat block carries **facts** only. The receiving QA agent's role guide defines how to respond. The block must not contain imperatives like "Verify…", "Check whether…", "Confirm that…", "Required fixes:".
 
-### 7.2. imp → qa (implementer/validator sub-roles)
+### 7.2. qa → imp: Work Specification
+
+The `qa → imp` cross-chat block **is** a directive. It is a work specification. The QA agent has reviewed the implementation and found issues that must be resolved before the cycle can proceed. The block uses prescriptive language: "must", "resolve", "proof required".
+
+### 7.3. imp → qa (implementer/validator sub-roles)
 
 ```text
 @qa verifier: Review the latest implementation work on this branch.
@@ -293,22 +304,25 @@ Proof provided:
 - Gaps: [explicit list or none]
 ```
 
-### 7.3. qa → imp (verifier sub-role)
+### 7.4. qa → imp (verifier sub-role)
 
 ```text
-@imp implementer: Latest QA review produced findings for this branch.
+@imp implementer: QA review for [branch name] produced findings that must be resolved.
 
-Findings to resolve:
-1. [finding]
+Findings — must all be resolved before this cycle is done:
+1. [severity: critical/major/minor] [finding with file + line reference if applicable]
 
-Files in scope:
+Scope — only touch these:
 1. [file path]
 
-Out of scope:
-- [what must not be touched]
+Do not touch:
+- [what is explicitly out of scope]
 
-Proof expected:
-- [what evidence QA expects on re-review]
+Proof required on re-review:
+- [exact test or check that must pass]
+- [what evidence proves the finding is resolved]
+
+This brief is the sole work specification. Do not expand scope.
 ```
 
 ---
@@ -341,10 +355,10 @@ argument-hint: >
 
 VS Code 1.112+ fires the `UserPromptSubmit` hook for every user prompt, before the agent begins its response. The hook receives `{"prompt": "..."}` via stdin. This replaces the v2.0 approach of transcript parsing in the stop hook.
 
-**`detect_and_persist` function (package location: `copilot_orchestration/hooks/detect_sub_role.py`):**
+**`detect_sub_role_and_persist` function (package location: `copilot_orchestration/hooks/detect_sub_role.py`):**
 
 ```python
-def detect_and_persist(
+def detect_sub_role_and_persist(
     prompt: str,
     loader: ISubRoleRequirementsLoader,
     role: str,
@@ -353,7 +367,7 @@ def detect_and_persist(
     """Detect sub-role from prompt and write to session state file.
 
     Idempotent: skips if state file already contains a matching session_id.
-    Called by detect_sub_role_imp.py and detect_sub_role_qa.py.
+    Called from the UserPromptSubmit hook command defined in each agent's frontmatter.
     """
     state_path = Path(".copilot/session-sub-role.json")
 
@@ -521,42 +535,112 @@ else:
 
 ### 9.6. Role Resolution in the UserPromptSubmit Hook
 
-**Problem:** `detect_sub_role(prompt, loader, role)` requires `role` to be resolved before detection. The hook payload from VS Code does not include a `role` field distinguishing `@imp` from `@qa`. Resolution must happen at hook wiring time, not at runtime.
+**Problem:** `detect_sub_role_and_persist(prompt, loader, role, session_id)` requires `role` to be resolved before detection. The VS Code docs confirm that the `UserPromptSubmit` hook payload does **not** include an agent identifier — common fields are `timestamp`, `cwd`, `sessionId`, `hookEventName`, and `transcript_path`. The `agent_type` field only appears in `SubagentStart`/`SubagentStop` payloads.
 
-**Decision: Option (a) — two separate hook entry-point files**, consistent with the existing `_imp` / `_qa` naming pattern already established for `SessionStart` hooks.
+**Decision: configuration over code.** VS Code supports agent-scoped hooks via the `hooks` field in `.agent.md` frontmatter (requires `chat.useCustomAgentHooks = true`). Agent-scoped hooks run **only** when that agent is active. This means the role can be injected as a command-line argument in the hook configuration — no role-specific Python wrapper file needed.
 
+**One shared script — two agent configurations:**
+
+```yaml
+# .github/agents/imp.agent.md frontmatter (relevant excerpt)
+hooks:
+  UserPromptSubmit:
+    - type: command
+      command: "python copilot_orchestration/hooks/detect_sub_role.py imp"
+  PreCompact:
+    - type: command
+      command: "python copilot_orchestration/hooks/notify_compaction.py"
 ```
-.copilot/hooks/detect_sub_role_imp.py   ← UserPromptSubmit hook wired for @imp agent
-.copilot/hooks/detect_sub_role_qa.py    ← UserPromptSubmit hook wired for @qa agent
+
+```yaml
+# .github/agents/qa.agent.md frontmatter (relevant excerpt)
+hooks:
+  UserPromptSubmit:
+    - type: command
+      command: "python copilot_orchestration/hooks/detect_sub_role.py qa"
+  PreCompact:
+    - type: command
+      command: "python copilot_orchestration/hooks/notify_compaction.py"
 ```
 
-Each file is a thin wrapper that hardcodes `role = "imp"` or `role = "qa"` and delegates to the shared `detect_sub_role(prompt, loader, role)` function from `copilot_orchestration/hooks/`:
+The script reads `role = sys.argv[1]` and the hook payload from stdin. The role originates from configuration (agent frontmatter), not from code logic or hardcoded wrapper files.
+
+**Pre-condition:** `chat.useCustomAgentHooks` setting must be `true` in the user's VS Code workspace. This is a documented restriction; the design cannot control it. The workspace `.vscode/settings.json` should include this setting.
+
+**Package location for shared logic:** `copilot_orchestration/hooks/detect_sub_role.py` — exports `detect_sub_role_and_persist(prompt, loader, role, session_id)`. The script reads `sys.argv[1]` for `role` and the JSON payload from stdin for `prompt` and `session_id`.
+
+**Why agent-scoped (frontmatter) over alternatives:**
+- Option (a) — two wrapper Python files: hardcodes "config" decisions in code; rejected (config over code)
+- Option (b) — global hook JSON file with shared command: `UserPromptSubmit` payload doesn't include `agent_type`, so a global hook cannot distinguish @imp from @qa at runtime
+- Option (c) — agent-scoped frontmatter hooks: role is injected via `sys.argv[1]` from the agent's own configuration; explicit, testable, zero runtime ambiguity — **chosen**
+
+---
+
+### 9.7. PreCompact Hook
+
+**Purpose:** When VS Code compacts the conversation context, the agent loses its in-context awareness of which sub-role it is active in. The PreCompact hook fires *before* the compaction takes place, allowing the system to inject a reminder into the surviving context window.
+
+**VS Code behaviour (confirmed):**
+
+| Property | Value |
+|----------|-------|
+| Hook event | `PreCompact` |
+| Trigger mode | `"auto"` (VS Code-controlled) or `"manual"` |
+| Payload fields | `trigger`, `sessionId`, `hookEventName`, `timestamp`, `cwd` |
+| Output fields | `systemMessage` only (`additionalContext` is **not** available) |
+
+**State file survives compaction.** The `sessionId` is unchanged across compaction, so `detect_sub_role_and_persist` has already written the sub-role to disk on the first prompt. After compaction the state file is still valid and the next UPS hook read will succeed unchanged. The PreCompact hook does NOT need to rewrite state — it only reinjects context.
+
+**Script:** `copilot_orchestration/hooks/notify_compaction.py`
 
 ```python
-# detect_sub_role_imp.py
-import sys, json
+# copilot_orchestration/hooks/notify_compaction.py
+"""
+PreCompact hook — injects sub-role reminder into the surviving context window.
+
+Reads state file for current sub_role, writes a systemMessage so the agent
+remembers its active sub-role after context compaction.
+
+Exit 0: always (soft failure — hook errors must not break the agent session).
+"""
+import json
+import sys
 from pathlib import Path
-from copilot_orchestration.hooks.requirements_loader import SubRoleRequirementsLoader
-from copilot_orchestration.hooks.detect_sub_role import detect_and_persist
+
+STATE_DIR = Path(".st3/agent_state")
 
 payload = json.loads(sys.stdin.read())
-loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
-detect_and_persist(prompt=payload["prompt"], loader=loader, role="imp")
+session_id = payload.get("sessionId", "")
+
+state_file = STATE_DIR / f"{session_id}.json"
+
+if state_file.exists():
+    state = json.loads(state_file.read_text())
+    sub_role = state.get("sub_role", "unknown")
+    print(json.dumps({
+        "systemMessage": (
+            f"Context was compacted. Your active sub-role is **{sub_role}**. "
+            "Use /resume-work to restore full behavioral context before continuing."
+        )
+    }))
+else:
+    # No state yet — compaction before first UPS hook; nothing to inject.
+    print(json.dumps({}))
 ```
 
-```python
-# detect_sub_role_qa.py — identical except role="qa"
-detect_and_persist(prompt=payload["prompt"], loader=loader, role="qa")
+**Agent frontmatter configuration** (added to BOTH `.imp.md` and `.qa.md`):
+
+```yaml
+hooks:
+  - event: UserPromptSubmit
+    command: python copilot_orchestration/hooks/detect_sub_role.py <role>
+  - event: PreCompact
+    command: python copilot_orchestration/hooks/notify_compaction.py
 ```
 
-**Why option (a) over alternatives:**
-- Option (b) (extract role from filename at runtime) is fragile: the hook filename is not guaranteed to be available via `__file__` in all VS Code hook execution contexts.
-- Option (c) (injected via hook payload) is not documented in VS Code 1.112 hook API. Relying on undocumented payload fields is a maintenance risk.
-- Option (a) is explicit, testable, and consistent with the established `session_start_imp.py` / `session_start_qa.py` pattern already in `src/copilot_orchestration/hooks/`.
+**Why `additionalContext` is not used:** The PreCompact hook output spec only supports `systemMessage` for the surviving window. `additionalContext` would be stripped. The `systemMessage` approach is the minimum viable signal: it tells the agent its sub-role and prompts a `/resume-work` call for full re-context.
 
-**Package location for shared logic:** `copilot_orchestration/hooks/detect_sub_role.py` — exports `detect_and_persist(prompt, loader, role)` which is called by both entry-point files.
-
-**VS Code agent wiring:** Each `.agent.md` wrapper (`imp.agent.md`, `qa.agent.md`) specifies its own `UserPromptSubmit` hook file in its hooks configuration. The hook file determines the role — not the payload.
+**Relationship to `/resume-work`:** The `systemMessage` from this hook is a short trigger — it does not rebuild full doctrine. The `/resume-work` slash prompt (see §10) does the full reload: re-reads the role guide, confirms phase, confirms active issue.
 
 ---
 
@@ -573,23 +657,63 @@ detect_and_persist(prompt=payload["prompt"], loader=loader, role="qa")
 | `/request-review` | qa | Start review with active sub-role |
 | `/prepare-brief` | qa | Produce implementation brief for @imp chat |
 
-### 10.2. How Prompts Reference Role Definitions
+### 10.2. Relationship: Prompts vs Role Guides
 
-Every prompt contains a standard Role Activation section:
+**Role guides** (`imp_agent.md`, `qa_agent.md`) define identity and doctrine. They contain:
+- What the agent IS (role, persona, prime directives)
+- What the agent may and may not do (tool restrictions, scope limits)
+- Behaviors that are invariant across all sessions and sub-roles
+- Sub-role definitions: what each sub-role means behaviorally
+
+**Prompt files** (`*.prompt.md`) define task-specific entry points. They contain:
+- Operational instructions for ONE invocation (what to do right now)
+- Which sub-role to activate and how to activate context
+- Output format expectations for this specific task
+- References back to the role guide for identity and doctrine
+
+**Key distinction:** The role guide is always loaded; it defines the agent permanently. A prompt is invoked per-task; it assumes the role guide has been read and builds on it. Prompts do NOT repeat doctrine — they reference it.
+
+**Every prompt follows this opening structure:**
 
 ```markdown
 ## Role Activation
-1. Read [imp_agent.md](../../imp_agent.md) (or qa_agent.md for qa prompts).
+1. Read [imp_agent.md](../../imp_agent.md) (or qa_agent.md).
 2. Identify the sub-role from the user's argument.
-3. Follow the sub-role definition in the role guide.
+3. Follow the sub-role definition in the role guide for that sub-role.
 4. If no sub-role is specified, default to implementer / verifier.
 ```
 
-The prompt contains **only operational instructions** (what to do, what format). The prompt does **not** contain identity, boundaries, or doctrine — those live in the role guide.
+**Concrete example — `/start-work implementer`:**
+
+```markdown
+---
+description: Begin an implementation session with the active sub-role.
+applyTo: "**"
+---
+
+## Role Activation
+1. Read [imp_agent.md](../../imp_agent.md).
+2. Sub-role: implementer (from argument).
+3. Follow the implementer definition in the role guide.
+
+## Task
+1. Read active issue and branch state.
+2. Identify the current cycle and its deliverables.
+3. State your scope and what is explicitly out of scope.
+4. Begin implementation following TDD cycle: RED → GREEN → REFACTOR.
+
+## Output
+Produce the Implementation Hand-Over format defined in `.github/prompts/implementer.prompt.md`
+when wrapping up. The stop hook will enforce the required markers.
+```
+
+The prompt contains no identity statements, no tool restrictions, no doctrine. Those live in `imp_agent.md`. The prompt's only job is: orient to the task, specify the output contract.
 
 ---
 
 ## 11. Phase Transition Ownership
+
+> **Note:** §11 is contextual information. It documents the separation of responsibilities between @imp and @qa regarding MCP-driven phase transitions. No code, configuration, or test is produced directly from this section. The system functions correctly even if the MCP workflow server is unavailable — see §11.3.
 
 ### 11.1. Rule
 
@@ -618,41 +742,35 @@ Transitions are write operations (`transition_phase`, `transition_cycle`). If QA
 
 ## 12. Flow Overview
 
-```
-                    @imp                              @qa
-                    ────                              ───
-research    ┌─ researcher ──────────────────────────────────────┐
-            │  output: research doc                             │
-            │  hand-over: optional                              │
-            └───────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant IMP as @imp
+    participant QA as @qa
 
-planning    ┌─ planner ───────────────┐  ┌─ plan-reviewer ─────┐
-            │  output: planning.md     │→│  review: coherence   │
-            │  hand-over: optional     │  │  verdict: GO/NOGO   │
-            └──────────────────────────┘  └─────────────────────┘
+    note over IMP: research
+    IMP->>IMP: researcher<br/>output: research doc<br/>hand-over: optional
 
-design      ┌─ designer ──────────────┐  ┌─ design-reviewer ───┐
-            │  output: design.md       │→│  review: architecture│
-            │  hand-over: optional     │  │  verdict: GO/NOGO   │
-            └──────────────────────────┘  └─────────────────────┘
+    note over IMP,QA: planning
+    IMP->>QA: planner hand-over (optional)<br/>output: planning.md
+    QA-->>IMP: plan-reviewer: GO / NOGO<br/>review: coherence
 
-implement.  ┌─ implementer ───────────┐  ┌─ verifier ──────────┐
-            │  output: code + tests    │→│  review: correctness │
-            │  hand-over: REQUIRED     │  │  verdict: GO/NOGO   │
-            │  (stop hook enforced)    │  │  hand-over: REQUIRED│
-            └──────────────────────────┘  └─────────────────────┘
+    note over IMP,QA: design
+    IMP->>QA: designer hand-over (optional)<br/>output: design.md
+    QA-->>IMP: design-reviewer: GO / NOGO<br/>review: architecture
 
-validation  ┌─ validator ─────────────┐  ┌─ validation-reviewer┐
-            │  output: E2E tests       │→│  review: coverage    │
-            │  hand-over: REQUIRED     │  │  verdict: GO/NOGO   │
-            └──────────────────────────┘  └─────────────────────┘
+    note over IMP,QA: implementation
+    IMP->>QA: implementer hand-over (REQUIRED)<br/>output: code + tests<br/>stop hook enforced
+    QA-->>IMP: verifier: GO / NOGO + brief (REQUIRED)<br/>review: correctness
 
-document.   ┌─ documenter ────────────┐  ┌─ doc-reviewer ──────┐
-            │  output: reference docs  │→│  review: accuracy    │
-            │  hand-over: optional     │  │  verdict: GO/NOGO   │
-            └──────────────────────────┘  └─────────────────────┘
+    note over IMP,QA: validation
+    IMP->>QA: validator hand-over (REQUIRED)<br/>output: E2E tests
+    QA-->>IMP: validation-reviewer: GO / NOGO<br/>review: coverage
 
-transitions: always @imp via /transition-phase, after QA GO
+    note over IMP,QA: documentation
+    IMP->>QA: documenter hand-over (optional)<br/>output: reference docs
+    QA-->>IMP: doc-reviewer: GO / NOGO<br/>review: accuracy
+
+    note over IMP: /transition-phase always via @imp, after QA GO
 ```
 
 ---
@@ -692,11 +810,11 @@ Tests: `tests/copilot_orchestration/unit/hooks/test_requirements_loader.py`
 
 This step is the SSOT fix. All subsequent hook code uses the loader via DI.
 
-### Step 5 — UserPromptSubmit Hook (detect_sub_role.py + two wrappers)
-Implement three files (see §9.1 and §9.6):
-- `copilot_orchestration/hooks/detect_sub_role.py` — shared `detect_and_persist(prompt, loader, role, session_id)` function
-- `.copilot/hooks/detect_sub_role_imp.py` — thin wrapper; hardcodes `role="imp"`, delegates to `detect_and_persist`
-- `.copilot/hooks/detect_sub_role_qa.py` — thin wrapper; hardcodes `role="qa"`, delegates to `detect_and_persist`
+### Step 5 — UserPromptSubmit Hook (detect_sub_role.py + agent frontmatter)
+Implement (see §9.1 and §9.6):
+- `copilot_orchestration/hooks/detect_sub_role.py` — script entry point; reads `role` from `sys.argv[1]`, exports `detect_sub_role_and_persist(prompt, loader, role, session_id)`
+- `copilot_orchestration/hooks/notify_compaction.py` — PreCompact hook script (see §9.7)
+- `chat.useCustomAgentHooks = true` added to `.vscode/settings.json`
 
 Tests: `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py`
 
