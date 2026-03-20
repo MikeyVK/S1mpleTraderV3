@@ -385,7 +385,38 @@ No `/transition-phase` prompt: phase transitions are compact, directed operation
 
 ---
 
-### 10.8 Remaining Deferred Questions
+### 10.8 Test Location and Technical Debt: Explicit Deletion Required
+
+The current test suite contains two misplaced test files:
+
+```
+tests/mcp_server/unit/utils/test_stop_handover_guard.py
+tests/mcp_server/unit/utils/test_pre_compact_agent.py
+```
+
+These files must be **deleted**, not relocated. Two reasons:
+
+**1. Wrong namespace.** They live under `tests/mcp_server/` but test `copilot_orchestration` package code. There is no structural relationship between the MCP server and the orchestration package. Relocating them would carry the misclassification forward.
+
+**2. Wrong abstraction.** `test_stop_handover_guard.py` tests the v1 hardcoded `ROLE_REQUIREMENTS` dict. `test_pre_compact_agent.py` tests `parse_transcript_content` in isolation. Both test v1 internals that the v2 refactor replaces entirely with a loader-based architecture. Moving these tests relocates technical debt instead of resolving it.
+
+**Resolution:** Delete both files as an explicit pre-TDD cleanup step. The v2 TDD phase writes new tests under:
+
+```
+tests/copilot_orchestration/
+└── unit/
+    └── hooks/
+        ├── __init__.py
+        ├── test_stop_handover_guard.py       ← new: tests loader-based hook
+        ├── test_detect_sub_role.py           ← new: tests UserPromptSubmit handler
+        └── test_requirements_loader.py       ← new: tests SubRoleRequirementsLoader
+```
+
+This is technical debt resolution, not scope reduction. The coverage gap between deletion and the new tests is intentional: the v1 tests pass against v1 code and would fail against v2 code. They are not a safety net — they are a constraint that blocks the correct v2 implementation.
+
+---
+
+### 10.9 Remaining Deferred Questions
 
 - **OQ-1 final prompt content**: prompt body changes depend on the wider workflow model being stable. Bodies are deferred to planning/design phase.
 - **Gap D (extension point)**: content validation beyond marker presence (e.g. "is research.md present after a researcher session?") is project-specific and must not be in the package. If needed, it requires a declared extension point. Not in scope for v2.
