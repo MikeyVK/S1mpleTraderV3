@@ -1,10 +1,10 @@
 <!-- docs\development\issue263\design_v2_sub_role_orchestration.md -->
-<!-- template=design version=5827e841 created=2026-03-18T14:21Z updated= -->
+<!-- template=design version=5827e841 created=2026-03-18T14:21Z updated=2026-03-20T00:00Z -->
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.0  
-**Last Updated:** 2026-03-18
+**Version:** 2.1  
+**Last Updated:** 2026-03-20
 
 ---
 
@@ -49,7 +49,8 @@ The current imp_agent.md and qa_agent.md are monolithic — they mix identity, o
 **Non-Functional:**
 - [ ] Complete decoupling from MCP server state — no runtime dependency on .st3/state.json or .st3/projects.json
 - [ ] Backward compatible — unrecognized or missing sub-role falls back to current strict enforcement
-- [ ] Sub-role detection via transcript parsing of first user message — no hidden state
+- [ ] Sub-role detection via `UserPromptSubmit` hook on first user prompt — result persisted to `.copilot/session-sub-role.json`
+- [ ] Stop hook reads state file, never parses transcript — no file I/O beyond the state read
 - [ ] Graceful degradation when .st3 is unavailable
 - [ ] Each implementation step is independently testable
 
@@ -57,7 +58,9 @@ The current imp_agent.md and qa_agent.md are monolithic — they mix identity, o
 
 - No runtime dependency on MCP server or .st3 state files
 - Must remain backward compatible with current handover enforcement
-- Sub-role detection must work purely from transcript text — no hidden state files
+- Sub-role detection uses `UserPromptSubmit` hook (VS Code 1.112+); result written to `.copilot/session-sub-role.json`; `Stop` hook reads the state file — no transcript parsing, no JSONL I/O
+- Sub-role names come from `sub-role-requirements.json` via `SubRoleRequirementsLoader` — never hardcoded in hook logic
+- `sub-role-requirements.json` missing or malformed → explicit `FileNotFoundError`/`ConfigError`, never silent
 - Stop hook must default to strictest enforcement when sub-role is undetectable
 
 ---
@@ -106,9 +109,9 @@ Each sub-role has a dedicated output format with only phase-relevant sections. T
 
 ## 4. Chosen Design
 
-**Decision:** Implement Option B — sub-role-specific output formats per workflow phase with transcript-based sub-role detection in the stop hook, explicit user-driven sub-role selection via argument-hint, strict separation of role identity from operational prompts, and non-directive cross-chat language.
+**Decision:** Implement Option B — sub-role-specific output formats per workflow phase with `UserPromptSubmit`-based sub-role detection (VS Code 1.112+), state-file coordination between hooks, explicit user-driven sub-role selection via argument-hint, strict separation of role identity from operational prompts, and non-directive cross-chat language.
 
-**Rationale:** Option B was chosen because: (1) it eliminates per-interaction friction; (2) the stop hook can enforce precisely the right structure per phase; (3) it enables progressively sharper agent behavior as sub-role definitions mature; (4) the extra maintenance cost is bounded and predictable. Full MCP decoupling was chosen because the MCP server is not yet stable enough to serve as an orchestration dependency.
+**Rationale:** Option B was chosen because: (1) it eliminates per-interaction friction; (2) the stop hook can enforce precisely the right structure per phase; (3) it enables progressively sharper agent behavior as sub-role definitions mature; (4) the extra maintenance cost is bounded and predictable. Full MCP decoupling was chosen because the MCP server is not yet stable enough to serve as an orchestration dependency. Transcript-based sub-role detection (original v2.0 approach) was replaced by the `UserPromptSubmit` hook: it receives the prompt text directly via stdin, requires no JSONL parsing, and handles the resume-after-compaction scenario correctly (research finding §10.2).
 
 ---
 
@@ -509,43 +512,117 @@ argument-hint: >
 
 ## 9. Stop Hook Design
 
-### 9.1. Sub-Role Detection
+### 9.1. Sub-Role Detection via UserPromptSubmit Hook
 
-The hook detects the sub-role by parsing the first user message in the transcript for known sub-role keywords. No MCP state is read.
+VS Code 1.112+ fires the `UserPromptSubmit` hook for every user prompt, before the agent begins its response. The hook receives `{"prompt": "..."}` via stdin. This replaces the v2.0 approach of transcript parsing in the stop hook.
+
+**Detection algorithm (two-step, no LLM):**
 
 ```python
-ALL_SUB_ROLES: dict[str, list[str]] = {
-    "imp": ["researcher", "planner", "designer", "implementer", "validator", "documenter"],
-    "qa": ["plan-reviewer", "design-reviewer", "verifier", "validation-reviewer", "doc-reviewer"],
+def detect_sub_role(prompt: str, loader: ISubRoleRequirementsLoader, role: str) -> str:
+    """Detect sub-role from prompt text using config-driven candidate set."""
+    candidates = loader.valid_sub_roles(role)  # frozenset from sub-role-requirements.json
+
+    # Step 1: exact / normalised match
+    match = re.search(
+        r'\b(' + '|'.join(re.escape(s) for s in candidates) + r')\b',
+        prompt,
+        re.IGNORECASE,
+    )
+    if match:
+        return match.group(1).lower().replace(' ', '-')
+
+    # Step 2: typo correction via difflib (only words ≥ 7 chars)
+    words = [w for w in re.split(r'\W+', prompt) if len(w) >= 7]
+    close = difflib.get_close_matches(
+        ' '.join(words), list(candidates), n=1, cutoff=0.85
+    )
+    if close:
+        return close[0]
+
+    return loader.default_sub_role(role)  # safe default from config
+```
+
+**Idempotency:** the hook checks whether `.copilot/session-sub-role.json` already exists for the current `session_id`. If it does, the hook skips detection and returns immediately. This ensures that the first prompt of a new chat — or the first prompt after compaction — sets the sub-role exactly once.
+
+**State-file write (on detection):**
+
+```python
+state: SessionSubRoleState = {
+    "session_id": session_id,   # passed in hook payload (VS Code 1.112+)
+    "role": role,               # "imp" or "qa", read from hook payload
+    "sub_role": detected,
+    "detected_at": datetime.utcnow().isoformat() + "Z",
 }
-
-DEFAULT_SUB_ROLE: dict[str, str] = {"imp": "implementer", "qa": "verifier"}
-
-def detect_sub_role(records: list[dict[str, str]], role: str) -> str:
-    """Detect sub-role from first user message. Returns default if undetectable."""
-    for record in records:
-        if record["role"] == "user":
-            text_lower = record["text"].lower()
-            for sub_role in ALL_SUB_ROLES.get(role, []):
-                if sub_role.replace("-", " ") in text_lower or sub_role in text_lower:
-                    return sub_role
-            break  # only check first user message
-    return DEFAULT_SUB_ROLE.get(role, "implementer")
+Path(".copilot/session-sub-role.json").write_text(json.dumps(state))
 ```
 
-### 9.2. Sub-Role Requirements Matrix
+**Stop hook integration:** the stop hook no longer parses any transcript. It calls `loader.get_requirement(role, sub_role)` where `sub_role` is read from `.copilot/session-sub-role.json`. If the state file is missing or stale (`session_id` mismatch), the hook defaults to the role's `default_sub_role` from the loader.
+
+### 9.2. ISubRoleRequirementsLoader Protocol
+
+The `ISubRoleRequirementsLoader` Protocol is the single interface through which all hook code and tests access sub-role configuration. Hooks never read `sub-role-requirements.json` directly.
 
 ```python
-class SubRoleRequirement(TypedDict):
-    heading: str
-    markers: list[str]
-    requires_crosschat_block: bool
-    crosschat_heading: str
-    crosschat_prefix: str
-    crosschat_markers: list[str]
+from typing import Protocol, TypedDict
+
+class SubRoleSpec(TypedDict, total=False):
+    requires_crosschat_block: bool          # required
+    heading: str                            # required when requires_crosschat_block=True
+    block_prefix: str
+    guide_line: str
+    markers: list[str]                      # required when requires_crosschat_block=True
+
+
+class ISubRoleRequirementsLoader(Protocol):
+    def valid_sub_roles(self, role: str) -> frozenset[str]:
+        """All valid sub-role names for the given role. Used for detection candidate set."""
+        ...
+
+    def default_sub_role(self, role: str) -> str:
+        """Default sub-role when none is detected from the user prompt."""
+        ...
+
+    def requires_crosschat_block(self, role: str, sub_role: str) -> bool:
+        """True only for sub-roles that must produce a cross-chat handover block."""
+        ...
+
+    def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:
+        """Full requirement spec for the given (role, sub_role) pair.
+        
+        Raises ConfigError if (role, sub_role) combination is unknown.
+        Never returns None or raises KeyError.
+        """
+        ...
 ```
 
-Each `(role, sub_role)` pair has a `SubRoleRequirement` entry. When `requires_crosschat_block` is `False`, the hook only checks for the heading and markers. When `True`, it additionally validates the cross-chat block structure.
+**Package location:** `copilot_orchestration/hooks/interfaces.py`
+
+**Concrete implementation:** `SubRoleRequirementsLoader(requirements_path: Path)` in `copilot_orchestration/hooks/requirements_loader.py`
+- Constructor accepts a `Path` — resolved from `.copilot/sub-role-requirements.json` or package default
+- Raises `FileNotFoundError` if neither project nor package default exists
+- Raises `ConfigError` on malformed JSON or missing required fields
+- Parses once at construction; subsequent calls read cached data
+
+**Dependency injection in hooks:**
+
+```python
+# UserPromptSubmit hook
+loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+sub_role = detect_sub_role(prompt, loader, role)
+
+# Stop hook
+loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+spec = loader.get_requirement(role, sub_role)
+```
+
+**Test isolation:**
+
+```python
+# Tests receive a loader constructed from a fixture JSON path
+# No module-level state to patch; no inline dicts
+loader = SubRoleRequirementsLoader(Path("tests/fixtures/sub_role_requirements_test.json"))
+```
 
 ### 9.3. Enforcement Matrix Summary
 
@@ -566,6 +643,35 @@ Each `(role, sub_role)` pair has a `SubRoleRequirement` entry. When `requires_cr
 ### 9.4. Backward Compatibility
 
 When sub-role is not detected (default), the hook behaves identically to the current implementation: it enforces the `implementer` / `verifier` format including cross-chat blocks. No existing workflow breaks.
+
+---
+
+### 9.5. State File Schema: SessionSubRoleState
+
+The `.copilot/session-sub-role.json` file is the coordination layer between `UserPromptSubmit` (writer) and `Stop` (reader). Its schema is explicitly typed:
+
+```python
+class SessionSubRoleState(TypedDict):
+    session_id: str   # VS Code session identifier; used for stale detection
+    role: str         # "imp" or "qa"
+    sub_role: str     # detected sub-role name (must be in valid_sub_roles(role))
+    detected_at: str  # ISO 8601 UTC timestamp, e.g. "2026-03-20T14:05:33Z"
+```
+
+**Stale detection logic (Stop hook):**
+
+```python
+state = json.loads(Path(".copilot/session-sub-role.json").read_text())
+if state.get("session_id") != current_session_id:
+    # Stale state from a previous session — use role default
+    sub_role = loader.default_sub_role(role)
+else:
+    sub_role = state["sub_role"]
+```
+
+**Why `session_id` is required:** Without it, a state file from a previous session (e.g. `sub_role="researcher"`) would silently suppress cross-chat block enforcement for the new session, even if the new session is an `implementer` session. `session_id` mismatch is always an explicit skip, never a silent error.
+
+**File location:** `.copilot/session-sub-role.json` in the workspace root. The `.copilot/` directory is already used by VS Code for hook scripts and is excluded from version control via `.gitignore`.
 
 ---
 
@@ -668,25 +774,73 @@ transitions: always @imp via /transition-phase, after QA GO
 
 ## 13. Implementation Plan
 
+### Pre-Step — Delete Misplaced V1 Tests (technical debt resolution)
+
+Before any TDD work begins, delete the two v1 test files that live in the wrong namespace and test v1 internals that the v2 refactor replaces entirely:
+
+```
+tests/mcp_server/unit/utils/test_stop_handover_guard.py   ← delete
+tests/mcp_server/unit/utils/test_pre_compact_agent.py     ← delete
+```
+
+These must be **deleted**, not relocated. They test the v1 `ROLE_REQUIREMENTS` dict and `parse_transcript_content` — neither of which will exist after the v2 refactor. Moving them carries the technical debt forward. See research §10.9 for the full rationale.
+
+New tests are written in the TDD phase under `tests/copilot_orchestration/unit/hooks/`.
+
+---
+
 ### Step 1 — Sub-Role Sections in Role Guides (textual only)
 Add sub-role definitions and output format expectations to `imp_agent.md` and `qa_agent.md`. No code changes.
 
 ### Step 2 — argument-hint Updates
 Update `argument-hint` in both `.github/agents/imp.agent.md` and `.github/agents/qa.agent.md` to list available sub-roles. No code changes.
 
-### Step 3 — Stop Hook Extension
-Extend `stop_handover_guard.py` with `SubRoleRequirement` matrix, transcript-based sub-role detection, and per-sub-role enforcement logic. Update tests.
+### Step 3 — sub-role-requirements.json (canonical config)
+Create `.copilot/sub-role-requirements.json` with the structure defined in research §10.5. Include package fallback `_default_requirements.json` in `copilot_orchestration/hooks/`. No hook code changes yet — config only.
 
-### Step 4 — Slash Prompt Restructuring
-Create `/start-work`, `/resume-work`, `/prepare-handover`, `/transition-phase`, `/request-review`, `/prepare-brief` prompts. Remove or rename deprecated prompts.
+### Step 4 — SubRoleRequirementsLoader + ISubRoleRequirementsLoader Protocol
+Implement:
+- `copilot_orchestration/hooks/interfaces.py` — `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec` TypedDict
+- `copilot_orchestration/hooks/requirements_loader.py` — `SubRoleRequirementsLoader` concrete class
 
-### Step 5 — Template Extraction
-Move hand-over templates and cross-chat block templates from role guides into prompts.
+Tests: `tests/copilot_orchestration/unit/hooks/test_requirements_loader.py`
 
-### Step 6 — Cleanup
-Remove old formats from `_agent.md` files. Verify backward compatibility.
+This step is the SSOT fix. All subsequent hook code uses the loader via DI.
 
-Each step is independently testable and backward compatible.
+### Step 5 — UserPromptSubmit Hook (detect_sub_role.py)
+Implement `copilot_orchestration/hooks/detect_sub_role.py`:
+- Receives `{"prompt": "..."}` via stdin
+- Calls `loader.valid_sub_roles(role)` for candidate set
+- Writes `.copilot/session-sub-role.json` on detection (idempotent)
+
+Tests: `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py`
+
+### Step 6 — Stop Hook Refactored (stop_handover_guard.py)
+Refactor `stop_handover_guard.py`:
+- Remove `ROLE_REQUIREMENTS` dict and all transcript / first-message parsing
+- Accept `ISubRoleRequirementsLoader` via DI
+- Read sub-role from state file (with `session_id` staleness check)
+- Enforce per `loader.get_requirement(role, sub_role)`
+
+Tests: `tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py`
+
+### Step 7 — New Test Suite (copilot_orchestration namespace)
+Ensure `tests/copilot_orchestration/unit/hooks/__init__.py` exists. Verify full test coverage for:
+- `test_requirements_loader.py` — loader, Fail-Fast errors, fallback, DI contract
+- `test_detect_sub_role.py` — detection, idempotency, stale state, default
+- `test_stop_handover_guard.py` — pass-through, block enforcement, missing state
+
+Test matrix targets behavior-condition cases (≈12), not sub-role names. Fixture configs (test JSON files), not inline dicts.
+
+### Step 8 — Slash Prompt Restructuring
+Create or rename prompts per §10.1. Update markers to reference requirements file.
+
+### Step 9 — Cleanup
+Remove deprecated `ROLE_REQUIREMENTS` dict and any remaining v1 transcript-parsing code. Verify backward compatibility. Run full quality gates.
+
+---
+
+Each step is independently testable and backward compatible. Steps 4–6 are the core TDD target. Steps 1–3 and 7–9 are textual or structural.
 
 ---
 
@@ -712,8 +866,25 @@ Each step is independently testable and backward compatible.
 
 ---
 
+## 15. Deferred Items
+
+### OQ-1 — Slash Prompt Body Content
+
+The prompt set revision (§10.1 / §10.7) is resolved at the title and purpose level: which 6 prompts exist, what they rename to, and what each one's role is. The **body content** of each prompt (exact instructions, recovery steps, format references) is deferred to the planning phase.
+
+**Why deferred:** Prompt body content depends on stable sub-role definitions in `imp_agent.md` / `qa_agent.md` (Step 1), stable marker vocabulary in `sub-role-requirements.json` (Step 3), and a stable cross-chat block format. None of these are finalized until the TDD phase validates the full stack. Writing prompt bodies before that would create a dependency inversion.
+
+**Impact:** Steps 1–9 of the implementation plan are unaffected. Prompt body content is the last thing written, after the enforcement machinery is tested and verified.
+
+### Gap D — Content Validation Extension Point
+
+Validation beyond marker presence (e.g. "is research.md present after a researcher session?") is project-specific and outside the package scope. If needed in the future, it requires a declared extension point in `ISubRoleRequirementsLoader`. Not in scope for v2.
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.1 | 2026-03-20 | Design phase | Replaced transcript-based sub-role detection (§9.1) with UserPromptSubmit hook; replaced SubRoleRequirement TypedDict (§9.2) with ISubRoleRequirementsLoader Protocol; added SessionSubRoleState schema (§9.5); corrected §1.2/§1.3 constraints; corrected §4 rationale; rewrote §13 implementation plan (9 steps + pre-step delete v1 tests); added §15 deferred items. Resolves all coding standards violations identified in research §10.8. |
 | 2.0 | 2026-03-18 | QA analysis session | Initial draft based on QA/user collaborative design session |

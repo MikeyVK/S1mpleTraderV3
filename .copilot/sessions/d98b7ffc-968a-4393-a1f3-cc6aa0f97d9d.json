@@ -1,7 +1,23 @@
 {
-  "timestamp": "2026-03-17T21:28:34.450289+00:00",
+  "timestamp": "2026-03-20T18:54:50.357782+00:00",
   "chat_id": "d98b7ffc-968a-4393-a1f3-cc6aa0f97d9d",
-  "last_user_goal": "2026-03-17T21:28:34.088Z",
-  "files_in_scope": [],
-  "snapshot_source": "pre_compact_workspace"
+  "active_role": "qa",
+  "last_user_goal": "d98b7ffc-968a-4393-a1f3-cc6aa0f97d9d",
+  "files_in_scope": [
+    "3A/temp/st3/.github/prompts/request-qa-review.prompt.md",
+    ".github/.copilot-instructions.md",
+    "mcp_server/managers/artifact_manager.py",
+    "mcp_server/core/policy_engine.py",
+    "mcp_server/scaffolding/metadata.py",
+    "mcp_server/tools/issue_tools.py",
+    "mcp_server/core/directory_policy_resolver.py",
+    "mcp_server/scaffolders/template_scaffolder.py",
+    "mcp_server/tools/git_tools.py",
+    "mcp_server/tools/pr_tools.py",
+    "mcp_server/server.py",
+    "tools/managers/core/scaffolding/scaffolders/validation/server.py"
+  ],
+  "pending_handover_summary": "",
+  "handover_prompt_block": "",
+  "snapshot_source": "pre_compact_agent"
 }
