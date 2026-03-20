@@ -385,7 +385,100 @@ No `/transition-phase` prompt: phase transitions are compact, directed operation
 
 ---
 
-### 10.8 Test Location and Technical Debt: Explicit Deletion Required
+### 10.8 Coding Standards Review: Violations in the V2 Design
+
+The v2 design as formulated in §10.2–10.6 was reviewed against `docs/coding_standards/ARCHITECTURE_PRINCIPLES.md`. This review found four binding violations that must be corrected before planning. Each one is a law, not a suggestion.
+
+---
+
+**Violation 1: DRY + SSOT (§2) — no single reader for sub-role-requirements.json**
+
+The research proposed that the Stop hook, the `UserPromptSubmit` hook, and potentially tests each read `.copilot/sub-role-requirements.json` directly. That is a DRY violation:
+
+> *"Two classes independently reading the same config file without a shared interface is a DRY violation."*
+
+The file has one shape, one schema, and one validation contract. There must be exactly one class that reads it: `SubRoleRequirementsLoader`. All consumers (hooks, tests, config validators) receive this class via dependency injection. No hook reads the file directly.
+
+This also means every access to sub-role requirement data goes through a typed interface, not a raw `dict` key lookup. Unknown sub-role → explicit error from the loader, not `KeyError` at call site.
+
+---
+
+**Violation 2: Config-First (§3) — sub-role names hardcoded in detection logic**
+
+The NL detection approach described in §10.2 used a hardcoded regex alternation:
+
+```python
+re.search(r'\b(researcher|planner|designer|implementer|validator|documenter|verifier)\b', ...)
+```
+
+And a hardcoded word list for `difflib.get_close_matches`. Both are Config-First violations:
+
+> *"An `if phase_name == 'implementation'` in production code is a Config-First violation."*
+
+The list of valid sub-role names is already defined in `sub-role-requirements.json` (§10.5). The detection logic must build its candidate set by reading that list from the loader at runtime. Adding a new sub-role to the requirements file must never require a code change in `detect_sub_role.py`.
+
+---
+
+**Violation 3: SSOT (§2) — sub-role names duplicated across locations**
+
+As described in §10.2–10.5, sub-role names would appear in at minimum: the requirements JSON, the regex pattern, the difflib candidate list, the state-file writer, and tests. That is five locations for one piece of knowledge.
+
+> *"Every fact in the system has exactly one authoritative location."*
+
+The authoritative location is `sub-role-requirements.json`. Every other location must derive from it dynamically. The `SubRoleRequirementsLoader` exposes a method (e.g. `valid_sub_roles(role: str) -> frozenset[str]`) that all consumers call. The loader is the single point where the list is materialized.
+
+---
+
+**Violation 4: Fail-Fast (§4) — silent default on missing or malformed config**
+
+The research described: "Default at no match: `implementer` for `@imp`, `verifier` for `@qa`." That default is correct as a *detection* fallback (no keyword found in the prompt). It is not correct as a *config* fallback.
+
+The distinction:
+
+| Situation | Correct behaviour |
+|---|---|
+| No sub-role keyword in user prompt | Default to role's `default_sub_role` from config |
+| `sub-role-requirements.json` missing | `FileNotFoundError` with explicit path — never silent |
+| `sub-role-requirements.json` malformed | `ConfigError` naming the missing/invalid field — never silent |
+| Sub-role in state file not present in config | `ConfigError` at load time — not `KeyError` at hook execution |
+
+> *"Missing config files → explicit `FileNotFoundError` with path, never `None` return."*
+> *"An unknown action type in an enforcement config → `ConfigError` on startup. Never a `KeyError` at execution time."*
+
+The package ships a `_default_requirements.json` as fallback (§10.5). The loader first checks `.copilot/sub-role-requirements.json`; if absent it loads the package default. If neither exists, it raises `FileNotFoundError`. It never silently returns `None` or an empty structure.
+
+---
+
+**Consequence for Dependency Injection (§11) — no inline dicts in tests**
+
+The coding standards require:
+
+> *"All production dependencies are injectable. Tests inject a fake/in-memory variant."*
+
+The earlier test matrix description mentioned "fixture configurations (inline dicts)." That bypasses the injection contract. Correct test approach:
+
+- `SubRoleRequirementsLoader` accepts a `Path` constructor argument
+- Tests construct the loader with a temp-file or in-memory equivalent pointing to a known fixture JSON
+- No test reaches into hook internals to swap out a `ROLE_REQUIREMENTS` dict — the dict does not exist in v2
+- Test isolation is achieved by injecting a loader with controlled config, not by patching module-level state
+
+---
+
+**Summary: what these violations change in the implementation plan**
+
+| Design element | As described in §10.x | Correction required |
+|---|---|---|
+| Config reading | Hook reads JSON file directly | `SubRoleRequirementsLoader` class; hooks receive via DI |
+| Sub-role detection candidates | Hardcoded regex alternation + difflib word list | Candidates loaded from `SubRoleRequirementsLoader.valid_sub_roles()` |
+| Sub-role name authority | Present in 5+ locations | Single authority: `sub-role-requirements.json`, exposed via loader |
+| Missing config behaviour | Silent fallback to default | Explicit `FileNotFoundError` / `ConfigError` |
+| Test isolation mechanism | Inline fixture dicts | Loader injected with fixture-path JSON |
+
+These corrections do not change the architectural intent of §10.2–10.6. They make the implementation compliant with the binding standards before code is written.
+
+---
+
+### 10.9 Test Location and Technical Debt: Explicit Deletion Required
 
 The current test suite contains two misplaced test files:
 
