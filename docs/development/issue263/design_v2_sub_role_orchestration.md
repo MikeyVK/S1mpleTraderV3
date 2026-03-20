@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.5  
+**Version:** 2.6  
 **Last Updated:** 2026-03-21
 
 ---
@@ -120,7 +120,7 @@ graph LR
     subgraph Pkg["Package (copilot_orchestration/hooks/)"]
         LDR["SubRoleRequirementsLoader"]
         IFACE["ISubRoleRequirementsLoader (Protocol)"]
-        PERSIST["detect_sub_role_and_persist()"]
+        PERSIST["detect_sub_role()<br/>(pure query)"]
     end
 
     IA --> PR
@@ -361,31 +361,21 @@ argument-hint: >
 
 VS Code 1.112+ fires the `UserPromptSubmit` hook for every user prompt, before the agent begins its response. The hook receives `{"prompt": "..."}` via stdin. This replaces the v2.0 approach of transcript parsing in the stop hook.
 
-**`detect_sub_role_and_persist` function (package location: `copilot_orchestration/hooks/detect_sub_role.py`):**
+**`detect_sub_role` function (package location: `copilot_orchestration/hooks/detect_sub_role.py`):**
 
 ```python
-def detect_sub_role_and_persist(
+def detect_sub_role(
     prompt: str,
     loader: ISubRoleRequirementsLoader,
     role: str,
-    session_id: str,
-) -> None:
-    """Detect sub-role from prompt and write to session state file.
+) -> str:
+    """Detect sub-role from prompt text.
 
-    Idempotent: skips if state file already contains a matching session_id.
-    Called from the UserPromptSubmit hook command defined in each agent's frontmatter.
+    Pure query — no I/O, no side effects.
+    Returns the detected sub-role name (always a member of loader.valid_sub_roles(role)).
+    Falls back to loader.default_sub_role(role) when no match is found.
     """
-    state_path = Path(".copilot/session-sub-role.json")
-
-    # Idempotency check — first prompt of a new chat sets sub-role exactly once
-    try:
-        existing = json.loads(state_path.read_text())
-        if existing.get("session_id") == session_id:
-            return  # already detected for this session
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass  # no state file or malformed — proceed with detection
-
-    candidates = loader.valid_sub_roles(role)  # frozenset from sub-role-requirements.yaml
+    candidates = loader.valid_sub_roles(role)
 
     # Step 1: exact / normalised match
     match = re.search(
@@ -394,23 +384,51 @@ def detect_sub_role_and_persist(
         re.IGNORECASE,
     )
     if match:
-        detected = match.group(1).lower().replace(' ', '-')
-    else:
-        # Step 2: typo correction via difflib (only words ≥ 7 chars)
-        words = [w for w in re.split(r'\W+', prompt) if len(w) >= 7]
-        close = difflib.get_close_matches(
-            ' '.join(words), list(candidates), n=1, cutoff=0.85
-        )
-        detected = close[0] if close else loader.default_sub_role(role)
+        return match.group(1).lower().replace(' ', '-')
+
+    # Step 2: typo correction via difflib (only words ≥ 7 chars)
+    words = [w for w in re.split(r'\W+', prompt) if len(w) >= 7]
+    close = difflib.get_close_matches(
+        ' '.join(words), list(candidates), n=1, cutoff=0.85
+    )
+    return close[0] if close else loader.default_sub_role(role)
+```
+
+**Script entry point (`__main__` block — handles all I/O):**
+
+```python
+if __name__ == "__main__":
+    role = sys.argv[1]                          # injected by agent frontmatter hook config
+    payload = json.loads(sys.stdin.read())
+    prompt: str = payload.get("prompt", "")
+    session_id: str = payload.get("sessionId", "")
+
+    state_path = Path(".copilot/session-sub-role.json")
+    loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+
+    # Idempotency check — sub-role is set exactly once per session
+    try:
+        existing = json.loads(state_path.read_text())
+        if existing.get("session_id") == session_id:
+            sys.exit(0)  # already detected for this session
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass  # no state file or malformed — proceed with detection
+
+    sub_role = detect_sub_role(prompt, loader, role)
 
     state: SessionSubRoleState = {
-        "session_id": session_id,   # passed in hook payload (VS Code 1.112+)
-        "role": role,               # "imp" or "qa", read from hook payload
-        "sub_role": detected,
+        "session_id": session_id,
+        "role": role,
+        "sub_role": sub_role,
         "detected_at": datetime.utcnow().isoformat() + "Z",
     }
     state_path.write_text(json.dumps(state))
 ```
+
+**Design rationale:**
+- `detect_sub_role` is a **pure query**: returns a value, no side effects. Fully testable without file system mocking.
+- The `__main__` block is the **command**: owns all I/O (read payload, idempotency guard, write state). Not part of the testable unit contract — it is the thin entry point.
+- `state_path` is resolved in the entry point, not inside the query function (DIP: the query has no dependency on paths or file system).
 
 **Stop hook integration:** the stop hook no longer parses any transcript. It calls `loader.get_requirement(role, sub_role)` where `sub_role` is read from `.copilot/session-sub-role.json`. If the state file is missing or stale (`session_id` mismatch), the hook defaults to the role's `default_sub_role` from the loader.
 
@@ -541,7 +559,7 @@ else:
 
 ### 9.6. Role Resolution in the UserPromptSubmit Hook
 
-**Problem:** `detect_sub_role_and_persist(prompt, loader, role, session_id)` requires `role` to be resolved before detection. The VS Code docs confirm that the `UserPromptSubmit` hook payload does **not** include an agent identifier — common fields are `timestamp`, `cwd`, `sessionId`, `hookEventName`, and `transcript_path`. The `agent_type` field only appears in `SubagentStart`/`SubagentStop` payloads.
+**Problem:** `detect_sub_role(prompt, loader, role)` requires `role` to be resolved before detection. The VS Code docs confirm that the `UserPromptSubmit` hook payload does **not** include an agent identifier — common fields are `timestamp`, `cwd`, `sessionId`, `hookEventName`, and `transcript_path`. The `agent_type` field only appears in `SubagentStart`/`SubagentStop` payloads.
 
 **Decision: configuration over code.** VS Code supports agent-scoped hooks via the `hooks` field in `.agent.md` frontmatter (requires `chat.useCustomAgentHooks = true`). Agent-scoped hooks run **only** when that agent is active. This means the role can be injected as a command-line argument in the hook configuration — no role-specific Python wrapper file needed.
 
@@ -573,7 +591,7 @@ The script reads `role = sys.argv[1]` and the hook payload from stdin. The role 
 
 **Pre-condition:** `chat.useCustomAgentHooks` setting must be `true` in the user's VS Code workspace. This is a documented restriction; the design cannot control it. The workspace `.vscode/settings.json` should include this setting.
 
-**Package location for shared logic:** `copilot_orchestration/hooks/detect_sub_role.py` — exports `detect_sub_role_and_persist(prompt, loader, role, session_id)`. The script reads `sys.argv[1]` for `role` and the JSON payload from stdin for `prompt` and `session_id`.
+**Package location for shared logic:** `copilot_orchestration/hooks/detect_sub_role.py` — exports `detect_sub_role(prompt, loader, role) -> str` (pure query). The `__main__` block reads `sys.argv[1]` for `role` and the JSON payload from stdin for `prompt` and `session_id`, handles idempotency, and writes the state file.
 
 **Why agent-scoped (frontmatter) over alternatives:**
 - Option (a) — two wrapper Python files: hardcodes "config" decisions in code; rejected (config over code)
@@ -595,7 +613,7 @@ The script reads `role = sys.argv[1]` and the hook payload from stdin. The role 
 | Payload fields | `trigger`, `sessionId`, `hookEventName`, `timestamp`, `cwd` |
 | Output fields | `systemMessage` only (`additionalContext` is **not** available) |
 
-**State file survives compaction.** The `sessionId` is unchanged across compaction, so `detect_sub_role_and_persist` has already written the sub-role to disk on the first prompt. After compaction the state file is still valid and the next UPS hook read will succeed unchanged. The PreCompact hook does NOT need to rewrite state — it only reinjects context.
+**State file survives compaction.** The `sessionId` is unchanged across compaction, so the `__main__` entry point of `detect_sub_role.py` has already written the sub-role to disk on the first prompt. After compaction the state file is still valid and the next UPS hook read will succeed unchanged. The PreCompact hook does NOT need to rewrite state — it only reinjects context.
 
 **Script:** `copilot_orchestration/hooks/notify_compaction.py`
 
@@ -613,22 +631,28 @@ import json
 import sys
 from pathlib import Path
 
-STATE_DIR = Path(".st3/agent_state")
+STATE_PATH = Path(".copilot/session-sub-role.json")   # same file written by detect_sub_role.py
 
 payload = json.loads(sys.stdin.read())
 session_id = payload.get("sessionId", "")
 
-state_file = STATE_DIR / f"{session_id}.json"
+if STATE_PATH.exists():
+    try:
+        state = json.loads(STATE_PATH.read_text())
+    except json.JSONDecodeError:
+        state = {}
 
-if state_file.exists():
-    state = json.loads(state_file.read_text())
-    sub_role = state.get("sub_role", "unknown")
-    print(json.dumps({
-        "systemMessage": (
-            f"Context was compacted. Your active sub-role is **{sub_role}**. "
-            "Use /resume-work to restore full behavioral context before continuing."
-        )
-    }))
+    if state.get("session_id") == session_id:
+        sub_role = state.get("sub_role", "unknown")
+        print(json.dumps({
+            "systemMessage": (
+                f"Context was compacted. Your active sub-role is **{sub_role}**. "
+                "Use /resume-work to restore full behavioral context before continuing."
+            )
+        }))
+    else:
+        # State file exists but belongs to a different session — nothing to inject
+        print(json.dumps({}))
 else:
     # No state yet — compaction before first UPS hook; nothing to inject.
     print(json.dumps({}))
@@ -804,7 +828,7 @@ These test `ROLE_REQUIREMENTS` and `parse_transcript_content` — neither exists
 | `copilot_orchestration/hooks/__init__.py` | Package init | Hook scripts package |
 | `copilot_orchestration/hooks/interfaces.py` | Interface | `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec`, `SessionSubRoleState` TypedDicts (§9.2, §9.5) |
 | `copilot_orchestration/hooks/requirements_loader.py` | Implementation | `SubRoleRequirementsLoader` — YAML + Pydantic validation, package fallback (§9.2, §9.3) |
-| `copilot_orchestration/hooks/detect_sub_role.py` | Hook script | Entry point (reads `sys.argv[1]` for role); exports `detect_sub_role_and_persist()` (§9.1, §9.6) |
+| `copilot_orchestration/hooks/detect_sub_role.py` | Hook script | Entry point (`__main__` block reads `sys.argv[1]` for role, owns I/O); exports `detect_sub_role()` pure query (§9.1, §9.6) |
 | `copilot_orchestration/hooks/notify_compaction.py` | Hook script | PreCompact hook; injects sub-role `systemMessage` after compaction (§9.7) |
 | `.copilot/sub-role-requirements.yaml` | Config | Canonical sub-role requirements per role (§9.3); `.copilot/` is the user-overridable location |
 | `copilot_orchestration/hooks/_default_requirements.yaml` | Config | Package fallback; used when `.copilot/` file is absent (§9.3) |
