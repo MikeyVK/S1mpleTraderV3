@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.6  
+**Version:** 2.7  
 **Last Updated:** 2026-03-21
 
 ---
@@ -631,41 +631,58 @@ import json
 import sys
 from pathlib import Path
 
-STATE_PATH = Path(".copilot/session-sub-role.json")   # same file written by detect_sub_role.py
+# Relative to workspace root — resolved against __file__ in __main__ block.
+# Do NOT use Path(".copilot/...") directly: CWD is not guaranteed to be
+# workspace root when VS Code fires this hook.
+STATE_RELPATH = Path(".copilot/session-sub-role.json")
 
-payload = json.loads(sys.stdin.read())
-session_id = payload.get("sessionId", "")
 
-if STATE_PATH.exists():
-    try:
-        state = json.loads(STATE_PATH.read_text())
-    except json.JSONDecodeError:
-        state = {}
+if __name__ == "__main__":
+    # Resolve workspace root from this file's location:
+    # copilot_orchestration/hooks/notify_compaction.py → parents[2] = workspace root
+    workspace_root = Path(__file__).resolve().parents[2]
+    state_path = workspace_root / STATE_RELPATH
 
-    if state.get("session_id") == session_id:
-        sub_role = state.get("sub_role", "unknown")
-        print(json.dumps({
-            "systemMessage": (
-                f"Context was compacted. Your active sub-role is **{sub_role}**. "
-                "Use /resume-work to restore full behavioral context before continuing."
-            )
-        }))
+    payload = json.loads(sys.stdin.read())
+    session_id = payload.get("sessionId", "")
+
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text())
+        except json.JSONDecodeError:
+            state = {}
+
+        if state.get("session_id") == session_id:
+            sub_role = state.get("sub_role", "unknown")
+            print(json.dumps({
+                "systemMessage": (
+                    f"Context was compacted. Your active sub-role is **{sub_role}**. "
+                    "Use /resume-work to restore full behavioral context before continuing."
+                )
+            }))
+        else:
+            # State file exists but belongs to a different session — nothing to inject
+            print(json.dumps({}))
     else:
-        # State file exists but belongs to a different session — nothing to inject
+        # No state yet — compaction before first UPS hook; nothing to inject.
         print(json.dumps({}))
-else:
-    # No state yet — compaction before first UPS hook; nothing to inject.
-    print(json.dumps({}))
 ```
 
-**Agent frontmatter configuration** (added to BOTH `.imp.md` and `.qa.md`):
+**Agent frontmatter configuration** (added to BOTH `.imp.agent.md` and `.qa.agent.md`; `notify_compaction.py` is appended to the existing `PreCompact` array — see §13 M.2 note):
 
 ```yaml
+# .github/agents/imp.agent.md frontmatter (relevant excerpt — full format identical to §9.6)
 hooks:
-  - event: UserPromptSubmit
-    command: python copilot_orchestration/hooks/detect_sub_role.py <role>
-  - event: PreCompact
-    command: python copilot_orchestration/hooks/notify_compaction.py
+  UserPromptSubmit:
+    - type: command
+      command: "python copilot_orchestration/hooks/detect_sub_role.py imp"
+  PreCompact:
+    - type: command
+      command: "python3 ./scripts/copilot_hooks/pre_compact_agent.py"
+      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact_agent.py"
+      timeout: 15
+    - type: command
+      command: "python copilot_orchestration/hooks/notify_compaction.py"
 ```
 
 **Why `additionalContext` is not used:** The PreCompact hook output spec only supports `systemMessage` for the surviving window. `additionalContext` would be stripped. The `systemMessage` approach is the minimum viable signal: it tells the agent its sub-role and prompts a `/resume-work` call for full re-context.
@@ -846,12 +863,21 @@ These test `ROLE_REQUIREMENTS` and `parse_transcript_content` — neither exists
 | File | Change |
 |------|--------|
 | `copilot_orchestration/hooks/stop_handover_guard.py` | Remove `ROLE_REQUIREMENTS` dict + transcript parsing; accept `ISubRoleRequirementsLoader` via DI; read sub-role from state file (§9.4) |
-| `.github/agents/imp.agent.md` | Add frontmatter hooks (UPS + PreCompact, see §9.6); update `argument-hint` with sub-role list |
-| `.github/agents/qa.agent.md` | Add frontmatter hooks (UPS + PreCompact, see §9.6); update `argument-hint` with sub-role list |
+| `.github/agents/imp.agent.md` | Add `UserPromptSubmit` hook entry (§9.6); append `notify_compaction.py` as a second entry in the existing `PreCompact` array (see note below) |
+| `.github/agents/qa.agent.md` | Add `UserPromptSubmit` hook entry (§9.6); append `notify_compaction.py` as a second entry in the existing `PreCompact` array (see note below) |
 | `imp_agent.md` | Add sub-role definitions + output format expectations per sub-role (§5.1) |
 | `qa_agent.md` | Add sub-role definitions + output format expectations per sub-role (§5.2) |
 | `.vscode/settings.json` | Add `"chat.useCustomAgentHooks": true` (§9.6 prerequisite) |
 | `.github/prompts/*.prompt.md` | Rename + revise prompt set to 6 prompts per §10.1; add output format definitions per §6 markers |
+
+> **Note — `notify_compaction.py` vs `pre_compact_agent.py`:**
+> These two PreCompact hooks have different responsibilities and **coexist**. They do not replace each other.
+> - `pre_compact_agent.py` (v1, existing): reads the conversation transcript, extracts goal/files/active-role, writes a rich session snapshot to `.copilot/sessions/{chat_id}.json` and `.copilot/session-state.json` for `SessionStart` recovery across chats. Outputs `systemMessage`: "Saved agent snapshot to ...".
+> - `notify_compaction.py` (v2, new): reads the sub-role state file, injects `systemMessage`: "Compacted. Sub-role: X. Use /resume-work.".
+>
+> **Order in `PreCompact` array:** `pre_compact_agent.py` first (existing position preserved), `notify_compaction.py` appended second. VS Code runs both and concatenates their `systemMessage` outputs. There is no conflict — the messages are complementary.
+>
+> **`argument-hint` update** (in both agent files): add the available sub-role names to the hint so the user sees the list when invoking the agent. This is a text-only change with no code impact.
 
 ---
 
@@ -864,7 +890,7 @@ These test `ROLE_REQUIREMENTS` and `parse_transcript_content` — neither exists
 | Sub-role definitions in role guide drift from hook requirements | Inconsistent behavior | Hook is the enforcement authority; role guide is the behavioral authority — prompts connect them |
 | Prompt proliferation | Maintenance burden | Set is deliberately minimal (6 prompts, down from current 7) |
 | MCP transition tools unavailable | Phase transition cannot be recorded in .st3 | @imp documents transition textually; state can be reconstructed later |
-| VS Code does not inject `session_id` into `UserPromptSubmit` payload | Stale-detection logic in §9.5 cannot function; state file from a previous session may apply wrong sub-role to a new session | **Assumption:** VS Code 1.112 injects `session_id` in the hook payload (consistent with `SessionStart` behavior). **Fallback if not available:** use `detected_at` timestamp in `SessionSubRoleState` with a freshness window (e.g. 8 hours). If `detected_at` is older than the window, treat the state file as stale and use the role default. This is less precise than session_id matching but eliminates the silent-carry-over risk in most practical workflows. The fallback is selected at `SubRoleRequirementsLoader` construction time based on whether `session_id` is present in the payload. |
+| VS Code does not inject `session_id` into `UserPromptSubmit` payload | Stale-detection logic in §9.5 cannot function; state file from a previous session may apply wrong sub-role to a new session | **Assumption:** VS Code 1.112 injects `session_id` in the hook payload (consistent with `SessionStart` behavior). **Fallback if not available:** use `detected_at` timestamp in `SessionSubRoleState` with a freshness window (e.g. 8 hours). If `detected_at` is older than the window, treat the state file as stale and use the role default. This is less precise than session_id matching but eliminates the silent-carry-over risk in most practical workflows. The fallback strategy (session_id vs timestamp window) is applied in the hook entry point, not in the loader. If session_id is absent from the payload, the hook code selects timestamp-based freshness checking using the `detected_at` field from `SessionSubRoleState`. |
 
 ---
 
@@ -884,7 +910,7 @@ These test `ROLE_REQUIREMENTS` and `parse_transcript_content` — neither exists
 
 The prompt set revision (§10.1 / §10.7) is resolved at the title and purpose level: which 6 prompts exist, what they rename to, and what each one's role is. The **body content** of each prompt (exact instructions, recovery steps, format references) is deferred to the planning phase.
 
-**Why deferred:** Prompt body content depends on stable sub-role definitions in `imp_agent.md` / `qa_agent.md` (Step 1), stable marker vocabulary in `sub-role-requirements.json` (Step 3), and a stable cross-chat block format. None of these are finalized until the TDD phase validates the full stack. Writing prompt bodies before that would create a dependency inversion.
+**Why deferred:** Prompt body content depends on stable sub-role definitions in `imp_agent.md` / `qa_agent.md` (Step 1), stable marker vocabulary in `sub-role-requirements.yaml` (Step 3), and a stable cross-chat block format. None of these are finalized until the TDD phase validates the full stack. Writing prompt bodies before that would create a dependency inversion.
 
 **Impact:** Steps 1–9 of the implementation plan are unaffected. Prompt body content is the last thing written, after the enforcement machinery is tested and verified.
 
@@ -898,6 +924,10 @@ Validation beyond marker presence (e.g. "is research.md present after a research
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.6 | 2026-03-21 | Design phase | SRP/CQS/DIP violation fixes: `detect_sub_role_and_persist` split into `detect_sub_role()` pure query + `__main__` I/O block (§9.1). State path removed from function signature; resolved from `__file__` in entry point (DIP). §9.7 `notify_compaction.py`: state path corrected `.st3/agent_state/` → `.copilot/session-sub-role.json` (SSOT fix); `session_id` staleness guard and `JSONDecodeError` guard added. §9.6 and §13 function references updated to reflect new signature. Component diagram `PERSIST` node label updated. |
+| 2.5 | 2026-03-21 | Design phase | §2.4 component diagram: `PreCompact` node (`notify_compaction.py`) added; two UPS nodes unified to single `detect_sub_role.py` node; `detect_sub_role()` pure-query label. §2.4 sequence diagram: `notify_compaction.py (PreCompact)` participant added with independent flow after Stop hook. §13 renamed to "Component Inventory and Architecture Prerequisites": numbered implementation steps replaced by Files to Create / Files to Modify tables + Prerequisites block. |
+| 2.4 | 2026-03-21 | Design phase | §2.4 sequence diagram: idempotency check arrow (`UPS->>SF: read`) added before loader call. §6: config-naming note added (sub-role renaming requires only YAML + prompt updates, no code change). §7: restructured into §7.1 (imp→qa: facts only), §7.2 (qa→imp: work specification), §7.3 (imp→qa template), §7.4 (qa→imp directive template with severity labels, "must" language). §9.1: `detect_and_persist` → `detect_sub_role_and_persist`. §9.6: full rewrite — agent-scoped frontmatter hooks, `sys.argv[1]` role injection, `chat.useCustomAgentHooks` prerequisite, two-entry examples. §9.7 (new): PreCompact hook design (`notify_compaction.py`). §10.2: expanded with role-guides-vs-prompts distinction + `/start-work implementer` example. §11: contextual-information disclaimer note added. §12: ASCII flow diagram replaced by Mermaid `sequenceDiagram`. |
+| 2.3 | 2026-03-20 | Design phase | §2.4: Mermaid architecture diagrams added (component diagram + detection/enforcement sequence diagram). §6: marker table reduced; config schema updated from JSON to YAML + Pydantic (`SubRoleRequirementsLoader`). §9.5: `JSONDecodeError` guard added to stale-detection logic. §9.1: function renamed to `detect_and_persist` (intermediate step). §13: steps 3 (YAML config), 4 (loader + protocol), 5 (UPS hook), 8 (prompt restructuring) expanded with detail. |
 | 2.2 | 2026-03-20 | Design phase | F.1: corrected §1.2 functional requirement — removed validation-reviewer from cross-chat block requirement (only implementer/validator + verifier). F.2: added §9.6 specifying role resolution via two separate entry-point files (detect_sub_role_imp.py / detect_sub_role_qa.py), consistent with _imp/_qa naming pattern. F.3: added session_id assumption row to §14 Risks with timestamp-based fallback; updated Risk #2 text to reflect UserPromptSubmit context. F.4: corrected §9.5 stale detection code to handle FileNotFoundError (missing state file) with try/except. |
 | 2.1 | 2026-03-20 | Design phase | Replaced transcript-based sub-role detection (§9.1) with UserPromptSubmit hook; replaced SubRoleRequirement TypedDict (§9.2) with ISubRoleRequirementsLoader Protocol; added SessionSubRoleState schema (§9.5); corrected §1.2/§1.3 constraints; corrected §4 rationale; rewrote §13 implementation plan (9 steps + pre-step delete v1 tests); added §15 deferred items. Resolves all coding standards violations identified in research §10.8. |
 | 2.0 | 2026-03-18 | QA analysis session | Initial draft based on QA/user collaborative design session |
