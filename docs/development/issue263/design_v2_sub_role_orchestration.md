@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.1  
+**Version:** 2.2  
 **Last Updated:** 2026-03-20
 
 ---
@@ -41,7 +41,7 @@ The current imp_agent.md and qa_agent.md are monolithic — they mix identity, o
 - [ ] Define sub-roles per workflow phase for both @imp (researcher, planner, designer, implementer, validator, documenter) and @qa (plan-reviewer, design-reviewer, verifier, validation-reviewer, doc-reviewer)
 - [ ] Sub-role selection is driven by explicit user input via argument-hint, not by MCP server state
 - [ ] Each sub-role has a dedicated output format with phase-relevant sections only — no n/a fields
-- [ ] Stop hook enforcement is sub-role-aware: only implementer/validator (imp) and verifier/validation-reviewer (qa) require cross-chat handover blocks
+- [ ] Stop hook enforcement is sub-role-aware: only implementer/validator (imp) and verifier (qa) require cross-chat handover blocks
 - [ ] Cross-chat handover blocks use neutral non-directive language — role doctrine lives in the role guide, not in the prompt
 - [ ] Phase transitions are executed by @imp via /transition-phase after explicit user instruction and QA GO
 - [ ] Default sub-role when none specified: implementer (imp) / verifier (qa) for backward compatibility
@@ -661,17 +661,64 @@ class SessionSubRoleState(TypedDict):
 **Stale detection logic (Stop hook):**
 
 ```python
-state = json.loads(Path(".copilot/session-sub-role.json").read_text())
-if state.get("session_id") != current_session_id:
-    # Stale state from a previous session — use role default
+state_path = Path(".copilot/session-sub-role.json")
+try:
+    state = json.loads(state_path.read_text())
+except FileNotFoundError:
+    # No state file — first turn or state was cleared; use role default
     sub_role = loader.default_sub_role(role)
 else:
-    sub_role = state["sub_role"]
+    if state.get("session_id") != current_session_id:
+        # Stale state from a previous session — use role default
+        sub_role = loader.default_sub_role(role)
+    else:
+        sub_role = state["sub_role"]
 ```
 
 **Why `session_id` is required:** Without it, a state file from a previous session (e.g. `sub_role="researcher"`) would silently suppress cross-chat block enforcement for the new session, even if the new session is an `implementer` session. `session_id` mismatch is always an explicit skip, never a silent error.
 
 **File location:** `.copilot/session-sub-role.json` in the workspace root. The `.copilot/` directory is already used by VS Code for hook scripts and is excluded from version control via `.gitignore`.
+
+---
+
+### 9.6. Role Resolution in the UserPromptSubmit Hook
+
+**Problem:** `detect_sub_role(prompt, loader, role)` requires `role` to be resolved before detection. The hook payload from VS Code does not include a `role` field distinguishing `@imp` from `@qa`. Resolution must happen at hook wiring time, not at runtime.
+
+**Decision: Option (a) — two separate hook entry-point files**, consistent with the existing `_imp` / `_qa` naming pattern already established for `SessionStart` hooks.
+
+```
+.copilot/hooks/detect_sub_role_imp.py   ← UserPromptSubmit hook wired for @imp agent
+.copilot/hooks/detect_sub_role_qa.py    ← UserPromptSubmit hook wired for @qa agent
+```
+
+Each file is a thin wrapper that hardcodes `role = "imp"` or `role = "qa"` and delegates to the shared `detect_sub_role(prompt, loader, role)` function from `copilot_orchestration/hooks/`:
+
+```python
+# detect_sub_role_imp.py
+import sys, json
+from pathlib import Path
+from copilot_orchestration.hooks.requirements_loader import SubRoleRequirementsLoader
+from copilot_orchestration.hooks.detect_sub_role import detect_and_persist
+
+payload = json.loads(sys.stdin.read())
+loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+detect_and_persist(prompt=payload["prompt"], loader=loader, role="imp")
+```
+
+```python
+# detect_sub_role_qa.py — identical except role="qa"
+detect_and_persist(prompt=payload["prompt"], loader=loader, role="qa")
+```
+
+**Why option (a) over alternatives:**
+- Option (b) (extract role from filename at runtime) is fragile: the hook filename is not guaranteed to be available via `__file__` in all VS Code hook execution contexts.
+- Option (c) (injected via hook payload) is not documented in VS Code 1.112 hook API. Relying on undocumented payload fields is a maintenance risk.
+- Option (a) is explicit, testable, and consistent with the established `session_start_imp.py` / `session_start_qa.py` pattern already in `src/copilot_orchestration/hooks/`.
+
+**Package location for shared logic:** `copilot_orchestration/hooks/detect_sub_role.py` — exports `detect_and_persist(prompt, loader, role)` which is called by both entry-point files.
+
+**VS Code agent wiring:** Each `.agent.md` wrapper (`imp.agent.md`, `qa.agent.md`) specifies its own `UserPromptSubmit` hook file in its hooks configuration. The hook file determines the role — not the payload.
 
 ---
 
@@ -849,10 +896,11 @@ Each step is independently testable and backward compatible. Steps 4–6 are the
 | Risk | Impact | Mitigation |
 |---|---|---|
 | User forgets to specify sub-role | Hook defaults to strictest enforcement (implementer/verifier) — may block unnecessarily | argument-hint in agent wrapper reminds user of available sub-roles |
-| Sub-role keyword appears in task description but is not the intended sub-role | Wrong enforcement profile applied | Detection uses only the first user message and exact keyword match |
+| Sub-role keyword appears in task description but is not the intended sub-role | Wrong enforcement profile applied | `UserPromptSubmit` hook uses regex + difflib with high cutoff (0.85); mismatch is only possible if the user types a sub-role name embedded in a sentence — the strictest-default fallback is the safety net |
 | Sub-role definitions in role guide drift from hook requirements | Inconsistent behavior | Hook is the enforcement authority; role guide is the behavioral authority — prompts connect them |
 | Prompt proliferation | Maintenance burden | Set is deliberately minimal (6 prompts, down from current 7) |
 | MCP transition tools unavailable | Phase transition cannot be recorded in .st3 | @imp documents transition textually; state can be reconstructed later |
+| VS Code does not inject `session_id` into `UserPromptSubmit` payload | Stale-detection logic in §9.5 cannot function; state file from a previous session may apply wrong sub-role to a new session | **Assumption:** VS Code 1.112 injects `session_id` in the hook payload (consistent with `SessionStart` behavior). **Fallback if not available:** use `detected_at` timestamp in `SessionSubRoleState` with a freshness window (e.g. 8 hours). If `detected_at` is older than the window, treat the state file as stale and use the role default. This is less precise than session_id matching but eliminates the silent-carry-over risk in most practical workflows. The fallback is selected at `SubRoleRequirementsLoader` construction time based on whether `session_id` is present in the payload. |
 
 ---
 
@@ -886,5 +934,6 @@ Validation beyond marker presence (e.g. "is research.md present after a research
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.2 | 2026-03-20 | Design phase | F.1: corrected §1.2 functional requirement — removed validation-reviewer from cross-chat block requirement (only implementer/validator + verifier). F.2: added §9.6 specifying role resolution via two separate entry-point files (detect_sub_role_imp.py / detect_sub_role_qa.py), consistent with _imp/_qa naming pattern. F.3: added session_id assumption row to §14 Risks with timestamp-based fallback; updated Risk #2 text to reflect UserPromptSubmit context. F.4: corrected §9.5 stale detection code to handle FileNotFoundError (missing state file) with try/except. |
 | 2.1 | 2026-03-20 | Design phase | Replaced transcript-based sub-role detection (§9.1) with UserPromptSubmit hook; replaced SubRoleRequirement TypedDict (§9.2) with ISubRoleRequirementsLoader Protocol; added SessionSubRoleState schema (§9.5); corrected §1.2/§1.3 constraints; corrected §4 rationale; rewrote §13 implementation plan (9 steps + pre-step delete v1 tests); added §15 deferred items. Resolves all coding standards violations identified in research §10.8. |
 | 2.0 | 2026-03-18 | QA analysis session | Initial draft based on QA/user collaborative design session |
