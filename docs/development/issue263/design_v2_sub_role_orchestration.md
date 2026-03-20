@@ -1,10 +1,10 @@
 <!-- docs\development\issue263\design_v2_sub_role_orchestration.md -->
-<!-- template=design version=5827e841 created=2026-03-18T14:21Z updated=2026-03-20T00:00Z -->
+<!-- template=design version=5827e841 created=2026-03-18T14:21Z updated=2026-03-21T00:00Z -->
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.2  
-**Last Updated:** 2026-03-20
+**Version:** 2.3  
+**Last Updated:** 2026-03-21
 
 ---
 
@@ -59,8 +59,8 @@ The current imp_agent.md and qa_agent.md are monolithic — they mix identity, o
 - No runtime dependency on MCP server or .st3 state files
 - Must remain backward compatible with current handover enforcement
 - Sub-role detection uses `UserPromptSubmit` hook (VS Code 1.112+); result written to `.copilot/session-sub-role.json`; `Stop` hook reads the state file — no transcript parsing, no JSONL I/O
-- Sub-role names come from `sub-role-requirements.json` via `SubRoleRequirementsLoader` — never hardcoded in hook logic
-- `sub-role-requirements.json` missing or malformed → explicit `FileNotFoundError`/`ConfigError`, never silent
+- Sub-role names come from `sub-role-requirements.yaml` via `SubRoleRequirementsLoader` — never hardcoded in hook logic
+- `sub-role-requirements.yaml` missing → explicit `FileNotFoundError`; malformed → Pydantic `ValidationError`, never silent
 - Stop hook must default to strictest enforcement when sub-role is undetectable
 
 ---
@@ -86,6 +86,87 @@ Phase context comes from explicit user input (sub-role name), not from `.st3/sta
 ### 2.3. Safe Defaults
 
 When the sub-role is not specified or not detectable, the system defaults to the strictest enforcement: `implementer` for @imp, `verifier` for @qa. This preserves backward compatibility with all existing handover workflows.
+
+### 2.4. Architecture Overview
+
+#### Component Layers
+
+```mermaid
+graph LR
+    subgraph Identity["Identity Layer (agent guides)"]
+        IA[imp_agent.md]
+        QA[qa_agent.md]
+    end
+
+    subgraph Operations["Operations Layer (prompts)"]
+        PR[".github/prompts/*.prompt.md"]
+    end
+
+    subgraph Config["Config Layer"]
+        REQ[".copilot/sub-role-requirements.yaml"]
+        PKG["_default_requirements.yaml (package fallback)"]
+    end
+
+    subgraph Hooks["Hook Layer (.copilot/hooks/)"]
+        UPS_IMP["detect_sub_role_imp.py (UserPromptSubmit)"]
+        UPS_QA["detect_sub_role_qa.py (UserPromptSubmit)"]
+        STOP["stop_handover_guard.py (Stop)"]
+    end
+
+    subgraph State["Runtime State"]
+        SF[".copilot/session-sub-role.json"]
+    end
+
+    subgraph Pkg["Package (copilot_orchestration/hooks/)"]
+        LDR["SubRoleRequirementsLoader"]
+        IFACE["ISubRoleRequirementsLoader (Protocol)"]
+        DS["detect_sub_role.py (detect_and_persist)"]
+    end
+
+    IA --> PR
+    QA --> PR
+    REQ --> LDR
+    PKG --> LDR
+    LDR -.implements.-> IFACE
+    UPS_IMP --> DS
+    UPS_QA --> DS
+    DS --> LDR
+    DS --> SF
+    STOP --> LDR
+    STOP --> SF
+```
+
+#### Detection and Enforcement Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant VS as VS Code
+    participant UPS as detect_sub_role_imp/qa.py<br/>(UserPromptSubmit)
+    participant LDR as SubRoleRequirementsLoader
+    participant SF as session-sub-role.json
+    participant Agent as @imp / @qa agent
+    participant STOP as stop_handover_guard.py<br/>(Stop)
+
+    User->>VS: types prompt (e.g. "designer: update §9")
+    VS->>UPS: fires UserPromptSubmit {prompt, session_id}
+    UPS->>LDR: valid_sub_roles(role)
+    LDR-->>UPS: frozenset{"researcher","planner",...}
+    UPS->>UPS: regex + difflib detection → "designer"
+    UPS->>SF: write {session_id, role, sub_role, detected_at}
+    VS->>Agent: delivers prompt to agent
+
+    Agent->>Agent: produces response
+    VS->>STOP: fires Stop hook
+    STOP->>SF: read session-sub-role.json
+    alt file missing or stale session_id
+        STOP->>LDR: default_sub_role(role) → "implementer"
+    else valid state
+        STOP->>LDR: get_requirement(role, "designer")
+        LDR-->>STOP: {requires_crosschat_block: false}
+        STOP->>STOP: pass-through (no block required)
+    end
+```
 
 ---
 
@@ -157,288 +238,32 @@ The sub-role narrows what the agent is expected to produce, not what standards i
 
 ## 6. Sub-Role Output Formats
 
-### 6.1. @imp Formats
-
-#### `researcher`
-
-```
-### Research Output
-
-#### Problem Statement
-- [core question investigated]
-
-#### Findings
-- [finding with source reference]
-
-#### Technical Constraints
-- [constraint discovered during research]
-
-#### Open Questions
-- [question still to be answered]
-
-#### Recommendation
-- [advice for planning phase]
-```
-
-**Stop hook markers:** `Problem Statement`, `Findings`, `Open Questions`
-**Cross-chat block:** not required
-
----
-
-#### `planner`
-
-```
-### Planning Output
-
-#### Cycle Breakdown
-- [cycle: name + scope in one line]
-
-#### Deliverables Per Cycle
-- Cycle N: [concrete deliverables]
-
-#### Dependencies
-- [dependency between cycles or external factors]
-
-#### Stop-Go Criteria
-- [per cycle: exact verification condition]
-
-#### Risks
-- [risk + mitigation]
-```
-
-**Stop hook markers:** `Cycle Breakdown`, `Deliverables Per Cycle`, `Stop-Go Criteria`
-**Cross-chat block:** not required
-
----
-
-#### `designer`
-
-```
-### Design Output
-
-#### Interface Contracts
-- [interface/protocol + responsibility]
-
-#### Data Flow
-- [from → to, with transformation]
-
-#### Schema Changes
-- [model/schema + what changes]
-
-#### Architecture Decisions
-- [decision + rationale]
-
-#### Deferred
-- [what is deliberately deferred to implementation]
-```
-
-**Stop hook markers:** `Interface Contracts`, `Architecture Decisions`
-**Cross-chat block:** not required
-
----
-
-#### `implementer`
-
-```
-### Implementation Hand-Over
-
-#### Scope
-- [cycle/task executed]
-- [deliberately kept out of scope]
-
-#### Files Changed
-- [files grouped by role]
-
-#### Deliverables Satisfied
-- [which deliverables are now met]
-
-#### Proof
-- Tests run: [exact]
-- Checks run: [exact]
-- Outcomes: [exact]
-
-#### Out-of-Scope
-- [not changed, and why]
-
-#### Open Blockers
-- [none or specific]
-
-#### Ready-for-QA
-- yes / no
-
-### Copy-Paste Prompt For QA Chat
-
-(fenced text block with neutral language — see Section 7)
-```
-
-**Stop hook markers:** `Scope`, `Files Changed`, `Proof`, `Ready-for-QA`, plus cross-chat block markers
-**Cross-chat block:** **required**
-
----
-
-#### `validator`
-
-```
-### Validation Hand-Over
-
-#### Test Surface
-- [E2E/acceptance tests written or executed]
-
-#### Coverage
-- [what is covered, what is not]
-
-#### Results
-- Tests run: [exact]
-- Pass/fail: [exact]
-- Regressions: [none or specific]
-
-#### Gaps
-- [untested scenarios]
-
-#### Ready-for-QA
-- yes / no
-
-### Copy-Paste Prompt For QA Chat
-
-(fenced text block — see Section 7)
-```
-
-**Stop hook markers:** `Test Surface`, `Results`, `Ready-for-QA`, plus cross-chat block markers
-**Cross-chat block:** **required**
-
----
-
-#### `documenter`
-
-```
-### Documentation Output
-
-#### Documents Changed
-- [path + what changed/added]
-
-#### Accuracy Check
-- [which code references verified]
-
-#### Gaps
-- [missing documentation outside scope]
-```
-
-**Stop hook markers:** `Documents Changed`
-**Cross-chat block:** not required
-
----
-
-### 6.2. @qa Formats
-
-#### `plan-reviewer`
-
-```
-### Planning Review
-
-#### Findings
-1. [finding with severity + reference]
-
-#### Plan Coherence
-- Cycles consistent: [yes/no + explanation]
-- Deliverables testable: [yes/no + explanation]
-- Dependencies realistic: [yes/no + explanation]
-
-#### Verdict
-- GO / NOGO / CONDITIONAL GO
-```
-
-**Stop hook markers:** `Findings`, `Plan Coherence`, `Verdict`
-**Cross-chat block:** not required (optional on NOGO)
-
----
-
-#### `design-reviewer`
-
-```
-### Design Review
-
-#### Findings
-1. [finding against ARCHITECTURE_PRINCIPLES.md]
-
-#### Architecture Compliance
-- SOLID: [findings or "no violations"]
-- Layer boundaries: [findings or "respected"]
-- Config purity: [findings or "maintained"]
-
-#### Verdict
-- GO / NOGO / CONDITIONAL GO
-```
-
-**Stop hook markers:** `Findings`, `Architecture Compliance`, `Verdict`
-**Cross-chat block:** not required
-
----
-
-#### `verifier`
-
-```
-### Verification Review
-
-#### Findings
-1. [finding with severity + file reference]
-
-#### Proof Verification
-- Claimed tests: [confirmed/refuted]
-- Claimed checks: [confirmed/refuted]
-- Architecture compliance: [findings]
-
-#### Verdict
-- GO / NOGO / CONDITIONAL GO
-
-### Copy-Paste Prompt For Implementation Chat
-
-(fenced text block with neutral language — see Section 7)
-```
-
-**Stop hook markers:** `Findings`, `Proof Verification`, `Verdict`, plus cross-chat block markers
-**Cross-chat block:** **required**
-
----
-
-#### `validation-reviewer`
-
-```
-### Validation Review
-
-#### Findings
-1. [finding about test coverage or quality]
-
-#### Coverage Assessment
-- Claimed coverage: [confirmed/refuted]
-- Critical paths tested: [yes/no + which missing]
-
-#### Verdict
-- GO / NOGO / CONDITIONAL GO
-```
-
-**Stop hook markers:** `Findings`, `Coverage Assessment`, `Verdict`
-**Cross-chat block:** not required (optional on NOGO)
-
----
-
-#### `doc-reviewer`
-
-```
-### Documentation Review
-
-#### Findings
-1. [inaccuracy or missing piece]
-
-#### Accuracy
-- Code references correct: [yes/no]
-- Outdated sections: [none or specific]
-
-#### Verdict
-- GO / NOGO / CONDITIONAL GO
-```
-
-**Stop hook markers:** `Findings`, `Verdict`
-**Cross-chat block:** not required
+Output format definitions (sections, headings, field order) are implementation artefacts — they belong in `.github/prompts/*.prompt.md`, not here. See §10.1 for the prompt set and §13 Step 8 for when they are written.
+
+This section specifies only what the **stop hook needs**: the required markers per sub-role and whether a cross-chat block is enforced. These values feed directly into `sub-role-requirements.yaml` (§9) and must stay in sync with the prompt files.
+
+### 6.1. @imp Marker Specification
+
+| Sub-Role | Required Markers | Cross-Chat Block |
+|---|---|---|
+| `researcher` | `Problem Statement`, `Findings`, `Open Questions` | no |
+| `planner` | `Cycle Breakdown`, `Deliverables Per Cycle`, `Stop-Go Criteria` | no |
+| `designer` | `Interface Contracts`, `Architecture Decisions` | no |
+| `implementer` | `Scope`, `Files Changed`, `Proof`, `Ready-for-QA` + cross-chat block markers | **yes** |
+| `validator` | `Test Surface`, `Results`, `Ready-for-QA` + cross-chat block markers | **yes** |
+| `documenter` | `Documents Changed` | no |
+
+### 6.2. @qa Marker Specification
+
+| Sub-Role | Required Markers | Cross-Chat Block |
+|---|---|---|
+| `plan-reviewer` | `Findings`, `Plan Coherence`, `Verdict` | no |
+| `design-reviewer` | `Findings`, `Architecture Compliance`, `Verdict` | no |
+| `verifier` | `Findings`, `Proof Verification`, `Verdict` + cross-chat block markers | **yes** |
+| `validation-reviewer` | `Findings`, `Coverage Assessment`, `Verdict` | no |
+| `doc-reviewer` | `Findings`, `Verdict` | no |
+
+> **Rule:** A sub-role's marker list here is the authoritative source for `sub-role-requirements.yaml`. The prompt file for that sub-role must use these exact heading strings. If they diverge, the stop hook will fail silently on the wrong markers.
 
 ---
 
@@ -516,12 +341,31 @@ argument-hint: >
 
 VS Code 1.112+ fires the `UserPromptSubmit` hook for every user prompt, before the agent begins its response. The hook receives `{"prompt": "..."}` via stdin. This replaces the v2.0 approach of transcript parsing in the stop hook.
 
-**Detection algorithm (two-step, no LLM):**
+**`detect_and_persist` function (package location: `copilot_orchestration/hooks/detect_sub_role.py`):**
 
 ```python
-def detect_sub_role(prompt: str, loader: ISubRoleRequirementsLoader, role: str) -> str:
-    """Detect sub-role from prompt text using config-driven candidate set."""
-    candidates = loader.valid_sub_roles(role)  # frozenset from sub-role-requirements.json
+def detect_and_persist(
+    prompt: str,
+    loader: ISubRoleRequirementsLoader,
+    role: str,
+    session_id: str,
+) -> None:
+    """Detect sub-role from prompt and write to session state file.
+
+    Idempotent: skips if state file already contains a matching session_id.
+    Called by detect_sub_role_imp.py and detect_sub_role_qa.py.
+    """
+    state_path = Path(".copilot/session-sub-role.json")
+
+    # Idempotency check — first prompt of a new chat sets sub-role exactly once
+    try:
+        existing = json.loads(state_path.read_text())
+        if existing.get("session_id") == session_id:
+            return  # already detected for this session
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass  # no state file or malformed — proceed with detection
+
+    candidates = loader.valid_sub_roles(role)  # frozenset from sub-role-requirements.yaml
 
     # Step 1: exact / normalised match
     match = re.search(
@@ -530,38 +374,29 @@ def detect_sub_role(prompt: str, loader: ISubRoleRequirementsLoader, role: str) 
         re.IGNORECASE,
     )
     if match:
-        return match.group(1).lower().replace(' ', '-')
+        detected = match.group(1).lower().replace(' ', '-')
+    else:
+        # Step 2: typo correction via difflib (only words ≥ 7 chars)
+        words = [w for w in re.split(r'\W+', prompt) if len(w) >= 7]
+        close = difflib.get_close_matches(
+            ' '.join(words), list(candidates), n=1, cutoff=0.85
+        )
+        detected = close[0] if close else loader.default_sub_role(role)
 
-    # Step 2: typo correction via difflib (only words ≥ 7 chars)
-    words = [w for w in re.split(r'\W+', prompt) if len(w) >= 7]
-    close = difflib.get_close_matches(
-        ' '.join(words), list(candidates), n=1, cutoff=0.85
-    )
-    if close:
-        return close[0]
-
-    return loader.default_sub_role(role)  # safe default from config
-```
-
-**Idempotency:** the hook checks whether `.copilot/session-sub-role.json` already exists for the current `session_id`. If it does, the hook skips detection and returns immediately. This ensures that the first prompt of a new chat — or the first prompt after compaction — sets the sub-role exactly once.
-
-**State-file write (on detection):**
-
-```python
-state: SessionSubRoleState = {
-    "session_id": session_id,   # passed in hook payload (VS Code 1.112+)
-    "role": role,               # "imp" or "qa", read from hook payload
-    "sub_role": detected,
-    "detected_at": datetime.utcnow().isoformat() + "Z",
-}
-Path(".copilot/session-sub-role.json").write_text(json.dumps(state))
+    state: SessionSubRoleState = {
+        "session_id": session_id,   # passed in hook payload (VS Code 1.112+)
+        "role": role,               # "imp" or "qa", read from hook payload
+        "sub_role": detected,
+        "detected_at": datetime.utcnow().isoformat() + "Z",
+    }
+    state_path.write_text(json.dumps(state))
 ```
 
 **Stop hook integration:** the stop hook no longer parses any transcript. It calls `loader.get_requirement(role, sub_role)` where `sub_role` is read from `.copilot/session-sub-role.json`. If the state file is missing or stale (`session_id` mismatch), the hook defaults to the role's `default_sub_role` from the loader.
 
 ### 9.2. ISubRoleRequirementsLoader Protocol
 
-The `ISubRoleRequirementsLoader` Protocol is the single interface through which all hook code and tests access sub-role configuration. Hooks never read `sub-role-requirements.json` directly.
+The `ISubRoleRequirementsLoader` Protocol is the single interface through which all hook code and tests access sub-role configuration. Hooks never read `sub-role-requirements.yaml` directly.
 
 ```python
 from typing import Protocol, TypedDict
@@ -599,10 +434,10 @@ class ISubRoleRequirementsLoader(Protocol):
 **Package location:** `copilot_orchestration/hooks/interfaces.py`
 
 **Concrete implementation:** `SubRoleRequirementsLoader(requirements_path: Path)` in `copilot_orchestration/hooks/requirements_loader.py`
-- Constructor accepts a `Path` — resolved from `.copilot/sub-role-requirements.json` or package default
-- Raises `FileNotFoundError` if neither project nor package default exists
-- Raises `ConfigError` on malformed JSON or missing required fields
-- Parses once at construction; subsequent calls read cached data
+- Constructor accepts a `Path` — resolved from `.copilot/sub-role-requirements.yaml` or package default `_default_requirements.yaml`
+- Parses YAML at construction using `PyYAML`; validates schema with a `pydantic.BaseModel` — raises `pydantic.ValidationError` on schema violations
+- Raises `FileNotFoundError` if neither project config nor package default exists
+- Parsed data is cached; subsequent calls read cached data
 
 **Dependency injection in hooks:**
 
@@ -619,9 +454,9 @@ spec = loader.get_requirement(role, sub_role)
 **Test isolation:**
 
 ```python
-# Tests receive a loader constructed from a fixture JSON path
+# Tests receive a loader constructed from a fixture YAML path
 # No module-level state to patch; no inline dicts
-loader = SubRoleRequirementsLoader(Path("tests/fixtures/sub_role_requirements_test.json"))
+loader = SubRoleRequirementsLoader(Path("tests/fixtures/sub_role_requirements_test.yaml"))
 ```
 
 ### 9.3. Enforcement Matrix Summary
@@ -666,6 +501,9 @@ try:
     state = json.loads(state_path.read_text())
 except FileNotFoundError:
     # No state file — first turn or state was cleared; use role default
+    sub_role = loader.default_sub_role(role)
+except json.JSONDecodeError:
+    # State file exists but is malformed (e.g. partial write); treat as missing
     sub_role = loader.default_sub_role(role)
 else:
     if state.get("session_id") != current_session_id:
@@ -842,23 +680,23 @@ Add sub-role definitions and output format expectations to `imp_agent.md` and `q
 ### Step 2 — argument-hint Updates
 Update `argument-hint` in both `.github/agents/imp.agent.md` and `.github/agents/qa.agent.md` to list available sub-roles. No code changes.
 
-### Step 3 — sub-role-requirements.json (canonical config)
-Create `.copilot/sub-role-requirements.json` with the structure defined in research §10.5. Include package fallback `_default_requirements.json` in `copilot_orchestration/hooks/`. No hook code changes yet — config only.
+### Step 3 — sub-role-requirements.yaml (canonical config)
+Create `.copilot/sub-role-requirements.yaml` with the structure defined in research §10.5, using the marker values from §6 as the authoritative source. Include package fallback `_default_requirements.yaml` in `copilot_orchestration/hooks/`. No hook code changes yet — config only.
 
 ### Step 4 — SubRoleRequirementsLoader + ISubRoleRequirementsLoader Protocol
 Implement:
 - `copilot_orchestration/hooks/interfaces.py` — `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec` TypedDict
-- `copilot_orchestration/hooks/requirements_loader.py` — `SubRoleRequirementsLoader` concrete class
+- `copilot_orchestration/hooks/requirements_loader.py` — `SubRoleRequirementsLoader` concrete class; uses `PyYAML` for parsing and a `pydantic.BaseModel` for schema validation (see §9.2)
 
 Tests: `tests/copilot_orchestration/unit/hooks/test_requirements_loader.py`
 
 This step is the SSOT fix. All subsequent hook code uses the loader via DI.
 
-### Step 5 — UserPromptSubmit Hook (detect_sub_role.py)
-Implement `copilot_orchestration/hooks/detect_sub_role.py`:
-- Receives `{"prompt": "..."}` via stdin
-- Calls `loader.valid_sub_roles(role)` for candidate set
-- Writes `.copilot/session-sub-role.json` on detection (idempotent)
+### Step 5 — UserPromptSubmit Hook (detect_sub_role.py + two wrappers)
+Implement three files (see §9.1 and §9.6):
+- `copilot_orchestration/hooks/detect_sub_role.py` — shared `detect_and_persist(prompt, loader, role, session_id)` function
+- `.copilot/hooks/detect_sub_role_imp.py` — thin wrapper; hardcodes `role="imp"`, delegates to `detect_and_persist`
+- `.copilot/hooks/detect_sub_role_qa.py` — thin wrapper; hardcodes `role="qa"`, delegates to `detect_and_persist`
 
 Tests: `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py`
 
@@ -877,10 +715,10 @@ Ensure `tests/copilot_orchestration/unit/hooks/__init__.py` exists. Verify full 
 - `test_detect_sub_role.py` — detection, idempotency, stale state, default
 - `test_stop_handover_guard.py` — pass-through, block enforcement, missing state
 
-Test matrix targets behavior-condition cases (≈12), not sub-role names. Fixture configs (test JSON files), not inline dicts.
+Test matrix targets behavior-condition cases (≈12), not sub-role names. Fixture configs (test YAML files), not inline dicts.
 
 ### Step 8 — Slash Prompt Restructuring
-Create or rename prompts per §10.1. Update markers to reference requirements file.
+Create or rename prompts per §10.1. For each sub-role prompt, add the full output format definition (section headings, field descriptions, example content) using the marker table in §6 as the authoritative source for required heading strings. The prompt files are the single authoritative source for format definitions — §6 specifies the markers that the stop hook validates against them.
 
 ### Step 9 — Cleanup
 Remove deprecated `ROLE_REQUIREMENTS` dict and any remaining v1 transcript-parsing code. Verify backward compatibility. Run full quality gates.

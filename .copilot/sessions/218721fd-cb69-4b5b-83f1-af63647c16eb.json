@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-03-20T19:05:07.281334+00:00",
+  "timestamp": "2026-03-20T20:13:50.712546+00:00",
   "chat_id": "218721fd-cb69-4b5b-83f1-af63647c16eb",
-  "active_role": "imp",
+  "active_role": "qa",
   "last_user_goal": "218721fd-cb69-4b5b-83f1-af63647c16eb",
   "files_in_scope": [
     ".github/.copilot-instructions.md",
@@ -17,7 +17,7 @@
     "mcp_server/server.py",
     "mcp_server/__main__.py"
   ],
-  "pending_handover_summary": "from __future__ import annotations # Agent-specific PreCompact hook \u2014 fires for @imp and @qa sessions in addition # to the workspace-level pre_compact.py. # # Writes a rich snapshot to TWO locations: # 1. .copilot/sessions/{chat_id}.json \u2014 per-chat (same as workspace hook, # overwritten here with...",
+  "pending_handover_summary": "## 6. Sub-Role Output Formats ### 6.1. @imp Formats #### `researcher` ``` ### Research Output #### Problem Statement - [core question investigated] #### Findings - [finding with source reference] #### Technical Constraints - [constraint discovered during research] #### Open Questions - [question...",
   "handover_prompt_block": "",
   "snapshot_source": "pre_compact_agent"
 }
