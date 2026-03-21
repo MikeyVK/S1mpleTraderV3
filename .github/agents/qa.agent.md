@@ -27,8 +27,8 @@ hooks:
       timeout: 15
     - type: command
       cwd: "."
-      command: "python3 src/copilot_orchestration/hooks/notify_compaction.py"
-      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\notify_compaction.py"
+      command: "python3 src/copilot_orchestration/hooks/notify_compaction.py qa"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\notify_compaction.py qa"
       timeout: 15
   Stop:
     - type: command

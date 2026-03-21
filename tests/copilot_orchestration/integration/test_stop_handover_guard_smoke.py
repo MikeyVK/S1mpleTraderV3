@@ -16,7 +16,8 @@ from pathlib import Path
 
 import pytest
 
-_STATE_RELPATH = Path(".copilot") / "session-sub-role.json"
+_STATE_RELPATH_IMP = Path(".copilot") / "session-sub-role-imp.json"
+_STATE_RELPATH_QA = Path(".copilot") / "session-sub-role-qa.json"
 
 
 def _run_guard(hook_workspace: Path, role: str, payload: dict) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
@@ -40,7 +41,7 @@ class TestStopHandoverGuardSmoke:
             "role": "imp",
             "sub_role": "validator",
         }
-        (hook_workspace / _STATE_RELPATH).write_text(json.dumps(state))
+        (hook_workspace / _STATE_RELPATH_IMP).write_text(json.dumps(state))
 
         result = _run_guard(hook_workspace, "imp", {"sessionId": "sess-shg-001"})
 
@@ -55,7 +56,7 @@ class TestStopHandoverGuardSmoke:
             "role": "imp",
             "sub_role": "implementer",
         }
-        (hook_workspace / _STATE_RELPATH).write_text(json.dumps(state))
+        (hook_workspace / _STATE_RELPATH_IMP).write_text(json.dumps(state))
 
         result = _run_guard(
             hook_workspace, "imp", {"sessionId": "sess-shg-002", "stop_hook_active": True}
@@ -64,28 +65,28 @@ class TestStopHandoverGuardSmoke:
         assert result.returncode == 0
         assert json.loads(result.stdout) == {}
 
-    def test_decision_block_when_no_state_file_defaults_to_imp_default(
+    def test_exploration_mode_no_state_file_returns_empty_dict_for_imp(
         self, hook_workspace: Path
     ) -> None:
-        """No state file → imp default (implementer) → decision: block, exit 0."""
-        state_path = hook_workspace / _STATE_RELPATH
+        """No state file for imp → exploration mode → output is {}, exit 0."""
+        state_path = hook_workspace / _STATE_RELPATH_IMP
         if state_path.exists():
             state_path.unlink()
 
         result = _run_guard(hook_workspace, "imp", {"sessionId": "sess-shg-003"})
 
         assert result.returncode == 0
-        output = json.loads(result.stdout)
-        assert output["hookSpecificOutput"]["decision"] == "block"
+        assert json.loads(result.stdout) == {}
 
-    def test_decision_block_for_qa_verifier_default_no_state(self, hook_workspace: Path) -> None:
-        """qa without state file → verifier (default, enforced) → decision: block, exit 0."""
-        state_path = hook_workspace / _STATE_RELPATH
+    def test_exploration_mode_no_state_file_returns_empty_dict_for_qa(
+        self, hook_workspace: Path
+    ) -> None:
+        """No state file for qa → exploration mode → output is {}, exit 0."""
+        state_path = hook_workspace / _STATE_RELPATH_QA
         if state_path.exists():
             state_path.unlink()
 
         result = _run_guard(hook_workspace, "qa", {"sessionId": "sess-shg-004"})
 
         assert result.returncode == 0
-        output = json.loads(result.stdout)
-        assert output["hookSpecificOutput"]["decision"] == "block"
+        assert json.loads(result.stdout) == {}
