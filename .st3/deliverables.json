@@ -378,7 +378,7 @@
     "created_at": "2026-03-18T20:23:57.760796+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 8,
+        "total": 12,
         "cycles": [
           {
             "cycle_number": 1,
@@ -548,6 +548,129 @@
               }
             ],
             "exit_criteria": "Both agent files have correct YAML frontmatter. settings.json has chat.useCustomAgentHooks. Prompt set is exactly 6 files. start-implementation.prompt.md and resume-implementation.prompt.md absent (renamed). plan-executionDirectiveBatchCoordination.prompt.md absent. Role guides contain sub-role tables matching design \u00a75."
+          },
+          {
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "description": "state_path_for_role(role: str) exported from _paths.py returning .copilot/session-sub-role-{role}.json",
+                "id": "D8.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/utils/_paths.py",
+                  "text": "state_path_for_role",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "STATE_RELPATH constant absent from _paths.py",
+                "id": "D8.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/utils/_paths.py",
+                  "text": "STATE_RELPATH",
+                  "type": "absent_text"
+                }
+              }
+            ],
+            "exit_criteria": "grep finds no STATE_RELPATH in src/; state_path_for_role('imp') returns Path('.copilot/session-sub-role-imp.json'); test_paths.py updated and green; full suite green."
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "description": "Slash-strip regex present in detect_sub_role.py (strips /command prefix before first-word extraction)",
+                "id": "D9.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "^/\\S+\\s*",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Idempotency sys.exit(0) absent from detect_sub_role.py",
+                "id": "D9.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "sys.exit(0)",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "Role-scoped path (session-sub-role-{role}.json) referenced in detect_sub_role.py or _paths.py",
+                "id": "D9.3",
+                "validates": {
+                  "file": "src/copilot_orchestration/utils/_paths.py",
+                  "text": "session-sub-role-",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "exit_criteria": "Slash-prefix, first-word-only, and exploration-mode tests pass; sessionId absence does not change behaviour; full suite green."
+          },
+          {
+            "cycle_number": 11,
+            "deliverables": [
+              {
+                "description": "ConfigError caught in evaluate_stop_hook in stop_handover_guard.py",
+                "id": "D10.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
+                  "text": "ConfigError",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Exploration mode (no file) returns pass JSON without exception \u2014 default_sub_role fallback absent",
+                "id": "D10.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
+                  "text": "default_sub_role",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "session_id comparison absent from read_sub_role in stop_handover_guard.py",
+                "id": "D10.3",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
+                  "text": "session_id",
+                  "type": "absent_text"
+                }
+              }
+            ],
+            "exit_criteria": "Exploration-mode (no file) test passes; ConfigError injection test passes; stale-session tests removed; full suite green."
+          },
+          {
+            "cycle_number": 12,
+            "deliverables": [
+              {
+                "description": "Slash-prefix test present in test_detect_sub_role.py",
+                "id": "D11.1",
+                "validates": {
+                  "file": "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py",
+                  "text": "/start-work",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Exploration mode test present in test_stop_handover_guard.py",
+                "id": "D11.2",
+                "validates": {
+                  "file": "tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py",
+                  "text": "exploration",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Integration smoke tests cover both role-scoped files (imp + qa)",
+                "id": "D11.3",
+                "validates": {
+                  "file": "tests/copilot_orchestration/integration/test_hooks_smoke.py",
+                  "text": "session-sub-role-imp",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "exit_criteria": "All 63+ tests pass; no test references STATE_RELPATH or session_id-based branching; coverage for all new code paths >= pre-existing baseline."
           }
         ]
       }
