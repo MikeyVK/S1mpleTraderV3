@@ -93,44 +93,32 @@ def _make_state(role: str, sub_role: str, session_id: str = _SESSION_ID) -> str:
 class TestStopHandoverGuard:
     """Test suite for stop_handover_guard."""
 
-    def test_pass_through_for_all_non_enforced_imp_sub_roles(
-        self, tmp_path: Path
-    ) -> None:
+    def test_pass_through_for_all_non_enforced_imp_sub_roles(self, tmp_path: Path) -> None:
         """All non-enforced imp sub-roles return {} (no block)."""
         loader = _StubLoader()
         role = "imp"
         non_enforced = [
-            s
-            for s in loader.valid_sub_roles(role)
-            if not loader.requires_crosschat_block(role, s)
+            s for s in loader.valid_sub_roles(role) if not loader.requires_crosschat_block(role, s)
         ]
         assert non_enforced, "fixture must have at least one non-enforced imp sub-role"
         state_path = tmp_path / "state.json"
         for sub_role in non_enforced:
             state_path.write_text(_make_state(role, sub_role))
-            result = evaluate_stop_hook(
-                {"sessionId": _SESSION_ID}, role, loader, state_path
-            )
+            result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
             assert result == {}, f"expected pass-through for {sub_role!r}"
 
-    def test_pass_through_for_all_non_enforced_qa_sub_roles(
-        self, tmp_path: Path
-    ) -> None:
+    def test_pass_through_for_all_non_enforced_qa_sub_roles(self, tmp_path: Path) -> None:
         """All non-enforced qa sub-roles return {} (no block)."""
         loader = _StubLoader()
         role = "qa"
         non_enforced = [
-            s
-            for s in loader.valid_sub_roles(role)
-            if not loader.requires_crosschat_block(role, s)
+            s for s in loader.valid_sub_roles(role) if not loader.requires_crosschat_block(role, s)
         ]
         assert non_enforced, "fixture must have at least one non-enforced qa sub-role"
         state_path = tmp_path / "state.json"
         for sub_role in non_enforced:
             state_path.write_text(_make_state(role, sub_role))
-            result = evaluate_stop_hook(
-                {"sessionId": _SESSION_ID}, role, loader, state_path
-            )
+            result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
             assert result == {}, f"expected pass-through for {sub_role!r}"
 
     def test_missing_state_file_with_imp_role_blocks(self, tmp_path: Path) -> None:
@@ -138,9 +126,7 @@ class TestStopHandoverGuard:
         loader = _StubLoader()
         role = "imp"
         state_path = tmp_path / "missing.json"  # does not exist
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
     def test_missing_state_file_with_qa_role_blocks(self, tmp_path: Path) -> None:
@@ -148,42 +134,30 @@ class TestStopHandoverGuard:
         loader = _StubLoader()
         role = "qa"
         state_path = tmp_path / "missing.json"  # does not exist
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
-    def test_stale_session_id_falls_back_to_default_and_blocks(
-        self, tmp_path: Path
-    ) -> None:
+    def test_stale_session_id_falls_back_to_default_and_blocks(self, tmp_path: Path) -> None:
         """State file with wrong session_id is treated as stale; default (enforced) blocks."""
         loader = _StubLoader()
         role = "imp"
         # Use a non-enforced sub-role but write a DIFFERENT session_id
         non_enforced = next(
-            s
-            for s in loader.valid_sub_roles(role)
-            if not loader.requires_crosschat_block(role, s)
+            s for s in loader.valid_sub_roles(role) if not loader.requires_crosschat_block(role, s)
         )
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, non_enforced, session_id="OLD-SESSION"))
         # Even though the file says non-enforced, stale session → use default
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
-    def test_malformed_state_file_falls_back_to_default_and_blocks(
-        self, tmp_path: Path
-    ) -> None:
+    def test_malformed_state_file_falls_back_to_default_and_blocks(self, tmp_path: Path) -> None:
         """Malformed JSON in state file falls back to default sub-role, which blocks."""
         loader = _StubLoader()
         role = "imp"
         state_path = tmp_path / "state.json"
         state_path.write_text("{not valid json}")
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
     def test_imp_default_sub_role_produces_block(self, tmp_path: Path) -> None:
@@ -193,14 +167,10 @@ class TestStopHandoverGuard:
         sub_role = loader.default_sub_role(role)
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, sub_role))
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
-    def test_imp_non_default_enforced_sub_role_produces_block(
-        self, tmp_path: Path
-    ) -> None:
+    def test_imp_non_default_enforced_sub_role_produces_block(self, tmp_path: Path) -> None:
         """Valid state with a non-default but enforced imp sub-role also triggers block."""
         loader = _StubLoader()
         role = "imp"
@@ -212,9 +182,7 @@ class TestStopHandoverGuard:
         )
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, other_enforced))
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
     def test_qa_default_sub_role_produces_block(self, tmp_path: Path) -> None:
@@ -224,14 +192,10 @@ class TestStopHandoverGuard:
         sub_role = loader.default_sub_role(role)
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, sub_role))
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert result.get("hookSpecificOutput", {}).get("decision") == "block"
 
-    def test_retry_bypasses_enforcement_for_enforced_sub_role(
-        self, tmp_path: Path
-    ) -> None:
+    def test_retry_bypasses_enforcement_for_enforced_sub_role(self, tmp_path: Path) -> None:
         """stop_hook_active=True bypasses enforcement even for enforced sub-role."""
         loader = _StubLoader()
         role = "imp"
@@ -246,9 +210,7 @@ class TestStopHandoverGuard:
         )
         assert result == {}
 
-    def test_retry_bypasses_enforcement_even_without_state_file(
-        self, tmp_path: Path
-    ) -> None:
+    def test_retry_bypasses_enforcement_even_without_state_file(self, tmp_path: Path) -> None:
         """stop_hook_active=True returns {} even when no state file exists."""
         loader = _StubLoader()
         role = "imp"
@@ -268,10 +230,9 @@ class TestStopHandoverGuard:
         sub_role = loader.default_sub_role(role)  # enforced
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, sub_role))
-        result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID}, role, loader, state_path
-        )
-        hook_output = result.get("hookSpecificOutput", {})
+        result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
+        hook_output = result.get("hookSpecificOutput")
+        assert isinstance(hook_output, dict)
         assert hook_output.get("hookEventName") == "Stop"
         assert hook_output.get("decision") == "block"
         assert isinstance(hook_output.get("reason"), str)

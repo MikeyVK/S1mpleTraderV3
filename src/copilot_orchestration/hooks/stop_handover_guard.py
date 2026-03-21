@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 # Project modules
+from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
 from copilot_orchestration.contracts.interfaces import (
     ISubRoleRequirementsLoader,
     SubRoleSpec,
@@ -15,8 +16,6 @@ JsonObject = dict[str, object]
 
 
 def main() -> None:
-    from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
-
     role = normalize_role(sys.argv[1] if len(sys.argv) > 1 else "")
     event = read_stdin_json()
     workspace_root = find_workspace_root(Path(__file__))
