@@ -2,7 +2,7 @@
   "branch": "feature/263-vscode-implementation-orchestration",
   "issue_number": 263,
   "workflow_name": "feature",
-  "current_phase": "design",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -15,7 +15,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Research phase complete \u2014 all open questions resolved and documented in research.md \u00a710. Skipping planning phase per user decision: design document update is the immediate deliverable.",
+  "skip_reason": "Planning deliverables are v1-era (C_PKG.* cycles). The v2 redesign (design v2.9) introduced a completely new package structure (contracts/, config/, utils/ submodules, _paths utility, SubRoleRequirementsLoader via DI) that was never formally planned. The planning phase must be re-run to define v2 TDD cycles before implementation can begin.",
   "issue_title": "Define VS Code orchestration boundaries",
   "parent_branch": "feature/257-reorder-workflow-phases",
   "created_at": "2026-03-18T20:23:57.926731+00:00",
@@ -51,6 +51,14 @@
       "human_approval": "User approved on 2026-03-20 via explicit phase transition instruction.",
       "forced": true,
       "skip_reason": "Research phase complete \u2014 all open questions resolved and documented in research.md \u00a710. Skipping planning phase per user decision: design document update is the immediate deliverable."
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-03-21T10:04:59.104702+00:00",
+      "human_approval": "User approved on 2026-03-21: 'Doe 2 en maak op basis van research en design een planning.md'",
+      "forced": true,
+      "skip_reason": "Planning deliverables are v1-era (C_PKG.* cycles). The v2 redesign (design v2.9) introduced a completely new package structure (contracts/, config/, utils/ submodules, _paths utility, SubRoleRequirementsLoader via DI) that was never formally planned. The planning phase must be re-run to define v2 TDD cycles before implementation can begin."
     }
   ],
   "reconstructed": false
