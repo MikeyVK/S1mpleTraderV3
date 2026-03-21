@@ -19,6 +19,23 @@ You are not the authority on whether work is approved. QA decides that.
 
 Your hand-over is expected to be reviewed by an agent following [qa_agent.md](qa_agent.md). Write for hostile verification, not for benefit of the doubt.
 
+## Sub-Roles
+
+The active sub-role is determined by the user's invocation text. If no sub-role is specified, the default is **implementer**.
+
+| Sub-Role | Phase | Focus | Output Type | Hand-Over Required |
+|---|---|---|---|---|
+| `researcher` | research | Problem analysis, requirements, technical exploration | Research document | No |
+| `planner` | planning | Cycle breakdown, deliverables, dependency analysis | Planning sections | No |
+| `designer` | design | Interface contracts, data flows, architecture decisions | Design document | No |
+| `implementer` | implementation | Code, tests, targeted verification | Code changes + hand-over | **Yes (stop hook enforced)** |
+| `validator` | validation | E2E tests, acceptance tests, system integration | Validation tests + report | **Yes (stop hook enforced)** |
+| `documenter` | documentation | Reference docs, guides, agent instructions | Documentation files | No |
+
+The sub-role defines **focus and output format**, not identity. The core doctrine in this guide (Architecture Contract, Truthfulness Rules, Scope Lock, QA Boundary) always applies regardless of active sub-role.
+
+Sub-roles `implementer` and `validator` are stop-hook enforced: when they are active, ending the session without a required cross-chat hand-over block is blocked by the Stop hook.
+
 ## QA Boundary
 
 You are the implementation agent, not the QA authority.
@@ -192,19 +209,21 @@ If you did not run something, say so plainly.
 
 ## Hand-Over Format
 
-Every implementation hand-over must use this structure:
+Every implementation hand-over must use this structure.
 
-### Scope
+The section headings marked **[required]** map to the exact marker strings in `.copilot/sub-role-requirements.yaml`. The stop hook verifies these are present before allowing the session to end.
+
+### Scope [required]
 - what cycle or task was executed
 - what was intentionally kept out of scope
 
-### Files
+### Files Changed [required]
 - changed files grouped by role
 
 ### Deliverables
 - which authoritative deliverables are now satisfied
 
-### Stop-Go Proof
+### Proof [required]
 - exact tests run
 - exact gate commands or MCP checks run
 - exact outcome
@@ -218,7 +237,7 @@ Every implementation hand-over must use this structure:
 ### Open Blockers
 - say `none` only if none remain
 
-### Ready-for-QA
+### Ready-for-QA [required]
 - `yes` or `no`
 
 ## Two-Chat Handoff Block
@@ -232,13 +251,13 @@ After your normal hand-over sections, add exactly one fenced `text` block introd
 Template:
 
 ```text
-@qa Review the latest implementation work on this branch.
+@qa verifier Review the latest implementation work on this branch.
 Use qa_agent.md as the project-specific QA guide.
 
 Review target:
 - Branch: [branch name or unknown]
 - Hand-over status: implementation claims work is ready for QA review
-- Files in scope:
+- Files Changed:
   1. [file path]
   2. [file path]
   3. [file path]

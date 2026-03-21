@@ -1,7 +1,10 @@
 ---
 name: imp
 description: Implementation role wrapper for VS Code orchestration on this repository.
-argument-hint: Describe the implementation task, expected files, and any constraints or test target.
+argument-hint: >
+  Sub-role + task. Available sub-roles: researcher, planner, designer,
+  implementer (default), validator, documenter.
+  Example: "implementer: start cycle C_LOADER.5 for issue 257"
 target: vscode
 hooks:
   SessionStart:
@@ -10,17 +13,28 @@ hooks:
       command: "python3 ./scripts/copilot_hooks/session_start_imp.py"
       windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start_imp.py"
       timeout: 15
+  UserPromptSubmit:
+    - type: command
+      cwd: "."
+      command: "python3 src/copilot_orchestration/hooks/detect_sub_role.py imp"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\detect_sub_role.py imp"
+      timeout: 15
   PreCompact:
     - type: command
       cwd: "."
       command: "python3 ./scripts/copilot_hooks/pre_compact_agent.py"
       windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact_agent.py"
       timeout: 15
+    - type: command
+      cwd: "."
+      command: "python3 src/copilot_orchestration/hooks/notify_compaction.py"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\notify_compaction.py"
+      timeout: 15
   Stop:
     - type: command
       cwd: "."
-      command: "python3 ./scripts/copilot_hooks/stop_handover_guard.py imp"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\stop_handover_guard.py imp"
+      command: "python3 src/copilot_orchestration/hooks/stop_handover_guard.py imp"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\stop_handover_guard.py imp"
       timeout: 15
 ---
 
@@ -72,7 +86,7 @@ You are not the QA authority.
 
 ## Practical Use
 
-When the user wants a structured start, `/start-implementation` is the preferred entry.
+When the user wants a structured start, `/start-work` is the preferred entry.
 When work is complete enough for review, `/prepare-handover` is the preferred way to prepare the QA-facing summary.
 
 ## Guardrail

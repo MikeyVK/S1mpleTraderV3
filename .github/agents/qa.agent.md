@@ -1,7 +1,10 @@
 ---
 name: qa
 description: QA role wrapper for VS Code orchestration on this repository.
-argument-hint: Point to the latest implementation handover or describe the exact surface that needs review.
+argument-hint: >
+  Sub-role + review target. Available sub-roles: plan-reviewer,
+  design-reviewer, verifier (default), validation-reviewer, doc-reviewer.
+  Example: "verifier: review latest implementation handover for cycle C_LOADER.5"
 target: vscode
 hooks:
   SessionStart:
@@ -10,17 +13,28 @@ hooks:
       command: "python3 ./scripts/copilot_hooks/session_start_qa.py"
       windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start_qa.py"
       timeout: 15
+  UserPromptSubmit:
+    - type: command
+      cwd: "."
+      command: "python3 src/copilot_orchestration/hooks/detect_sub_role.py qa"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\detect_sub_role.py qa"
+      timeout: 15
   PreCompact:
     - type: command
       cwd: "."
       command: "python3 ./scripts/copilot_hooks/pre_compact_agent.py"
       windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact_agent.py"
       timeout: 15
+    - type: command
+      cwd: "."
+      command: "python3 src/copilot_orchestration/hooks/notify_compaction.py"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\notify_compaction.py"
+      timeout: 15
   Stop:
     - type: command
       cwd: "."
-      command: "python3 ./scripts/copilot_hooks/stop_handover_guard.py qa"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\stop_handover_guard.py qa"
+      command: "python3 src/copilot_orchestration/hooks/stop_handover_guard.py qa"
+      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\stop_handover_guard.py qa"
       timeout: 15
 ---
 
@@ -72,7 +86,7 @@ You verify implementation claims; you do not continue implementation in the same
 
 ## Practical Use
 
-When the user wants a structured QA pass in a separate QA chat, `/request-qa-review` is the preferred entry.
+When the user wants a structured QA pass in a separate QA chat, `/request-review` is the preferred entry.
 
 ## Guardrail
 

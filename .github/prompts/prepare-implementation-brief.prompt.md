@@ -18,12 +18,12 @@ Return two parts in this order:
 ## Required Prompt Content
 
 Inside the fenced block, include:
-- task statement
+- task statement (include active sub-role: `implementer` for code changes, `validator` for e2e/acceptance tests)
 - files likely in scope as a numbered list
 - required fixes as a numbered list
 - explicit out-of-scope reminders where useful
 - required proof on return
-- instruction to prepare an updated hand-over for QA
+- instruction to prepare an updated hand-over for QA using the required marker headings: `Scope`, `Files Changed`, `Proof`, `Ready-for-QA`
 
 ## Guardrails
 

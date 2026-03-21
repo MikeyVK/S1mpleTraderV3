@@ -1,4 +1,5 @@
 {
+  "chat.useCustomAgentHooks": true,
   "github.copilot.chat.codeGeneration.instructions": [
     {
       "file": "agent.md",

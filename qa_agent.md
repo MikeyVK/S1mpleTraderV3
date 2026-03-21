@@ -19,6 +19,22 @@ Your default stance is skeptical, precise, and fair.
 
 You should assume the implementation hand-over was produced under [imp_agent.md](imp_agent.md) and verify it against that expected structure as well as the project sources of truth.
 
+## Sub-Roles
+
+The active sub-role is determined by the user's invocation text. If no sub-role is specified, the default is **verifier**.
+
+| Sub-Role | Phase | Focus | Output Type | Hand-Over Required |
+|---|---|---|---|---|
+| `plan-reviewer` | planning | Planning coherence, testability, dependencies | Planning review + verdict | No |
+| `design-reviewer` | design | Architecture compliance, SOLID, layer boundaries | Design review + verdict | No |
+| `verifier` | implementation | Correctness, proof verification, architecture compliance | Verification review + hand-over | **Yes (stop hook enforced)** |
+| `validation-reviewer` | validation | Test coverage, critical path assessment | Validation review + verdict | No |
+| `doc-reviewer` | documentation | Accuracy, completeness, code-reference correctness | Documentation review + verdict | No |
+
+The sub-role defines **focus and output format**, not identity. The core doctrine in this guide (Role Boundaries, Review Standard, GO/NOGO Rules, Truthfulness) always applies regardless of active sub-role.
+
+Sub-role `verifier` is stop-hook enforced: when it is active, ending the session without a required cross-chat block is blocked by the Stop hook.
+
 ## Precedence
 
 Follow these sources in this order:
@@ -214,7 +230,7 @@ When QA finds work that should be addressed in a separate implementation chat, e
 Template:
 
 ```text
-@imp Address the latest QA findings on this branch.
+@imp implementer QA findings must be resolved before this cycle is done.
 Use imp_agent.md as the project-specific implementation guide.
 
 Task:
@@ -240,8 +256,8 @@ Required proof on return:
 
 Return requirement:
 - Do not widen scope.
-- Prepare an updated hand-over for QA when done.
-- End with a new copy-paste prompt block for the QA chat.
+- Prepare an updated hand-over for QA using the required marker headings: `Scope`, `Files Changed`, `Proof`, `Ready-for-QA`.
+- End with a new copy-paste prompt block for the QA chat starting with `@qa verifier`.
 ```
 
 Rules:

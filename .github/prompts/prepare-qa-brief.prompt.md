@@ -18,10 +18,11 @@ Return two parts in this order:
 ## Required Prompt Content
 
 Inside the fenced block, include:
+- opening line: `@qa verifier [guide_line from sub-role-requirements.yaml for verifier]`
 - branch or work context if known
 - files in scope as a numbered list
 - precise implementation claim under review
-- exact proof provided so far
+- exact proof provided so far (using `Scope`, `Files Changed`, `Proof`, `Ready-for-QA` headings as reference)
 - unverified or deferred items
 - explicit QA focus
 
