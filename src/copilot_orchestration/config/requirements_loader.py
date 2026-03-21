@@ -2,7 +2,8 @@
 # template=generic version=f35abd82 created=2026-03-21T12:38Z updated=
 """SubRoleRequirementsLoader module.
 
-Loads sub-role requirements from YAML, validates with Pydantic, caches result. Raises ConfigError for unknown (role, sub_role) pairs.
+Loads sub-role requirements from YAML, validates with Pydantic,
+caches result. Raises ConfigError for unknown (role, sub_role) pairs.
 
 @layer: copilot_orchestration (Config)
 @dependencies: [None]
@@ -26,7 +27,6 @@ from pydantic import BaseModel
 
 # Project modules
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
-
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +53,13 @@ class _RootSchema(BaseModel):
 
 
 class SubRoleRequirementsLoader:
-    """Loads sub-role requirements from YAML, validates with Pydantic, caches result. Raises ConfigError for unknown (role, sub_role) pairs."""
+    """Loads sub-role requirements from YAML, validates with Pydantic,
+    caches result. Raises ConfigError for unknown (role, sub_role) pairs."""
 
     def __init__(self, requirements_path: Path) -> None:
         """Parse and cache YAML at construction. Raises FileNotFoundError / ValidationError."""
         if not requirements_path.exists():
-            raise FileNotFoundError(
-                f"Sub-role requirements config not found: {requirements_path}"
-            )
+            raise FileNotFoundError(f"Sub-role requirements config not found: {requirements_path}")
         raw: Any = yaml.safe_load(requirements_path.read_text(encoding="utf-8"))
         parsed = _RootSchema.model_validate(raw)
         self._roles = parsed.roles
@@ -77,8 +76,7 @@ class SubRoleRequirementsLoader:
             return cls(package_default)
 
         raise FileNotFoundError(
-            "No sub-role requirements config found. "
-            f"Checked: {project_yaml}, {package_default}"
+            f"No sub-role requirements config found. Checked: {project_yaml}, {package_default}"
         )
 
     def valid_sub_roles(self, role: str) -> frozenset[str]:
@@ -97,9 +95,7 @@ class SubRoleRequirementsLoader:
         """Full spec for (role, sub_role). Raises ConfigError if unknown."""
         role_data = self._roles.get(role)
         if role_data is None or sub_role not in role_data.sub_roles:
-            raise ConfigError(
-                f"Unknown (role, sub_role): ({role!r}, {sub_role!r})"
-            )
+            raise ConfigError(f"Unknown (role, sub_role): ({role!r}, {sub_role!r})")
         spec = role_data.sub_roles[sub_role]
         return SubRoleSpec(
             requires_crosschat_block=spec.requires_crosschat_block,
