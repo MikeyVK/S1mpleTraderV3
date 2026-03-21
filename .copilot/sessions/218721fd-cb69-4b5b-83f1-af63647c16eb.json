@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-21T13:44:38.868804+00:00",
+  "timestamp": "2026-03-21T14:27:57.900181+00:00",
   "chat_id": "218721fd-cb69-4b5b-83f1-af63647c16eb",
   "active_role": "qa",
   "last_user_goal": "218721fd-cb69-4b5b-83f1-af63647c16eb",
@@ -17,7 +17,7 @@
     "mcp_server/server.py",
     "mcp_server/__main__.py"
   ],
-  "pending_handover_summary": "{\"content\": \"# tests\\\\copilot_orchestration\\\\unit\\\\config\\\\test_requirements_loader.py\\n# template=unit_test version=3d15d309 created=2026-03-21T12:32Z updated=\\n\\\"\\\"\\\"\\nUnit tests for copilot_orchestration.config.requirements_loader.\\n\\nTests SubRoleRequirementsLoader: YAML+Pydantic parsing, fal...",
+  "pending_handover_summary": "Alle 4 bevindingen zijn opgelost. Commits `18edb7b` (RED) en `805539e` (GREEN). --- ### Scope Alle 4 QA-bevindingen van de branch-review afgehandeld. ### Files Changed - **.gitignore** \u2014 `session-state.json` \u2192 `session-sub-role.json` (exacte `STATE_RELPATH`) - **src/copilot_orchestration/hooks/no...",
   "handover_prompt_block": "",
   "snapshot_source": "pre_compact_agent"
 }
