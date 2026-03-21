@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.7  
+**Version:** 2.8  
 **Last Updated:** 2026-03-21
 
 ---
@@ -398,13 +398,16 @@ def detect_sub_role(
 
 ```python
 if __name__ == "__main__":
+    from copilot_orchestration.utils._paths import find_workspace_root, STATE_RELPATH
+
     role = sys.argv[1]                          # injected by agent frontmatter hook config
     payload = json.loads(sys.stdin.read())
     prompt: str = payload.get("prompt", "")
     session_id: str = payload.get("sessionId", "")
 
-    state_path = Path(".copilot/session-sub-role.json")
-    loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+    workspace_root = find_workspace_root(Path(__file__))
+    state_path = workspace_root / STATE_RELPATH
+    loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
 
     # Idempotency check — sub-role is set exactly once per session
     try:
@@ -533,8 +536,11 @@ class SessionSubRoleState(TypedDict):
 
 **Stale detection logic (Stop hook):**
 
+> `state_path` is resolved by the hook entry-point via `find_workspace_root()` from
+> `copilot_orchestration.utils._paths`. The stale detection logic shown here
+> receives `state_path` as a parameter — it does not perform path discovery itself.
+
 ```python
-state_path = Path(".copilot/session-sub-role.json")
 try:
     state = json.loads(state_path.read_text())
 except FileNotFoundError:
@@ -631,16 +637,11 @@ import json
 import sys
 from pathlib import Path
 
-# Relative to workspace root — resolved against __file__ in __main__ block.
-# Do NOT use Path(".copilot/...") directly: CWD is not guaranteed to be
-# workspace root when VS Code fires this hook.
-STATE_RELPATH = Path(".copilot/session-sub-role.json")
+from copilot_orchestration.utils._paths import find_workspace_root, STATE_RELPATH
 
 
 if __name__ == "__main__":
-    # Resolve workspace root from this file's location:
-    # copilot_orchestration/hooks/notify_compaction.py → parents[2] = workspace root
-    workspace_root = Path(__file__).resolve().parents[2]
+    workspace_root = find_workspace_root(Path(__file__))
     state_path = workspace_root / STATE_RELPATH
 
     payload = json.loads(sys.stdin.read())
@@ -688,6 +689,35 @@ hooks:
 **Why `additionalContext` is not used:** The PreCompact hook output spec only supports `systemMessage` for the surviving window. `additionalContext` would be stripped. The `systemMessage` approach is the minimum viable signal: it tells the agent its sub-role and prompts a `/resume-work` call for full re-context.
 
 **Relationship to `/resume-work`:** The `systemMessage` from this hook is a short trigger — it does not rebuild full doctrine. The `/resume-work` slash prompt (see §10) does the full reload: re-reads the role guide, confirms phase, confirms active issue.
+
+---
+
+### 9.8. Shared Path Utilities
+
+**Module:** `copilot_orchestration/utils/_paths.py`
+
+**Exports:** `STATE_RELPATH` (Path constant), `find_workspace_root(anchor: Path) -> Path`
+
+**Purpose:** All three hook entry-points (`detect_sub_role.py`, `notify_compaction.py`, `stop_handover_guard.py`) import from this module. No script defines `STATE_RELPATH` or workspace discovery independently — placing those definitions in each script was a DRY violation corrected in v2.8.
+
+**`find_workspace_root` behaviour:** Walks upward from `anchor` until a directory containing `pyproject.toml` or `.git` is found. Raises `RuntimeError` with a descriptive message if neither is found at any level. This algorithm correctly handles the case where VS Code fires the hook with an unpredictable CWD.
+
+```python
+from pathlib import Path
+
+STATE_RELPATH = Path(".copilot/session-sub-role.json")
+
+
+def find_workspace_root(anchor: Path) -> Path:
+    for candidate in [anchor.resolve(), *anchor.resolve().parents]:
+        if (candidate / "pyproject.toml").exists() or (candidate / ".git").exists():
+            return candidate
+    raise RuntimeError(
+        f"Workspace root not found: no pyproject.toml or .git found above {anchor}"
+    )
+```
+
+**Why `pyproject.toml` OR `.git`:** Either sentinel is sufficient to identify the repository root. `pyproject.toml` covers Python packages; `.git` covers repositories where `pyproject.toml` may live in a subdirectory. Using both eliminates edge-case failures without adding complexity.
 
 ---
 
@@ -839,22 +869,33 @@ These test `ROLE_REQUIREMENTS` and `parse_transcript_content` — neither exists
 
 ### Files to Create (new)
 
+> All new modules are placed according to the target package structure defined in research §10.10.
+> `hooks/` contains only VS Code adapter entry-points. Contracts, config, and shared utilities
+> live in dedicated submodules.
+
 | File | Type | Purpose |
 |------|------|---------|
 | `copilot_orchestration/__init__.py` | Package init | New top-level package |
 | `copilot_orchestration/hooks/__init__.py` | Package init | Hook scripts package |
-| `copilot_orchestration/hooks/interfaces.py` | Interface | `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec`, `SessionSubRoleState` TypedDicts (§9.2, §9.5) |
-| `copilot_orchestration/hooks/requirements_loader.py` | Implementation | `SubRoleRequirementsLoader` — YAML + Pydantic validation, package fallback (§9.2, §9.3) |
+| `copilot_orchestration/contracts/__init__.py` | Package init | Contracts submodule |
+| `copilot_orchestration/contracts/interfaces.py` | Interface | `ISubRoleRequirementsLoader` Protocol + `SubRoleSpec`, `SessionSubRoleState` TypedDicts (§9.2, §9.5) |
+| `copilot_orchestration/config/__init__.py` | Package init | Config submodule |
+| `copilot_orchestration/config/requirements_loader.py` | Implementation | `SubRoleRequirementsLoader` — YAML + Pydantic validation, package fallback (§9.2, §9.3) |
+| `copilot_orchestration/config/_default_requirements.yaml` | Config | Package fallback; used when `.copilot/` file is absent (§9.3) |
+| `copilot_orchestration/utils/__init__.py` | Package init | Utils submodule |
+| `copilot_orchestration/utils/_paths.py` | Utility | Shared path utilities; exports `find_workspace_root()` and `STATE_RELPATH` constant. Imported by all hook entry-points. Single definition eliminates DRY violation across `detect_sub_role.py`, `notify_compaction.py`, and `stop_handover_guard.py`. (§9.8) |
 | `copilot_orchestration/hooks/detect_sub_role.py` | Hook script | Entry point (`__main__` block reads `sys.argv[1]` for role, owns I/O); exports `detect_sub_role()` pure query (§9.1, §9.6) |
 | `copilot_orchestration/hooks/notify_compaction.py` | Hook script | PreCompact hook; injects sub-role `systemMessage` after compaction (§9.7) |
 | `.copilot/sub-role-requirements.yaml` | Config | Canonical sub-role requirements per role (§9.3); `.copilot/` is the user-overridable location |
-| `copilot_orchestration/hooks/_default_requirements.yaml` | Config | Package fallback; used when `.copilot/` file is absent (§9.3) |
 | `tests/copilot_orchestration/__init__.py` | Test init | New test namespace |
 | `tests/copilot_orchestration/unit/__init__.py` | Test init | — |
+| `tests/copilot_orchestration/unit/config/__init__.py` | Test init | — |
+| `tests/copilot_orchestration/unit/config/test_requirements_loader.py` | Test | Loader, Fail-Fast, fallback, DI contract |
 | `tests/copilot_orchestration/unit/hooks/__init__.py` | Test init | — |
-| `tests/copilot_orchestration/unit/hooks/test_requirements_loader.py` | Test | Loader, Fail-Fast, fallback, DI contract |
 | `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py` | Test | Detection, idempotency, stale state, default |
 | `tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py` | Test | Pass-through, block enforcement, missing state |
+| `tests/copilot_orchestration/unit/utils/__init__.py` | Test init | — |
+| `tests/copilot_orchestration/unit/utils/test_paths.py` | Test | `find_workspace_root()` resolution, missing anchor, STATE_RELPATH constant |
 
 ---
 
@@ -918,12 +959,27 @@ The prompt set revision (§10.1 / §10.7) is resolved at the title and purpose l
 
 Validation beyond marker presence (e.g. "is research.md present after a researcher session?") is project-specific and outside the package scope. If needed in the future, it requires a declared extension point in `ISubRoleRequirementsLoader`. Not in scope for v2.
 
+### OQ-2 — Package Extraction to Own Git Repository
+
+The target package structure defined in research §10.10 is designed to be extraction-ready.
+After v2 is fully validated, moving `copilot_orchestration` to its own git repository requires only:
+- creating a new git repository
+- copying `src/copilot_orchestration/` and `tests/copilot_orchestration/` as-is
+- creating a minimal `pyproject.toml` (no structural changes to the package itself)
+
+No file moves, no namespace changes, no import path updates are needed provided the
+v2 implementation lands all new modules in the correct target locations from the start.
+
+This extraction is deferred until v2 is stable in production in this repository.
+
 ---
 
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.8 | 2026-03-21 | Design phase | F.1–F.5: package structure corrected. §13 component inventory updated to target submodule layout (contracts/, config/, utils/); preamble added. §9.8 added: `_paths.py` shared utility spec (`find_workspace_root` + `STATE_RELPATH`). §9.1 `__main__` block updated: bare `Path(".copilot/...")` and `Path.cwd()` replaced with `find_workspace_root(Path(__file__))` import. §9.7 `notify_compaction.py` updated: inline `STATE_RELPATH` constant and `parents[2]` magic depth replaced with `find_workspace_root` import. §9.5 stale detection note added: `state_path` passed as parameter, not discovered inside logic. research.md §10.10 added: target package structure stated self-contained (extraction-ready). §15 OQ-2 added: git extraction deferred, trivial after v2. |
+| 2.7 | 2026-03-21 | Design phase | B.1: `notify_compaction.py` — added `__main__` guard; bare `Path(".copilot/...")` replaced with `Path(__file__).resolve().parents[2]` path resolution. B.2: §9.7 frontmatter YAML format corrected to dict-per-event-name (matching §9.6 and live agent files). B.3: Version history populated v2.3–v2.6 entries. M.1: §14 Risk #6 last sentence corrected — fallback applied in hook entry point, not loader. M.2: §13 `.agent.md` rows updated; coexistence blockquote added explaining `pre_compact_agent.py` + `notify_compaction.py` order and message concatenation. M.3: §15 OQ-1 `.json` → `.yaml`. |
 | 2.6 | 2026-03-21 | Design phase | SRP/CQS/DIP violation fixes: `detect_sub_role_and_persist` split into `detect_sub_role()` pure query + `__main__` I/O block (§9.1). State path removed from function signature; resolved from `__file__` in entry point (DIP). §9.7 `notify_compaction.py`: state path corrected `.st3/agent_state/` → `.copilot/session-sub-role.json` (SSOT fix); `session_id` staleness guard and `JSONDecodeError` guard added. §9.6 and §13 function references updated to reflect new signature. Component diagram `PERSIST` node label updated. |
 | 2.5 | 2026-03-21 | Design phase | §2.4 component diagram: `PreCompact` node (`notify_compaction.py`) added; two UPS nodes unified to single `detect_sub_role.py` node; `detect_sub_role()` pure-query label. §2.4 sequence diagram: `notify_compaction.py (PreCompact)` participant added with independent flow after Stop hook. §13 renamed to "Component Inventory and Architecture Prerequisites": numbered implementation steps replaced by Files to Create / Files to Modify tables + Prerequisites block. |
 | 2.4 | 2026-03-21 | Design phase | §2.4 sequence diagram: idempotency check arrow (`UPS->>SF: read`) added before loader call. §6: config-naming note added (sub-role renaming requires only YAML + prompt updates, no code change). §7: restructured into §7.1 (imp→qa: facts only), §7.2 (qa→imp: work specification), §7.3 (imp→qa template), §7.4 (qa→imp directive template with severity labels, "must" language). §9.1: `detect_and_persist` → `detect_sub_role_and_persist`. §9.6: full rewrite — agent-scoped frontmatter hooks, `sys.argv[1]` role injection, `chat.useCustomAgentHooks` prerequisite, two-entry examples. §9.7 (new): PreCompact hook design (`notify_compaction.py`). §10.2: expanded with role-guides-vs-prompts distinction + `/start-work implementer` example. §11: contextual-information disclaimer note added. §12: ASCII flow diagram replaced by Mermaid `sequenceDiagram`. |

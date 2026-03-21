@@ -516,6 +516,65 @@ This is technical debt resolution, not scope reduction. The coverage gap between
 
 ---
 
+### 10.10 Target Package Structure
+
+> **This is the authoritative target structure for all v2 new modules.**
+> Reference: `copilot_orchestration_packaging_research.md §2.1` (origin of the decision; this section states the conclusion self-contained so `research.md` is independently readable).
+
+**Design principle — hooks/ contains ONLY VS Code stdin/stdout adapter entry-points.**
+Contracts, config, and shared utilities belong in dedicated submodules. Placing them under `hooks/` would make the adapter layer responsible for schema definition, file I/O logic, and path resolution — a direct SRP violation.
+
+**Extraction readiness.** The structure below is designed so that moving the package to its own git repository after v2 validation requires no further file reorganisation: `src/copilot_orchestration/` and `tests/copilot_orchestration/` copy as-is; a minimal `pyproject.toml` is the only addition needed.
+
+#### Full target tree (v2 deliverables only — existing hooks/ scripts are not moved)
+
+```
+src/copilot_orchestration/
+├── __init__.py                          (existing)
+├── contracts/
+│   ├── __init__.py                      (new)
+│   └── interfaces.py                    (new) — ISubRoleRequirementsLoader Protocol,
+│                                                  SubRoleSpec, SessionSubRoleState TypedDicts
+├── config/
+│   ├── __init__.py                      (new)
+│   ├── requirements_loader.py           (new) — SubRoleRequirementsLoader (YAML + Pydantic)
+│   └── _default_requirements.yaml      (new) — package fallback config
+├── utils/
+│   ├── __init__.py                      (new)
+│   └── _paths.py                        (new) — find_workspace_root(), STATE_RELPATH constant
+└── hooks/                               (existing namespace — entry-points only)
+    ├── __init__.py                      (existing)
+    ├── detect_sub_role.py               (new) — __main__ adapter: reads argv/stdin, calls
+    │                                             package, writes state file
+    ├── notify_compaction.py             (new) — __main__ adapter: reads stdin, calls
+    │                                             package, writes stdout
+    ├── stop_handover_guard.py           (existing — refactored to use DI, not moved)
+    └── [session_start*, pre_compact*]   (existing — untouched in v2)
+
+tests/copilot_orchestration/unit/
+├── config/
+│   ├── __init__.py
+│   └── test_requirements_loader.py
+├── hooks/
+│   ├── __init__.py
+│   ├── test_detect_sub_role.py
+│   └── test_stop_handover_guard.py
+└── utils/
+    ├── __init__.py
+    └── test_paths.py
+```
+
+#### Submodule responsibilities (one sentence each)
+
+| Submodule | Responsibility |
+|-----------|---------------|
+| `contracts/` | Defines the `ISubRoleRequirementsLoader` Protocol and all shared TypedDicts; owns zero runtime I/O. |
+| `config/` | Owns the `SubRoleRequirementsLoader` implementation (YAML + Pydantic) and the package fallback YAML; the sole entry point for all config reads. |
+| `utils/` | Provides `find_workspace_root()` and the `STATE_RELPATH` constant; imported by all hook entry-points so path discovery is never duplicated. |
+| `hooks/` | Contains only VS Code hook adapter entry-points (`__main__` blocks + thin wrappers); adapters import from `contracts/`, `config/`, and `utils/` but define no domain logic themselves. |
+
+---
+
 ## 8. Inputs for the Compact Design
 
 The compact design should now optimize for these constraints:
