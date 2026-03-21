@@ -38,7 +38,7 @@ mcp_server = ["scaffolding/templates/**/*"]
 
 [tool.pytest.ini_options]
 pythonpath = [".", "src"]
-testpaths = ["tests/mcp_server"]
+testpaths = ["tests/mcp_server", "tests/copilot_orchestration"]
 norecursedirs = [".git", ".vscode", "__pycache__", "docs", "results", "source_data", "frontends", "locales"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
