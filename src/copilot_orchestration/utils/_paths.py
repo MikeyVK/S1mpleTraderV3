@@ -27,6 +27,8 @@ def state_path_for_role(role: str) -> Path:
         Relative Path to ``.copilot/session-sub-role-{role}.json``.
     """
     return Path(f".copilot/session-sub-role-{role}.json")
+
+
 def find_workspace_root(anchor: Path) -> Path:
     """Walk up from *anchor* until pyproject.toml or .git is found.
 
