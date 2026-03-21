@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-03-21T13:44:38.868804+00:00",
+  "active_role": "qa",
+  "last_user_goal": "218721fd-cb69-4b5b-83f1-af63647c16eb",
+  "files_in_scope": [
+    ".github/.copilot-instructions.md",
+    "memories/repo/state-tracking.md",
+    "docs/coding_standards/TDD_WORKFLOW.md",
+    "docs/coding_standards/GIT_WORKFLOW.md",
+    "docs/coding_standards/ARCHITECTURE_PRINCIPLES.md",
+    "docs/coding_standards/QUALITY_GATES.md",
+    "docs/development/mcp_server/SAFE_EDIT_TOOL_FLOW_ENFORCEMENT.md",
+    "docs/development/issue89/INITIAL_FINDINGS.md",
+    "docs/development/issue89/SESSION_HANDOVER.md",
+    "docs/coding_standards/README.md",
+    "mcp_server/server.py",
+    "mcp_server/__main__.py"
+  ],
+  "pending_handover_summary": "{\"content\": \"# tests\\\\copilot_orchestration\\\\unit\\\\config\\\\test_requirements_loader.py\\n# template=unit_test version=3d15d309 created=2026-03-21T12:32Z updated=\\n\\\"\\\"\\\"\\nUnit tests for copilot_orchestration.config.requirements_loader.\\n\\nTests SubRoleRequirementsLoader: YAML+Pydantic parsing, fal...",
+  "handover_prompt_block": "",
+  "snapshot_source": "pre_compact_agent"
+}

@@ -41,7 +41,7 @@ if __name__ == "__main__":  # pragma: no cover
             state = {}
 
         if state.get("session_id") == session_id:
-            sub_role: str = state.get("sub_role", "unknown")  # type: ignore[assignment]
+            sub_role = str(state.get("sub_role", "unknown"))
             output = {
                 "systemMessage": (
                     f"Context was compacted. Your active sub-role is **{sub_role}**. "

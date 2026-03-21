@@ -51,7 +51,7 @@ addopts = [
 ]
 # Coverage decoupled from default pytest runs per TODO 6 (Issue #131)
 # Coverage is enforced separately via Gate 6 (branch coverage >= 90%)
-# To run with coverage: pytest --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90
+# To run with coverage: pytest --cov=backend --cov=mcp_server --cov=copilot_orchestration --cov-branch --cov-fail-under=90
 markers = [
     "slow: Fully hermetic tests that spawns real subprocesses or git operations on tmp_path. Enabled by default; skip via -m 'not slow' for fast dev-runs.",
     "manual: Manual tests requiring full environment setup and explicit enablement (RUN_MANUAL_TESTS=1)",

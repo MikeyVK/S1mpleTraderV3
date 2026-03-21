@@ -184,8 +184,8 @@ pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 **Purpose:** Ensure comprehensive test coverage with branch coverage >= 90%.
 
 ```powershell
-# Check coverage for backend and mcp_server packages
-pytest tests/ --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90 --tb=short
+# Check coverage for backend, mcp_server, and copilot_orchestration packages
+pytest tests/ --cov=backend --cov=mcp_server --cov=copilot_orchestration --cov-branch --cov-fail-under=90 --tb=short
 ```
 
 **Expected:** Branch coverage >= 90% (hard fail below threshold)
@@ -193,6 +193,7 @@ pytest tests/ --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90 --
 **Scope:** Production packages only:
 - `backend/` - Core trading logic
 - `mcp_server/` - MCP server implementation
+- `copilot_orchestration/` - VS Code orchestration hooks
 
 **Why separate from Gate 5?**
 - **Gate 5:** Validates test correctness (do tests pass?)

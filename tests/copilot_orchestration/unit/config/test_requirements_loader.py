@@ -281,6 +281,28 @@ roles:
         with pytest.raises(ConfigError):
             loader.get_requirement("imp", "unknown-sub-role")
 
+    def test_valid_sub_roles_raises_config_error_for_unknown_role(self, tmp_path: Path) -> None:
+        """valid_sub_roles raises ConfigError for an unknown role (not KeyError)."""
+        # Arrange
+        yaml_path = tmp_path / "requirements.yaml"
+        yaml_path.write_text(_MINIMAL_YAML)
+        loader = SubRoleRequirementsLoader(yaml_path)
+
+        # Act + Assert
+        with pytest.raises(ConfigError, match="Unknown role"):
+            loader.valid_sub_roles("nonexistent-role")
+
+    def test_default_sub_role_raises_config_error_for_unknown_role(self, tmp_path: Path) -> None:
+        """default_sub_role raises ConfigError for an unknown role (not KeyError)."""
+        # Arrange
+        yaml_path = tmp_path / "requirements.yaml"
+        yaml_path.write_text(_MINIMAL_YAML)
+        loader = SubRoleRequirementsLoader(yaml_path)
+
+        # Act + Assert
+        with pytest.raises(ConfigError, match="Unknown role"):
+            loader.default_sub_role("nonexistent-role")
+
     def test_from_copilot_dir_loads_project_yaml(self, tmp_path: Path) -> None:
         """from_copilot_dir loads project YAML when .copilot/sub-role-requirements.yaml exists."""
         # Arrange
