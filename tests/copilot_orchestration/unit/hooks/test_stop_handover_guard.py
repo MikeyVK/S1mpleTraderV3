@@ -1,4 +1,4 @@
-﻿# tests\copilot_orchestration\unit\hooks\test_stop_handover_guard.py
+# tests\copilot_orchestration\unit\hooks\test_stop_handover_guard.py
 # template=unit_test version=3d15d309 created=2026-03-21T13:08Z updated=
 """
 Unit tests for copilot_orchestration.hooks.stop_handover_guard.
@@ -129,18 +129,14 @@ class TestStopHandoverGuard:
             result = evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
             assert result == {}, f"expected pass-through for {sub_role!r}"
 
-    def test_exploration_mode_missing_file_imp_returns_pass_through(
-        self, tmp_path: Path
-    ) -> None:
+    def test_exploration_mode_missing_file_imp_returns_pass_through(self, tmp_path: Path) -> None:
         """Missing state file â†’ exploration mode â†’ {} (no block)."""
         loader = _StubLoader()
         state_path = tmp_path / "missing.json"  # does not exist
         result = evaluate_stop_hook({"sessionId": _SESSION_ID}, "imp", loader, state_path)
         assert result == {}
 
-    def test_exploration_mode_missing_file_qa_returns_pass_through(
-        self, tmp_path: Path
-    ) -> None:
+    def test_exploration_mode_missing_file_qa_returns_pass_through(self, tmp_path: Path) -> None:
         """Missing state file for qa â†’ exploration mode â†’ {} (no block)."""
         loader = _StubLoader()
         state_path = tmp_path / "missing.json"  # does not exist
@@ -262,4 +258,3 @@ class TestStopHandoverGuard:
         assert hook_output.get("decision") == "block"
         assert isinstance(hook_output.get("reason"), str)
         assert hook_output["reason"]  # non-empty
-

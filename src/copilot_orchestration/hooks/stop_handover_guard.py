@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 # Project modules
-from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
+from copilot_orchestration.config.requirements_loader import ConfigError, SubRoleRequirementsLoader
 from copilot_orchestration.contracts.interfaces import (
     ISubRoleRequirementsLoader,
     SubRoleSpec,
@@ -37,13 +37,19 @@ def evaluate_stop_hook(
     if is_stop_retry_active(event):
         return {}
 
-    session_id = str(event.get("sessionId") or event.get("session_id") or "")
-    sub_role = read_sub_role(state_path, session_id, loader, role)
-
-    if not loader.requires_crosschat_block(role, sub_role):
+    sub_role = read_sub_role(state_path)
+    if sub_role is None:
+        # Exploration mode: no state file (or unreadable) — no enforcement
         return {}
 
-    spec = loader.get_requirement(role, sub_role)
+    try:
+        if not loader.requires_crosschat_block(role, sub_role):
+            return {}
+        spec = loader.get_requirement(role, sub_role)
+    except ConfigError:
+        # Unknown (role, sub_role) combination — treat as pass-through
+        return {}
+
     return {
         "hookSpecificOutput": {
             "hookEventName": "Stop",
@@ -53,22 +59,14 @@ def evaluate_stop_hook(
     }
 
 
-def read_sub_role(
-    state_path: Path,
-    session_id: str,
-    loader: ISubRoleRequirementsLoader,
-    role: str,
-) -> str:
+def read_sub_role(state_path: Path) -> str | None:
+    """Read sub_role from state file; return None if file is absent or unreadable."""
     try:
         state = json.loads(state_path.read_text())
-    except FileNotFoundError:
-        return loader.default_sub_role(role)
-    except json.JSONDecodeError:
-        return loader.default_sub_role(role)
-    else:
-        if state.get("session_id") != session_id:
-            return loader.default_sub_role(role)
-        return str(state.get("sub_role") or loader.default_sub_role(role))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    value = state.get("sub_role")
+    return str(value) if value else None
 
 
 def normalize_role(value: str) -> str:
