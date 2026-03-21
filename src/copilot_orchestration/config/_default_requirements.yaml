@@ -1,0 +1,109 @@
+# _default_requirements.yaml
+# Package-bundled default sub-role requirements.
+# Authoritative source: design_v2_sub_role_orchestration.md §6.1 / §6.2 / §9.3
+# Schema: roles.<role>.default_sub_role + roles.<role>.sub_roles.<name>.*
+
+roles:
+  imp:
+    default_sub_role: implementer
+    sub_roles:
+      researcher:
+        requires_crosschat_block: false
+        heading: "Research Output"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Problem Statement"
+          - "Findings"
+          - "Open Questions"
+      planner:
+        requires_crosschat_block: false
+        heading: "Planning Output"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Cycle Breakdown"
+          - "Deliverables Per Cycle"
+          - "Stop-Go Criteria"
+      designer:
+        requires_crosschat_block: false
+        heading: "Design Output"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Interface Contracts"
+          - "Architecture Decisions"
+      implementer:
+        requires_crosschat_block: true
+        heading: "Implementation Hand-Over"
+        block_prefix: "@qa verifier"
+        guide_line: "Review the latest implementation work on this branch."
+        markers:
+          - "Scope"
+          - "Files Changed"
+          - "Proof"
+          - "Ready-for-QA"
+      validator:
+        requires_crosschat_block: true
+        heading: "Validation Hand-Over"
+        block_prefix: "@qa verifier"
+        guide_line: "Review the latest validation work on this branch."
+        markers:
+          - "Test Surface"
+          - "Results"
+          - "Ready-for-QA"
+      documenter:
+        requires_crosschat_block: false
+        heading: "Documentation Output"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Documents Changed"
+
+  qa:
+    default_sub_role: verifier
+    sub_roles:
+      plan-reviewer:
+        requires_crosschat_block: false
+        heading: "Planning Review"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Findings"
+          - "Plan Coherence"
+          - "Verdict"
+      design-reviewer:
+        requires_crosschat_block: false
+        heading: "Design Review"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Findings"
+          - "Architecture Compliance"
+          - "Verdict"
+      verifier:
+        requires_crosschat_block: true
+        heading: "Verification Review"
+        block_prefix: "@imp implementer"
+        guide_line: "QA findings must be resolved before this cycle is done."
+        markers:
+          - "Findings"
+          - "Proof Verification"
+          - "Verdict"
+      validation-reviewer:
+        requires_crosschat_block: false
+        heading: "Validation Review"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Findings"
+          - "Coverage Assessment"
+          - "Verdict"
+      doc-reviewer:
+        requires_crosschat_block: false
+        heading: "Documentation Review"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Findings"
+          - "Verdict"
