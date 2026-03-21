@@ -18,7 +18,7 @@ A VS Code Copilot hook package that enforces structured hand-over discipline acr
 Hook entry points, sub-role detection, stop enforcement, compaction handling, workspace configuration.
 
 **Out of Scope:**
-MCP server, ST3 workflow engine, coding standards, role-specific instructions.
+External tooling integrations, coding standards, role-specific instructions.
 
 ---
 
@@ -42,7 +42,7 @@ MCP server, ST3 workflow engine, coding standards, role-specific instructions.
 
 ## What This Package Is Not
 
-- This package has **no dependency on any MCP server** or workflow tooling.
+- This package has **no dependency on external tooling** or workflow engines.
 - It does **not** define agent roles, coding standards, or review policies — those live in `agent.md`, `imp_agent.md`, `qa_agent.md`, and `*.instructions.md` files.
 - It does **not** run as a service or daemon. The hooks are invoked by VS Code as subprocess commands.
 - It is **not** a replacement for reading or following the project's role-specific instructions.

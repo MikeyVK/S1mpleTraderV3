@@ -18,7 +18,7 @@ Reference documentation for the `copilot_orchestration` package. This package en
 Hook architecture, sub-role table, enforcement matrix, session state files, `@imp` / `@qa` agent scope, follow-up interaction behaviour, slash command use cases.
 
 **Out of Scope:**
-Implementation internals, MCP server integration, ST3 workflow tooling, coding standards.
+Internal implementation details, external workflow tooling, coding standards.
 
 ---
 
