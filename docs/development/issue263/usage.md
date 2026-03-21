@@ -1,8 +1,11 @@
 # VS Code Orchestration Usage Guide
 
-**Status:** WORKING GUIDE  
+> **DEPRECATED** — This document describes the v1 architecture (renamed prompts, wrong state file references). It is retained for historical context only.
+> For current documentation, see [docs/reference/copilot_orchestration/reference.md](../../reference/copilot_orchestration/reference.md).
+
+**Status:** DEPRECATED  
 **Created:** 2026-03-17  
-**Updated:** 2026-03-17  
+**Updated:** 2026-03-21  
 **Scope:** How to use the lightweight implementation orchestration on this branch with hooks, custom agents, and slash prompts.
 
 ---
