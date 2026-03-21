@@ -2,7 +2,9 @@
 # template=generic version=f35abd82 created=2026-03-21T12:06Z updated=
 """_paths module.
 
-Path utilities for copilot orchestration hooks. Provides find_workspace_root and STATE_RELPATH constant.
+Path utilities for copilot orchestration hooks.
+
+Provides ``find_workspace_root`` and the ``STATE_RELPATH`` constant.
 
 @layer: Package Utilities
 @dependencies: [None]

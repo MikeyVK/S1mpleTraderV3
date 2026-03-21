@@ -14,14 +14,13 @@ Tests find_workspace_root sentinel-based upward traversal and STATE_RELPATH cons
 """
 
 # Standard library
-from typing import Any
+from pathlib import Path
 
 # Third-party
 import pytest
-from pathlib import Path
 
 # Project modules
-from copilot_orchestration.utils._paths import find_workspace_root, STATE_RELPATH
+from copilot_orchestration.utils._paths import STATE_RELPATH, find_workspace_root
 
 
 class TestStateRelpath:
@@ -35,7 +34,7 @@ class TestStateRelpath:
         # Act - constant is module-level; no call needed
 
         # Assert - verify exact value matches design contract
-        assert STATE_RELPATH == expected
+        assert expected == STATE_RELPATH
 
     def test_state_relpath_is_path(self) -> None:
         """STATE_RELPATH is a pathlib.Path instance, not a plain string."""
@@ -46,11 +45,12 @@ class TestStateRelpath:
 
 
 class TestFindWorkspaceRoot:
-    """Test suite for _paths."""
+    """Test suite for find_workspace_root."""
 
     def test_resolves_from_workspace_root_itself(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Resolves when anchor is the workspace root (contains pyproject.toml)."""
         # Arrange - Setup test data and preconditions
         (tmp_path / "pyproject.toml").touch()
@@ -60,9 +60,11 @@ class TestFindWorkspaceRoot:
 
         # Assert - Verify the expected outcome
         assert result == tmp_path
+
     def test_resolves_from_nested_file(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Resolves correctly when anchor is a file several levels below root."""
         # Arrange - Setup test data and preconditions
         (tmp_path / "pyproject.toml").touch()
@@ -76,9 +78,11 @@ class TestFindWorkspaceRoot:
 
         # Assert - Verify the expected outcome
         assert result == tmp_path
+
     def test_resolves_via_git_sentinel(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Resolves root when only .git is present (no pyproject.toml)."""
         # Arrange - Setup test data and preconditions
         (tmp_path / ".git").mkdir()
@@ -92,9 +96,11 @@ class TestFindWorkspaceRoot:
 
         # Assert - Verify the expected outcome
         assert result == tmp_path
+
     def test_raises_when_no_sentinel_found(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Raises RuntimeError with 'workspace root' in message when no sentinel exists."""
         # Arrange - Setup test data and preconditions
         nested = tmp_path / "a" / "b"
@@ -102,15 +108,14 @@ class TestFindWorkspaceRoot:
         anchor = nested / "file.py"
         anchor.touch()
 
-        # Act - Execute the functionality being tested
-        # pytest.raises handles both Act and Assert here
-
-        # Assert - Verify the expected outcome
+        # Act + Assert - pytest.raises covers both here
         with pytest.raises(RuntimeError, match="workspace root"):
             find_workspace_root(anchor)
+
     def test_prefers_pyproject_toml_over_git(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Stops at inner pyproject.toml before reaching the outer .git sentinel."""
         # Arrange - Setup test data and preconditions
         (tmp_path / ".git").mkdir()
@@ -127,9 +132,11 @@ class TestFindWorkspaceRoot:
 
         # Assert - Verify the expected outcome
         assert result == middle
+
     def test_anchor_is_directory(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Handles a directory anchor (not a file path) correctly."""
         # Arrange - Setup test data and preconditions
         (tmp_path / "pyproject.toml").touch()
@@ -141,9 +148,11 @@ class TestFindWorkspaceRoot:
 
         # Assert - Verify the expected outcome
         assert result == tmp_path
+
     def test_does_not_use_magic_depth(
         self,
-        tmp_path: Path    ):
+        tmp_path: Path,
+    ) -> None:
         """Resolves correctly from more than 5 levels deep (no depth cap)."""
         # Arrange - Setup test data and preconditions
         (tmp_path / "pyproject.toml").touch()
