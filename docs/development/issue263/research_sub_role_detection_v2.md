@@ -50,10 +50,11 @@ The hooks were implemented in cycles C_V2.1–C_V2.5. The original design assume
 **Finding 1 — sessionId is always empty**
 Confirmed by observing `.copilot/session-sub-role.json` after multiple distinct chat sessions. All write `session_id: ""`. The idempotency check `existing.get("session_id") == session_id` evaluates to `"" == ""` — always True after the first write. Sub-role is frozen permanently.
 
-**Finding 2 — Stop hook cross-role silent failure**
-When `stop_handover_guard.py imp` reads a file written by a `@qa` session, it calls `loader.requires_crosschat_block("imp", "verifier")`. The `imp` role config has no `verifier` entry. Silent pass-through — no error, no log, no enforcement.
+**Finding 2 — Stop hook cross-role crash**
+When `stop_handover_guard.py imp` reads a file written by a `@qa` session, it calls `loader.requires_crosschat_block("imp", "verifier")`, which delegates to `get_requirement("imp", "verifier")`. That method raises `ConfigError("Unknown (role, sub_role): ('imp', 'verifier')")` — an unhandled exception. The script crashes, writes no JSON to stdout, and VS Code receives no hook output. End result: no enforcement. The mechanism is a crash, not a silent pass-through. The fix must handle `ConfigError` in `evaluate_stop_hook` and treat it as pass-through explicitly.
 
 **Finding 3 — Slash command prefix blocks sub-role detection**
+Note: this is not a defect in the current implementation; the current full-text regex scan and `re.split`-based difflib step both handle colons correctly. This is a forward-looking design constraint for the new first-word algorithm.
 When invoked as `/start-work implementer: task`, the payload `prompt` field is `/start-work implementer: task`. The first word is `/start-work`, not `implementer`. Naive first-word detection fails.
 
 **Finding 4 — Exploration mode desideratum**
