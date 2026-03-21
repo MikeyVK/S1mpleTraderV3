@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-03-21T11:58:23.600994+00:00",
+  "timestamp": "2026-03-21T12:32:25.412484+00:00",
   "chat_id": "218721fd-cb69-4b5b-83f1-af63647c16eb",
-  "active_role": "imp",
+  "active_role": "qa",
   "last_user_goal": "218721fd-cb69-4b5b-83f1-af63647c16eb",
   "files_in_scope": [
     ".github/.copilot-instructions.md",
@@ -17,7 +17,7 @@
     "mcp_server/server.py",
     "mcp_server/__main__.py"
   ],
-  "pending_handover_summary": "## 6. Sub-Role Output Formats ### 6.1. @imp Formats #### `researcher` ``` ### Research Output #### Problem Statement - [core question investigated] #### Findings - [finding with source reference] #### Technical Constraints - [constraint discovered during research] #### Open Questions - [question...",
+  "pending_handover_summary": "yaml_content = ''' roles: imp: default_sub_role: implementer sub_roles: implementer: requires_crosschat_block: true heading: \"Implementation Hand-Over\" block_prefix: \"@qa verifier\" guide_line: \"Review it.\" markers: [\"Scope\", \"Files Changed\", \"Proof\", \"Ready-for-QA\"] qa: default_sub_role: verifier...",
   "handover_prompt_block": "",
   "snapshot_source": "pre_compact_agent"
 }
