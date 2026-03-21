@@ -3,7 +3,7 @@
 # Sub-Role Orchestration — Phase-Aware Agent Cooperation Without MCP Coupling
 
 **Status:** DRAFT  
-**Version:** 2.8  
+**Version:** 2.9  
 **Last Updated:** 2026-03-21
 
 ---
@@ -117,7 +117,7 @@ graph LR
         SF[".copilot/session-sub-role.json"]
     end
 
-    subgraph Pkg["Package (copilot_orchestration/hooks/)"]
+    subgraph Pkg["Package (copilot_orchestration/)"]
         LDR["SubRoleRequirementsLoader"]
         IFACE["ISubRoleRequirementsLoader (Protocol)"]
         PERSIST["detect_sub_role()<br/>(pure query)"]
@@ -472,9 +472,9 @@ class ISubRoleRequirementsLoader(Protocol):
         ...
 ```
 
-**Package location:** `copilot_orchestration/hooks/interfaces.py`
+**Package location:** `copilot_orchestration/contracts/interfaces.py`
 
-**Concrete implementation:** `SubRoleRequirementsLoader(requirements_path: Path)` in `copilot_orchestration/hooks/requirements_loader.py`
+**Concrete implementation:** `SubRoleRequirementsLoader(requirements_path: Path)` in `copilot_orchestration/config/requirements_loader.py`
 - Constructor accepts a `Path` — resolved from `.copilot/sub-role-requirements.yaml` or package default `_default_requirements.yaml`
 - Parses YAML at construction using `PyYAML`; validates schema with a `pydantic.BaseModel` — raises `pydantic.ValidationError` on schema violations
 - Raises `FileNotFoundError` if neither project config nor package default exists
@@ -483,12 +483,12 @@ class ISubRoleRequirementsLoader(Protocol):
 **Dependency injection in hooks:**
 
 ```python
-# UserPromptSubmit hook
-loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+# UserPromptSubmit hook (__main__ block — workspace_root from find_workspace_root)
+loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
 sub_role = detect_sub_role(prompt, loader, role)
 
-# Stop hook
-loader = SubRoleRequirementsLoader.from_copilot_dir(Path.cwd())
+# Stop hook (__main__ block — workspace_root from find_workspace_root)
+loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
 spec = loader.get_requirement(role, sub_role)
 ```
 
@@ -978,6 +978,7 @@ This extraction is deferred until v2 is stable in production in this repository.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.9 | 2026-03-21 | Design phase | §9.2: stale hooks/ path references corrected to `contracts/interfaces.py` and `config/requirements_loader.py` (SSOT fix). §9.2 DI code block: `Path.cwd()` replaced with `workspace_root` (consistent with main blocks). §2.4 component diagram: subgraph label corrected from `hooks/` to package root. |
 | 2.8 | 2026-03-21 | Design phase | F.1–F.5: package structure corrected. §13 component inventory updated to target submodule layout (contracts/, config/, utils/); preamble added. §9.8 added: `_paths.py` shared utility spec (`find_workspace_root` + `STATE_RELPATH`). §9.1 `__main__` block updated: bare `Path(".copilot/...")` and `Path.cwd()` replaced with `find_workspace_root(Path(__file__))` import. §9.7 `notify_compaction.py` updated: inline `STATE_RELPATH` constant and `parents[2]` magic depth replaced with `find_workspace_root` import. §9.5 stale detection note added: `state_path` passed as parameter, not discovered inside logic. research.md §10.10 added: target package structure stated self-contained (extraction-ready). §15 OQ-2 added: git extraction deferred, trivial after v2. |
 | 2.7 | 2026-03-21 | Design phase | B.1: `notify_compaction.py` — added `__main__` guard; bare `Path(".copilot/...")` replaced with `Path(__file__).resolve().parents[2]` path resolution. B.2: §9.7 frontmatter YAML format corrected to dict-per-event-name (matching §9.6 and live agent files). B.3: Version history populated v2.3–v2.6 entries. M.1: §14 Risk #6 last sentence corrected — fallback applied in hook entry point, not loader. M.2: §13 `.agent.md` rows updated; coexistence blockquote added explaining `pre_compact_agent.py` + `notify_compaction.py` order and message concatenation. M.3: §15 OQ-1 `.json` → `.yaml`. |
 | 2.6 | 2026-03-21 | Design phase | SRP/CQS/DIP violation fixes: `detect_sub_role_and_persist` split into `detect_sub_role()` pure query + `__main__` I/O block (§9.1). State path removed from function signature; resolved from `__file__` in entry point (DIP). §9.7 `notify_compaction.py`: state path corrected `.st3/agent_state/` → `.copilot/session-sub-role.json` (SSOT fix); `session_id` staleness guard and `JSONDecodeError` guard added. §9.6 and §13 function references updated to reflect new signature. Component diagram `PERSIST` node label updated. |
