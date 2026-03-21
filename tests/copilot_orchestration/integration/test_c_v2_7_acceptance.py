@@ -27,8 +27,9 @@ _QA_ROLE_GUIDE = _WORKSPACE_ROOT / "qa_agent.md"
 _VSCODE_SETTINGS = _WORKSPACE_ROOT / ".vscode" / "settings.json"
 _GITIGNORE = _WORKSPACE_ROOT / ".gitignore"
 
-# STATE_RELPATH must match utils/_paths.py: Path(".copilot/session-sub-role.json")
-_STATE_RELPATH_STR = ".copilot/session-sub-role.json"
+# STATE_RELPATH was removed in C_V2.8 (superseded by state_path_for_role(role)).
+# .gitignore now uses the glob pattern to cover all role-scoped state files.
+_STATE_GITIGNORE_PATTERN = ".copilot/session-sub-role-*.json"
 
 _EXPECTED_PROMPTS = frozenset(
     {
@@ -88,10 +89,12 @@ class TestCV27Acceptance:
             "Expected 'chat.useCustomAgentHooks': true in .vscode/settings.json"
         )
 
-    def test_gitignore_contains_state_relpath(self) -> None:
-        """.gitignore contains the exact STATE_RELPATH (.copilot/session-sub-role.json)."""
+    def test_gitignore_contains_role_scoped_state_pattern(self) -> None:
+        """.gitignore contains the glob pattern for role-scoped state files (C_V2.8+)."""
         content = _GITIGNORE.read_text(encoding="utf-8")
-        assert _STATE_RELPATH_STR in content, f"Expected '{_STATE_RELPATH_STR}' in .gitignore"
+        assert _STATE_GITIGNORE_PATTERN in content, (
+            f"Expected '{_STATE_GITIGNORE_PATTERN}' in .gitignore"
+        )
 
     def test_imp_agent_has_userpromptsubmit_hook(self) -> None:
         """imp.agent.md declares at least one UserPromptSubmit hook entry."""
