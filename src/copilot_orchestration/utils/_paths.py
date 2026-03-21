@@ -4,21 +4,29 @@
 
 Path utilities for copilot orchestration hooks.
 
-Provides ``find_workspace_root`` and the ``STATE_RELPATH`` constant.
+Provides ``find_workspace_root`` and ``state_path_for_role``.
 
 @layer: Package Utilities
 @dependencies: [None]
 @responsibilities:
     - Locate workspace root by walking up from anchor until pyproject.toml or .git is found
-    - Expose STATE_RELPATH constant for the session sub-role state file
+    - Expose state_path_for_role(role) to return role-scoped session state file path
 """
 
 # Standard library
 from pathlib import Path
 
-STATE_RELPATH = Path(".copilot/session-sub-role.json")
 
+def state_path_for_role(role: str) -> Path:
+    """Return the role-scoped session sub-role state file path (relative to workspace root).
 
+    Args:
+        role: The agent role identifier (e.g. 'imp', 'qa').
+
+    Returns:
+        Relative Path to ``.copilot/session-sub-role-{role}.json``.
+    """
+    return Path(f".copilot/session-sub-role-{role}.json")
 def find_workspace_root(anchor: Path) -> Path:
     """Walk up from *anchor* until pyproject.toml or .git is found.
 

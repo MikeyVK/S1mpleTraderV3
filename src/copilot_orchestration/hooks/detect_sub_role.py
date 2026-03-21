@@ -65,7 +65,7 @@ if __name__ == "__main__":  # pragma: no cover
 
     from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
     from copilot_orchestration.contracts.interfaces import SessionSubRoleState
-    from copilot_orchestration.utils._paths import STATE_RELPATH, find_workspace_root
+    from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
     role = sys.argv[1]
     payload = json.loads(sys.stdin.read())
@@ -73,7 +73,7 @@ if __name__ == "__main__":  # pragma: no cover
     session_id: str = payload.get("sessionId", "")
 
     workspace_root = find_workspace_root(Path(__file__))
-    state_path = workspace_root / STATE_RELPATH
+    state_path = workspace_root / state_path_for_role(role)
     _loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
 
     try:
