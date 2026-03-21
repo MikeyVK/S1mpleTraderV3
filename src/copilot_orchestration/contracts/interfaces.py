@@ -16,8 +16,7 @@ Zero runtime I/O.
 """
 
 # Standard library
-from typing import Protocol, runtime_checkable
-from typing import TypedDict
+from typing import Protocol, TypedDict, runtime_checkable
 
 
 class SubRoleSpec(TypedDict):

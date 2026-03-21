@@ -3,7 +3,8 @@
 """
 Unit tests for copilot_orchestration.contracts.interfaces.
 
-Structural tests: Protocol compliance and TypedDict shape verification. No logic lives in the contracts layer.
+Structural tests: Protocol compliance and TypedDict shape verification.
+No logic lives in the contracts layer.
 
 @layer: Tests (Unit)
 @dependencies: [pytest, copilot_orchestration.contracts.interfaces]
@@ -25,19 +26,20 @@ class TestISubRoleRequirementsLoaderProtocol:
     """Test suite for ISubRoleRequirementsLoader Protocol and related TypedDicts."""
 
     def test_concrete_class_satisfies_protocol(self) -> None:
-        """A concrete class implementing all four methods satisfies ISubRoleRequirementsLoader at runtime."""
+        """A concrete class implementing all four methods satisfies the Protocol."""
+
         # Arrange - define minimal concrete class that covers all protocol methods
         class StubLoader:
-            def valid_sub_roles(self, role: str) -> frozenset[str]:
+            def valid_sub_roles(self, _role: str) -> frozenset[str]:
                 return frozenset()
 
-            def default_sub_role(self, role: str) -> str:
+            def default_sub_role(self, _role: str) -> str:
                 return ""
 
-            def requires_crosschat_block(self, role: str, sub_role: str) -> bool:
+            def requires_crosschat_block(self, _role: str, _sub_role: str) -> bool:
                 return False
 
-            def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:
+            def get_requirement(self, _role: str, _sub_role: str) -> SubRoleSpec:
                 return SubRoleSpec(
                     requires_crosschat_block=False,
                     heading="",
@@ -47,7 +49,7 @@ class TestISubRoleRequirementsLoaderProtocol:
                 )
 
         # Act
-        result = isinstance(StubLoader(), ISubRoleRequirementsLoader)
+        result = isinstance(StubLoader(), ISubRoleRequirementsLoader)  # pyright: ignore[reportGeneralTypeIssues]
 
         # Assert
         assert result is True
@@ -89,7 +91,9 @@ class TestISubRoleRequirementsLoaderProtocol:
     def test_protocol_has_all_four_methods(self) -> None:
         """ISubRoleRequirementsLoader Protocol exposes all four required method names."""
         # Arrange - retrieve publicly visible names from the Protocol
-        public_names = {name for name in dir(ISubRoleRequirementsLoader) if not name.startswith("_")}
+        public_names = {
+            name for name in dir(ISubRoleRequirementsLoader) if not name.startswith("_")
+        }
 
         # Assert - all four contract methods are present
         assert "valid_sub_roles" in public_names
