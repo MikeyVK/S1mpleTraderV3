@@ -20,28 +20,27 @@ from pathlib import Path
 import pytest
 
 # Project modules
-from copilot_orchestration.utils._paths import STATE_RELPATH, find_workspace_root
+from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
 
-class TestStateRelpath:
-    """Test suite for the STATE_RELPATH constant."""
+class TestStatePathForRole:
+    """Test suite for the state_path_for_role function."""
 
-    def test_state_relpath_value(self) -> None:
-        """STATE_RELPATH equals Path('.copilot/session-sub-role.json')."""
-        # Arrange - expected value from design §9.8
-        expected = Path(".copilot/session-sub-role.json")
+    def test_imp_role_returns_imp_scoped_path(self) -> None:
+        """state_path_for_role('imp') returns '.copilot/session-sub-role-imp.json'."""
+        assert state_path_for_role("imp") == Path(".copilot/session-sub-role-imp.json")
 
-        # Act - constant is module-level; no call needed
+    def test_qa_role_returns_qa_scoped_path(self) -> None:
+        """state_path_for_role('qa') returns '.copilot/session-sub-role-qa.json'."""
+        assert state_path_for_role("qa") == Path(".copilot/session-sub-role-qa.json")
 
-        # Assert - verify exact value matches design contract
-        assert expected == STATE_RELPATH
+    def test_returns_path_instance(self) -> None:
+        """Return type is pathlib.Path, not plain string."""
+        assert isinstance(state_path_for_role("imp"), Path)
 
-    def test_state_relpath_is_path(self) -> None:
-        """STATE_RELPATH is a pathlib.Path instance, not a plain string."""
-        # Arrange / Act - no setup needed
-
-        # Assert
-        assert isinstance(STATE_RELPATH, Path)
+    def test_roles_produce_distinct_paths(self) -> None:
+        """Different roles produce different file paths (no shared file)."""
+        assert state_path_for_role("imp") != state_path_for_role("qa")
 
 
 class TestFindWorkspaceRoot:
