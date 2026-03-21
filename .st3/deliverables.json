@@ -384,33 +384,6 @@
             "cycle_number": 1,
             "deliverables": [
               {
-                "id": "c_pkg_1.scope_only_orchestration",
-                "description": "Only copilot_orchestration is in migration scope; mcp_server and ST3/backend remain out of scope",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/planning.md",
-                  "text": "Only `copilot_orchestration` is in migration scope"
-                }
-              },
-              {
-                "id": "c_pkg_1.future_model_context_only",
-                "description": "Future sibling-package model is architectural context only, not current migration scope",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
-                  "text": "future sibling-package model is architectural context only"
-                }
-              },
-              {
-                "id": "c_pkg_1.v1_shape_frozen",
-                "description": "Minimal acceptable V1 package fill is frozen as src/copilot_orchestration/hooks/",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
-                  "text": "Minimal acceptable V1 package fill"
-                }
-              },
-              {
                 "id": "c_v2_0.delete_v1_stop_guard_test",
                 "description": "Delete tests/mcp_server/unit/utils/test_stop_handover_guard.py (v1 \u2014 tests ROLE_REQUIREMENTS which is absent in v2)"
               },
@@ -424,40 +397,6 @@
           {
             "cycle_number": 2,
             "deliverables": [
-              {
-                "id": "c_pkg_2.package_root",
-                "description": "Package root created at src/copilot_orchestration/__init__.py",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "src/copilot_orchestration/__init__.py"
-                }
-              },
-              {
-                "id": "c_pkg_2.hooks_namespace",
-                "description": "Hooks namespace created at src/copilot_orchestration/hooks/__init__.py",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "src/copilot_orchestration/hooks/__init__.py"
-                }
-              },
-              {
-                "id": "c_pkg_2.pythonpath_extended",
-                "description": "src/ added to Python package discovery so from copilot_orchestration... imports resolve",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "pyproject.toml",
-                  "text": "src"
-                }
-              },
-              {
-                "id": "c_pkg_2.repo_scope_preserved",
-                "description": "No repo-wide src migration introduced during package root creation",
-                "validates": {
-                  "type": "absent_text",
-                  "file": "docs/development/issue263/planning.md",
-                  "text": "Migrating mcp_server to src"
-                }
-              },
               {
                 "id": "c_v2_1.paths_utility_created",
                 "description": "copilot_orchestration/utils/_paths.py created with find_workspace_root() and STATE_RELPATH constant",
@@ -481,47 +420,6 @@
           {
             "cycle_number": 3,
             "deliverables": [
-              {
-                "id": "c_pkg_3.workspace_session_start",
-                "description": "Workspace session_start relocated to src/copilot_orchestration/hooks/session_start.py",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "src/copilot_orchestration/hooks/session_start.py"
-                }
-              },
-              {
-                "id": "c_pkg_3.imp_qa_session_start",
-                "description": "Role-specific session_start hooks relocated to package-owned hooks namespace",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "src/copilot_orchestration/hooks/session_start_imp.py"
-                }
-              },
-              {
-                "id": "c_pkg_3.pre_compact_hooks",
-                "description": "PreCompact hooks relocated to package-owned hooks namespace",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "src/copilot_orchestration/hooks/pre_compact_agent.py"
-                }
-              },
-              {
-                "id": "c_pkg_3.stop_guard_relocated",
-                "description": "Stop handover guard relocated to src/copilot_orchestration/hooks/stop_handover_guard.py",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "src/copilot_orchestration/hooks/stop_handover_guard.py"
-                }
-              },
-              {
-                "id": "c_pkg_3.no_premature_split",
-                "description": "First run keeps hook-level decomposition intact without forcing final v2 module splits",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
-                  "text": "the first cleanup run is allowed to be structurally coarse"
-                }
-              },
               {
                 "id": "c_v2_2.interfaces_protocol",
                 "description": "contracts/interfaces.py created with ISubRoleRequirementsLoader Protocol, SubRoleSpec, and SessionSubRoleState TypedDicts",
@@ -547,33 +445,6 @@
             "cycle_number": 4,
             "deliverables": [
               {
-                "id": "c_pkg_4.workspace_shim",
-                "description": "Workspace hook shims delegate to copilot_orchestration package code",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "scripts/copilot_hooks/session_start.py",
-                  "text": "copilot_orchestration"
-                }
-              },
-              {
-                "id": "c_pkg_4.role_shims",
-                "description": "Role-specific hook shims delegate to copilot_orchestration package code",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "scripts/copilot_hooks/session_start_imp.py",
-                  "text": "copilot_orchestration"
-                }
-              },
-              {
-                "id": "c_pkg_4.stop_shim",
-                "description": "Stop handover guard shim delegates to copilot_orchestration package code",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "scripts/copilot_hooks/stop_handover_guard.py",
-                  "text": "copilot_orchestration"
-                }
-              },
-              {
                 "id": "c_v2_3.requirements_loader",
                 "description": "config/requirements_loader.py created with SubRoleRequirementsLoader \u2014 YAML+Pydantic, fallback chain, Fail-Fast on unknown sub-role",
                 "validates": {
@@ -596,33 +467,6 @@
           {
             "cycle_number": 5,
             "deliverables": [
-              {
-                "id": "c_pkg_5.v1_claim_narrowed",
-                "description": "V1 migration claim remains narrow: seam established, not v2 complete",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
-                  "text": "deeper decomposition belongs to the later refactor"
-                }
-              },
-              {
-                "id": "c_pkg_5.v2_deferrals_explicit",
-                "description": "V2 deferrals are explicitly recorded as out of scope for the first run",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/planning.md",
-                  "text": "Deferrals to later v2 work are explicit"
-                }
-              },
-              {
-                "id": "c_pkg_5.repo_local_surfaces_preserved",
-                "description": "Repo-local guides, prompts, and wrappers remain outside the package boundary",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "docs/development/issue263/planning.md",
-                  "text": "repo-specific agents/prompts/doctrine outside the package"
-                }
-              },
               {
                 "id": "c_v2_4.detect_sub_role_hook",
                 "description": "hooks/detect_sub_role.py created \u2014 detect_sub_role() pure query (no filesystem) + __main__ I/O block with idempotency check",
@@ -703,7 +547,7 @@
                 }
               }
             ],
-            "exit_criteria": "Both agent files have correct YAML frontmatter. settings.json has chat.useCustomAgentHooks. Prompt set is exactly 6 files. start-implementation.prompt.md and resume-implementation.prompt.md absent (renamed). plan-executionDirectiveBatchCoordination.prompt.md absent (deleted). Role guides contain sub-role tables matching design \u00a75."
+            "exit_criteria": "Both agent files have correct YAML frontmatter. settings.json has chat.useCustomAgentHooks. Prompt set is exactly 6 files. start-implementation.prompt.md and resume-implementation.prompt.md absent (renamed). plan-executionDirectiveBatchCoordination.prompt.md absent. Role guides contain sub-role tables matching design \u00a75."
           }
         ]
       }
