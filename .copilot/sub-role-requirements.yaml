@@ -8,7 +8,7 @@
 
 roles:
   imp:
-    default_sub_role: implementer
+    default_sub_role: researcher
     sub_roles:
       researcher:
         requires_crosschat_block: false
@@ -39,7 +39,7 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
-        block_prefix: "@qa verifier"
+        block_prefix: "verifier "
         guide_line: "Review the latest implementation work on this branch."
         markers:
           - "Scope"
@@ -49,7 +49,7 @@ roles:
       validator:
         requires_crosschat_block: true
         heading: "Validation Hand-Over"
-        block_prefix: "@qa verifier"
+        block_prefix: "verifier "
         guide_line: "Review the latest validation work on this branch."
         markers:
           - "Test Surface"
@@ -64,17 +64,8 @@ roles:
           - "Documents Changed"
 
   qa:
-    default_sub_role: verifier
+    default_sub_role: design-reviewer
     sub_roles:
-      plan-reviewer:
-        requires_crosschat_block: false
-        heading: "Planning Review"
-        block_prefix: ""
-        guide_line: ""
-        markers:
-          - "Findings"
-          - "Plan Coherence"
-          - "Verdict"
       design-reviewer:
         requires_crosschat_block: false
         heading: "Design Review"
@@ -84,10 +75,19 @@ roles:
           - "Findings"
           - "Architecture Compliance"
           - "Verdict"
+      plan-reviewer:
+        requires_crosschat_block: false
+        heading: "Planning Review"
+        block_prefix: ""
+        guide_line: ""
+        markers:
+          - "Findings"
+          - "Plan Coherence"
+          - "Verdict"
       verifier:
         requires_crosschat_block: true
         heading: "Verification Review"
-        block_prefix: "@imp implementer"
+        block_prefix: "implementer "
         guide_line: "QA findings must be resolved before this cycle is done."
         markers:
           - "Findings"
