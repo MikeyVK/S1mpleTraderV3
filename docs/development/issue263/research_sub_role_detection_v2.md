@@ -24,7 +24,7 @@ Three interconnected defects discovered during documentation phase.
 
 Bug 1 — sessionId is always empty. VS Code does not send a sessionId in the UserPromptSubmit payload for custom agents. Every invocation writes session_id: ''. The idempotency check always matches after the first write — sub-role is permanently frozen.
 
-Bug 2 — imp and qa share a single state file. STATE_RELPATH is a single shared path used by both agents. A qa session writes verifier; when imp runs next it reads verifier — a value that does not exist in imp config. Silent pass-through, no enforcement.
+Bug 2 — imp and qa share a single state file. STATE_RELPATH is a single shared path used by both agents. A qa session writes verifier; when imp runs next it reads verifier — a value that does not exist in imp config. `get_requirement("imp", "verifier")` raises `ConfigError` — an unhandled exception. The script crashes, no JSON is written to stdout, no enforcement.
 
 Bug 3 — Sub-role cannot change mid-session. The idempotency check prevents deliberate phase transitions. A researcher wanting to move to implementer must start a new chat and loses prior context. The original design requirement stated that context must survive phase transitions within a single chat.
 
