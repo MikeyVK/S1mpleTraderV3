@@ -98,3 +98,19 @@ class TestDetectSubRole:
         """Hyphenated sub-role name is matched exactly."""
         loader = _StubLoader()
         assert detect_sub_role("plan-reviewer: check the plan", loader, "qa") == "plan-reviewer"
+
+    def test_slash_command_prefix_stripped_before_match(self) -> None:
+        """Prompt starting with /command is stripped; first word after is matched."""
+        loader = _StubLoader()
+        assert detect_sub_role("/start-work implementer: do the task", loader, "imp") == "implementer"
+
+    def test_slash_resume_work_prefix_stripped(self) -> None:
+        """A different /command prefix is also stripped correctly."""
+        loader = _StubLoader()
+        assert detect_sub_role("/resume-work researcher: investigate", loader, "imp") == "researcher"
+
+    def test_slash_command_only_no_sub_role_returns_default(self) -> None:
+        """Prompt with /command but no recognisable sub-role falls back to default."""
+        loader = _StubLoader()
+        result = detect_sub_role("/start-work do something random", loader, "imp")
+        assert result == loader.default_sub_role("imp")
