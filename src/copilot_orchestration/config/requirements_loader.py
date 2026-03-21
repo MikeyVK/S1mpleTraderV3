@@ -81,11 +81,17 @@ class SubRoleRequirementsLoader:
 
     def valid_sub_roles(self, role: str) -> frozenset[str]:
         """All valid sub-role names for the given role."""
-        return frozenset(self._roles[role].sub_roles.keys())
+        role_data = self._roles.get(role)
+        if role_data is None:
+            raise ConfigError(f"Unknown role: {role!r}")
+        return frozenset(role_data.sub_roles.keys())
 
     def default_sub_role(self, role: str) -> str:
         """Default sub-role when none detected from the user prompt."""
-        return self._roles[role].default_sub_role
+        role_data = self._roles.get(role)
+        if role_data is None:
+            raise ConfigError(f"Unknown role: {role!r}")
+        return role_data.default_sub_role
 
     def requires_crosschat_block(self, role: str, sub_role: str) -> bool:
         """True only for sub-roles that must produce a cross-chat handover block."""
