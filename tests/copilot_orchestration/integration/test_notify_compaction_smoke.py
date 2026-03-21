@@ -33,9 +33,7 @@ class TestNotifyCompactionSmoke:
         assert result.returncode == 0
         assert json.loads(result.stdout) == {}
 
-    def test_returns_system_message_for_matching_session_id(
-        self, hook_workspace: Path
-    ) -> None:
+    def test_returns_system_message_for_matching_session_id(self, hook_workspace: Path) -> None:
         """Returns systemMessage with correct sub_role when session_id matches."""
         state = {
             "session_id": "sess-nc-002",
@@ -72,9 +70,7 @@ class TestNotifyCompactionSmoke:
         )
         assert result.returncode == 0
 
-    def test_returns_empty_dict_for_mismatched_session_id(
-        self, hook_workspace: Path
-    ) -> None:
+    def test_returns_empty_dict_for_mismatched_session_id(self, hook_workspace: Path) -> None:
         """Returns {} when state file exists but session_id does not match payload."""
         state = {"session_id": "other-session", "sub_role": "researcher"}
         (hook_workspace / _STATE_RELPATH).write_text(json.dumps(state))

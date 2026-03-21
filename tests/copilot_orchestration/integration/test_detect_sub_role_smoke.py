@@ -22,9 +22,7 @@ _STATE_RELPATH = Path(".copilot") / "session-sub-role.json"
 
 @pytest.mark.slow
 class TestDetectSubRoleSmoke:
-    def test_exits_zero_and_writes_state_for_matching_sub_role(
-        self, hook_workspace: Path
-    ) -> None:
+    def test_exits_zero_and_writes_state_for_matching_sub_role(self, hook_workspace: Path) -> None:
         """detect_sub_role.py exits 0 and writes correct sub_role to state file."""
         payload = json.dumps({"prompt": "implementer: start cycle", "sessionId": "sess-001"})
         result = subprocess.run(
@@ -42,9 +40,7 @@ class TestDetectSubRoleSmoke:
         assert state["sub_role"] == "implementer"
         assert state["session_id"] == "sess-001"
 
-    def test_idempotent_same_session_id_does_not_overwrite(
-        self, hook_workspace: Path
-    ) -> None:
+    def test_idempotent_same_session_id_does_not_overwrite(self, hook_workspace: Path) -> None:
         """Second call with same session_id leaves state unchanged; exits 0."""
         script = str(hook_workspace / "detect_sub_role.py")
         state_file = hook_workspace / _STATE_RELPATH
@@ -76,9 +72,7 @@ class TestDetectSubRoleSmoke:
         assert result.returncode == 0
         assert json.loads(state_file.read_text())["sub_role"] == "validator"
 
-    def test_exits_zero_for_empty_prompt_falls_back_to_default(
-        self, hook_workspace: Path
-    ) -> None:
+    def test_exits_zero_for_empty_prompt_falls_back_to_default(self, hook_workspace: Path) -> None:
         """detect_sub_role.py exits 0 with empty prompt (falls back to role default)."""
         payload = json.dumps({"prompt": "", "sessionId": "sess-003"})
         result = subprocess.run(

@@ -26,7 +26,7 @@ def hook_workspace(tmp_path: Path) -> Path:
     locate the workspace, running copies from tmp_path makes the state file
     land in ``tmp_path/.copilot/session-sub-role.json`` — fully isolated.
     """
-    (tmp_path / "pyproject.toml").write_text("[project]\nname = \"test\"\n")
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
 
     copilot_dir = tmp_path / ".copilot"
     copilot_dir.mkdir()

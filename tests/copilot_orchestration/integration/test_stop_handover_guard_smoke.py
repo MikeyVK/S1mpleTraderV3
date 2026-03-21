@@ -78,9 +78,7 @@ class TestStopHandoverGuardSmoke:
         output = json.loads(result.stdout)
         assert output["hookSpecificOutput"]["decision"] == "block"
 
-    def test_decision_block_for_qa_verifier_default_no_state(
-        self, hook_workspace: Path
-    ) -> None:
+    def test_decision_block_for_qa_verifier_default_no_state(self, hook_workspace: Path) -> None:
         """qa without state file → verifier (default, enforced) → decision: block, exit 0."""
         state_path = hook_workspace / _STATE_RELPATH
         if state_path.exists():

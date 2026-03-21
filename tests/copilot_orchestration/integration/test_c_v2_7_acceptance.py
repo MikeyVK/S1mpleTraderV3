@@ -16,7 +16,6 @@ import json
 import re
 from pathlib import Path
 
-import pytest
 import yaml
 
 _WORKSPACE_ROOT = Path(__file__).parents[3]
@@ -66,7 +65,7 @@ def _parse_agent_frontmatter(path: Path) -> dict:  # type: ignore[type-arg]
     return yaml.safe_load(match.group(1)) or {}  # type: ignore[return-value]
 
 
-class TestC_V27Acceptance:
+class TestCV27Acceptance:
     def test_prompt_directory_contains_exactly_six_files(self) -> None:
         """Prompts directory contains exactly the 6 expected prompt files (no more, no less)."""
         actual = frozenset(f.name for f in _PROMPTS_DIR.iterdir() if f.is_file())
@@ -92,9 +91,7 @@ class TestC_V27Acceptance:
     def test_gitignore_contains_state_relpath(self) -> None:
         """.gitignore contains the exact STATE_RELPATH (.copilot/session-sub-role.json)."""
         content = _GITIGNORE.read_text(encoding="utf-8")
-        assert _STATE_RELPATH_STR in content, (
-            f"Expected '{_STATE_RELPATH_STR}' in .gitignore"
-        )
+        assert _STATE_RELPATH_STR in content, f"Expected '{_STATE_RELPATH_STR}' in .gitignore"
 
     def test_imp_agent_has_userpromptsubmit_hook(self) -> None:
         """imp.agent.md declares at least one UserPromptSubmit hook entry."""
@@ -106,12 +103,10 @@ class TestC_V27Acceptance:
         )
 
     def test_notify_compaction_is_second_in_imp_precompact(self) -> None:
-        """imp.agent.md: pre_compact_agent.py is first and notify_compaction.py is second in PreCompact."""
+        """imp.agent.md PreCompact: pre_compact_agent.py first, notify_compaction.py second."""
         frontmatter = _parse_agent_frontmatter(_IMP_AGENT_MD)
         pre_compact = frontmatter.get("hooks", {}).get("PreCompact", [])
-        assert len(pre_compact) >= 2, (
-            "imp.agent.md: PreCompact must have at least 2 entries"
-        )
+        assert len(pre_compact) >= 2, "imp.agent.md: PreCompact must have at least 2 entries"
         first_cmd = pre_compact[0].get("command", "")
         second_cmd = pre_compact[1].get("command", "")
         assert "pre_compact_agent.py" in first_cmd, (
@@ -122,12 +117,10 @@ class TestC_V27Acceptance:
         )
 
     def test_notify_compaction_is_second_in_qa_precompact(self) -> None:
-        """qa.agent.md: pre_compact_agent.py is first and notify_compaction.py is second in PreCompact."""
+        """qa.agent.md PreCompact: pre_compact_agent.py first, notify_compaction.py second."""
         frontmatter = _parse_agent_frontmatter(_QA_AGENT_MD)
         pre_compact = frontmatter.get("hooks", {}).get("PreCompact", [])
-        assert len(pre_compact) >= 2, (
-            "qa.agent.md: PreCompact must have at least 2 entries"
-        )
+        assert len(pre_compact) >= 2, "qa.agent.md: PreCompact must have at least 2 entries"
         first_cmd = pre_compact[0].get("command", "")
         second_cmd = pre_compact[1].get("command", "")
         assert "pre_compact_agent.py" in first_cmd, (
