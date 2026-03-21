@@ -378,7 +378,7 @@
     "created_at": "2026-03-18T20:23:57.760796+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 5,
+        "total": 8,
         "cycles": [
           {
             "cycle_number": 1,
@@ -409,9 +409,17 @@
                   "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
                   "text": "Minimal acceptable V1 package fill"
                 }
+              },
+              {
+                "id": "c_v2_0.delete_v1_stop_guard_test",
+                "description": "Delete tests/mcp_server/unit/utils/test_stop_handover_guard.py (v1 \u2014 tests ROLE_REQUIREMENTS which is absent in v2)"
+              },
+              {
+                "id": "c_v2_0.delete_v1_pre_compact_test",
+                "description": "Delete tests/mcp_server/unit/utils/test_pre_compact_agent.py (v1 \u2014 tests parse_transcript_content which is absent in v2)"
               }
             ],
-            "exit_criteria": "Planning and research explicitly freeze the scope to copilot_orchestration only; future sibling-package model is context only; minimal V1 package fill is frozen as src/copilot_orchestration/hooks/."
+            "exit_criteria": "Both v1 test files are absent; git status shows no other files touched; full test suite still green after deletion."
           },
           {
             "cycle_number": 2,
@@ -449,9 +457,26 @@
                   "file": "docs/development/issue263/planning.md",
                   "text": "Migrating mcp_server to src"
                 }
+              },
+              {
+                "id": "c_v2_1.paths_utility_created",
+                "description": "copilot_orchestration/utils/_paths.py created with find_workspace_root() and STATE_RELPATH constant",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/utils/_paths.py",
+                  "text": "find_workspace_root"
+                }
+              },
+              {
+                "id": "c_v2_1.test_paths_created",
+                "description": "test_paths.py created \u2014 path resolution from arbitrary depth, RuntimeError on missing sentinel, STATE_RELPATH value",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/utils/test_paths.py"
+                }
               }
             ],
-            "exit_criteria": "src/copilot_orchestration package root and hooks namespace exist; src/ is discoverable through package/test configuration; no collateral mcp_server or ST3/backend src migration is introduced."
+            "exit_criteria": "find_workspace_root(Path(__file__)) resolves to workspace root from any depth. RuntimeError raised correctly when no sentinel found. STATE_RELPATH value is .copilot/session-sub-role.json. All tests pass."
           },
           {
             "cycle_number": 3,
@@ -496,9 +521,27 @@
                   "file": "docs/development/issue263/copilot_orchestration_packaging_research.md",
                   "text": "the first cleanup run is allowed to be structurally coarse"
                 }
+              },
+              {
+                "id": "c_v2_2.interfaces_protocol",
+                "description": "contracts/interfaces.py created with ISubRoleRequirementsLoader Protocol, SubRoleSpec, and SessionSubRoleState TypedDicts",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "ISubRoleRequirementsLoader"
+                }
+              },
+              {
+                "id": "c_v2_2.session_sub_role_state",
+                "description": "SessionSubRoleState TypedDict present \u2014 includes session_id, role, sub_role, detected_at fields",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "SessionSubRoleState"
+                }
               }
             ],
-            "exit_criteria": "All six existing hook implementations live under src/copilot_orchestration/hooks/ and ownership of orchestration logic is inside the package boundary without a premature final v2 split."
+            "exit_criteria": "A minimal in-memory class satisfies the Protocol. TypedDicts reject wrong key types. No logic in contracts layer. All tests pass."
           },
           {
             "cycle_number": 4,
@@ -529,9 +572,26 @@
                   "file": "scripts/copilot_hooks/stop_handover_guard.py",
                   "text": "copilot_orchestration"
                 }
+              },
+              {
+                "id": "c_v2_3.requirements_loader",
+                "description": "config/requirements_loader.py created with SubRoleRequirementsLoader \u2014 YAML+Pydantic, fallback chain, Fail-Fast on unknown sub-role",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "SubRoleRequirementsLoader"
+                }
+              },
+              {
+                "id": "c_v2_3.yaml_config",
+                "description": ".copilot/sub-role-requirements.yaml created with all 11 sub-roles (6 imp + 5 qa) and correct requires_crosschat_block flags",
+                "validates": {
+                  "type": "file_exists",
+                  "file": ".copilot/sub-role-requirements.yaml"
+                }
               }
             ],
-            "exit_criteria": "Repo-local hook scripts are reduced to entry shims while VS Code continues to call the same script paths and package-owned logic is visibly separated from entrypoints."
+            "exit_criteria": "Pydantic catches malformed YAML. FileNotFoundError raised when neither project nor package config found. valid_sub_roles('imp') returns frozenset of 6. valid_sub_roles('qa') returns frozenset of 5. All tests pass."
           },
           {
             "cycle_number": 5,
@@ -562,9 +622,88 @@
                   "file": "docs/development/issue263/planning.md",
                   "text": "repo-specific agents/prompts/doctrine outside the package"
                 }
+              },
+              {
+                "id": "c_v2_4.detect_sub_role_hook",
+                "description": "hooks/detect_sub_role.py created \u2014 detect_sub_role() pure query (no filesystem) + __main__ I/O block with idempotency check",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "def detect_sub_role"
+                }
+              },
+              {
+                "id": "c_v2_4.test_detect_sub_role",
+                "description": "test_detect_sub_role.py created \u2014 exact match, case-insensitive, difflib typo, default, idempotency; pure query tested without filesystem interaction",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py"
+                }
               }
             ],
-            "exit_criteria": "Deferrals to later v2 work are explicit, the migration claim stays truthful, and planning remains aligned with the coarse-grained first-run scope."
+            "exit_criteria": "Pure query fully unit-tested without filesystem. Idempotency verified. detect_sub_role() has no pathlib imports at call time \u2014 __main__ block is sole I/O owner. All tests pass."
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "c_v2_5.stop_guard_di_refactor",
+                "description": "stop_handover_guard.py refactored \u2014 ROLE_REQUIREMENTS dict removed, ISubRoleRequirementsLoader injected via DI, stale state detection added",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
+                  "text": "ROLE_REQUIREMENTS"
+                }
+              },
+              {
+                "id": "c_v2_5.test_stop_guard_v2",
+                "description": "test_stop_handover_guard.py (v2) created \u2014 pass-through and block-enforcement cases via loader fixture, stale/missing state cases",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py"
+                }
+              }
+            ],
+            "exit_criteria": "ROLE_REQUIREMENTS absent from stop_handover_guard.py. All ~12 behavior-condition cases pass. Tests use loader fixture \u2014 no inline role dicts. All tests pass."
+          },
+          {
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "id": "c_v2_6.notify_compaction_hook",
+                "description": "hooks/notify_compaction.py created \u2014 __main__-only adapter; imports find_workspace_root from utils._paths; no inline path definitions; exits 0 in all cases",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/notify_compaction.py",
+                  "text": "find_workspace_root"
+                }
+              }
+            ],
+            "exit_criteria": "Imports find_workspace_root from utils._paths \u2014 no inline path definitions anywhere. Correct JSON output for matching session_id. Exits 0 in all cases including errors. Smoke test passes."
+          },
+          {
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "id": "c_v2_7.imp_agent_hook",
+                "description": ".github/agents/imp.agent.md updated \u2014 UserPromptSubmit hook entry for detect_sub_role.py added; notify_compaction.py appended to PreCompact array",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".github/agents/imp.agent.md",
+                  "text": "detect_sub_role"
+                }
+              },
+              {
+                "id": "c_v2_7.vscode_settings",
+                "description": ".vscode/settings.json updated with chat.useCustomAgentHooks; prompt set reduced to 6 (start-work, resume-work, prepare-handover, request-review, prepare-implementation-brief, prepare-qa-brief)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".vscode/settings.json",
+                  "text": "chat.useCustomAgentHooks"
+                }
+              }
+            ],
+            "exit_criteria": "Both agent files have correct YAML frontmatter. settings.json has chat.useCustomAgentHooks. Prompt set is exactly 6 files. start-implementation.prompt.md and resume-implementation.prompt.md absent (renamed). plan-executionDirectiveBatchCoordination.prompt.md absent (deleted). Role guides contain sub-role tables matching design \u00a75."
           }
         ]
       }
