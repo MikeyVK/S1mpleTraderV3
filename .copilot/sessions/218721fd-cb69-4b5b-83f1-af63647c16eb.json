@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-21T12:32:25.412484+00:00",
+  "timestamp": "2026-03-21T12:54:48.376406+00:00",
   "chat_id": "218721fd-cb69-4b5b-83f1-af63647c16eb",
   "active_role": "qa",
   "last_user_goal": "218721fd-cb69-4b5b-83f1-af63647c16eb",
@@ -17,7 +17,7 @@
     "mcp_server/server.py",
     "mcp_server/__main__.py"
   ],
-  "pending_handover_summary": "yaml_content = ''' roles: imp: default_sub_role: implementer sub_roles: implementer: requires_crosschat_block: true heading: \"Implementation Hand-Over\" block_prefix: \"@qa verifier\" guide_line: \"Review it.\" markers: [\"Scope\", \"Files Changed\", \"Proof\", \"Ready-for-QA\"] qa: default_sub_role: verifier...",
+  "pending_handover_summary": "{\"content\": \"# tests\\\\copilot_orchestration\\\\unit\\\\config\\\\test_requirements_loader.py\\n# template=unit_test version=3d15d309 created=2026-03-21T12:32Z updated=\\n\\\"\\\"\\\"\\nUnit tests for copilot_orchestration.config.requirements_loader.\\n\\nTests SubRoleRequirementsLoader: YAML+Pydantic parsing, fal...",
   "handover_prompt_block": "",
   "snapshot_source": "pre_compact_agent"
 }
