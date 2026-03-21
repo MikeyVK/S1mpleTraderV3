@@ -2,7 +2,10 @@
 # template=generic version=f35abd82 created=2026-03-21T12:54Z updated=
 """detect_sub_role module.
 
-Pure query function that detects sub-role from user prompt text. __main__ block owns all I/O (reads stdin JSON, writes SessionSubRoleState to state file).
+Pure query function that detects sub-role from user prompt text.
+
+__main__ block owns all I/O (reads stdin JSON,
+writes SessionSubRoleState to state file).
 
 @layer: copilot_orchestration (Hooks)
 @dependencies: [None]
@@ -11,15 +14,14 @@ Pure query function that detects sub-role from user prompt text. __main__ block 
     - Step 1: regex match against loader.valid_sub_roles(role) candidates (case-insensitive)
     - Step 2: difflib.get_close_matches on words >= 7 chars, cutoff 0.85
     - Fallback: loader.default_sub_role(role)
-    - __main__ block: reads sys.argv[1] (role), stdin JSON; idempotency check; writes SessionSubRoleState
+    - __main__ block: reads sys.argv[1] (role), stdin JSON;
+      idempotency check; writes SessionSubRoleState
 """
 
 # Standard library
 import difflib
 import logging
 import re
-
-# Third-party
 
 # Project modules
 from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoader
@@ -58,7 +60,7 @@ def detect_sub_role(
 if __name__ == "__main__":  # pragma: no cover
     import json
     import sys
-    from datetime import datetime
+    from datetime import UTC, datetime
     from pathlib import Path
 
     from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
@@ -86,6 +88,6 @@ if __name__ == "__main__":  # pragma: no cover
         "session_id": session_id,
         "role": role,
         "sub_role": _sub_role,
-        "detected_at": datetime.utcnow().isoformat() + "Z",
+        "detected_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     }
     state_path.write_text(json.dumps(_state))

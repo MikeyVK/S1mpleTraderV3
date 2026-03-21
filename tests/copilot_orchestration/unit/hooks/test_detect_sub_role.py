@@ -3,23 +3,21 @@
 """
 Unit tests for copilot_orchestration.hooks.detect_sub_role.
 
-Tests detect_sub_role pure query function: exact match, case-insensitive, difflib typo correction, and default fallback.
+Tests detect_sub_role pure query function: exact match, case-insensitive,
+difflib typo correction, and default fallback.
 
 @layer: Tests (Unit)
 @dependencies: [pytest, copilot_orchestration.hooks.detect_sub_role]
 @responsibilities:
     - Test TestDetectSubRole functionality
-    - Verify pure query function — regex exact match, case-insensitive match, difflib typo, default fallback
+    - Verify pure query function — regex exact match, case-insensitive match,
+      difflib typo, default fallback
     - Pure query only — no filesystem interaction in any test
 """
 
-# Standard library
-
-# Third-party
-
 # Project modules
+from copilot_orchestration.contracts.interfaces import SubRoleSpec
 from copilot_orchestration.hooks.detect_sub_role import detect_sub_role
-from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoader, SubRoleSpec
 
 
 class _StubLoader:
@@ -30,7 +28,15 @@ class _StubLoader:
             return frozenset(
                 {"researcher", "planner", "designer", "implementer", "validator", "documenter"}
             )
-        return frozenset({"plan-reviewer", "design-reviewer", "verifier", "validation-reviewer", "doc-reviewer"})
+        return frozenset(
+            {
+                "plan-reviewer",
+                "design-reviewer",
+                "verifier",
+                "validation-reviewer",
+                "doc-reviewer",
+            }
+        )
 
     def default_sub_role(self, role: str) -> str:
         return "implementer" if role == "imp" else "verifier"
@@ -40,7 +46,11 @@ class _StubLoader:
 
     def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:  # noqa: ARG002
         return SubRoleSpec(
-            requires_crosschat_block=False, heading="", block_prefix="", guide_line="", markers=[]
+            requires_crosschat_block=False,
+            heading="",
+            block_prefix="",
+            guide_line="",
+            markers=[],
         )
 
 
@@ -88,4 +98,3 @@ class TestDetectSubRole:
         """Hyphenated sub-role name is matched exactly."""
         loader = _StubLoader()
         assert detect_sub_role("plan-reviewer: check the plan", loader, "qa") == "plan-reviewer"
-
