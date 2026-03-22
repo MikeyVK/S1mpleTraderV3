@@ -3,8 +3,8 @@ name: start-work
 description: Start a fresh implementation session with @imp and establish scope before coding.
 agent: imp
 argument-hint: >
-  Sub-role + task. Available sub-roles: researcher, planner, designer,
-  implementer (default), validator, documenter.
+  Sub-role + task. Available sub-roles: researcher (default), planner, designer,
+  implementer, validator, documenter.
   Example: "implementer: implement cycle C_V2.7 for issue 263"
 ---
 
@@ -16,9 +16,8 @@ Begin a new implementation session in a disciplined way before making code chang
 
 1. Read [agent.md](../../agent.md).
 2. Read [.github/.copilot-instructions.md](../.copilot-instructions.md).
-3. Read [imp_agent.md](../../imp_agent.md).
-4. Inspect the current worktree.
-5. Reconstruct scope from the user request, visible files, and any explicit design or planning context.
+3. Inspect the current worktree.
+4. Reconstruct scope from the user request, visible files, and any explicit design or planning context.
 
 ## Required Response Before Coding
 

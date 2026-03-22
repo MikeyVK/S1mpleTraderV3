@@ -13,25 +13,17 @@ Reconstruct the active implementation context before making changes.
 
 1. Read [agent.md](../../agent.md).
 2. Read [.github/.copilot-instructions.md](../.copilot-instructions.md).
-3. Read [imp_agent.md](../../imp_agent.md).
-4. Read [docs/coding_standards/ARCHITECTURE_PRINCIPLES.md](../../docs/coding_standards/ARCHITECTURE_PRINCIPLES.md).
-5. Read `.copilot/session-state.json` if it exists — this also contains the active sub-role.
-6. Inspect the current worktree before editing anything.
-7. Reconstruct scope from the latest user request, the current conversation, visible files in scope, and any explicit plan or handover.
+3. Read [docs/coding_standards/ARCHITECTURE_PRINCIPLES.md](../../docs/coding_standards/ARCHITECTURE_PRINCIPLES.md).
+4. Read `.copilot/session-state.json` if it exists — this also contains the active sub-role.
+5. Inspect the current worktree before editing anything.
+6. Reconstruct scope from the latest user request, the current conversation, visible files in scope, and any explicit plan or handover.
 
 ## Required Output
 
 Respond with these sections before you continue implementation:
 1. Recovered goal
-2. Active sub-role (from state file, or default `implementer` if absent)
+2. Active sub-role (from state file, or default `researcher` if absent)
 3. Files in scope
 4. Verification state
 5. Next concrete step
 6. Missing context or blockers
-
-## Guardrails
-
-Do not invent workflow phase, issue state, or deliverables from hidden assumptions.
-Use repository guidance when it exists, but do not make `.st3` a required runtime dependency for recovery.
-If recovery is partial, say so explicitly before proceeding.
-If the state file is absent or stale, assume the default sub-role for the active role.

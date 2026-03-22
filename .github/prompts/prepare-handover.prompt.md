@@ -7,9 +7,8 @@ argument-hint: Optionally state the exact files, claim, and proof that must be h
 
 # Prepare Handover
 
-Use imp_agent.md as the project-specific implementation guide.
-
-Section headings below are the **required markers** checked by the Stop hook against `.copilot/sub-role-requirements.yaml` for sub-role `implementer`. Use these exact headings.
+Section headings below are the **required markers** matched by the Stop hook against
+`.copilot/sub-role-requirements.yaml` for sub-role `implementer`. Use these exact headings.
 
 ## Required Sections
 

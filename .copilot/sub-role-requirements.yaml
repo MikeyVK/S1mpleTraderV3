@@ -10,7 +10,7 @@
 # to truncate first-word input before passing it to the matching engine, preventing
 # excessively long strings from reaching regex/difflib.  Must be larger than the
 # longest sub-role name defined in this file ("validation-reviewer" = 19 chars).
-max_sub_role_name_len: 40
+max_sub_role_name_len: 20
 
 roles:
   imp:
@@ -81,11 +81,11 @@ roles:
           - "Findings"
           - "Architecture Compliance"
           - "Verdict"
-      plan-reviewer:
-        requires_crosschat_block: false
+      plan-verifier:
+        requires_crosschat_block: true
         heading: "Planning Review"
-        block_prefix: ""
-        guide_line: ""
+        block_prefix: "plan verifier "
+        guide_line: "QA the plan deliverables and stop-go criteria. Ensure any findings are resolved before this cycle is done."
         markers:
           - "Findings"
           - "Plan Coherence"
@@ -100,10 +100,10 @@ roles:
           - "Proof Verification"
           - "Verdict"
       validation-reviewer:
-        requires_crosschat_block: false
+        requires_crosschat_block: true
         heading: "Validation Review"
-        block_prefix: ""
-        guide_line: ""
+        block_prefix: "validation-reviewer  "
+        guide_line: "Qa findings must be resolved before this cycle is done."
         markers:
           - "Findings"
           - "Coverage Assessment"

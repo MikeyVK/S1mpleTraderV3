@@ -6,8 +6,7 @@ Formal verification that the VS Code orchestration configuration is correct:
   - .gitignore: STATE_RELPATH entry present
   - imp/qa .agent.md: UserPromptSubmit hook wired; notify_compaction.py
     is second in PreCompact (after pre_compact_agent.py)
-  - imp_agent.md: sub-role table contains all 6 imp sub-roles
-  - qa_agent.md: sub-role table contains all 5 qa sub-roles
+  - sub-role-requirements.yaml: all imp and qa sub-roles defined
 
 Reference: planning.md §C_V2.7 success criteria, design §9.6/9.7.
 """
@@ -22,8 +21,7 @@ _WORKSPACE_ROOT = Path(__file__).parents[3]
 _PROMPTS_DIR = _WORKSPACE_ROOT / ".github" / "prompts"
 _IMP_AGENT_MD = _WORKSPACE_ROOT / ".github" / "agents" / "imp.agent.md"
 _QA_AGENT_MD = _WORKSPACE_ROOT / ".github" / "agents" / "qa.agent.md"
-_IMP_ROLE_GUIDE = _WORKSPACE_ROOT / "imp_agent.md"
-_QA_ROLE_GUIDE = _WORKSPACE_ROOT / "qa_agent.md"
+_SUB_ROLE_REQUIREMENTS = _WORKSPACE_ROOT / ".copilot" / "sub-role-requirements.yaml"
 _VSCODE_SETTINGS = _WORKSPACE_ROOT / ".vscode" / "settings.json"
 _GITIGNORE = _WORKSPACE_ROOT / ".gitignore"
 
@@ -53,7 +51,7 @@ _IMP_SUB_ROLES = frozenset(
     {"researcher", "planner", "designer", "implementer", "validator", "documenter"}
 )
 _QA_SUB_ROLES = frozenset(
-    {"plan-reviewer", "design-reviewer", "verifier", "validation-reviewer", "doc-reviewer"}
+    {"plan-verifier", "design-reviewer", "verifier", "validation-reviewer", "doc-reviewer"}
 )
 
 
@@ -133,18 +131,22 @@ class TestCV27Acceptance:
             f"qa.agent.md: PreCompact[1] must be notify_compaction.py, got: {second_cmd!r}"
         )
 
-    def test_imp_agent_md_has_all_six_imp_sub_roles(self) -> None:
-        """imp_agent.md sub-role table contains all 6 imp sub-roles."""
-        content = _IMP_ROLE_GUIDE.read_text(encoding="utf-8")
-        for sub_role in sorted(_IMP_SUB_ROLES):
-            assert sub_role in content, (
-                f"imp_agent.md: sub-role '{sub_role}' not found in sub-role table"
-            )
+    def test_imp_sub_roles_are_defined_in_yaml(self) -> None:
+        """sub-role-requirements.yaml defines exactly the expected imp sub-roles."""
+        requirements = yaml.safe_load(_SUB_ROLE_REQUIREMENTS.read_text(encoding="utf-8"))
+        actual = frozenset(requirements["roles"]["imp"]["sub_roles"].keys())
+        assert actual == _IMP_SUB_ROLES, (
+            f"sub-role-requirements.yaml imp sub-roles mismatch.\n"
+            f"Expected: {sorted(_IMP_SUB_ROLES)}\n"
+            f"Actual:   {sorted(actual)}"
+        )
 
-    def test_qa_agent_md_has_all_five_qa_sub_roles(self) -> None:
-        """qa_agent.md sub-role table contains all 5 qa sub-roles."""
-        content = _QA_ROLE_GUIDE.read_text(encoding="utf-8")
-        for sub_role in sorted(_QA_SUB_ROLES):
-            assert sub_role in content, (
-                f"qa_agent.md: sub-role '{sub_role}' not found in sub-role table"
-            )
+    def test_qa_sub_roles_are_defined_in_yaml(self) -> None:
+        """sub-role-requirements.yaml defines exactly the expected qa sub-roles."""
+        requirements = yaml.safe_load(_SUB_ROLE_REQUIREMENTS.read_text(encoding="utf-8"))
+        actual = frozenset(requirements["roles"]["qa"]["sub_roles"].keys())
+        assert actual == _QA_SUB_ROLES, (
+            f"sub-role-requirements.yaml qa sub-roles mismatch.\n"
+            f"Expected: {sorted(_QA_SUB_ROLES)}\n"
+            f"Actual:   {sorted(actual)}"
+        )

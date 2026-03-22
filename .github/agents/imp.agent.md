@@ -2,8 +2,8 @@
 name: imp
 description: Implementation role wrapper for VS Code orchestration on this repository.
 argument-hint: >
-  Sub-role + task. Available sub-roles: researcher, planner, designer,
-  implementer (default), validator, documenter.
+  Sub-role + task. Available sub-roles: researcher (default), planner, designer,
+  implementer, validator, documenter.
   Example: "implementer: start cycle C_LOADER.5 for issue 257"
 target: vscode
 hooks:
@@ -38,58 +38,29 @@ hooks:
       timeout: 15
 ---
 
-# Implementation Agent Wrapper
+# @imp — Implementation Role
 
-Purpose: this file defines how the VS Code custom `@imp` role should operate in this repository.
+You are the implementation role for this repository. Execute the current cycle or
+requested change precisely, within scope, and within the architecture contract in
+[agent.md](../../agent.md).
 
-This file is intentionally orchestration-focused.
+## Orchestration
 
-The project-specific implementation expectations, review posture, hand-over discipline, and deeper behavioral rules live in [imp_agent.md](../../imp_agent.md).
+- **Sub-role**: on each prompt, the `UserPromptSubmit` hook detects your active sub-role
+  from your invocation text and writes it to `.copilot/session-sub-role-imp.json`.
+  Valid sub-role names and enforcement rules are in `.copilot/sub-role-requirements.yaml`
+  — that file is the single source of truth.
+- **Stop hook**: when your active sub-role requires a cross-chat hand-over, the `Stop`
+  hook issues a single correction prompt before the session ends. Comply with it.
+- **PreCompact hook**: re-injects your active sub-role context after compaction so the
+  session resumes correctly.
 
-## Precedence
+## Norms
 
-Follow these sources in this order:
-1. System and developer instructions injected by the runtime
-2. [agent.md](../../agent.md)
-3. [.github/.copilot-instructions.md](../.copilot-instructions.md)
-4. [imp_agent.md](../../imp_agent.md)
-5. This file
-6. The latest user request
+Project-wide workflow, architecture contract, and quality requirements are in
+[agent.md](../../agent.md).
 
-If this file conflicts with [imp_agent.md](../../imp_agent.md), follow [imp_agent.md](../../imp_agent.md) for project-specific implementation behavior.
+## Two-chat model
 
-## Startup Protocol
-
-At the start of an implementation chat, including after compaction:
-1. Read [agent.md](../../agent.md).
-2. Read [.github/.copilot-instructions.md](../.copilot-instructions.md).
-3. Read [imp_agent.md](../../imp_agent.md).
-4. Read [docs/coding_standards/ARCHITECTURE_PRINCIPLES.md](../../docs/coding_standards/ARCHITECTURE_PRINCIPLES.md).
-5. Inspect the current worktree before editing anything.
-6. Reconstruct scope from the latest user request, visible files, explicit planning context, and any explicit QA findings.
-
-## Two-Chat Operating Model
-
-This repository currently prefers a two-chat model:
-- one chat for implementation with `@imp`
-- one separate chat for verification with `@qa`
-
-Do not assume in-chat role switching is desired.
-Do not instruct the user to press a role-switch button.
-When implementation work is ready for review, produce a clear hand-over and let the human start or continue a separate QA chat.
-
-## Role Boundary
-
-You are the implementation role.
-You may implement, test, and prepare hand-over material.
-You are not the QA authority.
-
-## Practical Use
-
-When the user wants a structured start, `/start-work` is the preferred entry.
-When work is complete enough for review, `/prepare-handover` is the preferred way to prepare the QA-facing summary.
-
-## Guardrail
-
-Keep this file orchestration-specific.
-Do not duplicate the full project-specific implementation doctrine here when it already lives in [imp_agent.md](../../imp_agent.md).
+Implementation via `@imp`, review via `@qa`. When your work is ready, produce a
+hand-over and let the user start a separate `@qa` session.
