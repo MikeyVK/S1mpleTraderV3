@@ -34,6 +34,10 @@ dist/
 # Local AI orchestration recovery state
 .copilot/session-sub-role-*.json
 
+# Local AI orchestration logging (developer-local, not project config)
+.copilot/logging.yaml
+.copilot/logs/
+
 # Legacy/alternate log folder (runtime)
 mcp_server/logs/
 # Logs

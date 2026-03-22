@@ -1,0 +1,10 @@
+# src/copilot_orchestration/config/_default_logging.yaml
+# Package default logging configuration for copilot_orchestration.
+# Override by creating .copilot/logging.yaml in your workspace root (gitignored).
+
+level: WARNING
+format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+handlers:
+  stderr: {}
+  file:
+    path: .copilot/logs/orchestration.log

@@ -61,3 +61,12 @@ class ISubRoleRequirementsLoader(Protocol):
     def max_sub_role_name_len(self) -> int:
         """Return maximum character length for a valid sub-role name (from config)."""
         ...  # pragma: no cover
+
+
+@runtime_checkable
+class ILoggingConfig(Protocol):
+    """Protocol for logging configuration objects."""
+
+    def apply(self) -> None:
+        """Configure Python logging (basicConfig) and create log directory if absent."""
+        ...  # pragma: no cover

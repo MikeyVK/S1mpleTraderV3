@@ -2,55 +2,10 @@
   "branch": "feature/263-vscode-implementation-orchestration",
   "issue_number": 263,
   "workflow_name": "feature",
-  "current_phase": "implementation",
+  "current_phase": "research",
   "current_cycle": null,
-  "last_cycle": 8,
-  "cycle_history": [
-    {
-      "cycle_number": 1,
-      "name": null,
-      "entered": "2026-03-21T11:17:07.268755+00:00",
-      "forced": true,
-      "skip_reason": "current_cycle was null after force phase transition to implementation. C_V2.0 work (delete 2 v1 test files) is complete in commit a4b668e. Setting cycle to 1 to match the completed work before QA review.",
-      "human_approval": "User approved on 2026-03-21",
-      "skipped_cycles": []
-    },
-    {
-      "cycle_number": 2,
-      "forced": false,
-      "entered": "2026-03-21T11:55:33.159219+00:00"
-    },
-    {
-      "cycle_number": 3,
-      "forced": false,
-      "entered": "2026-03-21T12:11:51.948568+00:00"
-    },
-    {
-      "cycle_number": 4,
-      "forced": false,
-      "entered": "2026-03-21T12:26:28.812955+00:00"
-    },
-    {
-      "cycle_number": 5,
-      "forced": false,
-      "entered": "2026-03-21T12:49:02.458115+00:00"
-    },
-    {
-      "cycle_number": 6,
-      "forced": false,
-      "entered": "2026-03-21T13:03:49.632861+00:00"
-    },
-    {
-      "cycle_number": 7,
-      "forced": false,
-      "entered": "2026-03-21T13:25:20.946608+00:00"
-    },
-    {
-      "cycle_number": 8,
-      "forced": false,
-      "entered": "2026-03-21T13:43:56.146783+00:00"
-    }
-  ],
+  "last_cycle": null,
+  "cycle_history": [],
   "required_phases": [
     "research",
     "planning",
@@ -60,99 +15,10 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Design phase not needed for these bug-fix cycles \u2014 research doc contains the full decision record (role-scoped files, first-word detection, exploration mode). No new architecture decisions required beyond what is documented in research_sub_role_detection_v2.md.",
+  "skip_reason": null,
   "issue_title": "Define VS Code orchestration boundaries",
   "parent_branch": "feature/257-reorder-workflow-phases",
-  "created_at": "2026-03-18T20:23:57.926731+00:00",
-  "transitions": [
-    {
-      "from_phase": "research",
-      "to_phase": "planning",
-      "timestamp": "2026-03-18T20:24:48.534473+00:00",
-      "human_approval": "User requested planning closure and implementation handoff on 2026-03-18.",
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-03-18T20:30:03.0155613Z",
-      "human_approval": "User explicitly approved forced transition to implementation on 2026-03-18 because this workflow expects design and that phase is intentionally skipped.",
-      "forced": true,
-      "skip_reason": "Force transition approved by user: skip design phase and continue in implementation."
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "research",
-      "timestamp": "2026-03-19T09:42:34.026377+00:00",
-      "human_approval": "User approved on 2026-03-19: ga terug naar research fase voor v2 design refactor",
-      "forced": true,
-      "skip_reason": "Skipping backwards to research phase: user decision to refactor according to v2 design instead of merging C_PKG migration as-is. Implementation cycles C_PKG.2-5 complete but v2 refactor requires new research before design and implementation."
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "design",
-      "timestamp": "2026-03-20T19:04:45.433631+00:00",
-      "human_approval": "User approved on 2026-03-20 via explicit phase transition instruction.",
-      "forced": true,
-      "skip_reason": "Research phase complete \u2014 all open questions resolved and documented in research.md \u00a710. Skipping planning phase per user decision: design document update is the immediate deliverable."
-    },
-    {
-      "from_phase": "design",
-      "to_phase": "planning",
-      "timestamp": "2026-03-21T10:04:59.104702+00:00",
-      "human_approval": "User approved on 2026-03-21: 'Doe 2 en maak op basis van research en design een planning.md'",
-      "forced": true,
-      "skip_reason": "Planning deliverables are v1-era (C_PKG.* cycles). The v2 redesign (design v2.9) introduced a completely new package structure (contracts/, config/, utils/ submodules, _paths utility, SubRoleRequirementsLoader via DI) that was never formally planned. The planning phase must be re-run to define v2 TDD cycles before implementation can begin."
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-03-21T11:08:07.771176+00:00",
-      "human_approval": "User approved on 2026-03-21",
-      "forced": true,
-      "skip_reason": "Design is complete (v2.9, commit de77b28). Planning deliverables define implementation exit criteria (file_exists / contains_text on source files) \u2014 these cannot be satisfied at planning time by design. Skipping planning\u2192design and design\u2192implementation sequential validation."
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "validation",
-      "timestamp": "2026-03-21T14:27:32.631803+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "validation",
-      "to_phase": "documentation",
-      "timestamp": "2026-03-21T15:25:09.871850+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "research",
-      "timestamp": "2026-03-21T18:32:09.671592+00:00",
-      "human_approval": "User: terugkeer naar research om de 3 implementatiebugs te analyseren en gericht te fixen (2026-03-21)",
-      "forced": true,
-      "skip_reason": "Three implementation defects discovered during documentation phase: (1) empty session_id causes stop hook to silently pass through, (2) imp and qa share a single state file with no role isolation, (3) no mechanism for intra-session sub-role transition. Returning to research to specify correct fixes before continuing documentation."
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "planning",
-      "timestamp": "2026-03-21T21:21:57.552560+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-03-21T21:34:03.207037+00:00",
-      "human_approval": "User approved via chat: 'je mag nu alle cycles in 1 go implementeren'",
-      "forced": true,
-      "skip_reason": "Design phase not needed for these bug-fix cycles \u2014 research doc contains the full decision record (role-scoped files, first-word detection, exploration mode). No new architecture decisions required beyond what is documented in research_sub_role_detection_v2.md."
-    }
-  ],
-  "reconstructed": false
+  "created_at": "2026-03-22T21:06:10.934672+00:00",
+  "transitions": [],
+  "reconstructed": true
 }
