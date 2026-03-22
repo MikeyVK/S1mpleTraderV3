@@ -17,9 +17,15 @@ difflib typo correction, default fallback, oversized input handling.
     - Pure query only — no filesystem interaction in any test
 """
 
+# Standard library
+import logging
+
+# Third-party
+import pytest
+
 # Project modules
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
-from copilot_orchestration.hooks.detect_sub_role import detect_sub_role
+from copilot_orchestration.hooks.detect_sub_role import _match_sub_role, detect_sub_role
 
 
 class _StubLoader:
@@ -150,3 +156,28 @@ class TestDetectSubRole:
             f"Longest sub-role '{max(all_names, key=len)}' ({longest} chars) "
             f">= loader.max_sub_role_name_len() ({max_len}); update the YAML config."
         )
+
+
+_LOGGER_NAME = "copilot_orchestration.hooks.detect_sub_role"
+
+
+class TestDetectSubRoleLogging:
+    """Logging behaviour of _match_sub_role."""
+
+    def test_match_logs_debug_when_match_found(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """_match_sub_role logs at DEBUG when a sub-role is matched."""
+        loader = _StubLoader()
+        with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
+            _match_sub_role("implementer: start cycle", loader, "imp")
+        assert any(r.levelno == logging.DEBUG for r in caplog.records)
+
+    def test_no_match_logs_debug(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """_match_sub_role logs at DEBUG when no sub-role is found."""
+        loader = _StubLoader()
+        with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
+            _match_sub_role("totally unrelated text here", loader, "imp")
+        assert any(r.levelno == logging.DEBUG for r in caplog.records)

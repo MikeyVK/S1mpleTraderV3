@@ -17,8 +17,10 @@ results in pass-through, ConfigError is caught and treated as pass-through.
 
 # Standard library
 import json
+import logging
 
 # Third-party
+import pytest
 from pathlib import Path
 
 # Project modules
@@ -258,3 +260,43 @@ class TestStopHandoverGuard:
         assert hook_output.get("decision") == "block"
         assert isinstance(hook_output.get("reason"), str)
         assert hook_output["reason"]  # non-empty
+
+
+_STOP_LOGGER_NAME = "copilot_orchestration.hooks.stop_handover_guard"
+
+
+class TestStopHandoverGuardLogging:
+    """Logging behaviour of evaluate_stop_hook."""
+
+    def test_block_decision_logged_at_info(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """evaluate_stop_hook logs at INFO when a BLOCK decision is made."""
+        loader = _StubLoader()
+        role = "imp"
+        sub_role = loader.default_sub_role(role)  # enforced → produces block
+        state_path = tmp_path / "state.json"
+        state_path.write_text(_make_state(role, sub_role))
+        with caplog.at_level(logging.INFO, logger=_STOP_LOGGER_NAME):
+            evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
+        assert any(
+            "block" in r.message.lower() and r.levelno == logging.INFO
+            for r in caplog.records
+        )
+
+    def test_allow_decision_logged_at_debug(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """evaluate_stop_hook logs at DEBUG when an ALLOW (pass-through) decision is made."""
+        loader = _StubLoader()
+        role = "imp"
+        non_enforced = next(
+            s
+            for s in sorted(loader.valid_sub_roles(role))
+            if not loader.requires_crosschat_block(role, s)
+        )
+        state_path = tmp_path / "state.json"
+        state_path.write_text(_make_state(role, non_enforced))
+        with caplog.at_level(logging.DEBUG, logger=_STOP_LOGGER_NAME):
+            evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
+        assert any(r.levelno == logging.DEBUG for r in caplog.records)

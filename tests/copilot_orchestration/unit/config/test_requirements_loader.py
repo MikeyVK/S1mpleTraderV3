@@ -15,6 +15,7 @@ Fail-Fast on unknown sub-role and malformed YAML.
 """
 
 # Standard library
+import logging
 from pathlib import Path
 
 # Third-party
@@ -336,3 +337,20 @@ roles:
 
         # Assert
         assert loader.default_sub_role("imp") == "researcher"
+
+
+_REQUIREMENTS_LOGGER_NAME = "copilot_orchestration.config.requirements_loader"
+
+
+class TestSubRoleRequirementsLoaderLogging:
+    """Logging behaviour of SubRoleRequirementsLoader."""
+
+    def test_successful_load_emits_debug_log(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """SubRoleRequirementsLoader.__init__ logs at DEBUG when config is loaded."""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(_MINIMAL_YAML)
+        with caplog.at_level(logging.DEBUG, logger=_REQUIREMENTS_LOGGER_NAME):
+            SubRoleRequirementsLoader(yaml_path)
+        assert any(r.levelno == logging.DEBUG for r in caplog.records)
