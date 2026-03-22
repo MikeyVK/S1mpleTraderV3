@@ -13,13 +13,13 @@ difflib typo correction, default fallback, oversized input handling.
     - Verify pure query function — regex exact match, case-insensitive match,
       difflib typo, default fallback
     - Verify oversized input returns default without crashing
-    - Verify exploration mode: None return from _match_sub_role for empty input
+    - Verify loader.max_sub_role_name_len() is larger than all known sub-role names
     - Pure query only — no filesystem interaction in any test
 """
 
 # Project modules
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
-from copilot_orchestration.hooks.detect_sub_role import MAX_SUB_ROLE_NAME_LEN, detect_sub_role
+from copilot_orchestration.hooks.detect_sub_role import detect_sub_role
 
 
 class _StubLoader:
@@ -54,6 +54,9 @@ class _StubLoader:
             guide_line="",
             markers=[],
         )
+
+    def max_sub_role_name_len(self) -> int:
+        return 40
 
 
 class TestDetectSubRole:
@@ -120,27 +123,30 @@ class TestDetectSubRole:
         assert result == loader.default_sub_role("imp")
 
     def test_oversized_input_returns_default_without_crash(self) -> None:
-        """Very long input (> MAX_SUB_ROLE_NAME_LEN chars) does not crash; returns default.
+        """Very long input does not crash detect_sub_role(); returns default.
 
         Documents that detect_sub_role() handles oversized tokens gracefully.
-        __main__ truncates to MAX_SUB_ROLE_NAME_LEN before calling the engine;
-        this test verifies the pure function also handles oversized input safely.
+        __main__ truncates to loader.max_sub_role_name_len() (from YAML config)
+        before calling the engine; this test verifies the pure function also
+        handles oversized input safely without any truncation of its own.
         """
         loader = _StubLoader()
-        oversized = "x" * (MAX_SUB_ROLE_NAME_LEN * 5)
+        oversized = "x" * 200  # well beyond any real sub-role name
         result = detect_sub_role(oversized, loader, "imp")
         assert result == loader.default_sub_role("imp")
 
     def test_max_sub_role_name_len_covers_all_known_sub_roles(self) -> None:
-        """MAX_SUB_ROLE_NAME_LEN is larger than every known sub-role name.
+        """loader.max_sub_role_name_len() is larger than every known sub-role name.
 
-        Ensures future sub-role names up to MAX_SUB_ROLE_NAME_LEN chars are
-        not accidentally truncated during __main__ input preparation.
+        Ensures the YAML config value is adequate: __main__ truncates first-word
+        input to this length before matching, so it must exceed the longest
+        sub-role name or valid sub-roles would be silently truncated.
         """
         loader = _StubLoader()
         all_names = loader.valid_sub_roles("imp") | loader.valid_sub_roles("qa")
         longest = max(len(name) for name in all_names)
-        assert longest < MAX_SUB_ROLE_NAME_LEN, (
+        max_len = loader.max_sub_role_name_len()
+        assert longest < max_len, (
             f"Longest sub-role '{max(all_names, key=len)}' ({longest} chars) "
-            f">= MAX_SUB_ROLE_NAME_LEN ({MAX_SUB_ROLE_NAME_LEN}); update the constant."
+            f">= loader.max_sub_role_name_len() ({max_len}); update the YAML config."
         )

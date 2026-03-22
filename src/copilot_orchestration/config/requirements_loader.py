@@ -50,6 +50,7 @@ class _RoleSchema(BaseModel):
 
 class _RootSchema(BaseModel):
     roles: dict[str, _RoleSchema]
+    max_sub_role_name_len: int = 40
 
 
 class SubRoleRequirementsLoader:
@@ -63,6 +64,7 @@ class SubRoleRequirementsLoader:
         raw: Any = yaml.safe_load(requirements_path.read_text(encoding="utf-8"))
         parsed = _RootSchema.model_validate(raw)
         self._roles = parsed.roles
+        self._max_sub_role_name_len = parsed.max_sub_role_name_len
 
     @classmethod
     def from_copilot_dir(cls, workspace_root: Path) -> "SubRoleRequirementsLoader":
@@ -110,3 +112,7 @@ class SubRoleRequirementsLoader:
             guide_line=spec.guide_line,
             markers=list(spec.markers),
         )
+
+    def max_sub_role_name_len(self) -> int:
+        """Maximum character length for a valid sub-role name (from YAML config)."""
+        return self._max_sub_role_name_len

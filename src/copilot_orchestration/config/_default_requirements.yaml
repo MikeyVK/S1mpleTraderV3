@@ -3,6 +3,12 @@
 # Authoritative source: design_v2_sub_role_orchestration.md §6.1 / §6.2 / §9.3
 # Schema: roles.<role>.default_sub_role + roles.<role>.sub_roles.<name>.*
 
+# Maximum character length for a sub-role name.  Used by detect_sub_role.__main__
+# to truncate first-word input before passing it to the matching engine, preventing
+# excessively long strings from reaching regex/difflib.  Must be larger than the
+# longest sub-role name in this file ("validation-reviewer" = 19 chars).
+max_sub_role_name_len: 40
+
 roles:
   imp:
     default_sub_role: implementer

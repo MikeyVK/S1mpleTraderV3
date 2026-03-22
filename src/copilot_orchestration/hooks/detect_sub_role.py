@@ -18,7 +18,7 @@ writes SessionSubRoleState to role-scoped state file).
     - Step 1: regex match against loader.valid_sub_roles(role) candidates (case-insensitive)
     - Step 2: difflib.get_close_matches on words >= 7 chars, cutoff 0.85
     - __main__ block: reads sys.argv[1] (role), stdin JSON;
-      first-word extraction capped at MAX_SUB_ROLE_NAME_LEN;
+      first-word extraction capped at loader.max_sub_role_name_len() (from YAML config);
       calls _match_sub_role for the matching decision (single algorithm);
       writes SessionSubRoleState to role-scoped file on match;
       exploration mode (no match) -> does nothing
@@ -35,13 +35,6 @@ from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoade
 logger = logging.getLogger(__name__)
 
 _SLASH_CMD_RE = re.compile(r"^/\S+\s*")
-
-# Maximum length of a valid sub-role name.  Longest existing name is
-# "validation-reviewer" (19 chars).  Capped at 40 to allow future additions
-# without requiring a constant update.  __main__ uses this to truncate the
-# first-word token before passing it to _match_sub_role(), preventing
-# excessively long strings from reaching the regex/difflib logic.
-MAX_SUB_ROLE_NAME_LEN: int = 40
 
 
 def _match_sub_role(
@@ -108,11 +101,12 @@ if __name__ == "__main__":  # pragma: no cover
     _loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
 
     # Input preparation: strip /command prefix, extract and sanitise first word.
-    # Cap length at MAX_SUB_ROLE_NAME_LEN before passing to the matching engine
-    # (_match_sub_role) — no matching logic lives here.
+    # Cap length at loader.max_sub_role_name_len() (from YAML config) before
+    # passing to the matching engine (_match_sub_role) — no matching logic here.
+    _max_len = _loader.max_sub_role_name_len()
     _stripped = _SLASH_CMD_RE.sub("", prompt_text.strip())
     _words = _stripped.split()
-    _first_word = re.sub(r"[^\w-]", "", _words[0]).lower()[:MAX_SUB_ROLE_NAME_LEN] if _words else ""
+    _first_word = re.sub(r"[^\w-]", "", _words[0]).lower()[:_max_len] if _words else ""
 
     _detected = _match_sub_role(_first_word, _loader, role)
     if _detected:

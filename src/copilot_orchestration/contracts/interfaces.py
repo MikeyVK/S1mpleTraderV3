@@ -57,3 +57,7 @@ class ISubRoleRequirementsLoader(Protocol):
     def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:
         """Return the full spec for *(role, sub_role)*."""
         ...  # pragma: no cover
+
+    def max_sub_role_name_len(self) -> int:
+        """Return maximum character length for a valid sub-role name (from config)."""
+        ...  # pragma: no cover

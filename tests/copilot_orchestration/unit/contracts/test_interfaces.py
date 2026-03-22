@@ -48,6 +48,9 @@ class TestISubRoleRequirementsLoaderProtocol:
                     markers=[],
                 )
 
+            def max_sub_role_name_len(self) -> int:
+                return 40
+
         # Act
         result = isinstance(StubLoader(), ISubRoleRequirementsLoader)  # pyright: ignore[reportGeneralTypeIssues]
 
