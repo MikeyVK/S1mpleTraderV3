@@ -59,12 +59,16 @@ def _match_sub_role(
         re.IGNORECASE,
     )
     if match:
-        return match.group(1).lower().replace(" ", "-")
+        result = match.group(1).lower().replace(" ", "-")
+        logger.debug("_match_sub_role: matched %r for role %r", result, role)
+        return result
 
     # Step 2: typo correction via difflib (words >= 7 chars only)
     words = [w for w in re.split(r"\W+", cleaned) if len(w) >= 7]
     close = difflib.get_close_matches(" ".join(words), list(candidates), n=1, cutoff=0.85)
-    return close[0] if close else None
+    result = close[0] if close else None
+    logger.debug("_match_sub_role: result=%r for role %r", result, role)
+    return result
 
 
 def detect_sub_role(

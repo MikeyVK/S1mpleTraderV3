@@ -65,6 +65,7 @@ class SubRoleRequirementsLoader:
         parsed = _RootSchema.model_validate(raw)
         self._roles = parsed.roles
         self._max_sub_role_name_len = parsed.max_sub_role_name_len
+        logger.debug("loaded sub-role config from %s", requirements_path)
 
     @classmethod
     def from_copilot_dir(cls, workspace_root: Path) -> "SubRoleRequirementsLoader":

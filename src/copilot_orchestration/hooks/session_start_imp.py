@@ -5,6 +5,7 @@ from __future__ import annotations
 # This script adds implementation-specific context: snapshot recovery, pending
 # handover, and role recommendations.  It is invoked via hooks: in imp.agent.md.
 import json
+import logging
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -18,6 +19,8 @@ MAX_GOAL_LENGTH = 280
 MAX_HANDOVER_LENGTH = 200
 MAX_PROMPT_BLOCK_LENGTH = 500
 SNAPSHOT_MAX_AGE_HOURS = 6
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -146,17 +149,21 @@ def is_usable_snapshot(snapshot: JsonObject, changed_files: list[str]) -> bool:
         snapshot_time = snapshot_time.replace(tzinfo=UTC)
     age = datetime.now(UTC) - snapshot_time.astimezone(UTC)
     if age.total_seconds() > SNAPSHOT_MAX_AGE_HOURS * 3600:
+        logger.debug("snapshot rejected: stale (age %.0fs)", age.total_seconds())
         return False
 
     snapshot_files = as_string_list(snapshot.get("files_in_scope"))
     if not changed_files:
+        logger.debug("snapshot rejected: no changed files")
         return False
     if snapshot_files:
         changed_set = set(changed_files)
         snapshot_set = set(snapshot_files)
         if changed_set.isdisjoint(snapshot_set):
+            logger.debug("snapshot rejected: no file overlap")
             return False
 
+    logger.debug("snapshot accepted")
     return True
 
 

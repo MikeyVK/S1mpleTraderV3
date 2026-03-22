@@ -13,6 +13,7 @@ from __future__ import annotations
 # This script additionally writes to location 2, which is the path that
 # session_start_imp.py and session_start_qa.py read for cross-chat recovery.
 import json
+import logging
 import re
 import sys
 from datetime import UTC, datetime
@@ -29,6 +30,8 @@ FILE_PATH_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_.-])(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+"
     r"\.(?:py|md|json|yaml|yml|toml|ini|txt|ps1|sh|ts|tsx|js|jsx)"
 )
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -155,7 +158,11 @@ def read_json_file(path: Path) -> JsonObject:
         return {}
     try:
         return json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError):
+    except json.JSONDecodeError:
+        logger.debug("read_json_file: invalid JSON in %s", path)
+        return {}
+    except OSError:
+        logger.debug("read_json_file: OSError reading %s", path)
         return {}
 
 

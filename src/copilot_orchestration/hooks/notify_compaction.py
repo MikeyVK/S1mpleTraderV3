@@ -20,11 +20,30 @@ Exit 0 always (soft failure — hook errors must not break agent session).
 
 # Standard library
 import json
+import logging
 import sys
 from pathlib import Path
 
 # Project modules
 from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
+
+logger = logging.getLogger(__name__)
+
+
+def build_compaction_output(state: dict[str, object]) -> dict[str, object]:
+    """Return systemMessage dict when state contains a sub_role, else empty dict."""
+    sub_role = state.get("sub_role")
+    if sub_role:
+        logger.info("compaction output: sub_role=%s", sub_role)
+        return {
+            "systemMessage": (
+                f"Context was compacted. Your active sub-role is **{sub_role}**. "
+                "Use /resume-work to restore full behavioral context before continuing."
+            )
+        }
+    logger.debug("no sub_role in state — empty compaction output")
+    return {}
+
 
 if __name__ == "__main__":  # pragma: no cover
     role = sys.argv[1] if len(sys.argv) > 1 else "imp"
@@ -34,20 +53,11 @@ if __name__ == "__main__":  # pragma: no cover
     # Consume stdin (required by hook protocol, sessionId not used for decisions)
     json.loads(sys.stdin.read())
 
-    output: dict[str, object] = {}
+    state: dict[str, object] = {}
     if state_path.exists():
         try:
             state = json.loads(state_path.read_text())
         except json.JSONDecodeError:
             state = {}
 
-        sub_role = state.get("sub_role")
-        if sub_role:
-            output = {
-                "systemMessage": (
-                    f"Context was compacted. Your active sub-role is **{sub_role}**. "
-                    "Use /resume-work to restore full behavioral context before continuing."
-                )
-            }
-
-    print(json.dumps(output))
+    print(json.dumps(build_compaction_output(state)))

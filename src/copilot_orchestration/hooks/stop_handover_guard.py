@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from copilot_orchestration.contracts.interfaces import (
 from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
 JsonObject = dict[str, object]
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -44,12 +47,14 @@ def evaluate_stop_hook(
 
     try:
         if not loader.requires_crosschat_block(role, sub_role):
+            logger.debug("ALLOW stop: role=%r sub_role=%r (no enforcement)", role, sub_role)
             return {}
         spec = loader.get_requirement(role, sub_role)
     except ConfigError:
         # Unknown (role, sub_role) combination — treat as pass-through
         return {}
 
+    logger.info("BLOCK stop: role=%r sub_role=%r", role, sub_role)
     return {
         "hookSpecificOutput": {
             "hookEventName": "Stop",
