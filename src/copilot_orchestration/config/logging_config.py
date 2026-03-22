@@ -45,6 +45,11 @@ class LoggingConfig:
         relative = raw.get("handlers", {}).get("file", {}).get("path", self._DEFAULT_LOG_PATH)
         self._log_file_path: Path = workspace_root / relative
 
+    @property
+    def level(self) -> str:
+        """Return the configured log level string."""
+        return self._level
+
     @classmethod
     def from_copilot_dir(cls, workspace_root: Path) -> "LoggingConfig":
         """Factory: .copilot/logging.yaml first, then package _default_logging.yaml."""
@@ -68,4 +73,5 @@ class LoggingConfig:
                 logging.StreamHandler(),
                 logging.FileHandler(self._log_file_path, encoding="utf-8"),
             ],
+            force=True,
         )
