@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 # Project modules
+from copilot_orchestration.config.logging_config import LoggingConfig
 from copilot_orchestration.config.requirements_loader import ConfigError, SubRoleRequirementsLoader
 from copilot_orchestration.contracts.interfaces import (
     ISubRoleRequirementsLoader,
@@ -22,6 +23,7 @@ def main() -> None:
     role = normalize_role(sys.argv[1] if len(sys.argv) > 1 else "")
     event = read_stdin_json()
     workspace_root = find_workspace_root(Path(__file__))
+    LoggingConfig.from_copilot_dir(workspace_root).apply()
     state_path = workspace_root / state_path_for_role(role)
     loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
     json.dump(

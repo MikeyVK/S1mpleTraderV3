@@ -91,6 +91,7 @@ if __name__ == "__main__":  # pragma: no cover
     from datetime import UTC, datetime
     from pathlib import Path
 
+    from copilot_orchestration.config.logging_config import LoggingConfig
     from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
     from copilot_orchestration.contracts.interfaces import SessionSubRoleState
     from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
@@ -101,6 +102,7 @@ if __name__ == "__main__":  # pragma: no cover
     session_id: str = payload.get("sessionId", "")
 
     workspace_root = find_workspace_root(Path(__file__))
+    LoggingConfig.from_copilot_dir(workspace_root).apply()
     state_path = workspace_root / state_path_for_role(role)
     _loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
 

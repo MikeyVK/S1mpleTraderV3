@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 
 # Project modules
+from copilot_orchestration.config.logging_config import LoggingConfig
 from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ def build_compaction_output(state: dict[str, object]) -> dict[str, object]:
 if __name__ == "__main__":  # pragma: no cover
     role = sys.argv[1] if len(sys.argv) > 1 else "imp"
     workspace_root = find_workspace_root(Path(__file__))
+    LoggingConfig.from_copilot_dir(workspace_root).apply()
     state_path = workspace_root / state_path_for_role(role)
 
     # Consume stdin (required by hook protocol, sessionId not used for decisions)
