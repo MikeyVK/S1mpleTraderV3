@@ -18,15 +18,15 @@ results in pass-through, ConfigError is caught and treated as pass-through.
 # Standard library
 import json
 import logging
+from pathlib import Path
 
 # Third-party
 import pytest
-from pathlib import Path
 
 # Project modules
 from copilot_orchestration.config.requirements_loader import ConfigError
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
-from copilot_orchestration.hooks.stop_handover_guard import evaluate_stop_hook
+from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason, evaluate_stop_hook
 
 _SESSION_ID = "test-session-abc"
 
@@ -280,8 +280,7 @@ class TestStopHandoverGuardLogging:
         with caplog.at_level(logging.INFO, logger=_STOP_LOGGER_NAME):
             evaluate_stop_hook({"sessionId": _SESSION_ID}, role, loader, state_path)
         assert any(
-            "block" in r.message.lower() and r.levelno == logging.INFO
-            for r in caplog.records
+            "block" in r.message.lower() and r.levelno == logging.INFO for r in caplog.records
         )
 
     def test_allow_decision_logged_at_debug(
@@ -311,8 +310,6 @@ class TestBuildStopReason:
 
     def test_contains_immediate_write_directive(self) -> None:
         """Reason must instruct the model to write the block immediately."""
-        from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
-
         result = build_stop_reason(_SPEC_STUB)
         lower = result.lower()
         # Must contain an action directive ("write", "now", or both in proximity)
@@ -322,30 +319,22 @@ class TestBuildStopReason:
 
     def test_contains_heading_from_spec(self) -> None:
         """Heading from spec must appear in the reason text."""
-        from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
-
         result = build_stop_reason(_SPEC_STUB)
         assert _SPEC_STUB["heading"] in result
 
     def test_contains_each_marker(self) -> None:
         """Every required marker section must be mentioned."""
-        from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
-
         result = build_stop_reason(_SPEC_STUB)
         for marker in _SPEC_STUB["markers"]:
             assert marker in result, f"Marker {marker!r} missing from stop reason"
 
     def test_block_prefix_in_reason(self) -> None:
         """The block_prefix must appear so model knows the exact opening line."""
-        from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
-
         result = build_stop_reason(_SPEC_STUB)
         assert _SPEC_STUB["block_prefix"] in result
 
     def test_no_meta_apology_instructions(self) -> None:
         """Waste-token meta-instructions must be absent."""
-        from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
-
         result = build_stop_reason(_SPEC_STUB)
         forbidden = ["no prose", "no explanation", "no apology"]
         for phrase in forbidden:
@@ -355,8 +344,6 @@ class TestBuildStopReason:
 
     def test_reason_under_600_chars(self) -> None:
         """Stop reason must be concise — under 600 characters."""
-        from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
-
         result = build_stop_reason(_SPEC_STUB)
         assert len(result) < 600, (
             f"build_stop_reason is {len(result)} chars; must be < 600 for assertiveness"

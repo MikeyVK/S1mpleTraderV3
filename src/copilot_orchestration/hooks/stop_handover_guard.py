@@ -106,28 +106,18 @@ def read_stdin_json() -> JsonObject:
 def build_stop_reason(spec: SubRoleSpec) -> str:
     verb = spec.get("marker_verb", "include a section titled")  # type: ignore[typeddict-item]
     marker_lines = "\n".join(
-        f"   {i + 1}. {verb} `{marker}`" for i, marker in enumerate(spec["markers"])
+        f"  {i + 1}. {verb} `{marker}`" for i, marker in enumerate(spec["markers"])
     )
     prefix_hint = spec.get("block_prefix_hint", "")  # type: ignore[typeddict-item]
-    prefix_explanation = f" — {prefix_hint}" if prefix_hint else ""
+    prefix_note = f" ({prefix_hint})" if prefix_hint else ""
     return (
-        "Do not stop yet.\n\n"
-        "The final response is missing the required copy-paste handover block.\n\n"
-        "Continue with EXACTLY ONE final assistant message structured as follows:\n\n"
+        f"Write the handover block NOW and stop.\n\n"
         f"## {spec['heading']}\n\n"
         "```text\n"
-        f"{spec['block_prefix']}<your content>\n"
+        f"{spec['block_prefix']}{prefix_note}\n"
+        f"{spec['guide_line']}\n"
         "```\n\n"
-        "Rules for that message:\n"
-        f"1. The heading `## {spec['heading']}` must appear exactly once, before the block.\n"
-        "2. The block must be fenced as ` ```text ` (not markdown, not code).\n"
-        f"3. The block must start with the literal prefix `{spec['block_prefix']}`"
-        f"{prefix_explanation}.\n"
-        f"4. The first line after the prefix must be: {spec['guide_line']}\n"
-        "5. The block must contain the following sections IN THIS ORDER:\n"
-        f"{marker_lines}\n"
-        "6. No prose, explanation, or apology before or after this heading+block.\n\n"
-        "Write that message now and stop."
+        f"Required sections (in order):\n{marker_lines}"
     )
 
 
