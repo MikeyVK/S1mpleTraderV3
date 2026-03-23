@@ -158,6 +158,8 @@ class TestDetectSubRole:
         )
 
 
+from copilot_orchestration.hooks.detect_sub_role import build_ups_output  # noqa: E402
+
 _LOGGER_NAME = "copilot_orchestration.hooks.detect_sub_role"
 
 
@@ -181,3 +183,56 @@ class TestDetectSubRoleLogging:
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             _match_sub_role("totally unrelated text here", loader, "imp")
         assert any(r.levelno == logging.DEBUG for r in caplog.records)
+
+
+class _EnforcingStubLoader(_StubLoader):
+    """Stub loader where all sub-roles have requires_crosschat_block=True."""
+
+    def requires_crosschat_block(self, role: str, sub_role: str) -> bool:  # noqa: ARG002
+        return True
+
+
+class TestBuildUpsOutput:
+    """Tests for build_ups_output — S1 front-loading via UserPromptSubmit hook.
+
+    build_ups_output(sub_role, loader, role) injects a systemMessage
+    when requires_crosschat_block is True, so the agent sees the handover
+    instruction BEFORE generating output (not just at Stop time).
+    """
+
+    def test_enforced_sub_role_returns_hook_specific_output(self) -> None:
+        """Enforced sub-role produces hookSpecificOutput with hookEventName=UserPromptSubmit."""
+        loader = _EnforcingStubLoader()
+        result = build_ups_output("implementer", loader, "imp")
+        hook = result.get("hookSpecificOutput")
+        assert isinstance(hook, dict)
+        assert hook.get("hookEventName") == "UserPromptSubmit"
+
+    def test_enforced_sub_role_system_message_is_non_empty_string(self) -> None:
+        """systemMessage must be a non-empty string."""
+        loader = _EnforcingStubLoader()
+        result = build_ups_output("implementer", loader, "imp")
+        msg = result["hookSpecificOutput"]["systemMessage"]  # type: ignore[index]
+        assert isinstance(msg, str)
+        assert msg.strip()
+
+    def test_enforced_sub_role_system_message_max_200_chars(self) -> None:
+        """systemMessage must not exceed 200 characters (context bloat guard)."""
+        loader = _EnforcingStubLoader()
+        result = build_ups_output("implementer", loader, "imp")
+        msg = result["hookSpecificOutput"]["systemMessage"]  # type: ignore[index]
+        assert len(msg) <= 200, f"systemMessage is {len(msg)} chars (limit: 200)"
+
+    def test_non_enforced_sub_role_returns_empty_dict(self) -> None:
+        """Non-enforced sub-role produces {} (no injection)."""
+        loader = _StubLoader()  # requires_crosschat_block always False
+        result = build_ups_output("researcher", loader, "imp")
+        assert result == {}
+
+    def test_qa_enforced_sub_role_returns_ups_output(self) -> None:
+        """qa role enforced sub-role also produces front-load output."""
+        loader = _EnforcingStubLoader()
+        result = build_ups_output("verifier", loader, "qa")
+        hook = result.get("hookSpecificOutput")
+        assert isinstance(hook, dict)
+        assert hook.get("hookEventName") == "UserPromptSubmit"
