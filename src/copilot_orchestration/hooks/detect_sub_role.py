@@ -34,6 +34,8 @@ from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoade
 
 logger = logging.getLogger(__name__)
 
+JsonObject = dict[str, object]
+
 _SLASH_CMD_RE = re.compile(r"^/\S+\s*")
 
 
@@ -85,6 +87,35 @@ def detect_sub_role(
     return _match_sub_role(prompt, loader, role) or loader.default_sub_role(role)
 
 
+def build_ups_output(
+    sub_role: str,
+    loader: ISubRoleRequirementsLoader,
+    role: str,
+) -> JsonObject:
+    """Build UserPromptSubmit hookSpecificOutput for front-loading handover instruction.
+
+    Returns a hookSpecificOutput dict with a systemMessage when the sub-role
+    requires a crosschat block, so the agent sees the instruction before
+    generating output — not just at Stop time.
+
+    Returns {} when requires_crosschat_block is False (no injection needed).
+    Pure query — no I/O, no side effects.
+    """
+    if not loader.requires_crosschat_block(role, sub_role):
+        return {}
+    msg = (
+        f"Active sub-role: {sub_role}. "
+        "Your final response MUST include a copy-paste handover block. "
+        "Do not stop without it."
+    )
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "systemMessage": msg,
+        }
+    }
+
+
 if __name__ == "__main__":  # pragma: no cover
     import json
     import sys
@@ -124,4 +155,8 @@ if __name__ == "__main__":  # pragma: no cover
             "detected_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         }
         state_path.write_text(json.dumps(_state))
+        # S1: front-load handover instruction via UserPromptSubmit systemMessage
+        _ups = build_ups_output(_detected, _loader, role)
+        if _ups:
+            json.dump(_ups, sys.stdout, ensure_ascii=True)
     # No match: exploration mode — preserve existing file or do nothing
