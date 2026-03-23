@@ -11,6 +11,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from copilot_orchestration.config.logging_config import LoggingConfig
+
 SNAPSHOT_RELATIVE_PATH = Path(".copilot") / "session-state.json"
 JsonObject = dict[str, object]
 MAX_FILES_IN_SCOPE = 8
@@ -24,9 +26,17 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     workspace_root = Path(__file__).resolve().parents[3]
+    LoggingConfig.from_copilot_dir(workspace_root).apply()
+    logger.info("session_start_qa: starting for workspace=%s", workspace_root)
     snapshot = read_json_file(workspace_root / SNAPSHOT_RELATIVE_PATH)
     changed_files = get_changed_files(workspace_root)
     snapshot_is_fresh = is_usable_snapshot(snapshot, changed_files)
+    if snapshot_is_fresh:
+        logger.debug("session_start_qa: snapshot fresh")
+    elif snapshot:
+        logger.debug("session_start_qa: snapshot stale or irrelevant")
+    else:
+        logger.debug("session_start_qa: no snapshot found")
 
     context_lines: list[str] = ["QA context:"]
 

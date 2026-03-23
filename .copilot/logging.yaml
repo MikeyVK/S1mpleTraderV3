@@ -1,0 +1,11 @@
+# .copilot/logging.yaml
+# Project logging configuration for copilot_orchestration hooks.
+# Tracked in version control as shared project config.
+# To override locally: copy to a gitignored location and set COPILOT_LOGGING_YAML env var.
+
+level: DEBUG
+format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+handlers:
+  stderr: {}
+  file:
+    path: .copilot/logs/orchestration.log

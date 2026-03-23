@@ -39,10 +39,13 @@ def evaluate_stop_hook(
     loader: ISubRoleRequirementsLoader,
     state_path: Path,
 ) -> JsonObject:
+    logger.debug("stop hook: stop_hook_active=%r", is_stop_retry_active(event))
     if is_stop_retry_active(event):
         return {}
 
+    logger.debug("stop hook: state_path=%s exists=%s", state_path, state_path.exists())
     sub_role = read_sub_role(state_path)
+    logger.debug("stop hook: sub_role=%r", sub_role)
     if sub_role is None:
         # Exploration mode: no state file (or unreadable) — no enforcement
         return {}
@@ -101,19 +104,30 @@ def read_stdin_json() -> JsonObject:
 
 
 def build_stop_reason(spec: SubRoleSpec) -> str:
-    marker_lines = "\n".join(f"- {marker}" for marker in spec["markers"])
+    verb = spec.get("marker_verb", "include a section titled")  # type: ignore[typeddict-item]
+    marker_lines = "\n".join(
+        f"   {i + 1}. {verb} `{marker}`" for i, marker in enumerate(spec["markers"])
+    )
+    prefix_hint = spec.get("block_prefix_hint", "")  # type: ignore[typeddict-item]
+    prefix_explanation = f" — {prefix_hint}" if prefix_hint else ""
     return (
         "Do not stop yet.\n\n"
         "The final response is missing the required copy-paste handover block.\n\n"
-        "Continue with exactly one final assistant message that contains:\n"
-        f"- the heading `{spec['heading']}`\n"
-        "- exactly one fenced `text` block\n"
-        "- no prose before or after that heading and fenced block\n\n"
-        "Inside the fenced `text` block:\n"
-        f"- start with `{spec['block_prefix']}`\n"
-        f"- include `{spec['guide_line']}`\n"
-        f"{marker_lines}\n\n"
-        "Make the block directly copy-pasteable and end after it."
+        "Continue with EXACTLY ONE final assistant message structured as follows:\n\n"
+        f"## {spec['heading']}\n\n"
+        "```text\n"
+        f"{spec['block_prefix']}<your content>\n"
+        "```\n\n"
+        "Rules for that message:\n"
+        f"1. The heading `## {spec['heading']}` must appear exactly once, before the block.\n"
+        "2. The block must be fenced as ` ```text ` (not markdown, not code).\n"
+        f"3. The block must start with the literal prefix `{spec['block_prefix']}`"
+        f"{prefix_explanation}.\n"
+        f"4. The first line after the prefix must be: {spec['guide_line']}\n"
+        "5. The block must contain the following sections IN THIS ORDER:\n"
+        f"{marker_lines}\n"
+        "6. No prose, explanation, or apology before or after this heading+block.\n\n"
+        "Write that message now and stop."
     )
 
 
