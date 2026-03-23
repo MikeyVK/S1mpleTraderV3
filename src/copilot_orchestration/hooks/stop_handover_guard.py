@@ -104,11 +104,11 @@ def read_stdin_json() -> JsonObject:
 
 
 def build_stop_reason(spec: SubRoleSpec) -> str:
-    verb = spec.get("marker_verb", "include a section titled")  # type: ignore[typeddict-item]
+    verb = spec.get("marker_verb", "include a section titled")
     marker_lines = "\n".join(
         f"  {i + 1}. {verb} `{marker}`" for i, marker in enumerate(spec["markers"])
     )
-    prefix_hint = spec.get("block_prefix_hint", "")  # type: ignore[typeddict-item]
+    prefix_hint = spec.get("block_prefix_hint", "")
     prefix_note = f" ({prefix_hint})" if prefix_hint else ""
     return (
         f"Write the handover block NOW and stop.\n\n"

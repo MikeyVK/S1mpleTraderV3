@@ -41,6 +41,8 @@ class _SubRoleSchema(BaseModel):
     block_prefix: str
     guide_line: str
     markers: list[str]
+    block_prefix_hint: str = ""
+    marker_verb: str = ""
 
 
 class _RoleSchema(BaseModel):
@@ -112,6 +114,8 @@ class SubRoleRequirementsLoader:
             block_prefix=spec.block_prefix,
             guide_line=spec.guide_line,
             markers=list(spec.markers),
+            block_prefix_hint=spec.block_prefix_hint,
+            marker_verb=spec.marker_verb,
         )
 
     def max_sub_role_name_len(self) -> int:

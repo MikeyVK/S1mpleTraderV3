@@ -16,7 +16,7 @@ Zero runtime I/O.
 """
 
 # Standard library
-from typing import Protocol, TypedDict, runtime_checkable
+from typing import NotRequired, Protocol, TypedDict, runtime_checkable
 
 
 class SubRoleSpec(TypedDict):
@@ -27,6 +27,8 @@ class SubRoleSpec(TypedDict):
     block_prefix: str
     guide_line: str
     markers: list[str]
+    block_prefix_hint: NotRequired[str]
+    marker_verb: NotRequired[str]
 
 
 class SessionSubRoleState(TypedDict):

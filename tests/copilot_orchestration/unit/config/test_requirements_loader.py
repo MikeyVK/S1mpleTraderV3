@@ -354,3 +354,56 @@ class TestSubRoleRequirementsLoaderLogging:
         with caplog.at_level(logging.DEBUG, logger=_REQUIREMENTS_LOGGER_NAME):
             SubRoleRequirementsLoader(yaml_path)
         assert any(r.levelno == logging.DEBUG for r in caplog.records)
+
+
+_YAML_WITH_OPTIONAL_FIELDS = """\
+roles:
+  imp:
+    default_sub_role: implementer
+    sub_roles:
+      implementer:
+        requires_crosschat_block: true
+        heading: "Impl Hand-Over"
+        block_prefix: "verifier "
+        guide_line: "Review the implementation."
+        block_prefix_hint: "Paste into @qa verifier chat."
+        marker_verb: "include a section titled"
+        markers:
+          - "Scope"
+          - "Files Changed"
+  qa:
+    default_sub_role: verifier
+    sub_roles:
+      verifier:
+        requires_crosschat_block: true
+        heading: "V"
+        block_prefix: "B"
+        guide_line: "G"
+        markers: []
+"""
+
+
+class TestOptionalFields:
+    """get_requirement() must propagate block_prefix_hint and marker_verb from YAML."""
+
+    def test_block_prefix_hint_present_in_spec(self, tmp_path: Path) -> None:
+        """block_prefix_hint from YAML is present in get_requirement() result."""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
+        spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
+        assert spec.get("block_prefix_hint") == "Paste into @qa verifier chat."
+
+    def test_marker_verb_present_in_spec(self, tmp_path: Path) -> None:
+        """marker_verb from YAML is present in get_requirement() result."""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
+        spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
+        assert spec.get("marker_verb") == "include a section titled"
+
+    def test_absent_optional_fields_default_to_empty_string(self, tmp_path: Path) -> None:
+        """When block_prefix_hint and marker_verb are absent from YAML, spec returns ''."""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(_MINIMAL_YAML)
+        spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
+        assert spec.get("block_prefix_hint", "") == ""
+        assert spec.get("marker_verb", "") == ""
