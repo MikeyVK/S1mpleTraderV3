@@ -305,6 +305,24 @@ class TestBuildCrosschatBlockInstructionBlockTemplate:
         assert "Files Changed" in result
         assert "{markers_list}" not in result
 
+    def test_block_template_markers_list_format_is_h2_headers(self) -> None:
+        """markers_list renders each marker as a ## H2 header (not a numbered list)."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_NEW_STYLE)
+        assert "## Scope" in result
+        assert "## Files Changed" in result
+        # Old numbered-list format must be absent
+        assert "1. Scope" not in result
+
+    def test_block_template_markers_inside_fence(self) -> None:
+        """Each marker must appear inside the code fence, not after the closing ```."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_NEW_STYLE)
+        # Extract everything between the opening ```text and the closing ```
+        fence_start = result.index("```text") + len("```text")
+        fence_end = result.index("```", fence_start)
+        fence_content = result[fence_start:fence_end]
+        assert "## Scope" in fence_content, "Scope marker is outside the fence"
+        assert "## Files Changed" in fence_content, "Files Changed marker is outside the fence"
+
     def test_crlf_normalized_before_format(self) -> None:
         """CRLF in block_template is normalized to LF before str.format()."""
         spec_crlf = SubRoleSpec(
