@@ -59,17 +59,18 @@ class TestISubRoleRequirementsLoaderProtocol:
     def test_sub_role_spec_keys(self) -> None:
         """SubRoleSpec TypedDict accepts all required keys and preserves their values."""
         # Arrange / Act - construct with all required keys
+        template = "[{sub_role}] End your response with this block:\n\n```text\n{markers_list}\n```"
         spec: SubRoleSpec = SubRoleSpec(
             requires_crosschat_block=True,
             heading="heading",
-            block_template="[{sub_role}] End your response with this block:\n\n```text\n{markers_list}\n```",
+            block_template=template,
             markers=["M1"],
         )
 
         # Assert - verify exact values
         assert spec["requires_crosschat_block"] is True
         assert spec["heading"] == "heading"
-        assert spec["block_template"] == "[{sub_role}] End your response with this block:\n\n```text\n{markers_list}\n```"
+        assert spec["block_template"] == template
         assert spec["markers"] == ["M1"]
 
     def test_session_sub_role_state_keys(self) -> None:
@@ -93,7 +94,7 @@ class TestISubRoleRequirementsLoaderProtocol:
         assert "block_template" in SubRoleSpec.__required_keys__
 
     def test_sub_role_spec_no_legacy_fields(self) -> None:
-        """block_prefix, guide_line, block_prefix_hint, marker_verb must be absent from SubRoleSpec (C_CROSSCHAT.1)."""
+        """block_prefix, guide_line, block_prefix_hint, marker_verb absent (C_CROSSCHAT.1)."""
         all_keys = SubRoleSpec.__required_keys__ | SubRoleSpec.__optional_keys__
         assert "block_prefix" not in all_keys
         assert "guide_line" not in all_keys
