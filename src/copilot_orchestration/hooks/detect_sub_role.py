@@ -108,7 +108,7 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
     """
     from copilot_orchestration.config.requirements_loader import ConfigError  # noqa: PLC0415
 
-    markers_list = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(spec["markers"]))
+    markers_list = "\n\n".join(f"## {m}" for m in spec["markers"])
     template = spec["block_template"].replace("\r\n", "\n")
     try:
         return template.format(sub_role=sub_role, markers_list=markers_list)

@@ -41,7 +41,8 @@ _SPEC_STUB = SubRoleSpec(
     heading="### Hand-Over",
     block_template=(
         "[{sub_role}] End your response with this block:\n\n"
-        "```text\n@next: take over.\nUse the guide.\n```\n\nRequired sections:\n{markers_list}"
+        "```text\n@next: take over.\nUse the guide.\n\n"
+        "{markers_list}\n```"
     ),
     markers=["Task:", "Files:"],
 )

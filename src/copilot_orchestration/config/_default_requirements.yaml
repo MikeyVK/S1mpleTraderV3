@@ -45,10 +45,9 @@ roles:
           ```text
           verifier
           Review the latest implementation work on this branch.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Scope"
           - "Files Changed"
@@ -63,10 +62,9 @@ roles:
           ```text
           verifier
           Review the latest validation work on this branch.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Test Surface"
           - "Results"
@@ -106,10 +104,9 @@ roles:
           ```text
           implementer
           QA findings must be resolved before this cycle is done.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Findings"
           - "Proof Verification"

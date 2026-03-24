@@ -244,7 +244,8 @@ class TestBuildUpsOutput:
             pytest.skip("sub-role does not require crosschat block")
         spec = loader.get_requirement(role, sub_role)
         result = build_crosschat_block_instruction(sub_role, spec)
-        frame = result.split("Required sections:")[0]
+        # Split on the first H2 marker header — everything before it is the "frame"
+        frame = result.split("## ")[0]
         assert len(frame) < 200, f"[{role}/{sub_role}] frame is {len(frame)} chars (limit: 200)"
 
     def test_non_enforced_sub_role_returns_empty_dict(self) -> None:
@@ -267,8 +268,8 @@ _SPEC_FOR_CANONICAL = SubRoleSpec(
     heading="### Hand-Over",
     block_template=(
         "[{sub_role}] End your response with this block:\n\n"
-        "```text\nverifier\nReview the latest implementation work on this branch.\n```\n\n"
-        "Required sections:\n{markers_list}"
+        "```text\nverifier\nReview the latest implementation work on this branch.\n\n"
+        "{markers_list}\n```"
     ),
     markers=["Scope", "Files Changed", "Proof", "Ready-for-QA"],
 )
@@ -278,8 +279,8 @@ _SPEC_NEW_STYLE = SubRoleSpec(
     heading="### Hand-Over",
     block_template=(
         "[{sub_role}] End your response with this block:\n\n"
-        "```text\nverifier\nReview the work.\n```\n\n"
-        "Required sections:\n{markers_list}"
+        "```text\nverifier\nReview the work.\n\n"
+        "{markers_list}\n```"
     ),
     markers=["Scope", "Files Changed"],
 )
@@ -373,19 +374,22 @@ class TestBuildCrosschatBlockInstruction:
         assert "```text" in result
 
     def test_pre_markers_portion_under_200_chars_stub(self) -> None:
-        """Portion before 'Required sections:' is under 200 chars for stub spec.
+        """Portion before the first H2 marker is under 200 chars for stub spec.
 
         Mirrors the §1.2 parametrised assertion: enumerate via loader.valid_sub_roles(role).
         This test uses a fixed stub spec; integration coverage uses the real loader.
         """
         result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
-        pre_markers = result.split("Required sections:")[0]
+        # Split on the first H2 marker header — everything before it is the "frame"
+        pre_markers = result.split("## ")[0]
         assert len(pre_markers) < 200, (
             f"pre-markers portion is {len(pre_markers)} chars; limit is 200"
         )
 
-    def test_markers_numbered(self) -> None:
-        """Markers are rendered as a numbered list."""
+    def test_markers_rendered_as_h2_headers(self) -> None:
+        """Markers are rendered as ## H2 headers, not as a numbered list."""
         result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
-        assert "  1. Scope" in result
-        assert "  2. Files Changed" in result
+        assert "## Scope" in result
+        assert "## Files Changed" in result
+        assert "## Proof" in result
+        assert "## Ready-for-QA" in result

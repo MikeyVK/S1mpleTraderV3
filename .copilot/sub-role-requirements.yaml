@@ -48,10 +48,9 @@ roles:
           ```text
           verifier
           Review the latest implementation work on this branch.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Scope"
           - "Files Changed"
@@ -66,10 +65,9 @@ roles:
           ```text
           verifier
           Review the latest validation work on this branch.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Test Surface"
           - "Results"
@@ -101,10 +99,9 @@ roles:
           ```text
           planner
           QA the plan deliverables. Ensure any findings are resolved before this cycle is done.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Findings"
           - "Plan Coherence"
@@ -118,10 +115,9 @@ roles:
           ```text
           implementer
           QA findings must be resolved before this cycle is done.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Findings"
           - "Proof Verification"
@@ -135,10 +131,9 @@ roles:
           ```text
           validator
           QA findings must be resolved before this cycle is done.
-          ```
 
-          Required sections:
           {markers_list}
+          ```
         markers:
           - "Findings"
           - "Coverage Assessment"
