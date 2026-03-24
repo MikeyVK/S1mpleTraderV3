@@ -101,18 +101,24 @@ def detect_sub_role(
 def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
     """Canonical cross-chat block instruction injected at all three hook points.
 
-    Compact, complete, and identical at S1/S2/S3 to create reinforcement.
+    Renders spec['block_template'] via str.format(sub_role=..., markers_list=...).
+    CRLF is normalized to LF before formatting.
+    Raises ConfigError when an unknown placeholder is referenced.
     Pure function — no I/O, no side effects.
     """
-    markers = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(spec["markers"]))
-    return (
-        f"[{sub_role}] End your response with this block:\n\n"
-        "```text\n"
-        f"{spec['block_prefix'].strip()}\n"
-        f"{spec['guide_line'].strip()}\n"
-        "```\n\n"
-        f"Required sections:\n{markers}"
-    )
+    from copilot_orchestration.config.requirements_loader import ConfigError  # noqa: PLC0415
+
+    markers_list = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(spec["markers"]))
+    template = spec["block_template"].replace("\r\n", "\n")
+    try:
+        return template.format(sub_role=sub_role, markers_list=markers_list)
+    except KeyError as exc:
+        logger.error(
+            "block_template placeholder %s not found for sub_role=%r", exc, sub_role
+        )
+        raise ConfigError(
+            f"Invalid block_template for sub_role={sub_role!r}: unknown placeholder {exc}"
+        ) from exc
 
 
 def build_ups_output(

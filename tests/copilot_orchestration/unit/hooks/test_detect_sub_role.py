@@ -64,8 +64,7 @@ class _StubLoader:
         return SubRoleSpec(
             requires_crosschat_block=False,
             heading="",
-            block_prefix="",
-            guide_line="",
+            block_template="",
             markers=[],
         )
 
@@ -193,6 +192,16 @@ class _EnforcingStubLoader(_StubLoader):
     def requires_crosschat_block(self, role: str, sub_role: str) -> bool:  # noqa: ARG002
         return True
 
+    def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:  # noqa: ARG002
+        return SubRoleSpec(
+            requires_crosschat_block=True,
+            heading="",
+            block_template=(
+                "[{sub_role}] End:\n\n```text\n{sub_role}\n{markers_list}\n```"
+            ),
+            markers=[],
+        )
+
 
 class TestBuildUpsOutput:
     """Tests for build_ups_output — S1 front-loading via UserPromptSubmit hook.
@@ -258,8 +267,11 @@ class TestBuildUpsOutput:
 _SPEC_FOR_CANONICAL = SubRoleSpec(
     requires_crosschat_block=True,
     heading="### Hand-Over",
-    block_prefix="verifier",
-    guide_line="Review the latest implementation work on this branch.",
+    block_template=(
+        "[{sub_role}] End your response with this block:\n\n"
+        "```text\nverifier\nReview the latest implementation work on this branch.\n```\n\n"
+        "Required sections:\n{markers_list}"
+    ),
     markers=["Scope", "Files Changed", "Proof", "Ready-for-QA"],
 )
 
@@ -333,16 +345,6 @@ class TestBuildCrosschatBlockInstruction:
         result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
         assert result.startswith("[implementer]")
 
-    def test_contains_block_prefix(self) -> None:
-        """block_prefix from spec appears inside the code fence."""
-        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
-        assert _SPEC_FOR_CANONICAL["block_prefix"] in result
-
-    def test_contains_guide_line(self) -> None:
-        """guide_line from spec appears inside the code fence."""
-        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
-        assert _SPEC_FOR_CANONICAL["guide_line"] in result
-
     def test_contains_all_markers(self) -> None:
         """Every marker from spec appears in Required sections."""
         result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
@@ -353,32 +355,6 @@ class TestBuildCrosschatBlockInstruction:
         """Output contains a markdown code fence (```text)."""
         result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
         assert "```text" in result
-
-    def test_block_prefix_stripped(self) -> None:
-        """Trailing whitespace on block_prefix is stripped."""
-        spec_with_trailing = SubRoleSpec(
-            requires_crosschat_block=True,
-            heading="",
-            block_prefix="verifier   ",
-            guide_line="guide",
-            markers=[],
-        )
-        result = build_crosschat_block_instruction("implementer", spec_with_trailing)
-        assert "verifier   " not in result
-        assert "verifier" in result
-
-    def test_guide_line_stripped(self) -> None:
-        """Trailing whitespace on guide_line is stripped."""
-        spec_with_trailing = SubRoleSpec(
-            requires_crosschat_block=True,
-            heading="",
-            block_prefix="prefix",
-            guide_line="guide with spaces   ",
-            markers=[],
-        )
-        result = build_crosschat_block_instruction("implementer", spec_with_trailing)
-        assert "guide with spaces   " not in result
-        assert "guide with spaces" in result
 
     def test_pre_markers_portion_under_200_chars_stub(self) -> None:
         """Portion before 'Required sections:' is under 200 chars for stub spec.
