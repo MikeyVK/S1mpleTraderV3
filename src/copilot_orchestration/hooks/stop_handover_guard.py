@@ -12,6 +12,7 @@ from copilot_orchestration.contracts.interfaces import (
     ISubRoleRequirementsLoader,
     SubRoleSpec,
 )
+from copilot_orchestration.hooks.detect_sub_role import build_crosschat_block_instruction
 from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
 JsonObject = dict[str, object]
@@ -39,6 +40,7 @@ def evaluate_stop_hook(
     loader: ISubRoleRequirementsLoader,
     state_path: Path,
 ) -> JsonObject:
+    logger.debug("stop hook: event keys=%s raw=%s", list(event.keys()), json.dumps(event, ensure_ascii=True)[:500])
     logger.debug("stop hook: stop_hook_active=%r", is_stop_retry_active(event))
     if is_stop_retry_active(event):
         return {}
@@ -64,7 +66,7 @@ def evaluate_stop_hook(
         "hookSpecificOutput": {
             "hookEventName": "Stop",
             "decision": "block",
-            "reason": build_stop_reason(spec),
+            "reason": build_stop_reason(spec, sub_role),
         }
     }
 
@@ -84,7 +86,9 @@ def normalize_role(value: str) -> str:
 
 
 def is_stop_retry_active(event: JsonObject) -> bool:
-    value = event.get("stop_hook_active")
+    # VS Code sends stopHookActive (camelCase) — confirmed by VS Code source docs.
+    # Clean-break decision: read camelCase only (see design §3.5).
+    value = event.get("stopHookActive")   # ← was: "stop_hook_active"
     if isinstance(value, bool):
         return value
     return False
@@ -103,22 +107,8 @@ def read_stdin_json() -> JsonObject:
         return {}
 
 
-def build_stop_reason(spec: SubRoleSpec) -> str:
-    verb = spec.get("marker_verb", "include a section titled")
-    marker_lines = "\n".join(
-        f"  {i + 1}. {verb} `{marker}`" for i, marker in enumerate(spec["markers"])
-    )
-    prefix_hint = spec.get("block_prefix_hint", "")
-    prefix_note = f" ({prefix_hint})" if prefix_hint else ""
-    return (
-        f"Write the handover block NOW and stop.\n\n"
-        f"## {spec['heading']}\n\n"
-        "```text\n"
-        f"{spec['block_prefix']}{prefix_note}\n"
-        f"{spec['guide_line']}\n"
-        "```\n\n"
-        f"Required sections (in order):\n{marker_lines}"
-    )
+def build_stop_reason(spec: SubRoleSpec, sub_role: str) -> str:
+    return "Write NOW.\n\n" + build_crosschat_block_instruction(sub_role, spec)
 
 
 if __name__ == "__main__":

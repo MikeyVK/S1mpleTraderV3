@@ -4,8 +4,8 @@
 Integration tests for optional_field_chain.
 
 Full chain: YAML on disk → SubRoleRequirementsLoader → get_requirement()
-→ build_stop_reason(). Verifies block_prefix_hint and marker_verb flow
-through all three layers.
+→ build_stop_reason(). Verifies block_prefix and markers flow
+through all three layers into the canonical crosschat block instruction.
 
 @layer: Tests (Integration)
 @dependencies: [pytest, pytest-asyncio, tempfile]
@@ -76,26 +76,26 @@ class TestOptionalFieldChain:
     """Integration test suite for optional_field_chain."""
 
     def test_block_prefix_hint_appears_in_stop_reason(self, tmp_path: Path) -> None:
-        """block_prefix_hint from YAML flows through get_requirement() into build_stop_reason()."""
+        """block_prefix from YAML flows through get_requirement() into build_stop_reason() canonical output."""
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
-        result = build_stop_reason(spec)
-        assert "Paste into @qa verifier chat." in result
+        result = build_stop_reason(spec, "implementer")
+        assert "verifier" in result
 
     def test_marker_verb_from_yaml_used_in_stop_reason(self, tmp_path: Path) -> None:
-        """marker_verb from YAML controls section wording in build_stop_reason() output."""
+        """Markers from YAML flow through get_requirement() into build_stop_reason() output."""
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
-        result = build_stop_reason(spec)
-        assert "add a section called" in result
+        result = build_stop_reason(spec, "implementer")
+        assert "Scope" in result and "Files Changed" in result
 
     def test_chain_works_without_optional_fields(self, tmp_path: Path) -> None:
         """build_stop_reason() does not crash when optional fields are absent from YAML."""
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(_YAML_WITHOUT_OPTIONAL_FIELDS)
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
-        result = build_stop_reason(spec)
+        result = build_stop_reason(spec, "implementer")
         assert "Scope" in result
         assert result

@@ -5,15 +5,15 @@
 PreCompact hook — thin __main__-only adapter.
 
 Reads role-scoped state file for current sub_role, writes a systemMessage so the
-agent remembers its active sub-role after context compaction.
+agent remembers its active sub-role and handover block requirement after context compaction.
 Exit 0 always (soft failure — hook errors must not break agent session).
 
 @layer: copilot_orchestration (Hooks)
-@dependencies: [None]
+@dependencies: [copilot_orchestration.hooks.detect_sub_role]
 @responsibilities:
     - Read role from sys.argv[1]
     - Resolve state path via find_workspace_root + state_path_for_role(role)
-    - If state file exists and contains a sub_role: output systemMessage
+    - If state file exists and contains a sub_role: output systemMessage (base + optional block)
     - If file absent or unreadable: output {}
     - Always exit 0 (soft failure — hook errors must not break agent session)
 """
@@ -25,28 +25,49 @@ import sys
 from pathlib import Path
 
 # Project modules
-from copilot_orchestration.config.logging_config import LoggingConfig
+from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoader
+from copilot_orchestration.hooks.detect_sub_role import build_crosschat_block_instruction
 from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
 logger = logging.getLogger(__name__)
 
 
-def build_compaction_output(state: dict[str, object]) -> dict[str, object]:
-    """Return systemMessage dict when state contains a sub_role, else empty dict."""
+def build_compaction_output(
+    state: dict[str, object],
+    loader: ISubRoleRequirementsLoader,
+    role: str,
+) -> dict[str, object]:
+    """Return systemMessage dict when state contains a sub_role, else empty dict.
+
+    Injects the canonical crosschat block instruction when the sub-role requires it,
+    so the agent receives the identical reinforcement as at S1 (UserPromptSubmit).
+    ConfigError from the loader propagates — caller is responsible for handling.
+    """
     sub_role = state.get("sub_role")
-    if sub_role:
-        logger.info("compaction output: sub_role=%s", sub_role)
-        return {
-            "systemMessage": (
-                f"Context was compacted. Your active sub-role is **{sub_role}**. "
-                "Use /resume-work to restore full behavioral context before continuing."
-            )
-        }
-    logger.debug("no sub_role in state — empty compaction output")
-    return {}
+    if not sub_role:
+        logger.debug("no sub_role in state — empty compaction output")
+        return {}
+
+    base = (
+        f"Context was compacted. Active sub-role: **{sub_role}**. "
+        "Use /resume-work to restore full context."
+    )
+    logger.info("compaction output: sub_role=%s", sub_role)
+
+    if not loader.requires_crosschat_block(role, str(sub_role)):
+        # Sub-role does not require a crosschat block — return base message only.
+        return {"systemMessage": base}
+
+    spec = loader.get_requirement(role, str(sub_role))
+    # ConfigError propagates if sub_role is unknown — consistent with evaluate_stop_hook.
+    base += "\n\n" + build_crosschat_block_instruction(str(sub_role), spec)
+    return {"systemMessage": base}
 
 
 if __name__ == "__main__":  # pragma: no cover
+    from copilot_orchestration.config.logging_config import LoggingConfig
+    from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
+
     role = sys.argv[1] if len(sys.argv) > 1 else "imp"
     workspace_root = find_workspace_root(Path(__file__))
     LoggingConfig.from_copilot_dir(workspace_root).apply()
@@ -62,4 +83,5 @@ if __name__ == "__main__":  # pragma: no cover
         except json.JSONDecodeError:
             state = {}
 
-    print(json.dumps(build_compaction_output(state)))
+    _loader = SubRoleRequirementsLoader.from_copilot_dir(workspace_root)
+    print(json.dumps(build_compaction_output(state, _loader, role)))

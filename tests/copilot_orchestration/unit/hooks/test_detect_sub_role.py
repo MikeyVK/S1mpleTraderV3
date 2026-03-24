@@ -159,6 +159,9 @@ class TestDetectSubRole:
 
 
 from copilot_orchestration.hooks.detect_sub_role import build_ups_output  # noqa: E402
+from copilot_orchestration.hooks.detect_sub_role import (  # noqa: E402
+    build_crosschat_block_instruction,
+)
 
 _LOGGER_NAME = "copilot_orchestration.hooks.detect_sub_role"
 
@@ -232,3 +235,91 @@ class TestBuildUpsOutput:
         hook = result.get("hookSpecificOutput")
         assert isinstance(hook, dict)
         assert hook.get("hookEventName") == "UserPromptSubmit"
+
+
+_SPEC_FOR_CANONICAL = SubRoleSpec(
+    requires_crosschat_block=True,
+    heading="### Hand-Over",
+    block_prefix="verifier",
+    guide_line="Review the latest implementation work on this branch.",
+    markers=["Scope", "Files Changed", "Proof", "Ready-for-QA"],
+)
+
+
+class TestBuildCrosschatBlockInstruction:
+    """Tests for build_crosschat_block_instruction — canonical pure function.
+
+    All three injection points (S1, S2, S3) delegate to this function.
+    Tests verify correctness, structure, and the 200-char limit on the
+    pre-markers portion (§1.2 NF requirement).
+    """
+
+    def test_contains_sub_role_prefix(self) -> None:
+        """Output starts with [sub_role] prefix."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        assert result.startswith("[implementer]")
+
+    def test_contains_block_prefix(self) -> None:
+        """block_prefix from spec appears inside the code fence."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        assert _SPEC_FOR_CANONICAL["block_prefix"] in result
+
+    def test_contains_guide_line(self) -> None:
+        """guide_line from spec appears inside the code fence."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        assert _SPEC_FOR_CANONICAL["guide_line"] in result
+
+    def test_contains_all_markers(self) -> None:
+        """Every marker from spec appears in Required sections."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        for marker in _SPEC_FOR_CANONICAL["markers"]:
+            assert marker in result, f"Marker {marker!r} missing from canonical instruction"
+
+    def test_contains_code_fence(self) -> None:
+        """Output contains a markdown code fence (```text)."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        assert "```text" in result
+
+    def test_block_prefix_stripped(self) -> None:
+        """Trailing whitespace on block_prefix is stripped."""
+        spec_with_trailing = SubRoleSpec(
+            requires_crosschat_block=True,
+            heading="",
+            block_prefix="verifier   ",
+            guide_line="guide",
+            markers=[],
+        )
+        result = build_crosschat_block_instruction("implementer", spec_with_trailing)
+        assert "verifier   " not in result
+        assert "verifier" in result
+
+    def test_guide_line_stripped(self) -> None:
+        """Trailing whitespace on guide_line is stripped."""
+        spec_with_trailing = SubRoleSpec(
+            requires_crosschat_block=True,
+            heading="",
+            block_prefix="prefix",
+            guide_line="guide with spaces   ",
+            markers=[],
+        )
+        result = build_crosschat_block_instruction("implementer", spec_with_trailing)
+        assert "guide with spaces   " not in result
+        assert "guide with spaces" in result
+
+    def test_pre_markers_portion_under_200_chars_stub(self) -> None:
+        """Portion before 'Required sections:' is under 200 chars for stub spec.
+
+        Mirrors the §1.2 parametrised assertion: enumerate via loader.valid_sub_roles(role).
+        This test uses a fixed stub spec; integration coverage uses the real loader.
+        """
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        pre_markers = result.split("Required sections:")[0]
+        assert len(pre_markers) < 200, (
+            f"pre-markers portion is {len(pre_markers)} chars; limit is 200"
+        )
+
+    def test_markers_numbered(self) -> None:
+        """Markers are rendered as a numbered list."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
+        assert "  1. Scope" in result
+        assert "  2. Files Changed" in result

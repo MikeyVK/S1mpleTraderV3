@@ -30,7 +30,7 @@ import logging
 import re
 
 # Project modules
-from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoader
+from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoader, SubRoleSpec
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,23 @@ def detect_sub_role(
     return _match_sub_role(prompt, loader, role) or loader.default_sub_role(role)
 
 
+def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
+    """Canonical cross-chat block instruction injected at all three hook points.
+
+    Compact, complete, and identical at S1/S2/S3 to create reinforcement.
+    Pure function — no I/O, no side effects.
+    """
+    markers = "\n".join(f"  {i+1}. {m}" for i, m in enumerate(spec["markers"]))
+    return (
+        f"[{sub_role}] End your response with this block:\n\n"
+        "```text\n"
+        f"{spec['block_prefix'].strip()}\n"
+        f"{spec['guide_line'].strip()}\n"
+        "```\n\n"
+        f"Required sections:\n{markers}"
+    )
+
+
 def build_ups_output(
     sub_role: str,
     loader: ISubRoleRequirementsLoader,
@@ -103,15 +120,11 @@ def build_ups_output(
     """
     if not loader.requires_crosschat_block(role, sub_role):
         return {}
-    msg = (
-        f"Active sub-role: {sub_role}. "
-        "Your final response MUST include a copy-paste handover block. "
-        "Do not stop without it."
-    )
+    spec = loader.get_requirement(role, sub_role)
     return {
         "hookSpecificOutput": {
             "hookEventName": "UserPromptSubmit",
-            "systemMessage": msg,
+            "systemMessage": build_crosschat_block_instruction(sub_role, spec),
         }
     }
 

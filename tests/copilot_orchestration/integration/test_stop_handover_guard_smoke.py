@@ -59,7 +59,7 @@ class TestStopHandoverGuardSmoke:
         (hook_workspace / _STATE_RELPATH_IMP).write_text(json.dumps(state))
 
         result = _run_guard(
-            hook_workspace, "imp", {"sessionId": "sess-shg-002", "stop_hook_active": True}
+            hook_workspace, "imp", {"sessionId": "sess-shg-002", "stopHookActive": True}
         )
 
         assert result.returncode == 0

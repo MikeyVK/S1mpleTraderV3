@@ -38,6 +38,8 @@ _SPEC_STUB = SubRoleSpec(
     markers=["Task:", "Files:"],
 )
 
+_SUB_ROLE_STUB = "implementer"
+
 
 class _StubLoader:
     """Minimal ISubRoleRequirementsLoader for testing stop_handover_guard."""
@@ -226,7 +228,7 @@ class TestStopHandoverGuard:
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, sub_role))
         result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID, "stop_hook_active": True},
+            {"sessionId": _SESSION_ID, "stopHookActive": True},
             role,
             loader,
             state_path,
@@ -239,7 +241,7 @@ class TestStopHandoverGuard:
         role = "imp"
         state_path = tmp_path / "missing.json"  # does not exist
         result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID, "stop_hook_active": True},
+            {"sessionId": _SESSION_ID, "stopHookActive": True},
             role,
             loader,
             state_path,
@@ -302,7 +304,7 @@ class TestStopHandoverGuardLogging:
 
 
 class TestBuildStopReason:
-    """Tests for build_stop_reason assertiveness — S2.
+    """Tests for build_stop_reason assertiveness — S3.
 
     The stop reason must be short, directive, and action-focused.
     Meta-text that wastes tokens without improving compliance is forbidden.
@@ -310,32 +312,32 @@ class TestBuildStopReason:
 
     def test_contains_immediate_write_directive(self) -> None:
         """Reason must instruct the model to write the block immediately."""
-        result = build_stop_reason(_SPEC_STUB)
+        result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
         lower = result.lower()
         # Must contain an action directive ("write", "now", or both in proximity)
         assert "write" in lower or "now" in lower, (
             "build_stop_reason must contain an immediate write directive"
         )
 
-    def test_contains_heading_from_spec(self) -> None:
-        """Heading from spec must appear in the reason text."""
-        result = build_stop_reason(_SPEC_STUB)
-        assert _SPEC_STUB["heading"] in result
+    def test_contains_sub_role_prefix(self) -> None:
+        """Sub-role name must appear in the canonical block prefix."""
+        result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
+        assert f"[{_SUB_ROLE_STUB}]" in result
 
     def test_contains_each_marker(self) -> None:
         """Every required marker section must be mentioned."""
-        result = build_stop_reason(_SPEC_STUB)
+        result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
         for marker in _SPEC_STUB["markers"]:
             assert marker in result, f"Marker {marker!r} missing from stop reason"
 
     def test_block_prefix_in_reason(self) -> None:
         """The block_prefix must appear so model knows the exact opening line."""
-        result = build_stop_reason(_SPEC_STUB)
+        result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
         assert _SPEC_STUB["block_prefix"] in result
 
     def test_no_meta_apology_instructions(self) -> None:
         """Waste-token meta-instructions must be absent."""
-        result = build_stop_reason(_SPEC_STUB)
+        result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
         forbidden = ["no prose", "no explanation", "no apology"]
         for phrase in forbidden:
             assert phrase.lower() not in result.lower(), (
@@ -344,7 +346,7 @@ class TestBuildStopReason:
 
     def test_reason_under_600_chars(self) -> None:
         """Stop reason must be concise — under 600 characters."""
-        result = build_stop_reason(_SPEC_STUB)
+        result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
         assert len(result) < 600, (
             f"build_stop_reason is {len(result)} chars; must be < 600 for assertiveness"
         )
