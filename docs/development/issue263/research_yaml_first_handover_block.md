@@ -3,7 +3,7 @@
 # YAML-First Handover Block Design
 
 **Status:** COMPLETE  
-**Version:** 3.0  
+**Version:** 3.1  
 **Last Updated:** 2026-03-24
 
 ---
@@ -103,6 +103,14 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
 
 4. **`requires_crosschat_block: false` sub-rollen.** Voor sub-rollen die geen blok produceren wordt `build_crosschat_block_instruction` nooit aangeroepen (gate in callers). `block_template: ""` in YAML.
 
+5. **Eerste regel binnen de fence moet de doelrol bevatten.**
+   Python kan niet valideren of het eerste woord binnen `block_template` overeenkomt
+   met een geldige sub-rol van de ontvangende agent. Conventie (niet code):
+   de YAML-auteur is verantwoordelijk voor correcte doelrol op regel 1 binnen de fence.
+   De loader logt een `WARNING` als `block_template` van een sub-rol met
+   `requires_crosschat_block: true` geen herkenbare sub-rol-naam als eerste woord bevat
+   na de openende fence — dit is een best-effort check, geen harde blokkering.
+
 ---
 
 ### G3 — Schema-opties vergelijking
@@ -179,14 +187,27 @@ class SubRoleSpec(TypedDict):
 **Nieuwe `_SubRoleSchema` Pydantic (in requirements_loader.py):**
 
 ```python
+from pydantic import model_validator
+
 class _SubRoleSchema(BaseModel):
     requires_crosschat_block: bool
     heading: str
     markers: list[str]
     block_template: str = ""    # leeg voor sub-rollen zonder crosschat-blok
+
+    @model_validator(mode="after")
+    def _validate_template_required(self) -> "_SubRoleSchema":
+        if self.requires_crosschat_block and not self.block_template.strip():
+            raise ValueError(
+                "block_template mag niet leeg zijn wanneer requires_crosschat_block=True"
+            )
+        return self
 ```
 
-**Validatie-rule:** als `requires_crosschat_block: true` en `block_template` leeg is → `ConfigError` bij laden.
+**Validatie-mechanisme:** Pydantic gooit `ValidationError` (via `@model_validator`) wanneer
+`requires_crosschat_block=True` en `block_template` leeg is. De `SubRoleRequirementsLoader`-constructor
+laat deze `ValidationError` opborrelen — de caller ziet hem als een constructie-fout, equivalent aan
+`FileNotFoundError`. Er is geen aparte `ConfigError` nodig op dit pad.
 
 ---
 
@@ -197,7 +218,7 @@ class _SubRoleSchema(BaseModel):
 | Bestand | Wijziging |
 |---------|-----------|
 | `src/copilot_orchestration/contracts/interfaces.py` | `SubRoleSpec`: verwijder `block_prefix`, `guide_line`, `block_prefix_hint`, `marker_verb`; voeg `block_template: str` toe |
-| `src/copilot_orchestration/config/requirements_loader.py` | `_SubRoleSchema`: idem + validatie `requires_crosschat_block=True → block_template non-empty`; `get_requirement()` aangepast |
+| `src/copilot_orchestration/config/requirements_loader.py` | `_SubRoleSchema`: idem + `@model_validator(mode='after')` die `ValueError` gooit wanneer `requires_crosschat_block=True` en `block_template` leeg is (door Pydantic omgezet naar `ValidationError`); `get_requirement()` aangepast |
 | `src/copilot_orchestration/hooks/detect_sub_role.py` | `build_crosschat_block_instruction`: vervang volledige body door `str.format` met `{sub_role}` en `{markers_list}`; `ConfigError` bij `KeyError` |
 
 **YAML-bestanden:**
@@ -212,7 +233,7 @@ class _SubRoleSchema(BaseModel):
 | Bestand | Scope |
 |---------|-------|
 | `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py` | Herschrijven: `block_template` aanwezig → output correct; `{sub_role}` en `{markers_list}` gevuld; onbekende placeholder → `ConfigError` |
-| `tests/copilot_orchestration/unit/config/test_requirements_loader.py` | `block_template` geladen; validatie `requires_crosschat_block=True + leeg → fout` |
+| `tests/copilot_orchestration/unit/config/test_requirements_loader.py` | `block_template` geladen; `ValidationError` bij `requires_crosschat_block=True` + leeg |
 | `tests/copilot_orchestration/unit/contracts/test_interfaces.py` | Verwijderde velden niet meer aanwezig; `block_template` aanwezig |
 | `tests/copilot_orchestration/integration/test_optional_field_chain.py` | Chain werkt met nieuwe `SubRoleSpec`; `block_prefix_hint` en `marker_verb` tests verwijderen |
 | `tests/copilot_orchestration/unit/hooks/test_notify_compaction.py` | Output-assertions bijwerken als ze `block_prefix` / `guide_line` letterlijk asserteren |
@@ -230,7 +251,7 @@ class _SubRoleSchema(BaseModel):
 
 | Edge-case | Risico | Mitigatie |
 |-----------|--------|-----------|
-| `block_template: ""` bij `requires_crosschat_block: true` | Hook produceert lege string | Loader valideert bij laden: `ConfigError` vóór runtime |
+| `block_template: ""` bij `requires_crosschat_block: true` | Hook produceert lege string | `@model_validator` gooit `ValidationError` bij laden |
 | `block_template: null` in YAML | Pydantic krijgt `None` | Gebruik `str` (niet `Optional[str]`) in `_SubRoleSchema` |
 | Windows `\r\n` in verbatim block | `\r\n` in rendered instructie | `.replace("\r\n", "\n")` vóór `.format()` |
 | YAML `\|` (trailing newline) vs `\|-` (geen trailing) | Extra newline aan einde van instructie | Conventie: altijd `\|-` voor `block_template` in YAML |
@@ -333,6 +354,12 @@ Alles in één blok — volledig copy-pasteable naar `@qa verifier`.
 
 Elk ander `{xyz}` in de template geeft een `ConfigError` bij rendering — hard falen, geen silent fallback.
 
+> **Let op: `{sub_role}` is de actieve sub-rol, niet de doelrol.**
+> `{sub_role}` vult de naam in van de sub-rol die het blok produceert (bijv. `implementer`).
+> Het eerste woord **binnen** de fence is de detectie-trigger voor de ontvangende agent
+> (bijv. `verifier`) — dit moet hardcoded in de template staan, niet als `{sub_role}`.
+> Gebruik `{sub_role}` alleen in de heading buiten de fence, zoals `[{sub_role}] End your response with this block:`.
+
 #### Developer-invloed samengevat
 
 - `markers:` lijst → bepaalt welke secties in het blok verschijnen (via `{markers_list}`)
@@ -412,7 +439,7 @@ Review the latest implementation work on this branch.
 **Besloten:** Hard falen — `KeyError → ConfigError` met log.
 
 ~~3. Is een `validate_template` / `health_check` op de YAML-laag wenselijk om `block_template` format-fouten vroeg te signaleren?~~
-**Besloten:** Loader valideert bij opstart: `requires_crosschat_block: true + leeg block_template → ConfigError`.
+**Besloten:** `@model_validator(mode='after')` in `_SubRoleSchema` gooit `ValidationError` bij opstart. Geen aparte health-check nodig.
 
 ~~4. Moet de list-format van `{markers_list}` configureerbaar zijn?~~
 **Besloten:** Hardcoded als `## Header` regels binnen de fence. De agent-LLM maakt zich niets uit van opmaak; configuratie voegt geen waarde toe.
@@ -434,3 +461,4 @@ Review the latest implementation work on this branch.
 | 1.0 | 2026-03-24 | Agent | Initial research — 6 goals beantwoord, Optie A aanbevolen |
 | 2.0 | 2026-03-24 | Agent | Flag-day besloten; dode velden verified; A2 + hard-fail besloten; G7 toegevoegd |
 | 3.0 | 2026-03-24 | Agent | G7 herschreven: fence-UX-constraint, `{markers_list}` als `## Header` binnen fence, placeholder-contract (exact 2), alle open vragen gesloten |
+| 3.1 | 2026-03-24 | Agent | QA annotaties A1/A2/A3: G2 constraint 5 (detection-conventie + WARNING), G4 `@model_validator` uitgewerkt + `ValidationError` mechanisme, G7 `{sub_role}` vs doelrol waarschuwing |
