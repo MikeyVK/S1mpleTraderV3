@@ -113,9 +113,7 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
     try:
         return template.format(sub_role=sub_role, markers_list=markers_list)
     except KeyError as exc:
-        logger.error(
-            "block_template placeholder %s not found for sub_role=%r", exc, sub_role
-        )
+        logger.error("block_template placeholder %s not found for sub_role=%r", exc, sub_role)
         raise ConfigError(
             f"Invalid block_template for sub_role={sub_role!r}: unknown placeholder {exc}"
         ) from exc
