@@ -38,9 +38,7 @@ def _stale_ts() -> str:
 class TestIsUsableSnapshotLoggingQA:
     """Logging behaviour of is_usable_snapshot (session_start_qa)."""
 
-    def test_stale_snapshot_logs_debug(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_stale_snapshot_logs_debug(self, caplog: pytest.LogCaptureFixture) -> None:
         """is_usable_snapshot logs at DEBUG when snapshot is rejected as stale."""
         snapshot = {"timestamp": _stale_ts(), "files_in_scope": ["src/x.py"]}
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
@@ -48,9 +46,7 @@ class TestIsUsableSnapshotLoggingQA:
         assert result is False
         assert any(r.levelno == logging.DEBUG for r in caplog.records)
 
-    def test_no_changed_files_logs_debug(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_no_changed_files_logs_debug(self, caplog: pytest.LogCaptureFixture) -> None:
         """is_usable_snapshot logs at DEBUG when no changed files are present."""
         snapshot = {"timestamp": _fresh_ts(), "files_in_scope": ["src/x.py"]}
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
@@ -58,9 +54,7 @@ class TestIsUsableSnapshotLoggingQA:
         assert result is False
         assert any(r.levelno == logging.DEBUG for r in caplog.records)
 
-    def test_no_file_overlap_logs_debug(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_no_file_overlap_logs_debug(self, caplog: pytest.LogCaptureFixture) -> None:
         """is_usable_snapshot logs at DEBUG when snapshot files and changed files do not overlap."""
         snapshot = {"timestamp": _fresh_ts(), "files_in_scope": ["src/a.py"]}
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
@@ -68,9 +62,7 @@ class TestIsUsableSnapshotLoggingQA:
         assert result is False
         assert any(r.levelno == logging.DEBUG for r in caplog.records)
 
-    def test_usable_snapshot_logs_debug(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_usable_snapshot_logs_debug(self, caplog: pytest.LogCaptureFixture) -> None:
         """is_usable_snapshot logs at DEBUG when snapshot is accepted."""
         snapshot = {"timestamp": _fresh_ts(), "files_in_scope": ["src/x.py"]}
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
