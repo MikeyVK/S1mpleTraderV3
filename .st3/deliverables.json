@@ -378,7 +378,7 @@
     "created_at": "2026-03-18T20:23:57.760796+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 12,
+        "total": 17,
         "cycles": [
           {
             "cycle_number": 1,
@@ -706,21 +706,21 @@
             "cycle_number": 9,
             "deliverables": [
               {
-                "description": "state_path_for_role(role: str) exported from _paths.py returning .copilot/session-sub-role-{role}.json",
                 "id": "D8.1",
+                "description": "state_path_for_role(role: str) exported from _paths.py returning .copilot/session-sub-role-{role}.json",
                 "validates": {
+                  "type": "contains_text",
                   "file": "src/copilot_orchestration/utils/_paths.py",
-                  "text": "state_path_for_role",
-                  "type": "contains_text"
+                  "text": "state_path_for_role"
                 }
               },
               {
-                "description": "STATE_RELPATH constant absent from _paths.py",
                 "id": "D8.2",
+                "description": "STATE_RELPATH constant absent from _paths.py",
                 "validates": {
+                  "type": "absent_text",
                   "file": "src/copilot_orchestration/utils/_paths.py",
-                  "text": "STATE_RELPATH",
-                  "type": "absent_text"
+                  "text": "STATE_RELPATH"
                 }
               }
             ],
@@ -730,30 +730,30 @@
             "cycle_number": 10,
             "deliverables": [
               {
-                "description": "Slash-strip regex present in detect_sub_role.py (strips /command prefix before first-word extraction)",
                 "id": "D9.1",
+                "description": "Slash-strip regex present in detect_sub_role.py (strips /command prefix before first-word extraction)",
                 "validates": {
+                  "type": "contains_text",
                   "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
-                  "text": "^/\\S+\\s*",
-                  "type": "contains_text"
+                  "text": "^/\\S+\\s*"
                 }
               },
               {
-                "description": "Idempotency sys.exit(0) absent from detect_sub_role.py",
                 "id": "D9.2",
+                "description": "Idempotency sys.exit(0) absent from detect_sub_role.py",
                 "validates": {
+                  "type": "absent_text",
                   "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
-                  "text": "sys.exit(0)",
-                  "type": "absent_text"
+                  "text": "sys.exit(0)"
                 }
               },
               {
-                "description": "Role-scoped path (session-sub-role-{role}.json) referenced in detect_sub_role.py or _paths.py",
                 "id": "D9.3",
+                "description": "Role-scoped path (session-sub-role-{role}.json) referenced in detect_sub_role.py or _paths.py",
                 "validates": {
+                  "type": "contains_text",
                   "file": "src/copilot_orchestration/utils/_paths.py",
-                  "text": "session-sub-role-",
-                  "type": "contains_text"
+                  "text": "session-sub-role-"
                 }
               }
             ],
@@ -763,30 +763,30 @@
             "cycle_number": 11,
             "deliverables": [
               {
-                "description": "ConfigError caught in evaluate_stop_hook in stop_handover_guard.py",
                 "id": "D10.1",
+                "description": "ConfigError caught in evaluate_stop_hook in stop_handover_guard.py",
                 "validates": {
+                  "type": "contains_text",
                   "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
-                  "text": "ConfigError",
-                  "type": "contains_text"
+                  "text": "ConfigError"
                 }
               },
               {
-                "description": "Exploration mode (no file) returns pass JSON without exception \u2014 default_sub_role fallback absent",
                 "id": "D10.2",
+                "description": "Exploration mode (no file) returns pass JSON without exception \u2014 default_sub_role fallback absent",
                 "validates": {
+                  "type": "absent_text",
                   "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
-                  "text": "default_sub_role",
-                  "type": "absent_text"
+                  "text": "default_sub_role"
                 }
               },
               {
-                "description": "session_id comparison absent from read_sub_role in stop_handover_guard.py",
                 "id": "D10.3",
+                "description": "session_id comparison absent from read_sub_role in stop_handover_guard.py",
                 "validates": {
+                  "type": "absent_text",
                   "file": "src/copilot_orchestration/hooks/stop_handover_guard.py",
-                  "text": "session_id",
-                  "type": "absent_text"
+                  "text": "session_id"
                 }
               }
             ],
@@ -796,34 +796,217 @@
             "cycle_number": 12,
             "deliverables": [
               {
-                "description": "Slash-prefix test present in test_detect_sub_role.py",
                 "id": "D11.1",
+                "description": "Slash-prefix test present in test_detect_sub_role.py",
                 "validates": {
+                  "type": "contains_text",
                   "file": "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py",
-                  "text": "/start-work",
-                  "type": "contains_text"
+                  "text": "/start-work"
                 }
               },
               {
-                "description": "Exploration mode test present in test_stop_handover_guard.py",
                 "id": "D11.2",
+                "description": "Exploration mode test present in test_stop_handover_guard.py",
                 "validates": {
+                  "type": "contains_text",
                   "file": "tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py",
-                  "text": "exploration",
-                  "type": "contains_text"
+                  "text": "exploration"
                 }
               },
               {
-                "description": "Integration smoke tests cover both role-scoped files (imp + qa)",
                 "id": "D11.3",
+                "description": "Integration smoke tests cover both role-scoped files (imp + qa)",
                 "validates": {
+                  "type": "contains_text",
                   "file": "tests/copilot_orchestration/integration/test_hooks_smoke.py",
-                  "text": "session-sub-role-imp",
-                  "type": "contains_text"
+                  "text": "session-sub-role-imp"
                 }
               }
             ],
             "exit_criteria": "All 63+ tests pass; no test references STATE_RELPATH or session_id-based branching; coverage for all new code paths >= pre-existing baseline."
+          },
+          {
+            "cycle_number": 13,
+            "exit_criteria": "block_template aanwezig, alle 4 legacy-velden afwezig in SubRoleSpec; test_interfaces.py groen.",
+            "deliverables": [
+              {
+                "id": "c_crosschat.1.1",
+                "description": "block_template aanwezig in SubRoleSpec TypedDict",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "block_template"
+                }
+              },
+              {
+                "id": "c_crosschat.1.2",
+                "description": "block_prefix verwijderd uit SubRoleSpec",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "block_prefix"
+                }
+              },
+              {
+                "id": "c_crosschat.1.3",
+                "description": "guide_line verwijderd uit SubRoleSpec",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "guide_line"
+                }
+              },
+              {
+                "id": "c_crosschat.1.4",
+                "description": "block_prefix_hint verwijderd uit SubRoleSpec",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "block_prefix_hint"
+                }
+              },
+              {
+                "id": "c_crosschat.1.5",
+                "description": "marker_verb verwijderd uit SubRoleSpec",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "marker_verb"
+                }
+              }
+            ]
+          },
+          {
+            "cycle_number": 14,
+            "exit_criteria": "@model_validator en _validate_template_required aanwezig; ValidationError bij requires_crosschat_block=True + leeg block_template; block_prefix_hint afwezig; test_requirements_loader.py groen.",
+            "deliverables": [
+              {
+                "id": "c_crosschat.2.1",
+                "description": "@model_validator import aanwezig in requirements_loader.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "model_validator"
+                }
+              },
+              {
+                "id": "c_crosschat.2.2",
+                "description": "_validate_template_required methode aanwezig in _SubRoleSchema",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "_validate_template_required"
+                }
+              },
+              {
+                "id": "c_crosschat.2.3",
+                "description": "block_prefix_hint verwijderd uit _SubRoleSchema",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "block_prefix_hint"
+                }
+              }
+            ]
+          },
+          {
+            "cycle_number": 15,
+            "exit_criteria": "markers_list generatie aanwezig; ConfigError bij onbekende placeholder; block_prefix afwezig; str.format met {sub_role} + {markers_list}; test_detect_sub_role.py groen.",
+            "deliverables": [
+              {
+                "id": "c_crosschat.3.1",
+                "description": "markers_list generatie aanwezig in detect_sub_role.py (join op ## headers)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "markers_list"
+                }
+              },
+              {
+                "id": "c_crosschat.3.2",
+                "description": "ConfigError raised bij KeyError in build_crosschat_block_instruction",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "ConfigError"
+                }
+              },
+              {
+                "id": "c_crosschat.3.3",
+                "description": "block_prefix verwijderd uit detect_sub_role.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "block_prefix"
+                }
+              }
+            ]
+          },
+          {
+            "cycle_number": 16,
+            "exit_criteria": "block_template aanwezig en block_prefix afwezig in beide YAML-bestanden; loader laadt correct; ValidationError bij requires_crosschat_block=True + leeg block_template in YAML.",
+            "deliverables": [
+              {
+                "id": "c_crosschat.4.1",
+                "description": "block_template aanwezig in _default_requirements.yaml",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/_default_requirements.yaml",
+                  "text": "block_template"
+                }
+              },
+              {
+                "id": "c_crosschat.4.2",
+                "description": "block_prefix verwijderd uit _default_requirements.yaml",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "src/copilot_orchestration/config/_default_requirements.yaml",
+                  "text": "block_prefix"
+                }
+              },
+              {
+                "id": "c_crosschat.4.3",
+                "description": "block_template aanwezig in .copilot/sub-role-requirements.yaml",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".copilot/sub-role-requirements.yaml",
+                  "text": "block_template"
+                }
+              },
+              {
+                "id": "c_crosschat.4.4",
+                "description": "block_prefix verwijderd uit .copilot/sub-role-requirements.yaml",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".copilot/sub-role-requirements.yaml",
+                  "text": "block_prefix"
+                }
+              }
+            ]
+          },
+          {
+            "cycle_number": 17,
+            "exit_criteria": "Geen legacy block_prefix/guide_line-assertions in test_notify_compaction.py en test_optional_field_chain.py; volledige testsuite groen; validate_architecture(scope='all') clean.",
+            "deliverables": [
+              {
+                "id": "c_crosschat.5.1",
+                "description": "Geen legacy block_prefix-assertions meer in test_notify_compaction.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py",
+                  "text": "block_prefix"
+                }
+              },
+              {
+                "id": "c_crosschat.5.2",
+                "description": "Geen legacy guide_line-assertions meer in test_optional_field_chain.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/copilot_orchestration/integration/test_optional_field_chain.py",
+                  "text": "guide_line"
+                }
+              }
+            ]
           }
         ]
       }
