@@ -32,6 +32,8 @@ def _run_guard(hook_workspace: Path, role: str, payload: dict) -> subprocess.Com
 
 @pytest.mark.slow
 class TestStopHandoverGuardSmoke:
+    """Subprocess smoke tests for stop_handover_guard.py I/O contract."""
+
     def test_decision_block_for_imp_validator_without_stop_hook_active(
         self, hook_workspace: Path
     ) -> None:

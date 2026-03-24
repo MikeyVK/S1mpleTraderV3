@@ -65,6 +65,8 @@ def _parse_agent_frontmatter(path: Path) -> dict:  # type: ignore[type-arg]
 
 
 class TestCV27Acceptance:
+    """Acceptance checks for C_V2.7 configuration deliverables (issue #263)."""
+
     def test_prompt_directory_contains_exactly_six_files(self) -> None:
         """Prompts directory contains exactly the 6 expected prompt files (no more, no less)."""
         actual = frozenset(f.name for f in _PROMPTS_DIR.iterdir() if f.is_file())
@@ -159,7 +161,7 @@ class TestCV27Acceptance:
         """
         import ast  # noqa: PLC0415
 
-        tests_root = Path(__file__).parents[2]  # tests/copilot_orchestration/
+        tests_root = Path(__file__).parents[1]  # tests/copilot_orchestration/
         missing = []
         for fpath in sorted(tests_root.rglob("*.py")):
             source = fpath.read_text(encoding="utf-8")

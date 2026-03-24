@@ -21,6 +21,8 @@ _STATE_RELPATH_IMP = Path(".copilot") / "session-sub-role-imp.json"
 
 @pytest.mark.slow
 class TestNotifyCompactionSmoke:
+    """Subprocess smoke tests for notify_compaction.py I/O contract."""
+
     def test_returns_empty_dict_when_state_absent(self, hook_workspace: Path) -> None:
         """notify_compaction.py returns {} when state file does not exist."""
         payload = json.dumps({"sessionId": "sess-nc-001"})

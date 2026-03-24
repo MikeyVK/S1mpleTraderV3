@@ -362,6 +362,8 @@ class TestBuildStopReason:
 
 
 class TestNormalizeRole:
+    """Unit tests for normalize_role: whitespace stripping and lowercasing."""
+
     def test_strips_whitespace_and_lowercases(self) -> None:
         assert normalize_role("  IMP  ") == "imp"
 
@@ -370,6 +372,8 @@ class TestNormalizeRole:
 
 
 class TestReadStdinJson:
+    """Unit tests for read_stdin_json: JSON parsing and error fallback."""
+
     def test_empty_input_returns_empty_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("sys.stdin", io.StringIO(""))
         assert read_stdin_json() == {}

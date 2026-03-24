@@ -22,6 +22,8 @@ _STATE_RELPATH = Path(".copilot") / "session-sub-role-imp.json"
 
 @pytest.mark.slow
 class TestDetectSubRoleSmoke:
+    """Subprocess smoke tests for detect_sub_role.py I/O contract."""
+
     def test_exits_zero_and_writes_state_for_matching_sub_role(self, hook_workspace: Path) -> None:
         """detect_sub_role.py exits 0 and writes correct sub_role to role-scoped state file."""
         payload = json.dumps({"prompt": "implementer: start cycle", "sessionId": "sess-001"})
