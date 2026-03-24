@@ -91,6 +91,18 @@ class TestISubRoleRequirementsLoaderProtocol:
         assert state["sub_role"] == "implementer"
         assert state["detected_at"] == "2026-03-21T00:00:00Z"
 
+    def test_sub_role_spec_has_block_template(self) -> None:
+        """block_template is a required field in SubRoleSpec (C_CROSSCHAT.1)."""
+        assert "block_template" in SubRoleSpec.__required_keys__
+
+    def test_sub_role_spec_no_legacy_fields(self) -> None:
+        """block_prefix, guide_line, block_prefix_hint, marker_verb must be absent from SubRoleSpec (C_CROSSCHAT.1)."""
+        all_keys = SubRoleSpec.__required_keys__ | SubRoleSpec.__optional_keys__
+        assert "block_prefix" not in all_keys
+        assert "guide_line" not in all_keys
+        assert "block_prefix_hint" not in all_keys
+        assert "marker_verb" not in all_keys
+
     def test_protocol_has_all_four_methods(self) -> None:
         """ISubRoleRequirementsLoader Protocol exposes all four required method names."""
         # Arrange - retrieve publicly visible names from the Protocol
