@@ -107,10 +107,9 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
     markers = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(spec["markers"]))
     return (
         f"[{sub_role}] End your response with this block:\n\n"
-        "```text\n"
-        f"{spec['block_prefix'].strip()}\n"
-        f"{spec['guide_line'].strip()}\n"
-        "```\n\n"
+        "> **✂ cross-chat block**\n>\n"
+        f"> {spec['block_prefix'].strip()}\n"
+        f"> {spec['guide_line'].strip()}\n\n"
         f"Required sections:\n{markers}"
     )
 

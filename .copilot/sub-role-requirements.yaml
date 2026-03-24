@@ -100,7 +100,7 @@ roles:
         requires_crosschat_block: true
         heading: "Verification Review"
         block_prefix: "implementer"
-        guide_line: "QA findings must be resolved before this cycle is done."
+        guide_line: "<task: one sentence — what must imp do?> QA findings must be resolved before this cycle is done."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @imp implementer chat to continue implementation."
         marker_verb: "include a section titled"
         markers:
@@ -111,7 +111,7 @@ roles:
         requires_crosschat_block: true
         heading: "Validation Review"
         block_prefix: "validation-reviewer"
-        guide_line: "Qa findings must be resolved before this cycle is done."
+        guide_line: "<task: one sentence — what must imp do?> Qa findings must be resolved before this cycle is done."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @imp validator chat."
         marker_verb: "include a section titled"
         markers:
