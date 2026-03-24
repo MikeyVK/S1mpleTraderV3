@@ -263,6 +263,62 @@ _SPEC_FOR_CANONICAL = SubRoleSpec(
     markers=["Scope", "Files Changed", "Proof", "Ready-for-QA"],
 )
 
+_SPEC_NEW_STYLE = SubRoleSpec(
+    requires_crosschat_block=True,
+    heading="### Hand-Over",
+    block_template=(
+        "[{sub_role}] End your response with this block:\n\n"
+        "```text\nverifier\nReview the work.\n```\n\n"
+        "Required sections:\n{markers_list}"
+    ),
+    markers=["Scope", "Files Changed"],
+)
+
+
+class TestBuildCrosschatBlockInstructionBlockTemplate:
+    """RED tests for block_template-based build_crosschat_block_instruction.
+
+    C_CROSSCHAT.3: function must use spec['block_template'].format(...) instead
+    of legacy spec['block_prefix'] / spec['guide_line'].
+    """
+
+    def test_block_template_sub_role_substituted(self) -> None:
+        """block_template {sub_role} placeholder is replaced with the sub_role arg."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_NEW_STYLE)
+        assert "[implementer]" in result
+        assert "{sub_role}" not in result
+
+    def test_block_template_markers_list_substituted(self) -> None:
+        """block_template {markers_list} is replaced with rendered markers."""
+        result = build_crosschat_block_instruction("implementer", _SPEC_NEW_STYLE)
+        assert "Scope" in result
+        assert "Files Changed" in result
+        assert "{markers_list}" not in result
+
+    def test_crlf_normalized_before_format(self) -> None:
+        """CRLF in block_template is normalized to LF before str.format()."""
+        spec_crlf = SubRoleSpec(
+            requires_crosschat_block=True,
+            heading="",
+            block_template="line1\r\n{markers_list}",
+            markers=[],
+        )
+        result = build_crosschat_block_instruction("imp", spec_crlf)
+        assert "\r\n" not in result
+
+    def test_unknown_placeholder_raises_config_error(self) -> None:
+        """Unknown {placeholder} in block_template raises ConfigError."""
+        from copilot_orchestration.config.requirements_loader import ConfigError  # noqa: PLC0415
+
+        spec_bad = SubRoleSpec(
+            requires_crosschat_block=True,
+            heading="",
+            block_template="[{sub_role}] {unknown_key}",
+            markers=[],
+        )
+        with pytest.raises(ConfigError):
+            build_crosschat_block_instruction("implementer", spec_bad)
+
 
 class TestBuildCrosschatBlockInstruction:
     """Tests for build_crosschat_block_instruction — canonical pure function.
