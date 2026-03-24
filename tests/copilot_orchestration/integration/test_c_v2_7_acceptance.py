@@ -150,3 +150,33 @@ class TestCV27Acceptance:
             f"Expected: {sorted(_QA_SUB_ROLES)}\n"
             f"Actual:   {sorted(actual)}"
         )
+
+    def test_all_test_classes_have_class_docstrings(self) -> None:
+        """Every Test* class in tests/copilot_orchestration must have a class-level docstring.
+
+        Regression test for F6: enforces the coding standard that all test classes carry
+        a compact class docstring describing the unit under test and the test scope.
+        """
+        import ast  # noqa: PLC0415
+
+        tests_root = Path(__file__).parents[2]  # tests/copilot_orchestration/
+        missing = []
+        for fpath in sorted(tests_root.rglob("*.py")):
+            source = fpath.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(fpath))
+            for node in ast.walk(tree):
+                if not (isinstance(node, ast.ClassDef) and node.name.startswith("Test")):
+                    continue
+                first = node.body[0] if node.body else None
+                has_doc = (
+                    isinstance(first, ast.Expr)
+                    and isinstance(first.value, ast.Constant)
+                    and isinstance(first.value.value, str)
+                )
+                if not has_doc:
+                    rel = fpath.relative_to(tests_root)
+                    missing.append(f"{rel}::{node.name}")
+        assert not missing, (
+            "Test classes in tests/copilot_orchestration missing docstrings:\n"
+            + "\n".join(f"  - {m}" for m in missing)
+        )
