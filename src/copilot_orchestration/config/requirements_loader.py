@@ -44,9 +44,7 @@ class _SubRoleSchema(BaseModel):
     @model_validator(mode="after")
     def _validate_template_required(self) -> "_SubRoleSchema":
         if self.requires_crosschat_block and not self.block_template.strip():
-            raise ValueError(
-                "block_template may not be empty when requires_crosschat_block=True"
-            )
+            raise ValueError("block_template may not be empty when requires_crosschat_block=True")
         return self
 
 
