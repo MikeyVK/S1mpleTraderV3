@@ -16,8 +16,7 @@ roles:
       researcher:
         requires_crosschat_block: false
         heading: "Research Output"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Problem Statement"
           - "Findings"
@@ -25,8 +24,7 @@ roles:
       planner:
         requires_crosschat_block: false
         heading: "Planning Output"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Cycle Breakdown"
           - "Deliverables Per Cycle"
@@ -34,16 +32,23 @@ roles:
       designer:
         requires_crosschat_block: false
         heading: "Design Output"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Interface Contracts"
           - "Architecture Decisions"
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
-        block_prefix: "@qa verifier"
-        guide_line: "Review the latest implementation work on this branch."
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          verifier
+          Review the latest implementation work on this branch.
+          ```
+
+          Required sections:
+          {markers_list}
         markers:
           - "Scope"
           - "Files Changed"
@@ -52,8 +57,16 @@ roles:
       validator:
         requires_crosschat_block: true
         heading: "Validation Hand-Over"
-        block_prefix: "@qa verifier"
-        guide_line: "Review the latest validation work on this branch."
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          verifier
+          Review the latest validation work on this branch.
+          ```
+
+          Required sections:
+          {markers_list}
         markers:
           - "Test Surface"
           - "Results"
@@ -61,8 +74,7 @@ roles:
       documenter:
         requires_crosschat_block: false
         heading: "Documentation Output"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Documents Changed"
 
@@ -72,8 +84,7 @@ roles:
       plan-reviewer:
         requires_crosschat_block: false
         heading: "Planning Review"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Findings"
           - "Plan Coherence"
@@ -81,8 +92,7 @@ roles:
       design-reviewer:
         requires_crosschat_block: false
         heading: "Design Review"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Findings"
           - "Architecture Compliance"
@@ -90,8 +100,16 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "Verification Review"
-        block_prefix: "@imp implementer"
-        guide_line: "QA findings must be resolved before this cycle is done."
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          implementer
+          QA findings must be resolved before this cycle is done.
+          ```
+
+          Required sections:
+          {markers_list}
         markers:
           - "Findings"
           - "Proof Verification"
@@ -99,8 +117,7 @@ roles:
       validation-reviewer:
         requires_crosschat_block: false
         heading: "Validation Review"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Findings"
           - "Coverage Assessment"
@@ -108,8 +125,7 @@ roles:
       doc-reviewer:
         requires_crosschat_block: false
         heading: "Documentation Review"
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers:
           - "Findings"
           - "Verdict"
