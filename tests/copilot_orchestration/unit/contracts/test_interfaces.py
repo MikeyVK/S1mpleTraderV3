@@ -43,8 +43,7 @@ class TestISubRoleRequirementsLoaderProtocol:
                 return SubRoleSpec(
                     requires_crosschat_block=False,
                     heading="",
-                    block_prefix="",
-                    guide_line="",
+                    block_template="",
                     markers=[],
                 )
 
@@ -63,16 +62,14 @@ class TestISubRoleRequirementsLoaderProtocol:
         spec: SubRoleSpec = SubRoleSpec(
             requires_crosschat_block=True,
             heading="heading",
-            block_prefix="prefix",
-            guide_line="guide",
+            block_template="[{sub_role}] End your response with this block:\n\n```text\n{markers_list}\n```",
             markers=["M1"],
         )
 
         # Assert - verify exact values
         assert spec["requires_crosschat_block"] is True
         assert spec["heading"] == "heading"
-        assert spec["block_prefix"] == "prefix"
-        assert spec["guide_line"] == "guide"
+        assert spec["block_template"] == "[{sub_role}] End your response with this block:\n\n```text\n{markers_list}\n```"
         assert spec["markers"] == ["M1"]
 
     def test_session_sub_role_state_keys(self) -> None:

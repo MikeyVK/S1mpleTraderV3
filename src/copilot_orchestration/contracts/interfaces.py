@@ -16,7 +16,7 @@ Zero runtime I/O.
 """
 
 # Standard library
-from typing import NotRequired, Protocol, TypedDict, runtime_checkable
+from typing import Protocol, TypedDict, runtime_checkable
 
 
 class SubRoleSpec(TypedDict):
@@ -24,11 +24,8 @@ class SubRoleSpec(TypedDict):
 
     requires_crosschat_block: bool
     heading: str
-    block_prefix: str
-    guide_line: str
     markers: list[str]
-    block_prefix_hint: NotRequired[str]
-    marker_verb: NotRequired[str]
+    block_template: str
 
 
 class SessionSubRoleState(TypedDict):
