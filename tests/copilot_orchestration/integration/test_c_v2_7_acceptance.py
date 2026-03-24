@@ -104,31 +104,31 @@ class TestCV27Acceptance:
         )
 
     def test_notify_compaction_is_second_in_imp_precompact(self) -> None:
-        """imp.agent.md PreCompact: pre_compact_agent.py first, notify_compaction.py second."""
+        """PreCompact[0]=copilot-pre-compact-agent, [1]=copilot-notify-compaction (imp)."""
         frontmatter = _parse_agent_frontmatter(_IMP_AGENT_MD)
         pre_compact = frontmatter.get("hooks", {}).get("PreCompact", [])
         assert len(pre_compact) >= 2, "imp.agent.md: PreCompact must have at least 2 entries"
         first_cmd = pre_compact[0].get("command", "")
         second_cmd = pre_compact[1].get("command", "")
-        assert "pre_compact_agent.py" in first_cmd, (
-            f"imp.agent.md: PreCompact[0] must be pre_compact_agent.py, got: {first_cmd!r}"
+        assert "copilot-pre-compact-agent" in first_cmd, (
+            f"imp.agent.md: PreCompact[0] must be copilot-pre-compact-agent, got: {first_cmd!r}"
         )
-        assert "notify_compaction.py" in second_cmd, (
-            f"imp.agent.md: PreCompact[1] must be notify_compaction.py, got: {second_cmd!r}"
+        assert "copilot-notify-compaction" in second_cmd, (
+            f"imp.agent.md: PreCompact[1] must be copilot-notify-compaction, got: {second_cmd!r}"
         )
 
     def test_notify_compaction_is_second_in_qa_precompact(self) -> None:
-        """qa.agent.md PreCompact: pre_compact_agent.py first, notify_compaction.py second."""
+        """PreCompact[0]=copilot-pre-compact-agent, [1]=copilot-notify-compaction (qa)."""
         frontmatter = _parse_agent_frontmatter(_QA_AGENT_MD)
         pre_compact = frontmatter.get("hooks", {}).get("PreCompact", [])
         assert len(pre_compact) >= 2, "qa.agent.md: PreCompact must have at least 2 entries"
         first_cmd = pre_compact[0].get("command", "")
         second_cmd = pre_compact[1].get("command", "")
-        assert "pre_compact_agent.py" in first_cmd, (
-            f"qa.agent.md: PreCompact[0] must be pre_compact_agent.py, got: {first_cmd!r}"
+        assert "copilot-pre-compact-agent" in first_cmd, (
+            f"qa.agent.md: PreCompact[0] must be copilot-pre-compact-agent, got: {first_cmd!r}"
         )
-        assert "notify_compaction.py" in second_cmd, (
-            f"qa.agent.md: PreCompact[1] must be notify_compaction.py, got: {second_cmd!r}"
+        assert "copilot-notify-compaction" in second_cmd, (
+            f"qa.agent.md: PreCompact[1] must be copilot-notify-compaction, got: {second_cmd!r}"
         )
 
     def test_imp_sub_roles_are_defined_in_yaml(self) -> None:

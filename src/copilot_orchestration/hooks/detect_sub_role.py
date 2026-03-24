@@ -26,11 +26,22 @@ writes SessionSubRoleState to role-scoped state file).
 
 # Standard library
 import difflib
+import json
 import logging
 import re
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 # Project modules
-from copilot_orchestration.contracts.interfaces import ISubRoleRequirementsLoader, SubRoleSpec
+from copilot_orchestration.config.logging_config import LoggingConfig
+from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
+from copilot_orchestration.contracts.interfaces import (
+    ISubRoleRequirementsLoader,
+    SessionSubRoleState,
+    SubRoleSpec,
+)
+from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +104,7 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
     Compact, complete, and identical at S1/S2/S3 to create reinforcement.
     Pure function — no I/O, no side effects.
     """
-    markers = "\n".join(f"  {i+1}. {m}" for i, m in enumerate(spec["markers"]))
+    markers = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(spec["markers"]))
     return (
         f"[{sub_role}] End your response with this block:\n\n"
         "```text\n"
@@ -129,17 +140,7 @@ def build_ups_output(
     }
 
 
-if __name__ == "__main__":  # pragma: no cover
-    import json
-    import sys
-    from datetime import UTC, datetime
-    from pathlib import Path
-
-    from copilot_orchestration.config.logging_config import LoggingConfig
-    from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
-    from copilot_orchestration.contracts.interfaces import SessionSubRoleState
-    from copilot_orchestration.utils._paths import find_workspace_root, state_path_for_role
-
+def main() -> None:  # pragma: no cover
     role = sys.argv[1]
     payload = json.loads(sys.stdin.read())
     prompt_text: str = payload.get("prompt", "")
@@ -173,3 +174,7 @@ if __name__ == "__main__":  # pragma: no cover
         if _ups:
             json.dump(_ups, sys.stdout, ensure_ascii=True)
     # No match: exploration mode — preserve existing file or do nothing
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

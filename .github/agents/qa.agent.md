@@ -10,31 +10,31 @@ hooks:
   SessionStart:
     - type: command
       cwd: "."
-      command: "python3 ./scripts/copilot_hooks/session_start_qa.py"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\session_start_qa.py"
+      command: "copilot-session-start-qa"
+      windows: ".\\.venv\\Scripts\\copilot-session-start-qa.exe"
       timeout: 15
   UserPromptSubmit:
     - type: command
       cwd: "."
-      command: "python3 src/copilot_orchestration/hooks/detect_sub_role.py qa"
-      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\detect_sub_role.py qa"
+      command: "copilot-detect-sub-role qa"
+      windows: ".\\.venv\\Scripts\\copilot-detect-sub-role.exe qa"
       timeout: 15
   PreCompact:
     - type: command
       cwd: "."
-      command: "python3 ./scripts/copilot_hooks/pre_compact_agent.py"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact_agent.py"
+      command: "copilot-pre-compact-agent"
+      windows: ".\\.venv\\Scripts\\copilot-pre-compact-agent.exe"
       timeout: 15
     - type: command
       cwd: "."
-      command: "python3 src/copilot_orchestration/hooks/notify_compaction.py qa"
-      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\notify_compaction.py qa"
+      command: "copilot-notify-compaction qa"
+      windows: ".\\.venv\\Scripts\\copilot-notify-compaction.exe qa"
       timeout: 15
   Stop:
     - type: command
       cwd: "."
-      command: "python3 src/copilot_orchestration/hooks/stop_handover_guard.py qa"
-      windows: ".\\.venv\\Scripts\\python.exe src\\copilot_orchestration\\hooks\\stop_handover_guard.py qa"
+      command: "copilot-stop-guard qa"
+      windows: ".\\.venv\\Scripts\\copilot-stop-guard.exe qa"
       timeout: 15
 ---
 

@@ -4,8 +4,8 @@
       {
         "type": "command",
         "cwd": ".",
-        "command": "python3 ./scripts/copilot_hooks/pre_compact.py",
-        "windows": ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact.py",
+        "command": "copilot-pre-compact",
+        "windows": ".\\.venv\\Scripts\\copilot-pre-compact.exe",
         "timeout": 15
       }
     ]

@@ -45,7 +45,7 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
-        block_prefix: "verifier "
+        block_prefix: "verifier"
         guide_line: "Review the latest implementation work on this branch."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @qa verifier chat to start QA review."
         marker_verb: "include a section titled"
@@ -57,7 +57,7 @@ roles:
       validator:
         requires_crosschat_block: true
         heading: "Validation Hand-Over"
-        block_prefix: "verifier "
+        block_prefix: "verifier"
         guide_line: "Review the latest validation work on this branch."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @qa verifier chat to start QA review."
         marker_verb: "include a section titled"
@@ -88,7 +88,7 @@ roles:
       plan-verifier:
         requires_crosschat_block: true
         heading: "Planning Review"
-        block_prefix: "plan verifier "
+        block_prefix: "plan verifier"
         guide_line: "QA the plan deliverables and stop-go criteria. Ensure any findings are resolved before this cycle is done."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @imp planner chat."
         marker_verb: "include a section titled"
@@ -99,7 +99,7 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "Verification Review"
-        block_prefix: "implementer "
+        block_prefix: "implementer"
         guide_line: "QA findings must be resolved before this cycle is done."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @imp implementer chat to continue implementation."
         marker_verb: "include a section titled"
@@ -110,7 +110,7 @@ roles:
       validation-reviewer:
         requires_crosschat_block: true
         heading: "Validation Review"
-        block_prefix: "validation-reviewer  "
+        block_prefix: "validation-reviewer"
         guide_line: "Qa findings must be resolved before this cycle is done."
         block_prefix_hint: "Cross-chat trigger: paste the entire block into a new @imp validator chat."
         marker_verb: "include a section titled"

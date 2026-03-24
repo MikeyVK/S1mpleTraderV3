@@ -29,6 +29,16 @@ dev = [
 requires = ["setuptools>=68.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project.scripts]
+copilot-session-start         = "copilot_orchestration.hooks.session_start:main"
+copilot-session-start-imp     = "copilot_orchestration.hooks.session_start_imp:main"
+copilot-session-start-qa      = "copilot_orchestration.hooks.session_start_qa:main"
+copilot-pre-compact           = "copilot_orchestration.hooks.pre_compact:main"
+copilot-pre-compact-agent     = "copilot_orchestration.hooks.pre_compact_agent:main"
+copilot-detect-sub-role       = "copilot_orchestration.hooks.detect_sub_role:main"
+copilot-notify-compaction     = "copilot_orchestration.hooks.notify_compaction:main"
+copilot-stop-guard            = "copilot_orchestration.hooks.stop_handover_guard:main"
+
 [tool.setuptools.packages.find]
 where = [".", "src"]
 include = ["backend*", "tests*", "mcp_server*", "copilot_orchestration*"]
