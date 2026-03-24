@@ -27,7 +27,12 @@ import pytest
 # Project modules
 from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
-from copilot_orchestration.hooks.detect_sub_role import _match_sub_role, detect_sub_role
+from copilot_orchestration.hooks.detect_sub_role import (
+    _match_sub_role,
+    build_crosschat_block_instruction,
+    build_ups_output,
+    detect_sub_role,
+)
 from copilot_orchestration.utils._paths import find_workspace_root
 
 
@@ -161,11 +166,6 @@ class TestDetectSubRole:
         )
 
 
-from copilot_orchestration.hooks.detect_sub_role import build_ups_output  # noqa: E402
-from copilot_orchestration.hooks.detect_sub_role import (  # noqa: E402
-    build_crosschat_block_instruction,
-)
-
 _LOGGER_NAME = "copilot_orchestration.hooks.detect_sub_role"
 
 
@@ -230,9 +230,7 @@ class TestBuildUpsOutput:
             )
         ],
     )
-    def test_canonical_instruction_frame_under_200_chars(
-        self, role: str, sub_role: str
-    ) -> None:
+    def test_canonical_instruction_frame_under_200_chars(self, role: str, sub_role: str) -> None:
         """Pre-markers frame is under 200 chars for every sub-role in the real YAML config."""
         loader = SubRoleRequirementsLoader.from_copilot_dir(find_workspace_root(Path(__file__)))
         if not loader.requires_crosschat_block(role, sub_role):
