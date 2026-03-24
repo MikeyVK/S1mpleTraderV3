@@ -390,6 +390,51 @@
               {
                 "id": "c_v2_0.delete_v1_pre_compact_test",
                 "description": "Delete tests/mcp_server/unit/utils/test_pre_compact_agent.py (v1 \u2014 tests parse_transcript_content which is absent in v2)"
+              },
+              {
+                "description": "block_template aanwezig in SubRoleSpec TypedDict",
+                "id": "D1.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "block_template",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "block_prefix verwijderd uit SubRoleSpec",
+                "id": "D1.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "block_prefix",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "guide_line verwijderd uit SubRoleSpec",
+                "id": "D1.3",
+                "validates": {
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "guide_line",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "block_prefix_hint verwijderd uit SubRoleSpec",
+                "id": "D1.4",
+                "validates": {
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "block_prefix_hint",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "marker_verb verwijderd uit SubRoleSpec",
+                "id": "D1.5",
+                "validates": {
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "marker_verb",
+                  "type": "absent_text"
+                }
               }
             ],
             "exit_criteria": "Both v1 test files are absent; git status shows no other files touched; full test suite still green after deletion."
@@ -412,6 +457,33 @@
                 "validates": {
                   "type": "file_exists",
                   "file": "tests/copilot_orchestration/unit/utils/test_paths.py"
+                }
+              },
+              {
+                "description": "@model_validator aanwezig in requirements_loader.py",
+                "id": "D2.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "model_validator",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "_validate_template_required methode aanwezig",
+                "id": "D2.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "_validate_template_required",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "block_prefix_hint verwijderd uit _SubRoleSchema",
+                "id": "D2.3",
+                "validates": {
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "block_prefix_hint",
+                  "type": "absent_text"
                 }
               }
             ],
@@ -437,6 +509,33 @@
                   "file": "src/copilot_orchestration/contracts/interfaces.py",
                   "text": "SessionSubRoleState"
                 }
+              },
+              {
+                "description": "markers_list generatie aanwezig in detect_sub_role.py",
+                "id": "D3.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "markers_list",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "ConfigError raised bij KeyError in build_crosschat_block_instruction",
+                "id": "D3.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "ConfigError",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "block_prefix verwijderd uit detect_sub_role.py",
+                "id": "D3.3",
+                "validates": {
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "block_prefix",
+                  "type": "absent_text"
+                }
               }
             ],
             "exit_criteria": "A minimal in-memory class satisfies the Protocol. TypedDicts reject wrong key types. No logic in contracts layer. All tests pass."
@@ -460,6 +559,42 @@
                   "type": "file_exists",
                   "file": ".copilot/sub-role-requirements.yaml"
                 }
+              },
+              {
+                "description": "block_template aanwezig in _default_requirements.yaml",
+                "id": "D4.1",
+                "validates": {
+                  "file": "src/copilot_orchestration/config/_default_requirements.yaml",
+                  "text": "block_template",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "block_prefix verwijderd uit _default_requirements.yaml",
+                "id": "D4.2",
+                "validates": {
+                  "file": "src/copilot_orchestration/config/_default_requirements.yaml",
+                  "text": "block_prefix",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "block_template aanwezig in .copilot/sub-role-requirements.yaml",
+                "id": "D4.3",
+                "validates": {
+                  "file": ".copilot/sub-role-requirements.yaml",
+                  "text": "block_template",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "block_prefix verwijderd uit .copilot/sub-role-requirements.yaml",
+                "id": "D4.4",
+                "validates": {
+                  "file": ".copilot/sub-role-requirements.yaml",
+                  "text": "block_prefix",
+                  "type": "absent_text"
+                }
               }
             ],
             "exit_criteria": "Pydantic catches malformed YAML. FileNotFoundError raised when neither project nor package config found. valid_sub_roles('imp') returns frozenset of 6. valid_sub_roles('qa') returns frozenset of 5. All tests pass."
@@ -482,6 +617,24 @@
                 "validates": {
                   "type": "file_exists",
                   "file": "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py"
+                }
+              },
+              {
+                "description": "Geen legacy block_prefix-assertions meer in test_notify_compaction.py",
+                "id": "D5.1",
+                "validates": {
+                  "file": "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py",
+                  "text": "block_prefix",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "Geen legacy guide_line-assertions meer in test_optional_field_chain.py",
+                "id": "D5.2",
+                "validates": {
+                  "file": "tests/copilot_orchestration/integration/test_optional_field_chain.py",
+                  "text": "guide_line",
+                  "type": "absent_text"
                 }
               }
             ],
