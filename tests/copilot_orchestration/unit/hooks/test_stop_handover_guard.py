@@ -39,8 +39,10 @@ _SESSION_ID = "test-session-abc"
 _SPEC_STUB = SubRoleSpec(
     requires_crosschat_block=True,
     heading="### Hand-Over",
-    block_prefix="@next: take over.",
-    guide_line="Use the guide.",
+    block_template=(
+        "[{sub_role}] End your response with this block:\n\n"
+        "```text\n@next: take over.\nUse the guide.\n```\n\nRequired sections:\n{markers_list}"
+    ),
     markers=["Task:", "Files:"],
 )
 
@@ -337,9 +339,9 @@ class TestBuildStopReason:
             assert marker in result, f"Marker {marker!r} missing from stop reason"
 
     def test_block_prefix_in_reason(self) -> None:
-        """The block_prefix must appear so model knows the exact opening line."""
+        """The block template opening line must appear so model knows the exact format."""
         result = build_stop_reason(_SPEC_STUB, _SUB_ROLE_STUB)
-        assert _SPEC_STUB["block_prefix"] in result
+        assert "@next: take over." in result
 
     def test_no_meta_apology_instructions(self) -> None:
         """Waste-token meta-instructions must be absent."""

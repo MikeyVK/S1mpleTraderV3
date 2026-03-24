@@ -128,4 +128,3 @@ class TestOptionalFieldChain:
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
         result = build_stop_reason(spec, "implementer")
         assert "Scope" in result
-
