@@ -3,7 +3,7 @@
 # YAML-First Handover Block Design
 
 **Status:** COMPLETE  
-**Version:** 2.0  
+**Version:** 3.0  
 **Last Updated:** 2026-03-24
 
 ---
@@ -75,7 +75,7 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
 | Heading-formaat | `[{sub_role}] End your response with this block:\n\n` | Andere tonen / talen |
 | Code-fence type | ` ```text ` | Sommige tools herkennen geen `text` |
 | Sections-label | `Required sections:\n` | Herformuleren of weglaten |
-| Numbered-list indent | `  {i+1}. {m}` (2 spaties + punt) | Bullet `- ` of ander formaat |
+| Numbered-list buiten fence | `  {i+1}. {m}` (2 spaties + punt) | **Fundamenteel fout — zie G7** |
 
 **Legacy YAML-velden (worden verwijderd — zie G4):**
 
@@ -101,7 +101,7 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
 
    `block_template` hoeft deze caller-prefixes niet te bevatten.
 
-4. **`requires_crosschat_block: false` sub-rollen.** Voor sub-rollen die geen blok produceren wordt `build_crosschat_block_instruction` nooit aangeroepen (gate in callers). `block_template` is voor deze sub-rollen irrelevant — ze krijgen `block_template: ""` in YAML.
+4. **`requires_crosschat_block: false` sub-rollen.** Voor sub-rollen die geen blok produceren wordt `build_crosschat_block_instruction` nooit aangeroepen (gate in callers). `block_template: ""` in YAML.
 
 ---
 
@@ -109,25 +109,11 @@ def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
 
 #### Optie A — Verbatim `block_template` string (str.format-achtig)
 
-```yaml
-implementer:
-  block_template: |-
-    [{sub_role}] End your response with this block:
-
-    ```text
-    verifier
-    Review the latest implementation work on this branch.
-    ```
-
-    Required sections:
-    {markers_list}
-```
-
 Python-logica (flag-day, geen fallback naar oud gedrag):
 
 ```python
 def build_crosschat_block_instruction(sub_role: str, spec: SubRoleSpec) -> str:
-    markers_list = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(spec["markers"]))
+    markers_list = "\n\n".join(f"## {m}" for m in spec["markers"])
     try:
         return spec["block_template"].replace("\r\n", "\n").format(
             sub_role=sub_role,
@@ -245,9 +231,9 @@ class _SubRoleSchema(BaseModel):
 | Edge-case | Risico | Mitigatie |
 |-----------|--------|-----------|
 | `block_template: ""` bij `requires_crosschat_block: true` | Hook produceert lege string | Loader valideert bij laden: `ConfigError` vóór runtime |
-| `block_template: null` in YAML | Pydantic krijgt `None` | Pydantic `str = ""` converteert `None` niet; gebruik `str` (niet `Optional[str]`) + YAML-linter |
+| `block_template: null` in YAML | Pydantic krijgt `None` | Gebruik `str` (niet `Optional[str]`) in `_SubRoleSchema` |
 | Windows `\r\n` in verbatim block | `\r\n` in rendered instructie | `.replace("\r\n", "\n")` vóór `.format()` |
-| YAML `\|` (trailing newline) vs `\|-` (geen trailing) | Extra newline aan einde van instructie | Conventie: altijd `\|-` voor `block_template` in YAML-docs |
+| YAML `\|` (trailing newline) vs `\|-` (geen trailing) | Extra newline aan einde van instructie | Conventie: altijd `\|-` voor `block_template` in YAML |
 | Onbekende `{placeholder}` in template | `KeyError` | `try/except KeyError → ConfigError` (hard falen, geen silent fallback) |
 | Accolade in literal tekst, bijv. `{scope}` bedoeld als Markdown | `KeyError` of ongewilde substitutie | Verdubbelen: `{{scope}}` in YAML template |
 | `markers` lijst leeg bij `requires_crosschat_block: true` | `{markers_list}` → lege string | Loader valideert: `markers` niet leeg wanneer `requires_crosschat_block: true` |
@@ -256,27 +242,107 @@ class _SubRoleSchema(BaseModel):
 
 ### G7 — Per-sub-rol differentiatie via `block_template`
 
-Met `block_template` als required verbatim string per sub-rol bepaalt het YAML-bestand volledig hoe elk type handover-blok eruitziet. Er zijn twee Python-side placeholders beschikbaar:
+#### Kritische UX-constraint: alles binnen de fence
+
+Het volledige cross-chat blok — trigger én ingevulde secties — moet binnen één code-fence staan.
+De gebruiker kopieert het blok integraal naar de volgende agent-chat.
+Secties die buiten de fence staan gaan bij copy-paste verloren.
+
+**Fout: secties buiten de fence (huidige situatie)**
+
+Instructie aan agent:
+
+```
+[implementer] End your response with this block:
+
+--BEGIN TEXT FENCE--
+verifier
+Review the latest implementation work on this branch.
+--EINDE TEXT FENCE--
+
+Required sections:
+  1. Scope
+  2. Files Changed
+```
+
+Agent-output:
+
+```
+--BEGIN TEXT FENCE--
+verifier
+Review the latest implementation work on this branch.
+--EINDE TEXT FENCE--
+
+**Scope**           <- BUITEN fence, gaat verloren bij copy-paste
+**Files Changed**   <- idem
+```
+
+**Correct: alles binnen de fence (nieuw ontwerp)**
+
+Instructie aan agent:
+
+```
+[implementer] End your response with this block:
+
+--BEGIN TEXT FENCE--
+verifier
+Review the latest implementation work on this branch.
+
+## Scope
+
+## Files Changed
+
+## Proof
+
+## Ready-for-QA
+--EINDE TEXT FENCE--
+```
+
+Agent-output:
+
+```
+--BEGIN TEXT FENCE--
+verifier
+Review the latest implementation work on this branch.
+
+## Scope
+YAML-first block_template support geïmplementeerd.
+
+## Files Changed
+- detect_sub_role.py
+- interfaces.py
+
+## Proof
+139 tests pass.
+
+## Ready-for-QA
+Ja.
+--EINDE TEXT FENCE--
+```
+
+Alles in één blok — volledig copy-pasteable naar `@qa verifier`.
+
+#### Placeholder-contract (exact twee, niet meer)
 
 | Placeholder | Gegenereerd door Python | Waarde |
 |-------------|------------------------|--------|
-| `{sub_role}` | `sub_role` parameter van de functie | Naam van de huidige sub-rol, bijv. `implementer` |
-| `{markers_list}` | `"\n".join(f"  {i+1}. {m}" for i, m in enumerate(spec["markers"]))` | Genummerde lijst van `markers` uit YAML |
+| `{sub_role}` | `sub_role` parameter van de functie | Naam van de actieve sub-rol, bijv. `implementer` |
+| `{markers_list}` | `"\n\n".join(f"## {m}" for m in spec["markers"])` | `## Scope`, `## Files Changed`, etc. — elk als H2-header met lege regel ertussen, zodat de agent ze als aparte secties behandelt |
 
-**Differentiatie-lagen per sub-rol:**
+`{sub_role}` is een convenience: je kunt de naam ook hardcoderen, maar de placeholder voorkomt drift bij hernoeming van een sub-rol.
 
-| Laag | Zoals geconfigureerd in YAML | Voorbeeld verschil |
-|------|-----------------------------|--------------------|
-| Heading-tekst | Vrij in `block_template` | `[implementer]` vs `[verifier]` |
-| Fence-inhoud regel 1 | Vrij in `block_template` | `verifier` vs `implementer` |
-| Fence-inhoud regel 2 | Vrij in `block_template` | "Review impl." vs "Resolve findings." |
-| Sections-label | Vrij in `block_template` | "Required sections:" vs "Review checklist:" |
-| Markers namen | Via `markers:` lijst in YAML (via `{markers_list}`) | Scope/Proof vs Findings/Verdict |
+Elk ander `{xyz}` in de template geeft een `ConfigError` bij rendering — hard falen, geen silent fallback.
 
-**Concreet voorbeeld — twee sub-rollen naast elkaar:**
+#### Developer-invloed samengevat
+
+- `markers:` lijst → bepaalt welke secties in het blok verschijnen (via `{markers_list}`)
+- `block_template` → bepaalt volledige opmaak, toon, heading, fence-inhoud en positie van de secties
+- Buiten die twee velden: geen Python-kennis nodig
+
+#### Concreet voorbeeld — twee sub-rollen naast elkaar
 
 ```yaml
-# imp/implementer → trigger naar @qa verifier
+# imp/implementer -> trigger naar @qa verifier
 implementer:
   requires_crosschat_block: true
   heading: "Implementation Hand-Over"
@@ -288,15 +354,14 @@ implementer:
   block_template: |-
     [{sub_role}] End your response with this block:
 
-    ```text
+    --BEGIN TEXT FENCE--
     verifier
     Review the latest implementation work on this branch.
-    ```
 
-    Required sections:
     {markers_list}
+    --EINDE TEXT FENCE--
 
-# qa/verifier → trigger terug naar @imp implementer
+# qa/verifier -> trigger terug naar @imp implementer
 verifier:
   requires_crosschat_block: true
   heading: "Verification Review"
@@ -307,50 +372,52 @@ verifier:
   block_template: |-
     [{sub_role}] End your response with this block:
 
-    ```text
+    --BEGIN TEXT FENCE--
     implementer
     QA findings must be resolved before this cycle is done.
-    ```
 
-    Required sections:
     {markers_list}
+    --EINDE TEXT FENCE--
 ```
 
-**Rendered output voor `imp/implementer` (sub_role="implementer"):**
+Rendered instructie voor `imp/implementer`:
+
 ```
 [implementer] End your response with this block:
 
-```text
+--BEGIN TEXT FENCE--
 verifier
 Review the latest implementation work on this branch.
+
+## Scope
+
+## Files Changed
+
+## Proof
+
+## Ready-for-QA
+--EINDE TEXT FENCE--
 ```
 
-Required sections:
-  1. Scope
-  2. Files Changed
-  3. Proof
-  4. Ready-for-QA
-```
-
-**Sub-rollen zonder blok (`requires_crosschat_block: false`):** `block_template: ""` — `build_crosschat_block_instruction` wordt nooit aangeroepen voor deze sub-rollen (gate checked door caller).
-
-**Conclusie:** De differentiatie is volledig YAML-gedreven. Python kent slechts twee placeholders (`{sub_role}`, `{markers_list}`) en bevat geen sub-rol-specifieke logica meer. Elke agent in het orkestratiesysteem kan zijn eigen handover-formaat krijgen zonder codeveranderingen.
+**Sub-rollen zonder blok (`requires_crosschat_block: false`):** `block_template: ""` — `build_crosschat_block_instruction` wordt nooit aangeroepen (gate in caller).
 
 ---
 
 ## Open Questions
 
 ~~1. Moet `block_template` ook de `markers`-namen embedden (drifting-risico), of introduceren we `{markers_list}` als auto-gegenereerde placeholder die Python aanvult?~~
-**Besloten:** A2 — `markers` apart houden, Python genereert `{markers_list}`.
+**Besloten:** A2 — `markers` apart houden, Python genereert `{markers_list}` als `## Header` regels binnen de fence.
 
 ~~2. Hoe strikt is de validatie: accepteren we onbekende `{xxx}` placeholders stilzwijgend, of loggen we een waarschuwing?~~
 **Besloten:** Hard falen — `KeyError → ConfigError` met log.
 
 ~~3. Is een `validate_template` / `health_check` op de YAML-laag wenselijk om `block_template` format-fouten vroeg te signaleren?~~
-**Besloten:** Loader valideert bij opstart: `requires_crosschat_block:true + leeg block_template → ConfigError`.
+**Besloten:** Loader valideert bij opstart: `requires_crosschat_block: true + leeg block_template → ConfigError`.
 
-**Resterende open vraag:**
-- Moet de list-format van `{markers_list}` (nummers, indent, scheidingstekens) configureerbaar zijn, of is de hardcoded Python-generatie `"  {i+1}. {m}"` voldoende?
+~~4. Moet de list-format van `{markers_list}` configureerbaar zijn?~~
+**Besloten:** Hardcoded als `## Header` regels binnen de fence. De agent-LLM maakt zich niets uit van opmaak; configuratie voegt geen waarde toe.
+
+**Geen open vragen meer. Research volledig afgerond.**
 
 ## Related Documentation
 - [src/copilot_orchestration/config/_default_requirements.yaml](src/copilot_orchestration/config/_default_requirements.yaml)
@@ -365,4 +432,5 @@ Required sections:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-24 | Agent | Initial research — 6 goals beantwoord, Optie A aanbevolen |
-| 2.0 | 2026-03-24 | Agent | Flag-day besloten; `block_prefix`/`guide_line`/`block_prefix_hint`/`marker_verb` verified dood; A2 + hard-fail besloten; G7 toegevoegd (differentiatie-ontwerp) |
+| 2.0 | 2026-03-24 | Agent | Flag-day besloten; dode velden verified; A2 + hard-fail besloten; G7 toegevoegd |
+| 3.0 | 2026-03-24 | Agent | G7 herschreven: fence-UX-constraint, `{markers_list}` als `## Header` binnen fence, placeholder-contract (exact 2), alle open vragen gesloten |
