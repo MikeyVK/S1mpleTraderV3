@@ -32,8 +32,11 @@ _LOGGER_NAME = "copilot_orchestration.hooks.notify_compaction"
 _SPEC_STUB = SubRoleSpec(
     requires_crosschat_block=True,
     heading="### Hand-Over",
-    block_prefix="@next: take over.",
-    guide_line="Use the guide.",
+    block_template=(
+        "[{sub_role}] End your response with this block:\n\n"
+        "```text\n@next: take over.\nUse the guide.\n```\n\n"
+        "Required sections:\n{markers_list}"
+    ),
     markers=["Task:", "Files:"],
 )
 

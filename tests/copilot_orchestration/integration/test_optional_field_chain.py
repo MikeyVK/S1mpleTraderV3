@@ -4,7 +4,7 @@
 Integration tests for optional_field_chain.
 
 Full chain: YAML on disk → SubRoleRequirementsLoader → get_requirement()
-→ build_stop_reason(). Verifies block_prefix and markers flow
+→ build_stop_reason(). Verifies block_template and markers flow
 through all three layers into the canonical crosschat block instruction.
 
 @layer: Tests (Integration)
@@ -22,7 +22,7 @@ from pathlib import Path
 from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
 from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason
 
-_YAML_WITH_OPTIONAL_FIELDS = """\
+_YAML_WITH_BLOCK_TEMPLATE = """\
 roles:
   imp:
     default_sub_role: implementer
@@ -30,10 +30,16 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "Impl Hand-Over"
-        block_prefix: "verifier "
-        guide_line: "Review the implementation."
-        block_prefix_hint: "Paste into @qa verifier chat."
-        marker_verb: "add a section called"
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          verifier
+          Review the implementation.
+          ```
+
+          Required sections:
+          {markers_list}
         markers:
           - "Scope"
           - "Files Changed"
@@ -43,12 +49,20 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "V"
-        block_prefix: "B"
-        guide_line: "G"
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          implementer
+          QA done.
+          ```
+
+          Required sections:
+          {markers_list}
         markers: []
 """
 
-_YAML_WITHOUT_OPTIONAL_FIELDS = """\
+_YAML_MINIMAL_WITH_BLOCK_TEMPLATE = """\
 roles:
   imp:
     default_sub_role: implementer
@@ -56,8 +70,16 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "Impl Hand-Over"
-        block_prefix: "verifier "
-        guide_line: "Review it."
+        block_template: |-
+          [{sub_role}] End:
+
+          ```text
+          verifier
+          Review it.
+          ```
+
+          Required sections:
+          {markers_list}
         markers:
           - "Scope"
   qa:
@@ -66,8 +88,16 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "V"
-        block_prefix: "B"
-        guide_line: "G"
+        block_template: |-
+          [{sub_role}] End:
+
+          ```text
+          implementer
+          QA done.
+          ```
+
+          Required sections:
+          {markers_list}
         markers: []
 """
 
@@ -75,27 +105,27 @@ roles:
 class TestOptionalFieldChain:
     """Integration test suite for optional_field_chain."""
 
-    def test_block_prefix_hint_appears_in_stop_reason(self, tmp_path: Path) -> None:
-        """block_prefix from YAML flows through get_requirement() into build_stop_reason() canonical output."""
+    def test_block_template_content_appears_in_stop_reason(self, tmp_path: Path) -> None:
+        """block_template from YAML flows through get_requirement() into build_stop_reason()."""
         yaml_path = tmp_path / "r.yaml"
-        yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
+        yaml_path.write_text(_YAML_WITH_BLOCK_TEMPLATE)
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
         result = build_stop_reason(spec, "implementer")
         assert "verifier" in result
 
-    def test_marker_verb_from_yaml_used_in_stop_reason(self, tmp_path: Path) -> None:
+    def test_markers_from_yaml_appear_in_stop_reason(self, tmp_path: Path) -> None:
         """Markers from YAML flow through get_requirement() into build_stop_reason() output."""
         yaml_path = tmp_path / "r.yaml"
-        yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
+        yaml_path.write_text(_YAML_WITH_BLOCK_TEMPLATE)
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
         result = build_stop_reason(spec, "implementer")
         assert "Scope" in result and "Files Changed" in result
 
-    def test_chain_works_without_optional_fields(self, tmp_path: Path) -> None:
-        """build_stop_reason() does not crash when optional fields are absent from YAML."""
+    def test_chain_works_with_minimal_block_template(self, tmp_path: Path) -> None:
+        """build_stop_reason() works correctly with a minimal block_template."""
         yaml_path = tmp_path / "r.yaml"
-        yaml_path.write_text(_YAML_WITHOUT_OPTIONAL_FIELDS)
+        yaml_path.write_text(_YAML_MINIMAL_WITH_BLOCK_TEMPLATE)
         spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
         result = build_stop_reason(spec, "implementer")
         assert "Scope" in result
-        assert result
+
