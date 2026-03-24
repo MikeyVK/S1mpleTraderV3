@@ -338,6 +338,52 @@ roles:
         # Assert
         assert loader.default_sub_role("imp") == "researcher"
 
+    def test_model_validator_raises_for_empty_block_template_when_crosschat_true(
+        self, tmp_path: Path
+    ) -> None:
+        """ValidationError when requires_crosschat_block=True and block_template is empty.
+
+        C_CROSSCHAT.2 RED: @model_validator not yet present in _SubRoleSchema.
+        """
+        yaml_content = """\
+roles:
+  imp:
+    default_sub_role: implementer
+    sub_roles:
+      implementer:
+        requires_crosschat_block: true
+        heading: "H"
+        block_prefix: "P"
+        guide_line: "G"
+        block_template: ""
+        markers: []
+  qa:
+    default_sub_role: verifier
+    sub_roles:
+      verifier:
+        requires_crosschat_block: false
+        heading: ""
+        block_prefix: ""
+        guide_line: ""
+        block_template: ""
+        markers: []
+"""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(yaml_content)
+        with pytest.raises(ValidationError):
+            SubRoleRequirementsLoader(yaml_path)
+
+    def test_block_prefix_hint_absent_from_schema(self) -> None:
+        """_SubRoleSchema no longer declares block_prefix_hint in model_fields.
+
+        C_CROSSCHAT.2 RED: field still exists until _SubRoleSchema is updated.
+        """
+        from copilot_orchestration.config.requirements_loader import (  # noqa: PLC0415
+            _SubRoleSchema,
+        )
+
+        assert "block_prefix_hint" not in _SubRoleSchema.model_fields
+
 
 _REQUIREMENTS_LOGGER_NAME = "copilot_orchestration.config.requirements_loader"
 
@@ -354,6 +400,46 @@ class TestSubRoleRequirementsLoaderLogging:
         with caplog.at_level(logging.DEBUG, logger=_REQUIREMENTS_LOGGER_NAME):
             SubRoleRequirementsLoader(yaml_path)
         assert any(r.levelno == logging.DEBUG for r in caplog.records)
+
+    def test_warning_logged_when_fence_first_word_not_valid_sub_role(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Loader logs WARNING when block_template fence first word is unknown sub-role.
+
+        C_CROSSCHAT.2 RED: WARNING-log logic not yet present in loader.
+        """
+        yaml_content = """\
+roles:
+  imp:
+    default_sub_role: implementer
+    sub_roles:
+      implementer:
+        requires_crosschat_block: true
+        heading: "H"
+        block_prefix: "P"
+        guide_line: "G"
+        block_template: |-
+          ```text
+          unknown_role
+          {markers_list}
+          ```
+        markers: ["Scope"]
+  qa:
+    default_sub_role: verifier
+    sub_roles:
+      verifier:
+        requires_crosschat_block: false
+        heading: ""
+        block_prefix: ""
+        guide_line: ""
+        block_template: ""
+        markers: []
+"""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(yaml_content)
+        with caplog.at_level(logging.WARNING, logger=_REQUIREMENTS_LOGGER_NAME):
+            SubRoleRequirementsLoader(yaml_path)
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
 
 
 _YAML_WITH_OPTIONAL_FIELDS = """\
