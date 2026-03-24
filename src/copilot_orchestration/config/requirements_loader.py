@@ -23,7 +23,7 @@ from typing import Any
 
 # Third-party
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 # Project modules
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
@@ -38,11 +38,16 @@ class ConfigError(Exception):
 class _SubRoleSchema(BaseModel):
     requires_crosschat_block: bool
     heading: str
-    block_prefix: str
-    guide_line: str
     markers: list[str]
-    block_prefix_hint: str = ""
-    marker_verb: str = ""
+    block_template: str = ""
+
+    @model_validator(mode="after")
+    def _validate_template_required(self) -> "_SubRoleSchema":
+        if self.requires_crosschat_block and not self.block_template.strip():
+            raise ValueError(
+                "block_template may not be empty when requires_crosschat_block=True"
+            )
+        return self
 
 
 class _RoleSchema(BaseModel):
@@ -67,6 +72,7 @@ class SubRoleRequirementsLoader:
         parsed = _RootSchema.model_validate(raw)
         self._roles = parsed.roles
         self._max_sub_role_name_len = parsed.max_sub_role_name_len
+        self._warn_invalid_fence_targets()
         logger.debug("loaded sub-role config from %s", requirements_path)
 
     @classmethod
@@ -111,13 +117,44 @@ class SubRoleRequirementsLoader:
         return SubRoleSpec(
             requires_crosschat_block=spec.requires_crosschat_block,
             heading=spec.heading,
-            block_prefix=spec.block_prefix,
-            guide_line=spec.guide_line,
             markers=list(spec.markers),
-            block_prefix_hint=spec.block_prefix_hint,
-            marker_verb=spec.marker_verb,
+            block_template=spec.block_template,
         )
 
     def max_sub_role_name_len(self) -> int:
         """Maximum character length for a valid sub-role name (from YAML config)."""
         return self._max_sub_role_name_len
+
+    def _warn_invalid_fence_targets(self) -> None:
+        """Best-effort: warn when a block_template fence first word is not a known sub-role."""
+        all_sub_roles: set[str] = set()
+        for role_data in self._roles.values():
+            all_sub_roles.update(role_data.sub_roles.keys())
+
+        for role_name, role_data in self._roles.items():
+            for sub_role_name, spec in role_data.sub_roles.items():
+                if not spec.requires_crosschat_block or not spec.block_template.strip():
+                    continue
+                first_word = self._fence_first_word(spec.block_template)
+                if first_word and first_word not in all_sub_roles:
+                    logger.warning(
+                        "block_template for (%r, %r): fence first word %r is not a known"
+                        " sub-role name",
+                        role_name,
+                        sub_role_name,
+                        first_word,
+                    )
+
+    @staticmethod
+    def _fence_first_word(block_template: str) -> str:
+        """Return first non-empty word inside the opening code fence, or '' if not found."""
+        inside_fence = False
+        for line in block_template.splitlines():
+            stripped = line.strip()
+            if not inside_fence:
+                if stripped.startswith("```"):
+                    inside_fence = True
+                continue
+            if stripped:
+                return stripped.split()[0]
+        return ""

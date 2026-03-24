@@ -36,8 +36,7 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: []
   qa:
     default_sub_role: verifier
@@ -45,8 +44,7 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nverifier\n{markers_list}\n```"
         markers: []
 """
 
@@ -65,14 +63,16 @@ roles:
       researcher:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: ["Problem Statement", "Findings", "Open Questions"]
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
-        block_prefix: "@qa verifier"
-        guide_line: "Review the latest implementation work."
+        block_template: |-
+          ```text
+          verifier
+          {markers_list}
+          ```
         markers: ["Scope", "Files Changed", "Proof", "Ready-for-QA"]
   qa:
     default_sub_role: verifier
@@ -80,8 +80,11 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "Verification Review"
-        block_prefix: "@imp implementer"
-        guide_line: "QA findings must be resolved."
+        block_template: |-
+          ```text
+          implementer
+          {markers_list}
+          ```
         markers: ["Findings", "Proof Verification", "Verdict"]
 """
         yaml_path = tmp_path / "requirements.yaml"
@@ -104,38 +107,32 @@ roles:
       researcher:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
       planner:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
       designer:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
       implementer:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nverifier\n{markers_list}\n```"
         markers: ["Scope"]
       validator:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nverifier\n{markers_list}\n```"
         markers: ["Results"]
       documenter:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
   qa:
     default_sub_role: verifier
@@ -143,8 +140,7 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: ["Findings"]
 """
         yaml_path = tmp_path / "requirements.yaml"
@@ -169,8 +165,7 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nverifier\n{markers_list}\n```"
         markers: ["Scope"]
   qa:
     default_sub_role: verifier
@@ -178,32 +173,27 @@ roles:
       plan-reviewer:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
       design-reviewer:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
       verifier:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: ["Findings"]
       validation-reviewer:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
       doc-reviewer:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
 """
         yaml_path = tmp_path / "requirements.yaml"
@@ -228,8 +218,11 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
-        block_prefix: "@qa verifier"
-        guide_line: "Review it."
+        block_template: |-
+          ```text
+          verifier
+          {markers_list}
+          ```
         markers: ["Scope", "Files Changed", "Proof", "Ready-for-QA"]
   qa:
     default_sub_role: verifier
@@ -237,8 +230,7 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "V"
-        block_prefix: "B"
-        guide_line: "G"
+        block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: []
 """
         yaml_path = tmp_path / "requirements.yaml"
@@ -318,8 +310,7 @@ roles:
       researcher:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
+        block_template: ""
         markers: []
   qa:
     default_sub_role: verifier
@@ -327,8 +318,7 @@ roles:
       verifier:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
+        block_template: "```text\nresearcher\n{markers_list}\n```"
         markers: []
 """)
 
@@ -353,8 +343,6 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
         block_template: ""
         markers: []
   qa:
@@ -363,8 +351,6 @@ roles:
       verifier:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
         block_template: ""
         markers: []
 """
@@ -383,6 +369,34 @@ roles:
         )
 
         assert "block_prefix_hint" not in _SubRoleSchema.model_fields
+
+    def test_model_validator_passes_when_crosschat_false_and_template_empty(
+        self, tmp_path: Path
+    ) -> None:
+        """No ValidationError when requires_crosschat_block=False and block_template is empty."""
+        yaml_content = """\
+roles:
+  imp:
+    default_sub_role: researcher
+    sub_roles:
+      researcher:
+        requires_crosschat_block: false
+        heading: ""
+        block_template: ""
+        markers: []
+  qa:
+    default_sub_role: verifier
+    sub_roles:
+      verifier:
+        requires_crosschat_block: false
+        heading: ""
+        block_template: ""
+        markers: []
+"""
+        yaml_path = tmp_path / "r.yaml"
+        yaml_path.write_text(yaml_content)
+        loader = SubRoleRequirementsLoader(yaml_path)
+        assert loader is not None
 
 
 _REQUIREMENTS_LOGGER_NAME = "copilot_orchestration.config.requirements_loader"
@@ -416,8 +430,6 @@ roles:
       implementer:
         requires_crosschat_block: true
         heading: "H"
-        block_prefix: "P"
-        guide_line: "G"
         block_template: |-
           ```text
           unknown_role
@@ -430,8 +442,6 @@ roles:
       verifier:
         requires_crosschat_block: false
         heading: ""
-        block_prefix: ""
-        guide_line: ""
         block_template: ""
         markers: []
 """
@@ -441,55 +451,39 @@ roles:
             SubRoleRequirementsLoader(yaml_path)
         assert any(r.levelno == logging.WARNING for r in caplog.records)
 
-
-_YAML_WITH_OPTIONAL_FIELDS = """\
+    def test_no_warning_when_fence_first_word_is_valid_sub_role(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Loader logs no WARNING when block_template fence first word is a known sub-role."""
+        yaml_content = """\
 roles:
   imp:
     default_sub_role: implementer
     sub_roles:
       implementer:
         requires_crosschat_block: true
-        heading: "Impl Hand-Over"
-        block_prefix: "verifier "
-        guide_line: "Review the implementation."
-        block_prefix_hint: "Paste into @qa verifier chat."
-        marker_verb: "include a section titled"
-        markers:
-          - "Scope"
-          - "Files Changed"
+        heading: "H"
+        block_template: |-
+          ```text
+          verifier
+          {markers_list}
+          ```
+        markers: ["Scope"]
   qa:
     default_sub_role: verifier
     sub_roles:
       verifier:
         requires_crosschat_block: true
-        heading: "V"
-        block_prefix: "B"
-        guide_line: "G"
-        markers: []
+        heading: "H"
+        block_template: |-
+          ```text
+          implementer
+          {markers_list}
+          ```
+        markers: ["Findings"]
 """
-
-
-class TestOptionalFields:
-    """get_requirement() must propagate block_prefix_hint and marker_verb from YAML."""
-
-    def test_block_prefix_hint_present_in_spec(self, tmp_path: Path) -> None:
-        """block_prefix_hint from YAML is present in get_requirement() result."""
         yaml_path = tmp_path / "r.yaml"
-        yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
-        spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
-        assert spec.get("block_prefix_hint") == "Paste into @qa verifier chat."
-
-    def test_marker_verb_present_in_spec(self, tmp_path: Path) -> None:
-        """marker_verb from YAML is present in get_requirement() result."""
-        yaml_path = tmp_path / "r.yaml"
-        yaml_path.write_text(_YAML_WITH_OPTIONAL_FIELDS)
-        spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
-        assert spec.get("marker_verb") == "include a section titled"
-
-    def test_absent_optional_fields_default_to_empty_string(self, tmp_path: Path) -> None:
-        """When block_prefix_hint and marker_verb are absent from YAML, spec returns ''."""
-        yaml_path = tmp_path / "r.yaml"
-        yaml_path.write_text(_MINIMAL_YAML)
-        spec = SubRoleRequirementsLoader(yaml_path).get_requirement("imp", "implementer")
-        assert spec.get("block_prefix_hint", "") == ""
-        assert spec.get("marker_verb", "") == ""
+        yaml_path.write_text(yaml_content)
+        with caplog.at_level(logging.WARNING, logger=_REQUIREMENTS_LOGGER_NAME):
+            SubRoleRequirementsLoader(yaml_path)
+        assert not any(r.levelno == logging.WARNING for r in caplog.records)
