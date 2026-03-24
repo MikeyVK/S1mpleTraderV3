@@ -21,6 +21,8 @@ project_scope:
   include_globs:
     - "mcp_server/**/*.py"
     - "tests/mcp_server/**/*.py"
+    - "src/copilot_orchestration/**/*.py"
+    - "tests/copilot_orchestration/**/*.py"
 
 gates:
   gate0_ruff_format:

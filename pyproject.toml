@@ -119,8 +119,13 @@ ignore = [
     "ANN102", # IDE only - cls annotations noisy
     "ANN401", # IDE only - allow Any for **kwargs patterns
     "ARG002", # IDE only - allow unused method args for interface compliance
+              # Gate1 in quality.yaml runs --isolated so ignores this file;
+              # use # noqa: ARG002 inline for suppressions that must survive gate runs.
 ]
 
+# NOTE: quality gates run ruff with --isolated (ignores this file).
+# These per-file-ignores apply to IDE/VS Code linting only.
+# For gate-level suppressions, use inline # noqa: <code> comments.
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "ANN",  # No type annotations required in tests
