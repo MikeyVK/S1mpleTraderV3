@@ -1,4 +1,5 @@
 {
+<<<<<<< Updated upstream
   "timestamp": "2026-03-21T19:06:03.434466+00:00",
   "chat_id": "d98b7ffc-968a-4393-a1f3-cc6aa0f97d9d",
   "active_role": "imp",
@@ -18,6 +19,14 @@
     "tools/managers/core/scaffolding/scaffolders/validation/server.py"
   ],
   "pending_handover_summary": "### Validation Hand-Over @qa validation-reviewer Review de validatiefase van issue #263 (branch: feature/263-vscode-implementation-orchestration). ### Test Surface Deliverable 1 \u2014 Subprocess smoke tests (marker: slow, hermetic via tmp_path) tests/copilot_orchestration/integration/conftest.py \u2014 ho...",
+=======
+  "timestamp": "2026-03-18T17:39:16.867354+00:00",
+  "chat_id": "d98b7ffc-968a-4393-a1f3-cc6aa0f97d9d",
+  "active_role": "imp",
+  "last_user_goal": "2026-03-18T17:39:15.676Z",
+  "files_in_scope": [],
+  "pending_handover_summary": "",
+>>>>>>> Stashed changes
   "handover_prompt_block": "",
   "snapshot_source": "pre_compact_agent"
 }

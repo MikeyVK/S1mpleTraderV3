@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-24T18:02:26.732299+00:00",
+  "timestamp": "2026-03-24T22:16:53.446480+00:00",
   "chat_id": "4b9c1462-0716-44d3-9462-9f9f230dd1bc",
   "active_role": "qa",
   "last_user_goal": "4b9c1462-0716-44d3-9462-9f9f230dd1bc",
@@ -17,7 +17,7 @@
     "docs/development/issue263/STOP_HOOK_REENTRANCY_FINDINGS_20260324.md",
     "docs/development/issue263/design_v2_sub_role_orchestration.md"
   ],
-  "pending_handover_summary": "_SPEC_FOR_CANONICAL = SubRoleSpec( requires_crosschat_block=True, heading=\"### Hand-Over\", block_template=( \"[{sub_role}] End your response with this block:\\n\\n\" \"```text\\nverifier\\nReview the latest implementation work on this branch.\\n```\\n\\n\" \"Required sections:\\n{markers_list}\" ), markers=[\"S...",
+  "pending_handover_summary": "def test_pre_markers_portion_under_200_chars_stub(self) -> None: \"\"\"Portion before the first H2 marker is under 200 chars for stub spec. Mirrors the \u00a71.2 parametrised assertion: enumerate via loader.valid_sub_roles(role). This test uses a fixed stub spec; integration coverage uses the real loader...",
   "handover_prompt_block": "",
   "snapshot_source": "pre_compact_agent"
 }

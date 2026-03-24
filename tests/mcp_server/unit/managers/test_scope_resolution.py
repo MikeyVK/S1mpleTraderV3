@@ -283,7 +283,7 @@ class TestScopeResolutionProject:
         assert result == []
 
     def test_project_scope_includes_copilot_orchestration_paths(self, tmp_path: Path) -> None:
-        """quality.yaml project_scope globs must cover src/copilot_orchestration and tests/copilot_orchestration.
+        """project_scope globs must cover src/copilot_orchestration and tests/copilot_orchestration.
 
         Regression test for F5: without these globs, scope=project silently skips the entire
         copilot_orchestration package after a merge onto main (when no files are 'changed').
@@ -318,7 +318,7 @@ class TestScopeResolutionProject:
         )
 
     def test_quality_yaml_project_scope_covers_copilot_orchestration(self) -> None:
-        """The committed quality.yaml must declare globs for src/copilot_orchestration and tests/copilot_orchestration.
+        """quality.yaml must declare globs for copilot_orchestration (src/ and tests/).
 
         Regression contract for F5: verifies that scope=project will not silently skip the
         copilot_orchestration package when no files are changed (e.g. after merge onto main).
@@ -329,11 +329,13 @@ class TestScopeResolutionProject:
         config = ConfigLoader(workspace_root).load_quality_config()
 
         globs = config.project_scope.include_globs if config.project_scope else []
+        src_glob = "src/copilot_orchestration/**/*.py"
         assert any("src/copilot_orchestration" in g for g in globs), (
-            "quality.yaml project_scope.include_globs must contain 'src/copilot_orchestration/**/*.py'. "
+            f"quality.yaml project_scope.include_globs must contain {src_glob!r}. "
             "Without it, scope=project skips the entire copilot_orchestration package."
         )
+        tests_glob = "tests/copilot_orchestration/**/*.py"
         assert any("tests/copilot_orchestration" in g for g in globs), (
-            "quality.yaml project_scope.include_globs must contain 'tests/copilot_orchestration/**/*.py'. "
+            f"quality.yaml project_scope.include_globs must contain {tests_glob!r}. "
             "Without it, scope=project skips copilot_orchestration tests."
         )
