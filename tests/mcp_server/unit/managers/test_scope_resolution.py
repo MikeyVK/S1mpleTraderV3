@@ -281,3 +281,59 @@ class TestScopeResolutionProject:
         result = manager._resolve_scope("project")
 
         assert result == []
+
+    def test_project_scope_includes_copilot_orchestration_paths(self, tmp_path: Path) -> None:
+        """quality.yaml project_scope globs must cover src/copilot_orchestration and tests/copilot_orchestration.
+
+        Regression test for F5: without these globs, scope=project silently skips the entire
+        copilot_orchestration package after a merge onto main (when no files are 'changed').
+        """
+        _make_workspace(
+            tmp_path,
+            [
+                "mcp_server/tool.py",
+                "src/copilot_orchestration/hooks/detect_sub_role.py",
+                "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py",
+            ],
+        )
+
+        cfg = _project_scope_config(
+            include_globs=[
+                "mcp_server/**/*.py",
+                "tests/mcp_server/**/*.py",
+                "src/copilot_orchestration/**/*.py",
+                "tests/copilot_orchestration/**/*.py",
+            ]
+        )
+        manager = make_qa_manager(tmp_path, quality_config=cfg)
+
+        result = manager._resolve_scope("project")
+
+        posix_result = [p.replace("\\", "/") for p in result]
+        assert any("src/copilot_orchestration" in p for p in posix_result), (
+            "src/copilot_orchestration/** not covered by project_scope globs"
+        )
+        assert any("tests/copilot_orchestration" in p for p in posix_result), (
+            "tests/copilot_orchestration/** not covered by project_scope globs"
+        )
+
+    def test_quality_yaml_project_scope_covers_copilot_orchestration(self) -> None:
+        """The committed quality.yaml must declare globs for src/copilot_orchestration and tests/copilot_orchestration.
+
+        Regression contract for F5: verifies that scope=project will not silently skip the
+        copilot_orchestration package when no files are changed (e.g. after merge onto main).
+        """
+        from mcp_server.config.loader import ConfigLoader  # noqa: PLC0415
+
+        workspace_root = Path(__file__).parents[4]  # c:/temp/st3
+        config = ConfigLoader(workspace_root).load_quality_config()
+
+        globs = config.project_scope.include_globs if config.project_scope else []
+        assert any("src/copilot_orchestration" in g for g in globs), (
+            "quality.yaml project_scope.include_globs must contain 'src/copilot_orchestration/**/*.py'. "
+            "Without it, scope=project skips the entire copilot_orchestration package."
+        )
+        assert any("tests/copilot_orchestration" in g for g in globs), (
+            "quality.yaml project_scope.include_globs must contain 'tests/copilot_orchestration/**/*.py'. "
+            "Without it, scope=project skips copilot_orchestration tests."
+        )
