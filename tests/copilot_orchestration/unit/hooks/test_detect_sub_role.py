@@ -230,18 +230,15 @@ class TestBuildUpsOutput:
             )
         ],
     )
-    def test_canonical_instruction_frame_under_220_chars(self, role: str, sub_role: str) -> None:
-        """Pre-markers frame is under 220 chars for every sub-role in the real YAML config.
-
-        Blockquote format adds ~27 chars overhead vs code-fence; limit raised to 220.
-        """
+    def test_canonical_instruction_frame_under_200_chars(self, role: str, sub_role: str) -> None:
+        """Pre-markers frame is under 200 chars for every sub-role in the real YAML config."""
         loader = SubRoleRequirementsLoader.from_copilot_dir(find_workspace_root(Path(__file__)))
         if not loader.requires_crosschat_block(role, sub_role):
             pytest.skip("sub-role does not require crosschat block")
         spec = loader.get_requirement(role, sub_role)
         result = build_crosschat_block_instruction(sub_role, spec)
         frame = result.split("Required sections:")[0]
-        assert len(frame) < 220, f"[{role}/{sub_role}] frame is {len(frame)} chars (limit: 220)"
+        assert len(frame) < 200, f"[{role}/{sub_role}] frame is {len(frame)} chars (limit: 200)"
 
     def test_non_enforced_sub_role_returns_empty_dict(self) -> None:
         """Non-enforced sub-role produces {} (no injection)."""
@@ -296,10 +293,10 @@ class TestBuildCrosschatBlockInstruction:
         for marker in _SPEC_FOR_CANONICAL["markers"]:
             assert marker in result, f"Marker {marker!r} missing from canonical instruction"
 
-    def test_contains_blockquote_header(self) -> None:
-        """Output contains a blockquote cross-chat block header."""
+    def test_contains_code_fence(self) -> None:
+        """Output contains a markdown code fence (```text)."""
         result = build_crosschat_block_instruction("implementer", _SPEC_FOR_CANONICAL)
-        assert "> **✂ cross-chat block**" in result
+        assert "```text" in result
 
     def test_block_prefix_stripped(self) -> None:
         """Trailing whitespace on block_prefix is stripped."""

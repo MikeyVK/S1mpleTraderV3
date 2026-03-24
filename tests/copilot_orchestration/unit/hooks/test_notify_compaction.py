@@ -65,9 +65,7 @@ class TestBuildCompactionOutput:
         """Returns systemMessage dict when state contains a sub_role."""
         result = build_compaction_output({"sub_role": "implementer"}, _NonEnforcingLoader(), "imp")
         assert "systemMessage" in result
-        msg = result["systemMessage"]  # type: ignore[index]
-        assert isinstance(msg, str)
-        assert "implementer" in msg
+        assert "implementer" in result["systemMessage"]
 
     def test_emits_empty_when_no_sub_role_key(self) -> None:
         """Returns empty dict when state has no sub_role key."""
@@ -81,37 +79,44 @@ class TestBuildCompactionOutput:
 
     def test_non_enforced_sub_role_returns_base_message_only(self) -> None:
         """Non-enforced sub-role returns base compaction message without block instruction."""
-        result = build_compaction_output({"sub_role": "researcher"}, _NonEnforcingLoader(), "imp")
+        result = build_compaction_output(
+            {"sub_role": "researcher"}, _NonEnforcingLoader(), "imp"
+        )
         msg = result["systemMessage"]  # type: ignore[index]
-        assert isinstance(msg, str)
         assert "researcher" in msg
-        assert "> **✂ cross-chat block**" not in msg
+        assert "```text" not in msg
 
     def test_enforced_sub_role_injects_canonical_instruction(self) -> None:
         """Enforced sub-role appends the canonical crosschat block instruction."""
-        result = build_compaction_output({"sub_role": "implementer"}, _EnforcingLoader(), "imp")
+        result = build_compaction_output(
+            {"sub_role": "implementer"}, _EnforcingLoader(), "imp"
+        )
         msg = result["systemMessage"]  # type: ignore[index]
-        assert isinstance(msg, str)
         assert "implementer" in msg
-        assert "> **✂ cross-chat block**" in msg
+        assert "```text" in msg
         assert "Task:" in msg
         assert "Files:" in msg
 
     def test_enforced_sub_role_uses_double_newline_separator(self) -> None:
         """Canonical instruction is separated from base by double newline (not space)."""
-        result = build_compaction_output({"sub_role": "implementer"}, _EnforcingLoader(), "imp")
+        result = build_compaction_output(
+            {"sub_role": "implementer"}, _EnforcingLoader(), "imp"
+        )
         msg = result["systemMessage"]  # type: ignore[index]
-        assert isinstance(msg, str)
         # The base ends with "." and the instruction starts with "[implementer]"
         assert "\n\n[implementer]" in msg
 
-    def test_logs_info_when_sub_role_present(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_logs_info_when_sub_role_present(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """build_compaction_output logs at INFO when sub_role is found."""
         with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
             build_compaction_output({"sub_role": "implementer"}, _EnforcingLoader(), "imp")
         assert any(r.levelno == logging.INFO for r in caplog.records)
 
-    def test_logs_debug_when_no_sub_role(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_logs_debug_when_no_sub_role(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """build_compaction_output logs at DEBUG when no sub_role in state."""
         with caplog.at_level(logging.DEBUG, logger=_LOGGER_NAME):
             build_compaction_output({}, _NonEnforcingLoader(), "imp")
