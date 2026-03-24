@@ -20,7 +20,7 @@ JsonObject = dict[str, object]
 logger = logging.getLogger(__name__)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     role = normalize_role(sys.argv[1] if len(sys.argv) > 1 else "")
     event = read_stdin_json()
     workspace_root = find_workspace_root(Path(__file__))
@@ -40,7 +40,11 @@ def evaluate_stop_hook(
     loader: ISubRoleRequirementsLoader,
     state_path: Path,
 ) -> JsonObject:
-    logger.debug("stop hook: event keys=%s raw=%s", list(event.keys()), json.dumps(event, ensure_ascii=True)[:500])
+    logger.debug(
+        "stop hook: event keys=%s raw=%s",
+        list(event.keys()),
+        json.dumps(event, ensure_ascii=True)[:500],
+    )
     logger.debug("stop hook: stop_hook_active=%r", is_stop_retry_active(event))
     if is_stop_retry_active(event):
         return {}
@@ -88,7 +92,7 @@ def normalize_role(value: str) -> str:
 def is_stop_retry_active(event: JsonObject) -> bool:
     # VS Code sends stopHookActive (camelCase) — confirmed by VS Code source docs.
     # Clean-break decision: read camelCase only (see design §3.5).
-    value = event.get("stopHookActive")   # ← was: "stop_hook_active"
+    value = event.get("stopHookActive")  # ← was: "stop_hook_active"
     if isinstance(value, bool):
         return value
     return False
@@ -102,7 +106,10 @@ def read_stdin_json() -> JsonObject:
     if not raw_input.strip():
         return {}
     try:
-        return json.loads(raw_input)
+        result = json.loads(raw_input)
+        if not isinstance(result, dict):
+            return {}
+        return result  # type: ignore[return-value]  # json boundary: dict confirmed above
     except json.JSONDecodeError:
         return {}
 
@@ -111,5 +118,5 @@ def build_stop_reason(spec: SubRoleSpec, sub_role: str) -> str:
     return "Write NOW.\n\n" + build_crosschat_block_instruction(sub_role, spec)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

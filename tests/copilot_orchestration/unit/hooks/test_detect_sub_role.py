@@ -19,13 +19,16 @@ difflib typo correction, default fallback, oversized input handling.
 
 # Standard library
 import logging
+from pathlib import Path
 
 # Third-party
 import pytest
 
 # Project modules
+from copilot_orchestration.config.requirements_loader import SubRoleRequirementsLoader
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
 from copilot_orchestration.hooks.detect_sub_role import _match_sub_role, detect_sub_role
+from copilot_orchestration.utils._paths import find_workspace_root
 
 
 class _StubLoader:
@@ -215,12 +218,29 @@ class TestBuildUpsOutput:
         assert isinstance(msg, str)
         assert msg.strip()
 
-    def test_enforced_sub_role_system_message_max_200_chars(self) -> None:
-        """systemMessage must not exceed 200 characters (context bloat guard)."""
-        loader = _EnforcingStubLoader()
-        result = build_ups_output("implementer", loader, "imp")
-        msg = result["hookSpecificOutput"]["systemMessage"]  # type: ignore[index]
-        assert len(msg) <= 200, f"systemMessage is {len(msg)} chars (limit: 200)"
+    @pytest.mark.parametrize(
+        "role,sub_role",
+        [
+            (role, sub_role)
+            for role in ("imp", "qa")
+            for sub_role in sorted(
+                SubRoleRequirementsLoader.from_copilot_dir(
+                    find_workspace_root(Path(__file__))
+                ).valid_sub_roles(role)
+            )
+        ],
+    )
+    def test_canonical_instruction_frame_under_200_chars(
+        self, role: str, sub_role: str
+    ) -> None:
+        """Pre-markers frame is under 200 chars for every sub-role in the real YAML config."""
+        loader = SubRoleRequirementsLoader.from_copilot_dir(find_workspace_root(Path(__file__)))
+        if not loader.requires_crosschat_block(role, sub_role):
+            pytest.skip("sub-role does not require crosschat block")
+        spec = loader.get_requirement(role, sub_role)
+        result = build_crosschat_block_instruction(sub_role, spec)
+        frame = result.split("Required sections:")[0]
+        assert len(frame) < 200, f"[{role}/{sub_role}] frame is {len(frame)} chars (limit: 200)"
 
     def test_non_enforced_sub_role_returns_empty_dict(self) -> None:
         """Non-enforced sub-role produces {} (no injection)."""

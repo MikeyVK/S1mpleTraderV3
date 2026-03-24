@@ -16,6 +16,7 @@ results in pass-through, ConfigError is caught and treated as pass-through.
 """
 
 # Standard library
+import io
 import json
 import logging
 from pathlib import Path
@@ -26,7 +27,12 @@ import pytest
 # Project modules
 from copilot_orchestration.config.requirements_loader import ConfigError
 from copilot_orchestration.contracts.interfaces import SubRoleSpec
-from copilot_orchestration.hooks.stop_handover_guard import build_stop_reason, evaluate_stop_hook
+from copilot_orchestration.hooks.stop_handover_guard import (
+    build_stop_reason,
+    evaluate_stop_hook,
+    normalize_role,
+    read_stdin_json,
+)
 
 _SESSION_ID = "test-session-abc"
 
@@ -350,3 +356,37 @@ class TestBuildStopReason:
         assert len(result) < 600, (
             f"build_stop_reason is {len(result)} chars; must be < 600 for assertiveness"
         )
+
+
+class TestNormalizeRole:
+    def test_strips_whitespace_and_lowercases(self) -> None:
+        assert normalize_role("  IMP  ") == "imp"
+
+    def test_empty_string_returns_empty(self) -> None:
+        assert normalize_role("") == ""
+
+
+class TestReadStdinJson:
+    def test_empty_input_returns_empty_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("sys.stdin", io.StringIO(""))
+        assert read_stdin_json() == {}
+
+    def test_invalid_json_returns_empty_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("sys.stdin", io.StringIO("{not valid"))
+        assert read_stdin_json() == {}
+
+    def test_valid_json_returns_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("sys.stdin", io.StringIO('{"key": "value"}'))
+        assert read_stdin_json() == {"key": "value"}
+
+    def test_non_dict_json_returns_empty_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("sys.stdin", io.StringIO("[1, 2, 3]"))
+        assert read_stdin_json() == {}
+
+    def test_oserror_on_stdin_returns_empty_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        class _ErrorStdin:
+            def read(self) -> str:
+                raise OSError("stdin unavailable")
+
+        monkeypatch.setattr("sys.stdin", _ErrorStdin())
+        assert read_stdin_json() == {}

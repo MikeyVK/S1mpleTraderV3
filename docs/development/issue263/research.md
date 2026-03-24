@@ -107,6 +107,62 @@ The quality of the implementation handover and QA verification contract is more 
 - scope lock
 - truthfulness rules
 - explicit proof expectations
+
+## 10. Current Implementation Audit — 2026-03-18
+
+### 10.1. Preliminary Findings Captured Before Refactor Planning
+
+The current VS Code orchestration layer must be treated as a separate sub-project rather than as a loose extension of `mcp_server`.
+
+Captured findings from the first audit pass:
+
+1. **Missing project boundary**
+   - Runtime code lives in `scripts/copilot_hooks/`, agent wrappers live in `.github/agents/`, prompt contracts live in `.github/prompts/`, but tests were placed under `tests/mcp_server/unit/utils/`.
+   - This mixes the orchestration layer with MCP server tests even though the orchestration layer is editor-facing infrastructure, not `mcp_server` domain logic.
+
+2. **Test placement is structurally wrong**
+   - Existing tests such as `tests/mcp_server/unit/utils/test_pre_compact_agent.py` and `tests/mcp_server/unit/utils/test_stop_handover_guard.py` should not live under `tests/mcp_server/`.
+   - The next structural cleanup should move orchestration tests into a dedicated subtree under `tests/`.
+   - Working project name candidate: `copilot_orchestration`.
+
+3. **Hook code duplicates shared infrastructure**
+   - `session_start.py`, `session_start_imp.py`, and `session_start_qa.py` each reimplement git status collection and changed-file parsing.
+   - This violates DRY/SSOT and increases refactor risk for v2.
+
+4. **`pre_compact_agent.py` has too many responsibilities**
+   - It performs transcript loading, parsing, role detection, goal extraction, file extraction, handover extraction, prompt-block extraction, and snapshot persistence in one script.
+   - This violates SRP and makes the script the main technical debt hotspot.
+
+5. **`stop_handover_guard.py` is hardcoded to one output contract per role**
+   - The enforcement model is role-only rather than sub-role-aware.
+   - This is incompatible with the desired v2 design where enforcement must vary by sub-role.
+
+6. **Role doctrine and prompt operations are still entangled**
+   - `imp_agent.md` and `qa_agent.md` still contain workflow-coupled doctrine and embedded handover/output templates.
+   - The v2 target requires a sharper split between identity/doctrine, operational prompts, and structural enforcement.
+
+7. **Prompt contracts are operationally important but largely untested**
+   - Current prompts define hard response shapes, but there is no dedicated prompt contract test coverage.
+   - SessionStart hooks also lack direct test coverage.
+
+8. **The current tests rely on path-based script loading instead of a stable module boundary**
+   - Tests import scripts via `spec_from_file_location(...)` and hardcoded path traversal.
+   - This indicates the orchestration layer does not yet expose a proper internal module seam.
+
+### 10.2. Immediate Research Consequence
+
+The v2 design must not be treated as direct implementation input.
+
+It is first an input to a structural cleanup and architecture audit.
+The next research step is to evaluate the current implementation explicitly against `docs/coding_standards/ARCHITECTURE_PRINCIPLES.md`, especially:
+- SRP
+- DRY/SSOT
+- Config-First
+- Fail-Fast
+- Explicit over Implicit
+- No Import-Time Side Effects
+
+Only after that audit should planning begin for the refactor.
 - read-only QA boundaries
 
 Those principles should survive intact in a reduced design.
@@ -600,3 +656,160 @@ The following ideas are intentionally deferred and not part of the compact desig
 - repo-specific orchestration packages
 
 If those are ever revisited, they should return as a new design iteration after the lightweight implementation-only model has proven itself useful.
+
+---
+
+## 11. Second-Pass Architecture Audit — 2026-03-18
+
+This pass evaluates the current orchestration implementation directly against the binding rules in `docs/coding_standards/ARCHITECTURE_PRINCIPLES.md`.
+
+### 11.1. Config-First Violations
+
+The current orchestration runtime is still largely code-first instead of config-first.
+
+1. `scripts/copilot_hooks/stop_handover_guard.py` hardcodes the role matrix in `ROLE_REQUIREMENTS`.
+   - Required headings, block prefixes, guide lines, and markers are encoded directly in Python.
+   - Under the architecture contract this is configuration knowledge, not executable business logic.
+   - Extending the system with sub-roles currently requires editing production code, which is both a Config-First and OCP violation.
+
+2. `scripts/copilot_hooks/pre_compact_agent.py` hardcodes detection heuristics.
+   - Role detection depends on literal checks such as `@imp`, `@qa`, and path fragments like `.github/agents/imp.agent.md`.
+   - File extraction depends on one large regex embedded in Python.
+   - Handover detection depends on hardcoded textual markers such as `ready-for-qa`, `scope`, `files`, `proof`, and `open blockers`.
+   - These are not stable domain rules yet, but they are already acting as source-of-truth policy.
+
+3. `scripts/copilot_hooks/session_start_imp.py` and `scripts/copilot_hooks/session_start_qa.py` hardcode role-specific recommendations.
+   - Command recommendations such as `/start-implementation`, `/prepare-handover`, and `/request-qa-review` are embedded as strings in executable code.
+   - That makes behavior changes depend on code edits rather than on a declarative orchestration profile.
+
+4. `.github/agents/imp.agent.md`, `.github/agents/qa.agent.md`, `imp_agent.md`, and `qa_agent.md` still spread orchestration policy across wrappers, doctrine, and prompts.
+   - This breaks single-source-of-truth for output contracts and recovery behavior.
+   - The same operational facts are repeated in hook code, prompts, and role guides.
+
+### 11.2. Fail-Fast Violations
+
+The current layer fails soft in places where it should fail explicitly.
+
+1. `session_start.py`, `session_start_imp.py`, and `session_start_qa.py` silently swallow git failures.
+   - `run_git_command(...)` returns an empty string on both `OSError` and non-zero exit codes.
+   - The caller then quietly degrades to "Changed files: none" or equivalent context.
+   - That hides a broken environment instead of surfacing an actionable startup error.
+
+2. `pre_compact_agent.py` silently downgrades malformed or unreadable transcript input to `{}`.
+   - `read_stdin_json`, `read_transcript`, and `parse_transcript_content` all normalize parse failures into empty payloads.
+   - The hook then proceeds with fallback behavior and can emit a plausible-looking snapshot even when the source transcript was unreadable.
+   - This violates the requirement that structural input errors be detected near the source.
+
+3. Snapshot freshness and relevance are heuristic rather than contractual.
+   - `session_start_imp.py` and `session_start_qa.py` decide usability by timestamp plus changed-file overlap.
+   - When the snapshot is stale, missing, malformed, or semantically incompatible, the system merely continues with softer guidance.
+   - For a reusable orchestration package, invalid persisted state should be validated explicitly and rejected with a precise error contract.
+
+### 11.3. Explicit-over-Implicit Violations
+
+The current design depends on implicit conventions that are only visible by reading multiple scripts together.
+
+1. The shared schema of `.copilot/session-state.json` is implicit.
+   - There is no dedicated typed snapshot model that defines required fields, optional fields, or compatibility rules.
+   - `pre_compact_agent.py` writes the snapshot, while the two SessionStart hooks each infer meaning from loosely-typed dictionary access.
+
+2. Active role inference is implicit transcript archaeology.
+   - `pre_compact_agent.py` derives the active role by scanning transcript text for mentions of `@imp`, `@qa`, or wrapper file paths.
+   - That is a fragile convention, not an explicit contract.
+
+3. The stop-hook contract is implicit prose parsing.
+   - `stop_handover_guard.py` validates final responses by searching for headings, one fenced block, and specific markers inside assistant prose.
+   - This is workable as a temporary guard, but not as the core boundary of a portable project unless the contract is formalized and versioned.
+
+### 11.4. SRP and DRY/SSOT Violations
+
+The current implementation still concentrates too many responsibilities into a few files and repeats infrastructure logic.
+
+1. `pre_compact_agent.py` is still the main SRP hotspot.
+   - It reads stdin, reads transcripts, parses JSON/JSONL, traverses message trees, infers roles, extracts goals, extracts files, extracts handovers, extracts prompt blocks, truncates payloads, and persists two snapshot files.
+   - That is not one reason to change.
+
+2. `session_start.py`, `session_start_imp.py`, and `session_start_qa.py` each own their own git status plumbing and changed-file parsing.
+   - This duplicates infrastructure logic and makes later behavioral changes error-prone.
+
+3. The output-contract knowledge is duplicated across at least four layers.
+   - `stop_handover_guard.py` enforces marker sets.
+   - Prompt files define expected output shapes.
+   - `imp_agent.md` and `qa_agent.md` embed copy-paste templates.
+   - SessionStart hooks recommend role-specific slash commands.
+   - This is not a stable SSOT boundary.
+
+### 11.5. Packaging Blockers For A Reusable Project
+
+If the goal is a project that can later be "loaded" into other repositories, the current structure is not yet a package boundary but a collection of repository-local scripts.
+
+Current blockers:
+
+1. Runtime code is stored under `scripts/copilot_hooks/` as script entrypoints instead of as importable package modules.
+2. Tests under `tests/mcp_server/unit/utils/` tie orchestration verification to the MCP server subtree and force path-based imports.
+3. Role doctrine, prompts, and enforcement rules are intertwined with this repository's current file layout and slash-command vocabulary.
+4. Persistence is hardwired to `.copilot/session-state.json` and `.copilot/sessions/` without an explicit storage abstraction.
+5. There is no first-class package manifest or configuration schema for the orchestration layer itself.
+
+Conclusion: the next cleanup must establish a proper package seam before implementing sub-role orchestration.
+
+---
+
+## 12. Packaging Direction For A Truly Separate Project
+
+A separate project is feasible, but only if the current hook scripts become thin adapters over a real internal package.
+
+Recommended target shape:
+
+1. Project name: `copilot_orchestration`
+2. Runtime package boundary: `src/copilot_orchestration/`
+3. Integration adapters stay thin and repo-local:
+   - `scripts/copilot_hooks/session_start.py`
+   - `scripts/copilot_hooks/session_start_imp.py`
+   - `scripts/copilot_hooks/session_start_qa.py`
+   - `scripts/copilot_hooks/pre_compact.py`
+   - `scripts/copilot_hooks/pre_compact_agent.py`
+   - `scripts/copilot_hooks/stop_handover_guard.py`
+   - These should eventually do little more than parse hook input, call package services, and emit JSON.
+
+Suggested package modules:
+- `copilot_orchestration/contracts/`
+  - typed models for snapshots, transcript records, handover rules, role/sub-role definitions
+- `copilot_orchestration/config/`
+  - one loader for orchestration config, with fail-fast validation
+- `copilot_orchestration/session/`
+  - SessionStart context assembly and snapshot relevance logic
+- `copilot_orchestration/compact/`
+  - transcript parsing, extraction, and snapshot writing
+- `copilot_orchestration/enforcement/`
+  - stop-hook evaluation against declarative handover requirements
+- `copilot_orchestration/storage/`
+  - filesystem storage adapter for `.copilot/` paths, later replaceable if needed
+- `copilot_orchestration/adapters/vscode_hooks/`
+  - JSON input/output translation for VS Code hook events
+
+Suggested configuration direction:
+- one orchestration config file, loaded once by a dedicated loader
+- role definitions, sub-role defaults, handover markers, prompt recommendations, and storage settings live there
+- invalid combinations fail at startup, not during transcript parsing
+
+Suggested test boundary:
+- move away from `tests/mcp_server/`
+- create a dedicated subtree such as `tests/copilot_orchestration/`
+- import package modules directly instead of using `spec_from_file_location(...)`
+- rebuild coverage around package contracts, adapters, config loading, and fail-fast error handling
+
+Recommended first structural cleanup sequence:
+1. Define the package boundary and typed contracts.
+2. Move transcript parsing and snapshot schema into importable modules.
+3. Extract shared git-status and changed-file utilities.
+4. Replace hardcoded role requirements with declarative config plus a validator.
+5. Move tests into a dedicated orchestration test subtree and remove path-based script loading.
+6. Only then implement v2 sub-role orchestration on top of that seam.
+
+Practical consequence for this issue:
+- A dedicated package-boundary research document is now justified for the package layout and migration plan.
+- See `docs/development/issue263/copilot_orchestration_packaging_research.md` for the detailed inventory, boundary proposal, cleanup-first sequence, function-level migration map, proposed test boundary, and planning preconditions.
+- The first move remains structural cleanup research, not direct v2 implementation planning.
+- User direction now fixes six major decisions: target a later loadable package, treat the current orchestration tests as disposable for the first cleanup run, defer strict role/prompt separation to v2 research, keep full architectural hardening outside the first cleanup scope, restrict the new `src`/package migration in this run to `copilot_orchestration` only while leaving `mcp_server` and the ST3/backend layer untouched, and keep the first migration structurally coarse instead of using it to fully decompose the hook code into final v2 modules.
+- The remaining gap before planning is now the final migration slicing, not unresolved conceptual questions.
