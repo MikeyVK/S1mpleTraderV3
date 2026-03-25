@@ -26,6 +26,7 @@ class SubRoleSpec(TypedDict):
     heading: str
     markers: list[str]
     block_template: str
+    description: str
 
 
 class SessionSubRoleState(TypedDict):

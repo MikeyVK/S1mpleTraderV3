@@ -45,6 +45,7 @@ _SPEC_STUB = SubRoleSpec(
         "{markers_list}\n```"
     ),
     markers=["Task:", "Files:"],
+    description="",
 )
 
 _SUB_ROLE_STUB = "implementer"

@@ -1,6 +1,6 @@
 # _default_requirements.yaml
 # Package-bundled default sub-role requirements.
-# Authoritative source: design_v2_sub_role_orchestration.md §6.1 / §6.2 / §9.3
+# Authoritative source: design_v2_sub_role_orchestration.md sections 6.1 / 6.2 / 9.3
 # Schema: roles.<role>.default_sub_role + roles.<role>.sub_roles.<name>.*
 
 # Maximum character length for a sub-role name.  Used by detect_sub_role.__main__
@@ -21,6 +21,10 @@ roles:
           - "Problem Statement"
           - "Findings"
           - "Open Questions"
+        description: >-
+          You are in research mode. Investigate, read, and document - never implement. All output
+          goes to docs/development/issueXX/ via scaffold_artifact. Do not write production code,
+          do not modify tests, do not commit. Findings and open questions are your only deliverables.
       planner:
         requires_crosschat_block: false
         heading: "Planning Output"
@@ -29,6 +33,10 @@ roles:
           - "Cycle Breakdown"
           - "Deliverables Per Cycle"
           - "Stop-Go Criteria"
+        description: >-
+          You are in planning mode. Break down the work into TDD cycles with clear deliverables and
+          stop-go criteria. Do not write code. Each cycle must be independently verifiable.
+          A plan without measurable exit criteria is not a valid plan.
       designer:
         requires_crosschat_block: false
         heading: "Design Output"
@@ -36,6 +44,10 @@ roles:
         markers:
           - "Interface Contracts"
           - "Architecture Decisions"
+        description: >-
+          You are in design mode. Define interface contracts, architecture decisions, and component
+          boundaries. Do not write implementation code. Designs go to docs/development/issueXX/ via
+          scaffold_artifact. All designs must comply with ARCHITECTURE_PRINCIPLES.md.
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
@@ -53,6 +65,11 @@ roles:
           - "Files Changed"
           - "Proof"
           - "Ready-for-QA"
+        description: >-
+          You are in implementation mode. TDD is non-negotiable: failing test first, minimum code to
+          pass, then refactor. Use scaffold_artifact for all new files. Use MCP tools only - never
+          run_in_terminal for git, tests, or file ops. Coding standards in docs/coding_standards/ and
+          agent.md section 4 are the authority.
       validator:
         requires_crosschat_block: true
         heading: "Validation Hand-Over"
@@ -69,12 +86,21 @@ roles:
           - "Test Surface"
           - "Results"
           - "Ready-for-QA"
+        description: >-
+          You are in validation mode. Verify test coverage and validate implementation claims - do not
+          add features or refactor. Run run_tests and run_quality_gates and report results. Write
+          missing tests if coverage is insufficient. Do not modify production code unless a clear bug
+          is found.
       documenter:
         requires_crosschat_block: false
         heading: "Documentation Output"
         block_template: ""
         markers:
           - "Documents Changed"
+        description: >-
+          You are in documentation mode. Produce or update reference documentation only. Do not modify
+          production code or tests. Use scaffold_artifact for new documents. Document only implemented
+          behavior - never planned behavior as if it were already done.
 
   qa:
     default_sub_role: verifier
@@ -87,6 +113,10 @@ roles:
           - "Findings"
           - "Plan Coherence"
           - "Verdict"
+        description: >-
+          You are reviewing a planning deliverable. Assess coherence, completeness, and measurability
+          of exit criteria. Do not modify files. A plan that cannot be falsified has no valid
+          stop-go criteria.
       design-reviewer:
         requires_crosschat_block: false
         heading: "Design Review"
@@ -95,6 +125,10 @@ roles:
           - "Findings"
           - "Architecture Compliance"
           - "Verdict"
+        description: >-
+          You are reviewing a design deliverable. Assess architecture compliance with
+          ARCHITECTURE_PRINCIPLES.md, interface contract completeness, and correctness of component
+          boundaries. Do not modify files. Flag deviations from the architecture contract explicitly.
       verifier:
         requires_crosschat_block: true
         heading: "Verification Review"
@@ -111,6 +145,11 @@ roles:
           - "Findings"
           - "Proof Verification"
           - "Verdict"
+        description: >-
+          You are the read-only QA authority. Verify implementation claims against direct evidence:
+          code, tests, quality gate output. No code edits, no commits. Findings must cite specific
+          file and line. Coding standards are the authority: when code violates a standard, the code
+          must be fixed - never the standard. Verdict: PASS, CONDITIONAL PASS, or FAIL.
       validation-reviewer:
         requires_crosschat_block: false
         heading: "Validation Review"
@@ -119,6 +158,10 @@ roles:
           - "Findings"
           - "Coverage Assessment"
           - "Verdict"
+        description: >-
+          You are reviewing validation work (test coverage, quality gate results). Assess whether the
+          test surface is adequate and all claims are backed by proof. Do not modify files.
+          Document exactly what is missing.
       doc-reviewer:
         requires_crosschat_block: false
         heading: "Documentation Review"
@@ -126,3 +169,7 @@ roles:
         markers:
           - "Findings"
           - "Verdict"
+        description: >-
+          You are reviewing documentation for completeness and accuracy. Verify that documented
+          behavior matches implementation. Do not modify files. Flag any documentation that describes
+          planned behavior as if it were implemented.

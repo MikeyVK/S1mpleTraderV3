@@ -45,6 +45,7 @@ class TestISubRoleRequirementsLoaderProtocol:
                     heading="",
                     block_template="",
                     markers=[],
+                    description="",
                 )
 
             def max_sub_role_name_len(self) -> int:
@@ -65,6 +66,7 @@ class TestISubRoleRequirementsLoaderProtocol:
             heading="heading",
             block_template=template,
             markers=["M1"],
+            description="Implementation guidance.",
         )
 
         # Assert - verify exact values
@@ -72,6 +74,7 @@ class TestISubRoleRequirementsLoaderProtocol:
         assert spec["heading"] == "heading"
         assert spec["block_template"] == template
         assert spec["markers"] == ["M1"]
+        assert spec["description"] == "Implementation guidance."
 
     def test_session_sub_role_state_keys(self) -> None:
         """SessionSubRoleState TypedDict accepts all required keys and preserves their values."""

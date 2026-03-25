@@ -38,6 +38,7 @@ roles:
         heading: "H"
         block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: []
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -46,6 +47,7 @@ roles:
         heading: "H"
         block_template: "```text\nverifier\n{markers_list}\n```"
         markers: []
+        description: ""
 """
 
 
@@ -65,6 +67,7 @@ roles:
         heading: ""
         block_template: ""
         markers: ["Problem Statement", "Findings", "Open Questions"]
+        description: ""
       implementer:
         requires_crosschat_block: true
         heading: "Implementation Hand-Over"
@@ -87,6 +90,7 @@ roles:
           {markers_list}
           ```
         markers: ["Findings", "Proof Verification", "Verdict"]
+        description: ""
 """
         yaml_path = tmp_path / "requirements.yaml"
         yaml_path.write_text(yaml_content)
@@ -110,31 +114,37 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
       planner:
         requires_crosschat_block: false
         heading: ""
         block_template: ""
         markers: []
+        description: ""
       designer:
         requires_crosschat_block: false
         heading: ""
         block_template: ""
         markers: []
+        description: ""
       implementer:
         requires_crosschat_block: true
         heading: "H"
         block_template: "```text\nverifier\n{markers_list}\n```"
         markers: ["Scope"]
+        description: ""
       validator:
         requires_crosschat_block: true
         heading: "H"
         block_template: "```text\nverifier\n{markers_list}\n```"
         markers: ["Results"]
+        description: ""
       documenter:
         requires_crosschat_block: false
         heading: ""
         block_template: ""
         markers: []
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -143,6 +153,7 @@ roles:
         heading: "H"
         block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: ["Findings"]
+        description: ""
 """
         yaml_path = tmp_path / "requirements.yaml"
         yaml_path.write_text(yaml_content)
@@ -168,6 +179,7 @@ roles:
         heading: "H"
         block_template: "```text\nverifier\n{markers_list}\n```"
         markers: ["Scope"]
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -176,26 +188,31 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
       design-reviewer:
         requires_crosschat_block: false
         heading: ""
         block_template: ""
         markers: []
+        description: ""
       verifier:
         requires_crosschat_block: true
         heading: "H"
         block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: ["Findings"]
+        description: ""
       validation-reviewer:
         requires_crosschat_block: false
         heading: ""
         block_template: ""
         markers: []
+        description: ""
       doc-reviewer:
         requires_crosschat_block: false
         heading: ""
         block_template: ""
         markers: []
+        description: ""
 """
         yaml_path = tmp_path / "requirements.yaml"
         yaml_path.write_text(yaml_content)
@@ -234,6 +251,7 @@ roles:
         heading: "V"
         block_template: "```text\nimplementer\n{markers_list}\n```"
         markers: []
+        description: ""
 """
         yaml_path = tmp_path / "requirements.yaml"
         yaml_path.write_text(yaml_content)
@@ -250,7 +268,7 @@ roles:
     def test_raises_validation_error_when_description_missing(self, tmp_path: Path) -> None:
         """YAML without description must fail validation in C_DESC.1."""
         yaml_path = tmp_path / "requirements.yaml"
-        yaml_path.write_text(_MINIMAL_YAML)
+        yaml_path.write_text(_MINIMAL_YAML.replace('        description: ""\n', '', 2))
 
         with pytest.raises(ValidationError):
             SubRoleRequirementsLoader(yaml_path)
@@ -323,6 +341,7 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -331,6 +350,7 @@ roles:
         heading: "H"
         block_template: "```text\nresearcher\n{markers_list}\n```"
         markers: []
+        description: ""
 """)
 
         # Act
@@ -356,6 +376,7 @@ roles:
         heading: "H"
         block_template: ""
         markers: []
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -364,6 +385,7 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
 """
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(yaml_content)
@@ -395,6 +417,7 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -403,6 +426,7 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
 """
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(yaml_content)
@@ -447,6 +471,7 @@ roles:
           {markers_list}
           ```
         markers: ["Scope"]
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -455,6 +480,7 @@ roles:
         heading: ""
         block_template: ""
         markers: []
+        description: ""
 """
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(yaml_content)
@@ -480,6 +506,7 @@ roles:
           {markers_list}
           ```
         markers: ["Scope"]
+        description: ""
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -492,6 +519,7 @@ roles:
           {markers_list}
           ```
         markers: ["Findings"]
+        description: ""
 """
         yaml_path = tmp_path / "r.yaml"
         yaml_path.write_text(yaml_content)

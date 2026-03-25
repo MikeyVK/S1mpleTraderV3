@@ -43,6 +43,7 @@ roles:
         markers:
           - "Scope"
           - "Files Changed"
+        description: "Implement the current cycle."
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -60,6 +61,7 @@ roles:
           Required sections:
           {markers_list}
         markers: []
+        description: "Review the implementation handover."
 """
 
 _YAML_MINIMAL_WITH_BLOCK_TEMPLATE = """\
@@ -82,6 +84,7 @@ roles:
           {markers_list}
         markers:
           - "Scope"
+        description: "Implement the current cycle."
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -99,6 +102,7 @@ roles:
           Required sections:
           {markers_list}
         markers: []
+        description: "Review the implementation handover."
 """
 
 

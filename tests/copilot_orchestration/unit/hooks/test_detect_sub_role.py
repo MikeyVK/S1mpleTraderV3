@@ -66,6 +66,7 @@ class _StubLoader:
             heading="",
             block_template="",
             markers=[],
+            description="",
         )
 
     def max_sub_role_name_len(self) -> int:
@@ -198,6 +199,7 @@ class _EnforcingStubLoader(_StubLoader):
             heading="",
             block_template=("[{sub_role}] End:\n\n```text\n{sub_role}\n{markers_list}\n```"),
             markers=[],
+            description="",
         )
 
 
@@ -272,6 +274,7 @@ _SPEC_FOR_CANONICAL = SubRoleSpec(
         "{markers_list}\n```"
     ),
     markers=["Scope", "Files Changed", "Proof", "Ready-for-QA"],
+    description="",
 )
 
 _SPEC_NEW_STYLE = SubRoleSpec(
@@ -283,6 +286,7 @@ _SPEC_NEW_STYLE = SubRoleSpec(
         "{markers_list}\n```"
     ),
     markers=["Scope", "Files Changed"],
+    description="",
 )
 
 
@@ -331,6 +335,7 @@ class TestBuildCrosschatBlockInstructionBlockTemplate:
             heading="",
             block_template="line1\r\n{markers_list}",
             markers=[],
+            description="",
         )
         result = build_crosschat_block_instruction("imp", spec_crlf)
         assert "\r\n" not in result
@@ -344,6 +349,7 @@ class TestBuildCrosschatBlockInstructionBlockTemplate:
             heading="",
             block_template="[{sub_role}] {unknown_key}",
             markers=[],
+            description="",
         )
         with pytest.raises(ConfigError):
             build_crosschat_block_instruction("implementer", spec_bad)

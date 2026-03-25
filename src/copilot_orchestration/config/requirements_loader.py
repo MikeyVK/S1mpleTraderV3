@@ -40,6 +40,7 @@ class _SubRoleSchema(BaseModel):
     heading: str
     markers: list[str]
     block_template: str = ""
+    description: str
 
     @model_validator(mode="after")
     def _validate_template_required(self) -> "_SubRoleSchema":
@@ -117,6 +118,7 @@ class SubRoleRequirementsLoader:
             heading=spec.heading,
             markers=list(spec.markers),
             block_template=spec.block_template,
+            description=spec.description,
         )
 
     def max_sub_role_name_len(self) -> int:
