@@ -203,13 +203,85 @@ class _EnforcingStubLoader(_StubLoader):
         )
 
 
+class _UpsContractLoader(_StubLoader):
+    """Stub loader for the C_DESC.2 build_ups_output() return contract."""
+
+    def __init__(self, *, description: str, requires_crosschat_block: bool) -> None:
+        self._description = description
+        self._requires_crosschat_block = requires_crosschat_block
+
+    def requires_crosschat_block(self, role: str, sub_role: str) -> bool:  # noqa: ARG002
+        raise AssertionError("build_ups_output() must use spec['requires_crosschat_block']")
+
+    def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:  # noqa: ARG002
+        return SubRoleSpec(
+            requires_crosschat_block=self._requires_crosschat_block,
+            heading="",
+            block_template=(
+                "[{sub_role}] End:\n\n```text\nverifier\n{markers_list}\n```"
+            ),
+            markers=["Scope"],
+            description=self._description,
+        )
+
+
 class TestBuildUpsOutput:
-    """Tests for build_ups_output — S1 front-loading via UserPromptSubmit hook.
+    """Tests for build_ups_output - S1 front-loading via UserPromptSubmit hook.
 
     build_ups_output(sub_role, loader, role) injects a systemMessage
     when requires_crosschat_block is True, so the agent sees the handover
     instruction BEFORE generating output (not just at Stop time).
     """
+
+    def test_returns_empty_dict_for_empty_description_without_crosschat(self) -> None:
+        """C_DESC.2 case 1: empty description + no crosschat returns {}."""
+        loader = _UpsContractLoader(description="", requires_crosschat_block=False)
+        result = build_ups_output("researcher", loader, "imp")
+        assert result == {}
+
+    def test_returns_crosschat_only_for_empty_description_with_crosschat(self) -> None:
+        """C_DESC.2 case 2: empty description + crosschat returns only the block."""
+        loader = _UpsContractLoader(description="", requires_crosschat_block=True)
+        result = build_ups_output("implementer", loader, "imp")
+        assert result == {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "systemMessage": "[implementer] End:\n\n```text\nverifier\n## Scope\n```",
+            }
+        }
+
+    def test_returns_description_only_for_non_empty_description_without_crosschat(self) -> None:
+        """C_DESC.2 case 3: description + no crosschat returns only the description."""
+        loader = _UpsContractLoader(
+            description="Implement the current cycle.",
+            requires_crosschat_block=False,
+        )
+        result = build_ups_output("researcher", loader, "imp")
+        assert result == {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "systemMessage": "Implement the current cycle.",
+            }
+        }
+
+    def test_returns_description_and_crosschat_for_non_empty_description_with_crosschat(
+        self,
+    ) -> None:
+        """C_DESC.2 case 4: description + crosschat joins both parts with one blank line."""
+        loader = _UpsContractLoader(
+            description="Implement the current cycle.",
+            requires_crosschat_block=True,
+        )
+        result = build_ups_output("implementer", loader, "imp")
+        assert result == {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "systemMessage": (
+                    "Implement the current cycle.\n\n"
+                    "[implementer] End:\n\n```text\nverifier\n## Scope\n```"
+                ),
+            }
+        }
 
     def test_enforced_sub_role_returns_hook_specific_output(self) -> None:
         """Enforced sub-role produces hookSpecificOutput with hookEventName=UserPromptSubmit."""
