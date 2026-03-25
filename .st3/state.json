@@ -3,8 +3,8 @@
   "issue_number": 263,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": null,
-  "last_cycle": 21,
+  "current_cycle": 22,
+  "last_cycle": 0,
   "cycle_history": [
     {
       "cycle_number": 13,
@@ -87,6 +87,37 @@
       "cycle_number": 21,
       "forced": false,
       "entered": "2026-03-25T10:33:55.056412+00:00"
+    },
+    {
+      "cycle_number": 22,
+      "name": "C_FIX.1: detect_sub_role main() state-file fallback + smoke coverage",
+      "entered": "2026-03-25T11:27:12.293006+00:00",
+      "forced": true,
+      "skip_reason": "QA deep-audit added post-validation fix workstream C_FIX.1/C_FIX.2 after the original C_DESC.1-4 series. deliverables.json has been extended accordingly.",
+      "human_approval": "User approved via chat on 2026-03-25: implementeer de QA deep-audit fixes met nieuwe TDD cycles.",
+      "skipped_cycles": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
     }
   ],
   "required_phases": [
