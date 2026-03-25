@@ -1,7 +1,7 @@
 {
   "257": {
     "issue_number": 257,
-    "issue_title": "Reorder workflow phases: research → design → planning → tdd",
+    "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
     "workflow_name": "feature",
     "execution_mode": "interactive",
     "required_phases": [
@@ -17,345 +17,374 @@
     "created_at": "2026-03-03T14:20:50.753090+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 6,
+        "total": 10,
         "cycles": [
           {
             "cycle_number": 1,
             "deliverables": [
               {
-                "id": "D1.1",
-                "description": "tdd → implementation: present in .st3/workflows.yaml (H rename)",
+                "id": "c_settings_1.from_env",
+                "description": "Settings.from_env() introduced; Settings.load() deleted",
                 "validates": {
                   "type": "contains_text",
-                  "file": ".st3/workflows.yaml",
-                  "text": "- implementation"
+                  "file": "mcp_server/config/settings.py",
+                  "text": "from_env"
                 }
               },
               {
-                "id": "D1.2",
-                "description": "- tdd absent from .st3/workflows.yaml (H flag-day, no alias)",
+                "id": "c_settings_1.singleton_deleted",
+                "description": "Module-level singleton 'settings = Settings.load()' removed from settings.py",
                 "validates": {
                   "type": "absent_text",
-                  "file": ".st3/workflows.yaml",
-                  "text": "- tdd"
+                  "file": "mcp_server/config/settings.py",
+                  "text": "settings = Settings.load()"
                 }
               },
               {
-                "id": "D1.3",
-                "description": "GitConfig.extract_issue_number() implemented (I3 — cohesion in GitConfig)",
+                "id": "c_settings_1.log_level_rename",
+                "description": "MCP_LOG_LEVEL renamed to LOG_LEVEL in settings.py and conftest.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/config/settings.py",
+                  "text": "MCP_LOG_LEVEL"
+                }
+              },
+              {
+                "id": "c_settings_1.server_wiring_stub",
+                "description": "server.py calls Settings.from_env() at composition root; injects into core/logging.py + cli.py",
                 "validates": {
                   "type": "contains_text",
-                  "file": "mcp_server/config/git_config.py",
-                  "text": "extract_issue_number"
-                }
-              },
-              {
-                "id": "D1.4",
-                "description": "_extract_issue_from_branch removed from PSE (replaced by D1.3)",
-                "validates": {
-                  "type": "absent_text",
-                  "file": "mcp_server/managers/phase_state_engine.py",
-                  "text": "_extract_issue_from_branch"
-                }
-              },
-              {
-                "id": "D1.5",
-                "description": "projects.json references removed from PSE source (C abolishment)",
-                "validates": {
-                  "type": "absent_text",
-                  "file": "mcp_server/managers/phase_state_engine.py",
-                  "text": "projects.json"
+                  "file": "mcp_server/server.py",
+                  "text": "Settings.from_env()"
                 }
               }
             ],
-            "exit_criteria": "Full test suite green; absent: '- tdd' in .st3/workflows.yaml; absent: '_extract_issue_from_branch' in PSE; absent: 'projects.json' in PSE; present: 'extract_issue_number' in git_config.py"
+            "exit_criteria": "test_c_settings_structural.py: 3 passed; Select-String 'settings = Settings.load()' -> 0; Select-String 'MCP_LOG_LEVEL' -> 0; full suite green"
           },
           {
             "cycle_number": 2,
             "deliverables": [
               {
-                "id": "D2.1",
-                "description": "state_repository.py created with BranchState + FileStateRepository + InMemoryStateRepository (E)",
+                "id": "c_settings_2.workflow_singleton_deleted",
+                "description": "Module-level 'workflow_config = WorkflowConfig.load()' removed from workflows.py and all direct workflow_config importers rewired",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/config/workflows.py",
+                  "text": "workflow_config = WorkflowConfig.load()"
+                }
+              },
+              {
+                "id": "c_settings_2.consumers_rewired",
+                "description": "11 remaining Settings singleton consumers rewired to accept settings: Settings param via DI",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/artifact_manager.py",
+                  "text": "from mcp_server.config.settings import settings"
+                }
+              },
+              {
+                "id": "c_settings_2.mcp_json",
+                "description": ".vscode/mcp.json created with LOG_LEVEL, MCP_SERVER_NAME, GITHUB_OWNER, GITHUB_REPO, GITHUB_PROJECT_NUMBER env entries",
                 "validates": {
                   "type": "file_exists",
-                  "file": "mcp_server/managers/state_repository.py"
+                  "file": ".vscode/mcp.json"
                 }
               },
               {
-                "id": "D2.2",
-                "description": "BranchState frozen=True — CQS enforced at type-system level (E)",
+                "id": "c_settings_2.grep_closure",
+                "description": "Zero residual singleton imports for settings and workflow_config anywhere in codebase",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/state_repository.py",
-                  "text": "frozen=True"
-                }
-              },
-              {
-                "id": "D2.3",
-                "description": "InMemoryStateRepository present for test isolation (E4)",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/state_repository.py",
-                  "text": "InMemoryStateRepository"
-                }
-              },
-              {
-                "id": "D2.4",
-                "description": "AtomicJsonWriter implemented for crash-safe writes (B3)",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "mcp_server/utils/atomic_json_writer.py"
-                }
-              },
-              {
-                "id": "D2.5",
-                "description": "IStateReader / IStateRepository Protocols created in core/interfaces/ (ISP split, E)",
-                "validates": {
-                  "type": "file_exists",
-                  "file": "mcp_server/core/interfaces/__init__.py"
-                }
-              },
-              {
-                "id": "D2.6",
-                "description": "PSE constructor receives IStateRepository — no direct file I/O in PSE (DIP, E)",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/phase_state_engine.py",
-                  "text": "IStateRepository"
+                  "type": "absent_text",
+                  "file": "mcp_server/adapters/github_adapter.py",
+                  "text": "from mcp_server.config.settings import settings"
                 }
               }
             ],
-            "exit_criteria": "PSE unit tests use InMemoryStateRepository (zero filesystem dependency in unit tests); Pyright --strict passes on core/interfaces/, state_repository.py, phase_state_engine.py; full test suite green"
+            "exit_criteria": "Select-String 'from mcp_server.config.settings import settings' -> 0; Select-String 'from mcp_server.config.workflows import workflow_config' -> 0; Select-String 'workflow_config = WorkflowConfig.load()' -> 0; .vscode/mcp.json exists; full suite green; run_quality_gates green"
           },
           {
             "cycle_number": 3,
             "deliverables": [
               {
-                "id": "D3.1",
-                "description": "phase_contracts.yaml config file created in .st3/config/ (A — Config-First split)",
+                "id": "c_loader_1.config_loader_class",
+                "description": "ConfigLoader(config_root: Path) introduced in config/loader.py with load_*() methods for the first 5 target schemas",
                 "validates": {
                   "type": "file_exists",
-                  "file": ".st3/config/phase_contracts.yaml"
+                  "file": "mcp_server/config/loader.py"
                 }
               },
               {
-                "id": "D3.2",
-                "description": "PhaseContractResolver implemented — SRP, no StateRepository dependency (D)",
+                "id": "c_loader_1.schemas_dir",
+                "description": "mcp_server/config/schemas/ directory created with __init__.py",
                 "validates": {
                   "type": "file_exists",
-                  "file": "mcp_server/managers/phase_contract_resolver.py"
+                  "file": "mcp_server/config/schemas/__init__.py"
                 }
               },
               {
-                "id": "D3.3",
-                "description": "CheckSpec Pydantic model defined in phase_contract_resolver.py (D2)",
+                "id": "c_loader_1.first_5_schemas_moved",
+                "description": "5 low-coupling schemas moved to config/schemas/: GitConfig, LabelConfig, ScopeConfig, WorkflowConfig, WorkphasesConfig; legacy public loader API retained temporarily until later consumer rewires",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/phase_contract_resolver.py",
-                  "text": "class CheckSpec"
+                  "type": "file_exists",
+                  "file": "mcp_server/config/schemas/git_config.py"
                 }
               },
               {
-                "id": "D3.4",
-                "description": "Fail-Fast ConfigError raised for invalid phase_contracts.yaml (A1)",
+                "id": "c_loader_1.structural_guard",
+                "description": "test_c_loader_structural.py written with initial ConfigLoader and fail-fast guards; deletion-focused guards deferred to later C_LOADER cycles",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/phase_contract_resolver.py",
-                  "text": "ConfigError"
-                }
-              },
-              {
-                "id": "D3.5",
-                "description": "PhaseConfigContext facade — single injection point for tool layer (D5, G)",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/phase_contract_resolver.py",
-                  "text": "PhaseConfigContext"
+                  "type": "file_exists",
+                  "file": "tests/unit/config/test_c_loader_structural.py"
                 }
               }
             ],
-            "exit_criteria": "Fail-Fast test passes: invalid phase_contracts.yaml raises ConfigError before first tool call; PhaseContractResolver.resolve() returns [] for unknown phase without exception; Pyright --strict passes on PhaseContractResolver, CheckSpec, PhaseConfigContext; full test suite green"
+            "exit_criteria": "config/loader.py exists; config/schemas/ with __init__.py; first 5 schema files exist under config/schemas/; initial structural tests pass; full suite green"
           },
           {
             "cycle_number": 4,
             "deliverables": [
               {
-                "id": "D4.1",
-                "description": "PSE.get_state(branch) → BranchState added — composition root (J1)",
+                "id": "c_loader_2.remaining_schemas_moved",
+                "description": "10 remaining schemas moved to config/schemas/ incl. ArtifactRegistryConfig, EnforcementConfig, PhaseContractsConfig",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/phase_state_engine.py",
-                  "text": "def get_state"
+                  "type": "file_exists",
+                  "file": "mcp_server/config/schemas/enforcement_config.py"
                 }
               },
               {
-                "id": "D4.2",
-                "description": "GitManager.commit_with_scope() with explicit commit_type param (J3)",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/git_manager.py",
-                  "text": "commit_with_scope"
-                }
-              },
-              {
-                "id": "D4.3",
-                "description": "Legacy phase= backward-compat path removed from git_tools.py (J4 flag-day)",
+                "id": "c_loader_2.misplaced_schemas_extracted",
+                "description": "EnforcementConfig and PhaseContractsConfig extracted from managers/ to config/schemas/",
                 "validates": {
                   "type": "absent_text",
-                  "file": "mcp_server/tools/git_tools.py",
-                  "text": "LEGACY backward-compatible path"
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "class EnforcementConfig"
                 }
               },
               {
-                "id": "D4.4",
-                "description": "tdd literal guard removed from git_tools.py (workflow_phase == 'tdd' check gone after H)",
+                "id": "c_loader_2.loader_methods_complete",
+                "description": "ConfigLoader exposes load_* methods for all 15 schemas, including enforcement and phase contracts",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/loader.py",
+                  "text": "load_phase_contracts_config"
+                }
+              },
+              {
+                "id": "c_loader_2.local_config_error_deleted",
+                "description": "Local ConfigError class in scaffold_metadata_config.py deleted; uses core.exceptions.ConfigError",
                 "validates": {
                   "type": "absent_text",
-                  "file": "mcp_server/tools/git_tools.py",
-                  "text": "workflow_phase == \"tdd\""
+                  "file": "mcp_server/config/schemas/scaffold_metadata_config.py",
+                  "text": "class ConfigError"
                 }
               }
             ],
-            "exit_criteria": "grep finds zero 'phase=' kwargs in mcp_server/tools/; backward-compat tests deleted; Pyright --strict passes on all tool files and PSE public API; full test suite green"
+            "exit_criteria": "ConfigLoader covers extracted schemas; Select-String 'class EnforcementConfig|class PhaseContractsConfig' managers/ -> 0; full suite green"
           },
           {
             "cycle_number": 5,
             "deliverables": [
               {
-                "id": "D5.1",
-                "description": "enforcement.yaml config file created in .st3/config/ (F — enforcement rules)",
+                "id": "c_loader_3.tools_rewired",
+                "description": "14 tool and validator entry-point files rewired: pr_tools, cycle_tools, git_tools, project_tools, label_tools, issue_tools, phase_tools, discovery_tools, git_pull_tool, git_fetch_tool, git_analysis_tools, quality_tools, validation_tools, scaffold_artifact; no direct config loads or fallback manager construction that depends on self-loading config",
                 "validates": {
-                  "type": "file_exists",
-                  "file": ".st3/config/enforcement.yaml"
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/pr_tools.py",
+                  "text": ".from_file("
                 }
               },
               {
-                "id": "D5.2",
-                "description": "EnforcementRunner service implemented — SRP, no PSE dependency (F)",
+                "id": "c_loader_3.managers_rewired",
+                "description": "7 manager files rewired: git_manager, phase_state_engine, artifact_manager, qa_manager, phase_contract_resolver, enforcement_runner, project_manager receive config via DI; no direct config imports remain in managers/",
                 "validates": {
-                  "type": "file_exists",
-                  "file": "mcp_server/managers/enforcement_runner.py"
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "WorkflowConfig.load()"
                 }
               },
               {
-                "id": "D5.3",
-                "description": "BaseTool.enforcement_event class variable added — declarative hook registration (F, Option C)",
+                "id": "c_loader_3.core_rewired",
+                "description": "PolicyEngine constructor receives configs via DI; reload() uses ConfigLoader; directory_policy_resolver mandatory param",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/tools/base.py",
-                  "text": "enforcement_event"
+                  "type": "absent_text",
+                  "file": "mcp_server/core/policy_engine.py",
+                  "text": "reset_instance("
                 }
               },
               {
-                "id": "D5.4",
-                "description": "EnforcementRegistry referenced in enforcement_runner.py — plugin fail-fast at startup (F2)",
+                "id": "c_loader_3.scaffolding_rewired",
+                "description": "scaffolding/metadata.py and scaffolders/template_scaffolder.py receive config via DI; no .from_file(",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/enforcement_runner.py",
-                  "text": "EnforcementRegistry"
+                  "type": "absent_text",
+                  "file": "mcp_server/scaffolding/metadata.py",
+                  "text": ".from_file("
                 }
               }
             ],
-            "exit_criteria": "End-to-end test: transition_phase triggers post-hook → state.json committed automatically; end-to-end test: create_branch with invalid base raises ToolResult error (not unhandled exception); EnforcementRunner unit tests have zero dependency on FileStateRepository or PSE; Pyright --strict passes on EnforcementRunner, EnforcementRegistry, BaseTool; full test suite green"
+            "exit_criteria": "Select-String '.from_file(|reset_instance(|.reset(' mcp_server/tools,managers,core,scaffolding,scaffolders,validation -> 0; Select-String '.from_file(|reset_instance(|.reset(' mcp_server/server.py -> 0; Select-String 'from mcp_server\\.config' mcp_server/managers -> 0; full suite green"
           },
           {
             "cycle_number": 6,
             "deliverables": [
               {
-                "id": "D6.1",
-                "description": "project_manager.py writes to deliverables.json — projects.json abolished (B, C)",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/project_manager.py",
-                  "text": "deliverables.json"
-                }
-              },
-              {
-                "id": "D6.2",
-                "description": "projects_file attribute removed from ProjectManager (replaced by deliverables_file)",
+                "id": "c_loader_4.zone3_tests_clean",
+                "description": "13 non-Zone-1 test files updated: reset_instance/from_file calls removed; Zone-3 tests receive pre-built config objects",
                 "validates": {
                   "type": "absent_text",
-                  "file": "mcp_server/managers/project_manager.py",
-                  "text": "projects_file"
+                  "file": "tests/mcp_server/integration/test_concrete_templates.py",
+                  "text": ".from_file("
                 }
               },
               {
-                "id": "D6.3",
-                "description": "AtomicJsonWriter used in project_manager.py for deliverables.json writes (B3)",
-                "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/project_manager.py",
-                  "text": "AtomicJsonWriter"
-                }
-              },
-              {
-                "id": "D6.4",
-                "description": "state.json removed from .gitignore — git-tracked per branch (B5)",
+                "id": "c_loader_4.fixtures_rewritten",
+                "description": "artifact_test_harness.py and workflow_fixtures.py rewritten to use ConfigLoader(tmp_path) pattern; no reset_instance",
                 "validates": {
                   "type": "absent_text",
-                  "file": ".gitignore",
-                  "text": ".st3/state.json"
+                  "file": "tests/mcp_server/fixtures/artifact_test_harness.py",
+                  "text": "reset_instance("
                 }
               },
               {
-                "id": "D6.5",
-                "description": "PSE.initialize_branch() emits explicit warning for uncommitted state changes (B5, Explicit-over-Implicit)",
+                "id": "c_loader_4.zone1_rewrites",
+                "description": "5 Zone-1 config tests updated from from_file()/reset_instance() to ConfigLoader(tmp_path).load_*() pattern",
                 "validates": {
-                  "type": "contains_text",
-                  "file": "mcp_server/managers/phase_state_engine.py",
-                  "text": "initialize_branch"
+                  "type": "absent_text",
+                  "file": "tests/mcp_server/unit/config/test_artifact_registry_config.py",
+                  "text": ".from_file("
+                }
+              },
+              {
+                "id": "c_loader_4.self_loading_deleted_green",
+                "description": "Legacy public loader API deleted only after final consumer rewrites; structural delete guard passes GREEN",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "def from_file"
                 }
               }
             ],
-            "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; KPIs 1–20 in research_config_first_pse.md all verifiable"
-          }
-        ]
-      },
-      "design": {
-        "deliverables": [
-          {
-            "id": "DD.1",
-            "description": "design.md status is APPROVED (scaffold workflow gate)",
-            "validates": {
-              "type": "contains_text",
-              "file": "docs/development/issue257/design.md",
-              "text": "Status:** APPROVED"
-            }
+            "exit_criteria": "Select-String '.from_file(|reset_instance(' tests/mcp_server/ -> 0; test_c_loader_structural.py::test_no_from_file_on_any_config_schema passes; pytest config unit tests pass; full suite green"
           },
           {
-            "id": "DD.2",
-            "description": "design.md contains Key Design Decisions table for A–J",
-            "validates": {
-              "type": "contains_text",
-              "file": "docs/development/issue257/design.md",
-              "text": "### 3.1. Key Design Decisions"
-            }
-          }
-        ]
-      },
-      "validation": {
-        "deliverables": [
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "id": "c_loader_5.github_manager_validator",
+                "description": "GitHubManager.validate_issue_params() implemented; 9 @field_validator config calls in issue_tools.py removed",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/github_manager.py",
+                  "text": "validate_issue_params"
+                }
+              },
+              {
+                "id": "c_loader_5.server_full_wiring",
+                "description": "server.py full composition root: ConfigLoader(config_root) + all 15 load_*() + all managers + PolicyEngine + GitHubManager instantiated with DI",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "ConfigLoader("
+                }
+              },
+              {
+                "id": "c_loader_5.structural_tests_green",
+                "description": "All 4 structural guard tests in test_c_loader_structural.py GREEN",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_manager_imports_config_schema_directly"
+                }
+              },
+              {
+                "id": "c_loader_5.grep_closure",
+                "description": "Full C_LOADER grep closure: zero .from_file/reset_instance in production + tests",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/issue_tools.py",
+                  "text": ".from_file("
+                }
+              }
+            ],
+            "exit_criteria": "3x grep -> 0 (production, managers, tests); test_c_loader_structural.py: 4 passed; full suite green; run_quality_gates green"
+          },
           {
-            "id": "DV.1",
-            "description": "KPI section present in research_config_first_pse.md — 20 KPIs verifiable after Cycle 6",
-            "validates": {
-              "type": "contains_text",
-              "file": "docs/development/issue257/research_config_first_pse.md",
-              "text": "## KPI"
-            }
-          }
-        ]
-      },
-      "documentation": {
-        "deliverables": [
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "id": "c_validator.class_exists",
+                "description": "ConfigValidator with validate_startup() introduced in mcp_server/config/validator.py",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/config/validator.py"
+                }
+              },
+              {
+                "id": "c_validator.label_startup_deleted",
+                "description": "label_startup.py deleted; no import of label_startup remains anywhere in codebase",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/server.py",
+                  "text": "label_startup"
+                }
+              },
+              {
+                "id": "c_validator.server_wiring",
+                "description": "server.py calls real ConfigValidator().validate_startup(); raises ConfigError on invalid cross-config state",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "validate_startup"
+                }
+              }
+            ],
+            "exit_criteria": "config/validator.py exists; Test-Path label_startup.py -> False; Select-String 'label_startup' mcp_server/ -> 0; full suite green; run_quality_gates green"
+          },
           {
-            "id": "DDOC.1",
-            "description": "planning.md SCAFFOLD header present — template-tracked artifact",
-            "validates": {
-              "type": "contains_text",
-              "file": "docs/development/issue257/planning.md",
-              "text": "<!-- template=planning"
-            }
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "id": "c_gitconfig.no_python_defaults",
+                "description": "GitConfig domain-convention fields have no Python defaults (Field(...) only); missing git.yaml -> ConfigError",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "Field(default="
+                }
+              },
+              {
+                "id": "c_gitconfig.output_dir_no_default",
+                "description": "ArtifactLoggingConfig.output_dir has no default; missing output_dir in YAML raises ConfigError",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/config/schemas/quality_config.py",
+                  "text": "default=\"temp/qa_logs\""
+                }
+              }
+            ],
+            "exit_criteria": "test_git_config_domain_fields_have_no_defaults passes; ConfigLoader(empty_path).load_git_config() raises ConfigError; full suite green"
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "id": "c_cleanup.template_config_moved",
+                "description": "template_config.py moved from config/ to utils/; all importers updated; original config/template_config.py deleted",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/utils/template_config.py"
+                }
+              },
+              {
+                "id": "c_cleanup.server_version_metadata",
+                "description": "Settings.version reads importlib.metadata.version('mcp_server'); hardcoded '1.0.0' removed",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/settings.py",
+                  "text": "importlib.metadata"
+                }
+              }
+            ],
+            "exit_criteria": "Test-Path config/template_config.py -> False; importlib.metadata in settings.py; full suite green"
           }
         ]
       }
