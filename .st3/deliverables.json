@@ -378,7 +378,7 @@
     "created_at": "2026-03-18T20:23:57.760796+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 21,
+        "total": 23,
         "cycles": [
           {
             "cycle_number": 1,
@@ -1235,6 +1235,62 @@
             ],
             "name": "C_DESC.4: Integration tests + prepare-qa-brief.prompt.md fix",
             "exit_criteria": "Volledige test-suite groen. guide_line reference volledig afwezig in prepare-qa-brief.prompt.md. run_quality_gates(scope=branch) geeft geen fouten."
+          },
+          {
+            "cycle_number": 22,
+            "deliverables": [
+              {
+                "description": "detect_sub_role.py re-injects UPS output from existing role-scoped state when no new sub-role keyword is matched",
+                "id": "C_FIX.1.D1",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "_stored[\"sub_role\"]"
+                }
+              },
+              {
+                "description": "detect_sub_role smoke test covers no-match with existing state and expects UPS output",
+                "id": "C_FIX.1.D2",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/copilot_orchestration/integration/test_detect_sub_role_smoke.py",
+                  "text": "test_no_match_with_existing_state_reinjects_description"
+                }
+              }
+            ],
+            "depends_on": [
+              21
+            ],
+            "name": "C_FIX.1: detect_sub_role main() state-file fallback + smoke coverage",
+            "exit_criteria": "No-match with existing state emits UPS output for the stored sub-role, leaves the state file unchanged, and no-match without state keeps empty stdout."
+          },
+          {
+            "cycle_number": 23,
+            "deliverables": [
+              {
+                "description": "Package default QA role topology matches the project override for default_sub_role, plan-verifier, and validation-reviewer enforcement",
+                "id": "C_FIX.2.D1",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/_default_requirements.yaml",
+                  "text": "default_sub_role: design-reviewer"
+                }
+              },
+              {
+                "description": "requirements loader tests assert package default YAML alignment",
+                "id": "C_FIX.2.D2",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/copilot_orchestration/unit/config/test_requirements_loader.py",
+                  "text": "plan-verifier"
+                }
+              }
+            ],
+            "depends_on": [
+              22
+            ],
+            "name": "C_FIX.2: package default YAML alignment with project override",
+            "exit_criteria": "Package default and project override agree on QA default_sub_role, plan-verifier naming, and crosschat enforcement settings; requested tests and quality gates pass."
           }
         ]
       }

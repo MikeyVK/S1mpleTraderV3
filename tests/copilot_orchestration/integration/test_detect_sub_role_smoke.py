@@ -74,6 +74,36 @@ class TestDetectSubRoleSmoke:
         assert result.returncode == 0
         assert json.loads(state_file.read_text())["sub_role"] == "researcher"
 
+    def test_no_match_with_existing_state_reinjects_description(self, hook_workspace: Path) -> None:
+        """No match + existing state re-injects UPS output for the stored sub-role."""
+        script = str(hook_workspace / "detect_sub_role.py")
+        state_file = hook_workspace / _STATE_RELPATH
+
+        first_payload = json.dumps({"prompt": "implementer: start cycle", "sessionId": "sess-003"})
+        first_result = subprocess.run(
+            [sys.executable, script, "imp"],
+            input=first_payload,
+            capture_output=True,
+            text=True,
+            cwd=str(hook_workspace),
+        )
+        assert first_result.returncode == 0
+        first_state = json.loads(state_file.read_text())
+        assert first_state["sub_role"] == "implementer"
+        assert "hookSpecificOutput" in first_result.stdout
+
+        second_payload = json.dumps({"prompt": "how does X work?", "sessionId": "sess-004"})
+        second_result = subprocess.run(
+            [sys.executable, script, "imp"],
+            input=second_payload,
+            capture_output=True,
+            text=True,
+            cwd=str(hook_workspace),
+        )
+        assert second_result.returncode == 0
+        assert "hookSpecificOutput" in second_result.stdout
+        assert json.loads(state_file.read_text()) == first_state
+
     def test_exploration_mode_no_match_writes_no_file(self, hook_workspace: Path) -> None:
         """Exploration mode: empty prompt → no match → role-scoped state file NOT written."""
         payload = json.dumps({"prompt": "", "sessionId": "sess-003"})
@@ -85,6 +115,7 @@ class TestDetectSubRoleSmoke:
             cwd=str(hook_workspace),
         )
         assert result.returncode == 0
+        assert result.stdout == ""
         assert not (hook_workspace / _STATE_RELPATH).exists(), (
             "State file must NOT be written when no sub_role keyword is detected"
         )

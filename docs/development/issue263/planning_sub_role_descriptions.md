@@ -47,6 +47,8 @@ Voeg description: str (required) toe aan SubRoleSpec en _SubRoleSchema. Refactor
 | C_DESC.2 | build_ups_output() 4-case return contract | C_DESC.1 |
 | C_DESC.3 | build_compaction_output() structurele refactor | C_DESC.1 |
 | C_DESC.4 | Integration tests + prepare-qa-brief.prompt.md fix | C_DESC.2, C_DESC.3 |
+| C_FIX.1 | detect_sub_role main() state-file fallback + smoke coverage | C_DESC.4 |
+| C_FIX.2 | package default YAML alignment with project override | C_FIX.1 |
 
 ---
 
@@ -156,6 +158,59 @@ Huidige implementatie: `get_requirement()` enkel op crosschat-pad → tests 1 en
 - `guide_line` reference volledig verwijderd uit `.github/prompts/prepare-qa-brief.prompt.md`.
 - Quality gates pass.
 
+
+### Cycle 5: C_FIX.1 — detect_sub_role main() state-file fallback + smoke coverage
+
+**Goal:** `detect_sub_role.py` re-injects the active sub-role description via UPS on prompts without a new keyword, as long as a role-scoped state file already exists.
+
+**RED:**
+- Extend `tests/.../integration/test_detect_sub_role_smoke.py` with:
+  - `test_no_match_with_existing_state_reinjects_description`
+  - stronger assertion in the no-match/no-state scenario that stdout is empty
+- First call writes `implementer` state and emits UPS output.
+- Second call with no keyword keeps the same state file and emits UPS output again from stored state.
+
+**GREEN:**
+1. `detect_sub_role.py`: in `main()`, add the no-match fallback path that reads `state_path`, extracts `sub_role`, and calls `build_ups_output(stored_sub_role, _loader, role)`.
+2. Update the module docstring to describe the new no-match behavior.
+3. Update the trailing `# No match ...` comment to reflect re-injection from existing state.
+
+**REFACTOR:**
+- Keep fallback logic local to `main()`; do not widen the pure-query surface.
+- Run quality gates on the touched hook + smoke test file.
+
+**Success Criteria:**
+- A follow-up prompt without a keyword still gets a UPS `systemMessage` when state exists.
+- No state file + no keyword still yields empty stdout and exit 0.
+- Existing smoke tests stay green.
+
+---
+
+### Cycle 6: C_FIX.2 — package default YAML alignment with project override
+
+**Goal:** `src/copilot_orchestration/config/_default_requirements.yaml` matches the project override for the QA role where the override is the source of truth.
+
+**RED:**
+- Add or extend requirements-loader tests that load the package default config directly and assert:
+  - `qa.default_sub_role == "design-reviewer"`
+  - `plan-verifier` exists instead of `plan-reviewer`
+  - `plan-verifier.requires_crosschat_block is True`
+  - `validation-reviewer.requires_crosschat_block is True`
+- The RED state must fail against the current package default YAML.
+
+**GREEN:**
+1. Align `qa.default_sub_role` to `design-reviewer`.
+2. Rename `plan-reviewer` to `plan-verifier`.
+3. Copy the crosschat `block_template` and `requires_crosschat_block: true` settings for `plan-verifier` and `validation-reviewer` from `.copilot/sub-role-requirements.yaml`.
+
+**REFACTOR:**
+- Keep package-default QA entries structurally parallel to the project override for future drift detection.
+- Run full repo test command requested by QA plus formatting and lint checks.
+
+**Success Criteria:**
+- Package default and project override agree on the QA role topology and enforcement settings.
+- `pytest tests/ --ignore=tests/mcp_server -q` passes.
+- `ruff check` and `ruff format --check` pass on touched files.
 
 ---
 
