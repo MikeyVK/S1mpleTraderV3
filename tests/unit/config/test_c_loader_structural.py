@@ -449,6 +449,5 @@ def test_no_manager_imports_config_schema_directly() -> None:
                 violations.append(f"{py_file.name}:{lineno}: {line.strip()}")
     assert not violations, (
         "Managers must not import from mcp_server.config directly. "
-        "Import config types via mcp_server.schemas instead.\n"
-        + "\n".join(violations)
+        "Import config types via mcp_server.schemas instead.\n" + "\n".join(violations)
     )

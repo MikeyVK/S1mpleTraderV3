@@ -182,7 +182,11 @@ class MCPServer:
             workspace_root=workspace_root,
             quality_config=quality_config,
         )
-        self.github_manager = GitHubManager()
+        self.github_manager = GitHubManager(
+            issue_config=issue_config,
+            label_config=label_config,
+            scope_config=scope_config,
+        )
         self.artifact_manager = ArtifactManager(
             workspace_root=workspace_root,
             template_registry=self.template_registry,

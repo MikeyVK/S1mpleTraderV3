@@ -18,7 +18,7 @@
   "skip_reason": null,
   "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
   "parent_branch": "main",
-  "created_at": "2026-03-25T21:49:33.456377+00:00",
+  "created_at": "2026-03-25T21:57:25.086277+00:00",
   "transitions": [],
   "reconstructed": true
 }

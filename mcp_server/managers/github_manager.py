@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Any
 
 from mcp_server.adapters.github_adapter import GitHubAdapter
+from mcp_server.schemas import IssueConfig, LabelConfig, ScopeConfig
 
 if TYPE_CHECKING:
     from github.Issue import Issue
@@ -14,9 +15,18 @@ if TYPE_CHECKING:
 class GitHubManager:
     """Manager for GitHub operations."""
 
-    def __init__(self, adapter: GitHubAdapter | None = None) -> None:
+    def __init__(
+        self,
+        adapter: GitHubAdapter | None = None,
+        issue_config: IssueConfig | None = None,
+        label_config: LabelConfig | None = None,
+        scope_config: ScopeConfig | None = None,
+    ) -> None:
         """Initialize the GitHub manager."""
         self._adapter = adapter
+        self._issue_config = issue_config
+        self._label_config = label_config
+        self._scope_config = scope_config
 
     @property
     def adapter(self) -> GitHubAdapter:
@@ -24,6 +34,40 @@ class GitHubManager:
         if self._adapter is None:
             self._adapter = GitHubAdapter()
         return self._adapter
+
+    def validate_issue_params(
+        self,
+        issue_type: str,
+        title: str,  # noqa: ARG002
+        priority: str,
+        scope: str,
+        milestone: str | None = None,  # noqa: ARG002
+        assignees: list[str] | None = None,  # noqa: ARG002
+    ) -> None:
+        """Validate issue creation parameters against injected config objects.
+
+        Raises ValueError for any invalid parameter; returns None on success.
+        """
+        if self._issue_config is None:
+            raise ValueError("IssueConfig must be injected for validate_issue_params")
+        if not self._issue_config.has_issue_type(issue_type):
+            valid = sorted(t.name for t in self._issue_config.issue_types)
+            raise ValueError(f"Unknown issue type: '{issue_type}'. Valid types: {valid}")
+
+        if self._label_config is not None:
+            valid_priorities = {
+                lbl.name.split(":", 1)[1]
+                for lbl in self._label_config.get_labels_by_category("priority")
+            }
+            if valid_priorities and priority not in valid_priorities:
+                raise ValueError(
+                    f"Unknown priority: '{priority}'. Valid values: {sorted(valid_priorities)}"
+                )
+
+        if self._scope_config is not None and not self._scope_config.has_scope(scope):
+            raise ValueError(
+                f"Unknown scope: '{scope}'. Valid values: {sorted(self._scope_config.scopes)}"
+            )
 
     def get_issues_resource_data(self) -> dict[str, Any]:
         """Get data for st3://github/issues resource."""

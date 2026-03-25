@@ -247,9 +247,7 @@ class TestGitHubManagerValidateIssueParams:
                 scope="workflow",
             )
 
-    def test_raises_for_unknown_issue_type(
-        self, manager_with_configs: GitHubManager
-    ) -> None:
+    def test_raises_for_unknown_issue_type(self, manager_with_configs: GitHubManager) -> None:
         """Unknown issue_type must raise ValueError with descriptive message."""
         with pytest.raises(ValueError, match="Unknown issue type"):
             manager_with_configs.validate_issue_params(
@@ -259,9 +257,7 @@ class TestGitHubManagerValidateIssueParams:
                 scope="workflow",
             )
 
-    def test_raises_for_unknown_priority(
-        self, manager_with_configs: GitHubManager
-    ) -> None:
+    def test_raises_for_unknown_priority(self, manager_with_configs: GitHubManager) -> None:
         """Priority not in label_config must raise ValueError with descriptive message."""
         with pytest.raises(ValueError, match="Unknown priority"):
             manager_with_configs.validate_issue_params(
@@ -271,9 +267,7 @@ class TestGitHubManagerValidateIssueParams:
                 scope="workflow",
             )
 
-    def test_raises_for_unknown_scope(
-        self, manager_with_configs: GitHubManager
-    ) -> None:
+    def test_raises_for_unknown_scope(self, manager_with_configs: GitHubManager) -> None:
         """Scope not in scope_config must raise ValueError with descriptive message."""
         with pytest.raises(ValueError, match="Unknown scope"):
             manager_with_configs.validate_issue_params(
@@ -283,9 +277,7 @@ class TestGitHubManagerValidateIssueParams:
                 scope="nonexistent_scope",
             )
 
-    def test_valid_input_does_not_raise(
-        self, manager_with_configs: GitHubManager
-    ) -> None:
+    def test_valid_input_does_not_raise(self, manager_with_configs: GitHubManager) -> None:
         """Valid params matching all injected configs must return None without raising."""
         result = manager_with_configs.validate_issue_params(
             issue_type="feature",
