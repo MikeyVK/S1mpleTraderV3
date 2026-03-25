@@ -1016,35 +1016,60 @@
                 "files": [
                   "src/copilot_orchestration/contracts/interfaces.py"
                 ],
-                "id": "C_DESC.1.D1"
+                "id": "C_DESC.1.D1",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/contracts/interfaces.py",
+                  "text": "description: str"
+                }
               },
               {
                 "description": "description: str in _SubRoleSchema (geen default \u2014 YAML verplicht)",
                 "files": [
                   "src/copilot_orchestration/config/requirements_loader.py"
                 ],
-                "id": "C_DESC.1.D2"
+                "id": "C_DESC.1.D2",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "description: str"
+                }
               },
               {
                 "description": "get_requirement() emitteert altijd description=spec.description",
                 "files": [
                   "src/copilot_orchestration/config/requirements_loader.py"
                 ],
-                "id": "C_DESC.1.D3"
+                "id": "C_DESC.1.D3",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/requirements_loader.py",
+                  "text": "description=spec.description"
+                }
               },
               {
                 "description": "description: voor alle 11 sub-rollen in _default_requirements.yaml",
                 "files": [
                   "src/copilot_orchestration/config/_default_requirements.yaml"
                 ],
-                "id": "C_DESC.1.D4"
+                "id": "C_DESC.1.D4",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/config/_default_requirements.yaml",
+                  "text": "description:"
+                }
               },
               {
                 "description": "description: voor alle 11 sub-rollen in .copilot/sub-role-requirements.yaml",
                 "files": [
                   ".copilot/sub-role-requirements.yaml"
                 ],
-                "id": "C_DESC.1.D5"
+                "id": "C_DESC.1.D5",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".copilot/sub-role-requirements.yaml",
+                  "text": "description:"
+                }
               },
               {
                 "description": "10 SubRoleSpec(...) fixture-constructies bijgewerkt met description= in 4 test-bestanden",
@@ -1054,11 +1079,29 @@
                   "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py",
                   "tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py"
                 ],
-                "id": "C_DESC.1.D6"
+                "id": "C_DESC.1.D6",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py",
+                  "text": "description="
+                }
+              },
+              {
+                "description": "Test: _SubRoleSchema.model_validate({...}) zonder description veld raises ValidationError",
+                "files": [
+                  "tests/copilot_orchestration/unit/config/test_requirements_loader.py"
+                ],
+                "id": "C_DESC.1.D7",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/copilot_orchestration/unit/config/test_requirements_loader.py",
+                  "text": "ValidationError"
+                }
               }
             ],
             "depends_on": [],
-            "name": "C_DESC.1: SubRoleSpec + _SubRoleSchema + get_requirement() + YAML + fixture updates"
+            "name": "C_DESC.1: SubRoleSpec + _SubRoleSchema + get_requirement() + YAML + fixture updates",
+            "exit_criteria": "Alle bestaande unit tests groen. get_requirement() retourneert 'description' key. _SubRoleSchema.model_validate zonder description raises ValidationError. Pydantic valideert YAML bij import zonder errors."
           },
           {
             "cycle_number": 19,
@@ -1068,20 +1111,30 @@
                 "files": [
                   "src/copilot_orchestration/hooks/detect_sub_role.py"
                 ],
-                "id": "C_DESC.2.D1"
+                "id": "C_DESC.2.D1",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/detect_sub_role.py",
+                  "text": "description"
+                }
               },
               {
                 "description": "4 tests voor 4-case contract in test_detect_sub_role.py",
                 "files": [
                   "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py"
                 ],
-                "id": "C_DESC.2.D2"
+                "id": "C_DESC.2.D2",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py"
+                }
               }
             ],
             "depends_on": [
               18
             ],
-            "name": "C_DESC.2: build_ups_output() 4-case return contract"
+            "name": "C_DESC.2: build_ups_output() 4-case return contract",
+            "exit_criteria": "4 nieuwe tests groen. Accessor gebruikt spec[\"description\"] directe key access. Alle eerder-groene tests blijven groen."
           },
           {
             "cycle_number": 20,
@@ -1091,20 +1144,63 @@
                 "files": [
                   "src/copilot_orchestration/hooks/notify_compaction.py"
                 ],
-                "id": "C_DESC.3.D1"
+                "id": "C_DESC.3.D1",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "src/copilot_orchestration/hooks/notify_compaction.py",
+                  "text": "description"
+                }
               },
               {
-                "description": "Test: sub-rol crosschat=False bevat description in compaction-output",
+                "description": "Test case 1: crosschat=False + description non-empty \u2192 description aanwezig in compaction-output",
                 "files": [
                   "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
                 ],
-                "id": "C_DESC.3.D2"
+                "id": "C_DESC.3.D2",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                }
+              },
+              {
+                "description": "Test case 2: crosschat=True + description non-empty \u2192 description + crosschat-block (in die volgorde)",
+                "files": [
+                  "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                ],
+                "id": "C_DESC.3.D3",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                }
+              },
+              {
+                "description": "Test case 3: crosschat=False + description='' \u2192 geen extra tekst; uitsluitend base message",
+                "files": [
+                  "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                ],
+                "id": "C_DESC.3.D4",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                }
+              },
+              {
+                "description": "Test case 4: crosschat=True + description='' \u2192 base message + crosschat-block (huidig gedrag onveranderd)",
+                "files": [
+                  "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                ],
+                "id": "C_DESC.3.D5",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                }
               }
             ],
             "depends_on": [
               18
             ],
-            "name": "C_DESC.3: build_compaction_output() structurele refactor"
+            "name": "C_DESC.3: build_compaction_output() structurele refactor",
+            "exit_criteria": "Alle 4 gedragstests groen (cases 1-4 conform design \u00a75 C_DESC.3). get_requirement() wordt altijd aangeroepen. Alle overige tests groen."
           },
           {
             "cycle_number": 21,
@@ -1114,21 +1210,31 @@
                 "files": [
                   "tests/copilot_orchestration/integration/hooks/"
                 ],
-                "id": "C_DESC.4.D1"
+                "id": "C_DESC.4.D1",
+                "validates": {
+                  "type": "file_glob",
+                  "file": "tests/copilot_orchestration/integration/hooks/*.py"
+                }
               },
               {
                 "description": "guide_line reference verwijderd uit prepare-qa-brief.prompt.md",
                 "files": [
                   ".github/prompts/prepare-qa-brief.prompt.md"
                 ],
-                "id": "C_DESC.4.D2"
+                "id": "C_DESC.4.D2",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".github/prompts/prepare-qa-brief.prompt.md",
+                  "text": "guide_line"
+                }
               }
             ],
             "depends_on": [
               19,
               20
             ],
-            "name": "C_DESC.4: Integration tests + prepare-qa-brief.prompt.md fix"
+            "name": "C_DESC.4: Integration tests + prepare-qa-brief.prompt.md fix",
+            "exit_criteria": "Volledige test-suite groen. guide_line reference volledig afwezig in prepare-qa-brief.prompt.md. run_quality_gates(scope=branch) geeft geen fouten."
           }
         ]
       }

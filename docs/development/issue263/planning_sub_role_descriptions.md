@@ -3,7 +3,7 @@
 # Sub-Role Description Injection — Planning
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-03-25
 
 ---
@@ -57,6 +57,7 @@ Voeg description: str (required) toe aan SubRoleSpec en _SubRoleSchema. Refactor
 **RED:**
 - Test in `tests/.../unit/contracts/test_interfaces.py`: SubRoleSpec met `description` key is valid TypedDict; SubRoleSpec zonder `description` faalt Pyright-check (statische test).
 - Test in `tests/.../unit/config/test_requirements_loader.py`: `get_requirement(sub_role)` retourneert dict met key `"description"`.
+- Test in `tests/.../unit/config/test_requirements_loader.py`: `_SubRoleSchema.model_validate({...})` zonder `description` veld → `ValidationError` (bewijst dat geen Pydantic default aanwezig is).
 
 **GREEN:**
 1. `interfaces.py`: `description: str` toevoegen aan `SubRoleSpec` TypedDict.
@@ -108,8 +109,16 @@ Voeg description: str (required) toe aan SubRoleSpec en _SubRoleSchema. Refactor
 **Goal:** `build_compaction_output()` in `notify_compaction.py` host `get_requirement()` **voor** de crosschat-conditional, zodat description beschikbaar is voor alle 11 sub-rollen — niet alleen de 4 met `crosschat=True`.
 
 **RED:**
-- Test in `tests/.../unit/hooks/test_notify_compaction.py`: sub-rol met `crosschat=False` bevat description in compaction-output.
-- Huidige implementatie: `get_requirement()` enkel op crosschat-pad → test faalt.
+
+Alle 4 gedragsgevallen uit design §5 C_DESC.3 Focus moeten falen vóór de implementatie:
+
+1. `crosschat=False` + `description` non-empty → description aanwezig in compaction-output
+2. `crosschat=True` + `description` non-empty → description én crosschat-block aanwezig (in die volgorde)
+3. `crosschat=False` + `description=""` → geen extra tekst; uitsluitend base message
+4. `crosschat=True` + `description=""` → base message + crosschat-block (huidig gedrag onveranderd)
+
+Tests locatie: `tests/.../unit/hooks/test_notify_compaction.py` — één test per geval.
+Huidige implementatie: `get_requirement()` enkel op crosschat-pad → tests 1 en 3 falen.
 
 **GREEN:**
 - `notify_compaction.py`: hoist `spec = get_requirement(sub_role)` naar vóór conditional.
@@ -120,7 +129,7 @@ Voeg description: str (required) toe aan SubRoleSpec en _SubRoleSchema. Refactor
 - Quality gates (scope="files") op `notify_compaction.py`.
 
 **Success Criteria:**
-- Nieuwe test groen: description altijd aanwezig in compaction-output.
+- Alle 4 gedragstests groen (cases 1–4 zoals beschreven in RED).
 - `get_requirement()` wordt altijd aangeroepen (geen dead code meer).
 - Alle overige tests groen.
 
@@ -162,7 +171,8 @@ Voeg description: str (required) toe aan SubRoleSpec en _SubRoleSchema. Refactor
 ## Milestones
 
 - C_DESC.1 GROEN: alle bestaande tests groen + description beschikbaar via loader
-- C_DESC.3 GROEN: alle sub-rollen krijgen description na compactie
+- C_DESC.2 GROEN: 4-case return contract van build_ups_output() volledig getest
+- C_DESC.3 GROEN: alle sub-rollen krijgen description na compactie (4 cases gedekt)
 - C_DESC.4 GROEN: alle tests groen, quality gates pass, broken reference verwijderd
 
 ## Related Documentation
@@ -182,4 +192,5 @@ Voeg description: str (required) toe aan SubRoleSpec en _SubRoleSchema. Refactor
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 |  | Agent | Initial draft |
+| 1.0 | 2026-03-25 | Agent | Initial draft |
+| 1.1 | 2026-03-25 | Agent | F1-F2 QA corrections: C_DESC.3 RED 4 tests, C_DESC.1 ValidationError test |
