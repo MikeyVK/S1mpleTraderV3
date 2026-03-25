@@ -41,6 +41,18 @@ _SPEC_STUB = SubRoleSpec(
     description="",
 )
 
+_NON_ENFORCING_SPEC_STUB = SubRoleSpec(
+    requires_crosschat_block=False,
+    heading="### Hand-Over",
+    block_template=(
+        "[{sub_role}] End your response with this block:\n\n"
+        "```text\n@next: take over.\nUse the guide.\n\n"
+        "{markers_list}\n```"
+    ),
+    markers=["Task:", "Files:"],
+    description="",
+)
+
 
 class _NonEnforcingLoader:
     """Stub loader where no sub-role requires a crosschat block."""
@@ -49,7 +61,7 @@ class _NonEnforcingLoader:
         return False
 
     def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:  # noqa: ARG002
-        return _SPEC_STUB
+        return _NON_ENFORCING_SPEC_STUB
 
 
 class _EnforcingLoader:

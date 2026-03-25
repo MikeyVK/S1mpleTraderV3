@@ -41,13 +41,13 @@ def build_compaction_output(
 ) -> dict[str, object]:
     """Return systemMessage dict when state contains a sub_role, else empty dict.
 
-    Injects the canonical crosschat block instruction when the sub-role requires it,
-    so the agent receives the identical reinforcement as at S1 (UserPromptSubmit).
-    ConfigError from the loader propagates — caller is responsible for handling.
+    Injects the sub-role description and canonical crosschat block instruction when
+    configured, so the agent receives the same guidance after compaction as at
+    UserPromptSubmit. ConfigError from the loader propagates - caller handles it.
     """
     sub_role = state.get("sub_role")
     if not sub_role:
-        logger.debug("no sub_role in state — empty compaction output")
+        logger.debug("no sub_role in state - empty compaction output")
         return {}
 
     base = (
@@ -56,13 +56,12 @@ def build_compaction_output(
     )
     logger.info("compaction output: sub_role=%s", sub_role)
 
-    if not loader.requires_crosschat_block(role, str(sub_role)):
-        # Sub-role does not require a crosschat block — return base message only.
-        return {"systemMessage": base}
-
     spec = loader.get_requirement(role, str(sub_role))
-    # ConfigError propagates if sub_role is unknown — consistent with evaluate_stop_hook.
-    base += "\n\n" + build_crosschat_block_instruction(str(sub_role), spec)
+    description = spec["description"].strip()
+    if description:
+        base += "\n\n" + description
+    if spec["requires_crosschat_block"]:
+        base += "\n\n" + build_crosschat_block_instruction(str(sub_role), spec)
     return {"systemMessage": base}
 
 
