@@ -217,9 +217,7 @@ class _UpsContractLoader(_StubLoader):
         return SubRoleSpec(
             requires_crosschat_block=self._requires_crosschat_block,
             heading="",
-            block_template=(
-                "[{sub_role}] End:\n\n```text\nverifier\n{markers_list}\n```"
-            ),
+            block_template=("[{sub_role}] End:\n\n```text\nverifier\n{markers_list}\n```"),
             markers=["Scope"],
             description=self._description,
         )
