@@ -359,6 +359,48 @@ roles:
         # Assert
         assert loader.default_sub_role("imp") == "researcher"
 
+    def test_package_default_qa_topology_matches_project_override(self) -> None:
+        """C_FIX.2: package default QA role topology must align with the project override."""
+        default_yaml = (
+            Path(__file__).resolve().parents[4]
+            / "src"
+            / "copilot_orchestration"
+            / "config"
+            / "_default_requirements.yaml"
+        )
+
+        loader = SubRoleRequirementsLoader(default_yaml)
+
+        assert loader.default_sub_role("qa") == "design-reviewer"
+        assert loader.valid_sub_roles("qa") == frozenset(
+            {
+                "design-reviewer",
+                "plan-verifier",
+                "verifier",
+                "validation-reviewer",
+                "doc-reviewer",
+            }
+        )
+
+    def test_package_default_qa_enforcement_matches_project_override(self) -> None:
+        """C_FIX.2: package default QA config must enforce crosschat for plan/validation review."""
+        default_yaml = (
+            Path(__file__).resolve().parents[4]
+            / "src"
+            / "copilot_orchestration"
+            / "config"
+            / "_default_requirements.yaml"
+        )
+
+        loader = SubRoleRequirementsLoader(default_yaml)
+        plan_verifier = loader.get_requirement("qa", "plan-verifier")
+        validation_reviewer = loader.get_requirement("qa", "validation-reviewer")
+
+        assert plan_verifier["requires_crosschat_block"] is True
+        assert "```text" in plan_verifier["block_template"]
+        assert validation_reviewer["requires_crosschat_block"] is True
+        assert "```text" in validation_reviewer["block_template"]
+
     def test_model_validator_raises_for_empty_block_template_when_crosschat_true(
         self, tmp_path: Path
     ) -> None:
