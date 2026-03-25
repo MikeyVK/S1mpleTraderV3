@@ -21,7 +21,7 @@ writes SessionSubRoleState to role-scoped state file).
       first-word extraction capped at loader.max_sub_role_name_len() (from YAML config);
       calls _match_sub_role for the matching decision (single algorithm);
       writes SessionSubRoleState to role-scoped file on match;
-      exploration mode (no match) -> does nothing
+      no match -> re-injects description from existing role-scoped state when present
 """
 
 # Standard library
@@ -182,7 +182,17 @@ def main() -> None:  # pragma: no cover
         _ups = build_ups_output(_detected, _loader, role)
         if _ups:
             json.dump(_ups, sys.stdout, ensure_ascii=True)
-    # No match: exploration mode — preserve existing file or do nothing
+    else:
+        # No new match: re-inject UPS guidance from the stored active sub-role when available.
+        try:
+            _stored = json.loads(state_path.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            _stored = {}
+        _stored_sub_role = _stored.get("sub_role")
+        if isinstance(_stored_sub_role, str) and _stored_sub_role:
+            _ups = build_ups_output(_stored_sub_role, _loader, role)
+            if _ups:
+                json.dump(_ups, sys.stdout, ensure_ascii=True)
 
 
 if __name__ == "__main__":  # pragma: no cover
