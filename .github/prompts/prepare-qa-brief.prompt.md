@@ -18,7 +18,7 @@ Return two parts in this order:
 ## Required Prompt Content
 
 Inside the fenced block, include:
-- opening line: `@qa verifier [guide_line from sub-role-requirements.yaml for verifier]`
+- opening line: `@qa verifier: Review the implementation handover for [branch/cycle]`
 - branch or work context if known
 - files in scope as a numbered list
 - precise implementation claim under review
