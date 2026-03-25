@@ -62,8 +62,101 @@ class _EnforcingLoader:
         return _SPEC_STUB
 
 
+class _CompactionContractLoader:
+    """Stub loader for the C_DESC.3 build_compaction_output() contract."""
+
+    def __init__(self, *, description: str, requires_crosschat_block: bool) -> None:
+        self._description = description
+        self._requires_crosschat_block = requires_crosschat_block
+
+    def requires_crosschat_block(self, role: str, sub_role: str) -> bool:  # noqa: ARG002
+        raise AssertionError("build_compaction_output() must use spec['requires_crosschat_block']")
+
+    def get_requirement(self, role: str, sub_role: str) -> SubRoleSpec:  # noqa: ARG002
+        return SubRoleSpec(
+            requires_crosschat_block=self._requires_crosschat_block,
+            heading="### Hand-Over",
+            block_template=(
+                "[{sub_role}] End your response with this block:\n\n"
+                "```text\nverifier\n## Task:\n```"
+            ),
+            markers=["Task:"],
+            description=self._description,
+        )
+
+
 class TestBuildCompactionOutput:
     """Test suite for build_compaction_output."""
+
+    def test_returns_description_only_for_non_empty_description_without_crosschat(self) -> None:
+        """C_DESC.3 case 1: non-crosschat sub-role still receives description text."""
+        result = build_compaction_output(
+            {"sub_role": "researcher"},
+            _CompactionContractLoader(
+                description="Investigate and document the problem.",
+                requires_crosschat_block=False,
+            ),
+            "imp",
+        )
+        assert result == {
+            "systemMessage": (
+                "Context was compacted. Active sub-role: **researcher**. "
+                "Use /resume-work to restore full context.\n\n"
+                "Investigate and document the problem."
+            )
+        }
+
+    def test_returns_description_and_crosschat_for_non_empty_description_with_crosschat(
+        self,
+    ) -> None:
+        """C_DESC.3 case 2: description is appended before the crosschat block."""
+        result = build_compaction_output(
+            {"sub_role": "implementer"},
+            _CompactionContractLoader(
+                description="Implement the current cycle.",
+                requires_crosschat_block=True,
+            ),
+            "imp",
+        )
+        assert result == {
+            "systemMessage": (
+                "Context was compacted. Active sub-role: **implementer**. "
+                "Use /resume-work to restore full context.\n\n"
+                "Implement the current cycle.\n\n"
+                "[implementer] End your response with this block:\n\n"
+                "```text\nverifier\n## Task:\n```"
+            )
+        }
+
+    def test_returns_base_only_for_empty_description_without_crosschat(self) -> None:
+        """C_DESC.3 case 3: empty description + no crosschat keeps only the base text."""
+        result = build_compaction_output(
+            {"sub_role": "researcher"},
+            _CompactionContractLoader(description="", requires_crosschat_block=False),
+            "imp",
+        )
+        assert result == {
+            "systemMessage": (
+                "Context was compacted. Active sub-role: **researcher**. "
+                "Use /resume-work to restore full context."
+            )
+        }
+
+    def test_returns_base_and_crosschat_for_empty_description_with_crosschat(self) -> None:
+        """C_DESC.3 case 4: empty description + crosschat keeps existing block behavior."""
+        result = build_compaction_output(
+            {"sub_role": "implementer"},
+            _CompactionContractLoader(description="", requires_crosschat_block=True),
+            "imp",
+        )
+        assert result == {
+            "systemMessage": (
+                "Context was compacted. Active sub-role: **implementer**. "
+                "Use /resume-work to restore full context.\n\n"
+                "[implementer] End your response with this block:\n\n"
+                "```text\nverifier\n## Task:\n```"
+            )
+        }
 
     def test_emits_system_message_when_sub_role_present(self) -> None:
         """Returns systemMessage dict when state contains a sub_role."""
