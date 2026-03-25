@@ -247,10 +247,10 @@ def build_ups_output(sub_role: str, loader: ISubRoleRequirementsLoader, role: st
     }
 ```
 
-Note: `spec["requires_crosschat_block"]` replaces the `loader.requires_crosschat_block()` call.
-The Protocol method `requires_crosschat_block()` is retained on `ISubRoleRequirementsLoader`
-for backward compatibility (it is used externally); only the internal usage in this function
-is simplified.
+Note: `spec["requires_crosschat_block"]` replaces the `loader.requires_crosschat_block()` call
+inside this function. The Protocol method `requires_crosschat_block()` is retained on
+`ISubRoleRequirementsLoader` because `stop_handover_guard.py:60` is a verified live consumer —
+this is a functional dependency, not a backward compatibility concern.
 
 ---
 

@@ -378,7 +378,7 @@
     "created_at": "2026-03-18T20:23:57.760796+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 17,
+        "total": 21,
         "cycles": [
           {
             "cycle_number": 1,
@@ -1007,6 +1007,128 @@
                 }
               }
             ]
+          },
+          {
+            "cycle_number": 18,
+            "deliverables": [
+              {
+                "description": "description: str key in SubRoleSpec TypedDict (interfaces.py)",
+                "files": [
+                  "src/copilot_orchestration/contracts/interfaces.py"
+                ],
+                "id": "C_DESC.1.D1"
+              },
+              {
+                "description": "description: str in _SubRoleSchema (geen default \u2014 YAML verplicht)",
+                "files": [
+                  "src/copilot_orchestration/config/requirements_loader.py"
+                ],
+                "id": "C_DESC.1.D2"
+              },
+              {
+                "description": "get_requirement() emitteert altijd description=spec.description",
+                "files": [
+                  "src/copilot_orchestration/config/requirements_loader.py"
+                ],
+                "id": "C_DESC.1.D3"
+              },
+              {
+                "description": "description: voor alle 11 sub-rollen in _default_requirements.yaml",
+                "files": [
+                  "src/copilot_orchestration/config/_default_requirements.yaml"
+                ],
+                "id": "C_DESC.1.D4"
+              },
+              {
+                "description": "description: voor alle 11 sub-rollen in .copilot/sub-role-requirements.yaml",
+                "files": [
+                  ".copilot/sub-role-requirements.yaml"
+                ],
+                "id": "C_DESC.1.D5"
+              },
+              {
+                "description": "10 SubRoleSpec(...) fixture-constructies bijgewerkt met description= in 4 test-bestanden",
+                "files": [
+                  "tests/copilot_orchestration/unit/contracts/test_interfaces.py",
+                  "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py",
+                  "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py",
+                  "tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py"
+                ],
+                "id": "C_DESC.1.D6"
+              }
+            ],
+            "depends_on": [],
+            "name": "C_DESC.1: SubRoleSpec + _SubRoleSchema + get_requirement() + YAML + fixture updates"
+          },
+          {
+            "cycle_number": 19,
+            "deliverables": [
+              {
+                "description": "build_ups_output() herschreven met 4-case logica: lege desc+no-crosschat\u2192{}; lege desc+crosschat\u2192crosschat-block; desc+no-crosschat\u2192description; desc+crosschat\u2192description+crosschat-block",
+                "files": [
+                  "src/copilot_orchestration/hooks/detect_sub_role.py"
+                ],
+                "id": "C_DESC.2.D1"
+              },
+              {
+                "description": "4 tests voor 4-case contract in test_detect_sub_role.py",
+                "files": [
+                  "tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py"
+                ],
+                "id": "C_DESC.2.D2"
+              }
+            ],
+            "depends_on": [
+              18
+            ],
+            "name": "C_DESC.2: build_ups_output() 4-case return contract"
+          },
+          {
+            "cycle_number": 20,
+            "deliverables": [
+              {
+                "description": "build_compaction_output() hoists get_requirement() voor crosschat-conditional; gebruikt spec[\"description\"].strip()",
+                "files": [
+                  "src/copilot_orchestration/hooks/notify_compaction.py"
+                ],
+                "id": "C_DESC.3.D1"
+              },
+              {
+                "description": "Test: sub-rol crosschat=False bevat description in compaction-output",
+                "files": [
+                  "tests/copilot_orchestration/unit/hooks/test_notify_compaction.py"
+                ],
+                "id": "C_DESC.3.D2"
+              }
+            ],
+            "depends_on": [
+              18
+            ],
+            "name": "C_DESC.3: build_compaction_output() structurele refactor"
+          },
+          {
+            "cycle_number": 21,
+            "deliverables": [
+              {
+                "description": "End-to-end integration tests: description injection via UPS + compaction, 4 scenario-combinaties",
+                "files": [
+                  "tests/copilot_orchestration/integration/hooks/"
+                ],
+                "id": "C_DESC.4.D1"
+              },
+              {
+                "description": "guide_line reference verwijderd uit prepare-qa-brief.prompt.md",
+                "files": [
+                  ".github/prompts/prepare-qa-brief.prompt.md"
+                ],
+                "id": "C_DESC.4.D2"
+              }
+            ],
+            "depends_on": [
+              19,
+              20
+            ],
+            "name": "C_DESC.4: Integration tests + prepare-qa-brief.prompt.md fix"
           }
         ]
       }
