@@ -65,8 +65,12 @@ guidance after every user prompt.
 
 ### 1.3. Constraints
 
-- TypedDict C_CROSSCHAT.1 lean principle: one new field only (`description`), no `tool_guidance`
-- `requires_crosschat_block()` Protocol method retained (backward compat)
+- **No backward compatibility.** The package has never been released. All existing fixtures
+  that construct `SubRoleSpec` directly MUST be updated to include `description` in the same
+  cycle as the schema change (C_DESC.1).
+- `requires_crosschat_block()` Protocol method retained — **verified external consumer**:
+  `stop_handover_guard.py:60` calls `loader.requires_crosschat_block(role, sub_role)` directly.
+  YAGNI does NOT apply — this is live production code. Protocol surface unchanged.
 
 ---
 
@@ -123,22 +127,27 @@ class SubRoleSpec(TypedDict):
 
 **After (C_DESC.1):**
 ```python
-from typing import NotRequired
-
 class SubRoleSpec(TypedDict):
     requires_crosschat_block: bool
     heading: str
     markers: list[str]
     block_template: str
-    description: NotRequired[str]   # NEW — optional; use .get("description", "")
+    description: str   # NEW — required; may be empty string ""
 ```
 
-`NotRequired[str]` means the key may be absent. Canonical accessor: `spec.get("description", "")`.
-Since `get_requirement()` always populates the key (see §3.3), specs from the loader always have
-`description`. Test fixtures may omit it — `.get()` handles both cases correctly.
+No `NotRequired`. No `typing.NotRequired` import needed. `description: str` is a required key —
+absent constructions are a type error (Pyright/mypy). The empty string `""` is the valid
+"no description" value. Canonical accessor: `spec["description"].strip()`.
 
 **`ISubRoleRequirementsLoader` Protocol: NO CHANGE.** `get_requirement()` already returns
 `SubRoleSpec`. After `description` is added to `SubRoleSpec`, it is automatically exposed.
+
+**Test fixture impact:** All 10 `SubRoleSpec(...)` constructions across 4 test files MUST
+receive `description=<str>` in C_DESC.1. Files affected:
+- `tests/copilot_orchestration/unit/contracts/test_interfaces.py` (lines 43, 63)
+- `tests/copilot_orchestration/unit/hooks/test_notify_compaction.py` (line 32)
+- `tests/copilot_orchestration/unit/hooks/test_detect_sub_role.py` (lines 64, 196, 266, 277, 329, 342)
+- `tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py` (line 39)
 
 ---
 
@@ -166,7 +175,7 @@ class _SubRoleSchema(BaseModel):
     heading: str
     markers: list[str]
     block_template: str = ""
-    description: str = ""            # NEW — optional; defaults to empty
+    description: str             # NEW — required; no default; YAML must provide it
 
     @model_validator(mode="after")
     def _validate_template_required(self) -> "_SubRoleSchema":
@@ -175,7 +184,8 @@ class _SubRoleSchema(BaseModel):
         return self
 ```
 
-No new `@model_validator` needed. Empty `description` is valid for all sub-roles.
+No `= ""` default. A YAML entry without `description` triggers Pydantic `ValidationError`.
+This enforces that both YAML files are updated atomically with this Pydantic change (C_DESC.1 GREEN).
 
 ---
 
@@ -210,10 +220,10 @@ The `description` key is always present in specs from the loader (value may be `
 
 **New return contract (C_DESC.2):**
 
-| `spec.get("description","").strip()` | `spec["requires_crosschat_block"]` | Return value |
-|-------------------------------------|------------------------------------|--------------|
-| empty | `False` | `{}` |
-| empty | `True` | `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "systemMessage": crosschat_block}}` |
+| `spec["description"].strip()` | `spec["requires_crosschat_block"]` | Return value |
+|-------------------------------|------------------------------------|--------------|
+| empty `""` | `False` | `{}` |
+| empty `""` | `True` | `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "systemMessage": crosschat_block}}` |
 | non-empty | `False` | `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "systemMessage": description}}` |
 | non-empty | `True` | `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "systemMessage": description + "\n\n" + crosschat_block}}` |
 
@@ -222,7 +232,7 @@ The `description` key is always present in specs from the loader (value may be `
 def build_ups_output(sub_role: str, loader: ISubRoleRequirementsLoader, role: str) -> JsonObject:
     spec = loader.get_requirement(role, sub_role)
     parts: list[str] = []
-    description = spec.get("description", "").strip()
+    description = spec["description"].strip()
     if description:
         parts.append(description)
     if spec["requires_crosschat_block"]:
@@ -259,7 +269,7 @@ return {"systemMessage": base}
 **After refactor (C_DESC.3):**
 ```python
 spec = loader.get_requirement(role, str(sub_role))  # hoisted — always called
-description = spec.get("description", "").strip()
+description = spec["description"].strip()
 if description:
     base += "\n\n" + description
 if spec["requires_crosschat_block"]:
@@ -396,10 +406,10 @@ doc-reviewer:
 
 | Cycle | Target | Files Changed | Test Files |
 |-------|--------|---------------|------------|
-| **C_DESC.1** | `SubRoleSpec` + `_SubRoleSchema` + `get_requirement()` | `interfaces.py`, `requirements_loader.py` | `test_interfaces.py`, `test_requirements_loader.py` |
+| **C_DESC.1** | `SubRoleSpec` + `_SubRoleSchema` + `get_requirement()` + both YAMLs + fixture updates | `interfaces.py`, `requirements_loader.py`, `_default_requirements.yaml`, `.copilot/sub-role-requirements.yaml`, 4 test fixture files | `test_interfaces.py`, `test_requirements_loader.py` |
 | **C_DESC.2** | `build_ups_output()` | `detect_sub_role.py` | `test_detect_sub_role.py` |
 | **C_DESC.3** | `build_compaction_output()` | `notify_compaction.py` | `test_notify_compaction.py` |
-| **C_DESC.4** | YAML population + prompt fix | `_default_requirements.yaml`, `.copilot/sub-role-requirements.yaml`, `prepare-qa-brief.prompt.md` | `test_detect_sub_role.py` (integration), `test_notify_compaction.py` (integration) |
+| **C_DESC.4** | Integration tests + prompt fix | `prepare-qa-brief.prompt.md` | `test_detect_sub_role.py` (integration), `test_notify_compaction.py` (integration) |
 
 ### Break-State Overzicht
 
@@ -418,13 +428,21 @@ doc-reviewer:
 
 ### C_DESC.1 — Focus
 
-RED: tests voor `SubRoleSpec` met `description` key; tests voor `_SubRoleSchema` met `description`
-field; test voor `get_requirement()` output inclusief `description` key.
+RED: tests voor `SubRoleSpec` met `description: str` key (required); test dat
+`_SubRoleSchema.model_validate({"...", "description": "foo"}).description == "foo"`;
+test dat `_SubRoleSchema` zonder `description` raises `ValidationError`; test dat
+`get_requirement()` output de `description` key bevat; test dat `spec["description"]`
+de waarde geeft uit YAML.
 
-GREEN: add `description: NotRequired[str]` naar `SubRoleSpec`; add `description: str = ""` naar
-`_SubRoleSchema`; add `description=spec.description` naar `get_requirement()` return.
+GREEN: add `description: str` naar `SubRoleSpec`; add `description: str` (no default)
+naar `_SubRoleSchema`; add `description=spec.description` naar `get_requirement()` return;
+**update beide YAML-bestanden** (`_default_requirements.yaml` + `.copilot/sub-role-requirements.yaml`)
+met alle 11 sub-rol descriptions (teksten uit §4.2) — atomisch vereist, anders raises Pydantic
+`ValidationError`; update alle 10 bestaande `SubRoleSpec(...)` test-fixture-constructies
+in 4 test-bestanden met `description=""` of een geschikte test-string.
 
-REFACTOR: docstring updates, type annotation verificatie met Pyright.
+REFACTOR: docstring updates, type annotation verificatie met Pyright; verifieer geen
+`.get("description", "")` patronen in productiecode — gebruik uitsluitend `spec["description"]`.
 
 ### C_DESC.2 — Focus
 
@@ -438,9 +456,15 @@ primaire guard.
 
 ### C_DESC.3 — Focus
 
-RED: tests voor description herinjectie in compaction output; test voor hoisted `get_requirement()`
-call; test dat `loader.requires_crosschat_block()` niet meer direct wordt aangeroepen in
-`build_compaction_output()`.
+RED: gedragstests voor `build_compaction_output()` na refactoring:
+- sub-rol met `requires_crosschat_block=False` én non-empty `description` → output bevat
+  description-tekst (bewijst dat `get_requirement()` nu ook wordt aangeroepen voor dit pad)
+- sub-rol met `requires_crosschat_block=True` én non-empty `description` → output bevat
+  description én crosschat block, in die volgorde
+- sub-rol met `requires_crosschat_block=False` én `description=""` → output bevat alleen
+  de base message (naam herinnering), geen extra tekst
+- sub-rol met `requires_crosschat_block=True` én `description=""` → output bevat alleen
+  base + crosschat block (identiek aan huidig gedrag)
 
 GREEN: refactor `build_compaction_output()` exact per §3.5 implementation pattern.
 
@@ -448,14 +472,14 @@ REFACTOR: update docstring; elimineer dubbele loader-aanroep.
 
 ### C_DESC.4 — Focus
 
-RED: integration tests die via echte YAML laden en beschrijvingen controleren voor alle 11 sub-rollen
-via `build_ups_output()` en `build_compaction_output()`; controleer `prepare-qa-brief.prompt.md`
-niet meer het woord `guide_line` bevat.
+RED: integration tests die via echte YAML laden en beschrijvingen controleren voor alle 11
+sub-rollen via `build_ups_output()` en `build_compaction_output()`; controleer dat
+`prepare-qa-brief.prompt.md` niet meer het woord `guide_line` bevat.
 
-GREEN: voeg `description` toe aan alle 11 sub-rollen in `_default_requirements.yaml` en
-`.copilot/sub-role-requirements.yaml` (teksten uit §4.2); fix `prepare-qa-brief.prompt.md`.
+GREEN: fix `prepare-qa-brief.prompt.md` (Phase 1 fix — verwijder broken `guide_line` reference);
+integration test-waarden aansluiten op echte YAML-teksten uit §4.2.
 
-REFACTOR: verify char count ≤ 400 per description; run quality gates.
+REFACTOR: verify char count ≤ 400 per description; run quality gates scope="branch".
 
 ---
 
@@ -463,12 +487,12 @@ REFACTOR: verify char count ≤ 400 per description; run quality gates.
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| D1 | `description: NotRequired[str]` in `SubRoleSpec` | Backward compatible; test fixtures without `description` remain valid; Python 3.11+ `typing.NotRequired` |
-| D2 | `description: str = ""` in `_SubRoleSchema` | Pydantic default → no YAML migration; zero breakage for existing YAML |
-| D3 | `get_requirement()` always emits `description` key | Canonical accessor `.get("description", "")` works; no key-absence ambiguity for loader-created specs |
-| D4 | `spec.get("description", "").strip()` as guard | Whitespace-only description treated as empty; no linter-config-dependent whitespace edge cases |
-| D5 | `spec["requires_crosschat_block"]` replaces loader call inside `build_ups_output()` | Eliminates redundant loader lookup; spec already in hand; cleaner flow |
-| D6 | Hoist `get_requirement()` in `build_compaction_output()` | Eliminates dead-code path; description and crosschat block both read from same spec |
+| D1 | `description: str` (required) in `SubRoleSpec` | No backward compat (package unreleased). Explicit required key enforces completeness without hidden fallbacks. All fixture constructions updated in C_DESC.1 — no dead weight in TypedDict surface. |
+| D2 | `description: str` (no default) in `_SubRoleSchema` | Pydantic required field: YAML without `description` raises `ValidationError` — forces both YAML files to be updated atomically with C_DESC.1 GREEN. No silent empty-string default hiding missing config. |
+| D3 | `get_requirement()` always emits `description` key | `spec["description"]` is the only accessor — no `.get()` fallback needed; no key-absence ambiguity |
+| D4 | `spec["description"].strip()` as guard | Whitespace-only description treated as empty (explicit, not implicit). With required `str`, `.get()` is never needed. |
+| D5 | `spec["requires_crosschat_block"]` replaces loader call inside `build_ups_output()` + `build_compaction_output()` | Eliminates redundant loader lookup; spec already in hand. `requires_crosschat_block()` Protocol method **retained** — verified external consumer: `stop_handover_guard.py:60` calls it directly. |
+| D6 | Hoist `get_requirement()` in `build_compaction_output()` | Eliminates dead-code path for sub-roles without crosschat block; description and crosschat block both read from same spec |
 | D7 | No `tool_guidance` field | C_CROSSCHAT.1 lean principle; inline in description sufficient; no evidence VS Code `toolRules` is stable |
 | D8 | Stop hook: NO CHANGE | Purpose is prevent premature end + emit crosschat block; description at session end has no behavioural value |
 | D9 | `prepare-qa-brief.prompt.md` Phase 1 fix in C_DESC.4 | `guide_line` field never existed; independent 1-line fix; don't block on description implementation |
@@ -480,3 +504,4 @@ REFACTOR: verify char count ≤ 400 per description; run quality gates.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-25 | Agent (designer) | Initial design: interface contracts, 4 TDD cycles, 9 design decisions, YAML content for all 11 sub-roles, open questions answered |
+| 1.1 | 2026-03-25 | Agent (designer) | F1: verified `stop_handover_guard.py:60` as external consumer of `requires_crosschat_block()` — YAGNI does not apply, Protocol retained. F2: replaced C_DESC.3 structural test with 4 behavior tests covering all output variants. F3: D1→`description: str` (required, no NotRequired); D2→no Pydantic default; YAML update moved from C_DESC.4 to C_DESC.1 atomical GREEN; all 10 existing fixture constructions identified for update; accessor changed to `spec["description"].strip()` throughout. F4 resolved by F3. |
