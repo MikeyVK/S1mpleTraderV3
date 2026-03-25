@@ -2,7 +2,7 @@
   "branch": "feature/257-reorder-workflow-phases",
   "issue_number": 257,
   "workflow_name": "feature",
-  "current_phase": "planning",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -15,7 +15,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Retroactieve correctie \u2014 research fase afgerond in eerdere sessies",
+  "skip_reason": "Retroactieve correctie \u2014 design fase afgerond, design.md APPROVED aanwezig",
   "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
   "parent_branch": "main",
   "created_at": "2026-03-25T22:05:57.942092+00:00",
@@ -27,6 +27,14 @@
       "human_approval": "Gebruiker goedgekeurd 2026-03-25: correctie naar implementation fase na git_add_or_commit state reset",
       "forced": true,
       "skip_reason": "Retroactieve correctie \u2014 research fase afgerond in eerdere sessies"
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "design",
+      "timestamp": "2026-03-25T22:07:07.882963+00:00",
+      "human_approval": "Gebruiker goedgekeurd 2026-03-25: correctie naar implementation fase",
+      "forced": true,
+      "skip_reason": "Retroactieve correctie \u2014 design fase afgerond, design.md APPROVED aanwezig"
     }
   ],
   "reconstructed": true
