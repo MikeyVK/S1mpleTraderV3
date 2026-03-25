@@ -17,9 +17,17 @@ roles:
     default_sub_role: researcher
     sub_roles:
       researcher:
-        requires_crosschat_block: false
+        requires_crosschat_block: true
         heading: "Research Output"
-        block_template: ""
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          design-reviewer
+          Review the latest research work on this branch.
+
+          {markers_list}
+          ```
         markers:
           - "Problem Statement"
           - "Findings"

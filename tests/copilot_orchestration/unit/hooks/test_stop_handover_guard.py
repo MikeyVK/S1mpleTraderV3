@@ -238,7 +238,7 @@ class TestStopHandoverGuard:
         state_path = tmp_path / "state.json"
         state_path.write_text(_make_state(role, sub_role))
         result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID, "stopHookActive": True},
+            {"sessionId": _SESSION_ID, "stop_hook_active": True},
             role,
             loader,
             state_path,
@@ -251,7 +251,7 @@ class TestStopHandoverGuard:
         role = "imp"
         state_path = tmp_path / "missing.json"  # does not exist
         result = evaluate_stop_hook(
-            {"sessionId": _SESSION_ID, "stopHookActive": True},
+            {"sessionId": _SESSION_ID, "stop_hook_active": True},
             role,
             loader,
             state_path,

@@ -66,11 +66,13 @@ def evaluate_stop_hook(
         return {}
 
     logger.info("BLOCK stop: role=%r sub_role=%r", role, sub_role)
+    reason = build_stop_reason(spec, sub_role)
+    logger.debug("stop hook: reason sent to model=\n%s", reason)
     return {
         "hookSpecificOutput": {
             "hookEventName": "Stop",
             "decision": "block",
-            "reason": build_stop_reason(spec, sub_role),
+            "reason": reason,
         }
     }
 
@@ -90,9 +92,10 @@ def normalize_role(value: str) -> str:
 
 
 def is_stop_retry_active(event: JsonObject) -> bool:
-    # VS Code sends stopHookActive (camelCase) — confirmed by VS Code source docs.
-    # Clean-break decision: read camelCase only (see design §3.5).
-    value = event.get("stopHookActive")  # ← was: "stop_hook_active"
+    # VS Code sends stop_hook_active (snake_case) — confirmed by orchestration.log evidence.
+    # Kept for forward compatibility: if Microsoft re-enables re-entry this guard prevents
+    # duplicate blocks / infinite loops.
+    value = event.get("stop_hook_active")
     if isinstance(value, bool):
         return value
     return False

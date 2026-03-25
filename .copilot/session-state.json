@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-03-25T07:51:10.403672+00:00",
-  "active_role": "qa",
+  "timestamp": "2026-03-25T19:17:11.624250+00:00",
+  "active_role": "imp",
   "last_user_goal": "4b9c1462-0716-44d3-9462-9f9f230dd1bc",
   "files_in_scope": [
     "tests/copilot_orchestration/unit/hooks/test_stop_handover_guard.py",
