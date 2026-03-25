@@ -3,7 +3,7 @@
 # Model Context Injection — Research
 
 **Status:** FINAL  
-**Version:** 1.0  
+**Version:** 2.0  
 **Last Updated:** 2026-03-25
 
 ---
@@ -221,12 +221,86 @@ These are noted for completeness — not evaluated or recommended here:
 
 ---
 
-## Implications for Current Codebase
+## Finding 7 — Stop hook `reason` empirically confirmed dead (2026-03-25)
 
-- The current `detect_sub_role.py` UPS hook and `notify_compaction.py` PreCompact hook
-  **may** work in practice but rely on undocumented behaviour.
-- The agent body text in `.agent.md` files IS reliably in context and provides role
-  identity (imp/qa), but not sub-role identity.
-- The `.copilot-instructions.md` and `agent.md` reference document ARE reliably loaded.
-- No code changes are proposed in this research — this is an information baseline for
-  future design decisions.
+**Method:** Live instrumentation — added `logger.debug("stop hook: reason sent to model=\n%s", reason)`
+to `stop_handover_guard.py` and triggered a BLOCK response in a live session.
+
+**Observed in `orchestration.log`:**
+```
+20:31:56 INFO  BLOCK stop: role='imp' sub_role='researcher'
+20:31:56 DEBUG stop hook: reason sent to model=
+  Write NOW.
+  [researcher] End your response with this block: ...
+```
+
+**Observation:** The `reason` text was written to the hook output correctly. The agent
+(`@imp`, sub-role `researcher`) did **not** produce a handover block. A new user prompt
+arrived 49 seconds later, starting a new session — no handover block was ever generated.
+
+**Conclusion:** The `Stop` hook `decision: block` + `reason` mechanism does not cause the
+model to produce additional output before the session ends. Microsoft has implemented
+`Stop` as a single-entry, fire-and-forget hook. The hook can prevent the session from
+closing (side-effect visible to VS Code), but the `reason` field does not trigger a new
+model turn. **The stop hook is effectually dead code for any model-communication purpose.**
+
+---
+
+## Finding 8 — Agent file approach works; hooks approach does not
+
+**Empirical observation (2026-03-25):**
+
+The `@imp.agent.md` and `@qa.agent.md` role files **do** reliably influence model behaviour:
+- QA agents consistently stay read-only when the agent body specifies it.
+- Role identity (imp/qa) is reliably respected.
+- Sub-role declarations in the invocation argument reach the model via the user prompt itself.
+
+The hooks approach failed on all three injection targets:
+- `UserPromptSubmit.systemMessage` → UI warning only (not model context)
+- `PreCompact.systemMessage` → UI warning only (not model context)
+- `Stop.hookSpecificOutput.reason` → never triggers a model turn (empirically dead)
+
+**Conclusion:** The hooks architecture for orchestration is a confirmed dead end.
+Agent files + MCP tools are the viable path forward.
+
+---
+
+## Implications for Current Codebase (Updated)
+
+### Confirmed dead (hooks layer)
+
+The following files implement an approach that has no effect on model context:
+
+| File | Purpose | Status |
+|---|---|---|
+| `hooks/detect_sub_role.py` | UPS → sub-role systemMessage | Dead — systemMessage is UI-only |
+| `hooks/notify_compaction.py` | PreCompact → context re-injection | Dead — systemMessage is UI-only |
+| `hooks/stop_handover_guard.py` | Stop → block + reason | Dead — reason never triggers model turn |
+
+These files can be removed or left as inert infrastructure. They cause no harm but
+provide no orchestration benefit.
+
+### Reusable (config + contracts layer)
+
+The following remain valuable as backend for future MCP tool implementation:
+
+| File | Reusable for |
+|---|---|
+| `config/requirements_loader.py` | Loading sub-role specs in MCP tools |
+| `contracts/interfaces.py` | `SubRoleSpec` datatype for tool schemas |
+| `.copilot/sub-role-requirements.yaml` | Sub-role config, target mapping, handover fields |
+| `utils/_paths.py` | State file path resolution |
+
+### Recommended next architecture: MCP-tool-first
+
+Replace hooks with two MCP server tools:
+
+1. **`get_work_context`** (extend existing) — returns work context + active role + sub-role
+   spec in a single tool call. Guaranteed model context via tool-response path.
+
+2. **`create_handover`** (new) — validates handover fields against `SubRoleSpec`, stores
+   the handover document. Input schema is driven by the sub-role's `required_fields` from
+   YAML config. Missing fields → validation error with exact field names.
+
+This approach eliminates all hook dependency. Model context injection is 100% reliable
+because tool-call responses are a documented, contractually guaranteed model context path.
