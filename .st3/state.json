@@ -3,8 +3,8 @@
   "issue_number": 263,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 20,
-  "last_cycle": 19,
+  "current_cycle": 21,
+  "last_cycle": 20,
   "cycle_history": [
     {
       "cycle_number": 13,
@@ -82,6 +82,11 @@
       "cycle_number": 20,
       "forced": false,
       "entered": "2026-03-25T10:30:23.866973+00:00"
+    },
+    {
+      "cycle_number": 21,
+      "forced": false,
+      "entered": "2026-03-25T10:33:55.056412+00:00"
     }
   ],
   "required_phases": [
