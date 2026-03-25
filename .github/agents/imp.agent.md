@@ -16,12 +16,6 @@ hooks:
       command: "python3 ./scripts/copilot_hooks/pre_compact_agent.py"
       windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\pre_compact_agent.py"
       timeout: 15
-  Stop:
-    - type: command
-      cwd: "."
-      command: "python3 ./scripts/copilot_hooks/stop_handover_guard.py imp"
-      windows: ".\\.venv\\Scripts\\python.exe .\\scripts\\copilot_hooks\\stop_handover_guard.py imp"
-      timeout: 15
 ---
 
 # Implementation Agent Wrapper

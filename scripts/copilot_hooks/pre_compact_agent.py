@@ -114,40 +114,14 @@ def derive_chat_id(event: JsonObject) -> str:
     return "default"
 
 
-def read_transcript(event: JsonObject, workspace_root: Path) -> object:
+def read_transcript(event: JsonObject, workspace_root: Path) -> JsonObject:
     raw_path = event.get("transcript_path")
     if not isinstance(raw_path, str) or not raw_path.strip():
         return {}
     candidate = Path(raw_path)
     if not candidate.is_absolute():
         candidate = workspace_root / candidate
-    try:
-        return parse_transcript_content(candidate.read_text(encoding="utf-8-sig"))
-    except OSError:
-        return {}
-
-
-def parse_transcript_content(raw_text: str) -> object:
-    stripped = raw_text.lstrip("\ufeff").strip()
-    if not stripped:
-        return {}
-    try:
-        return json.loads(stripped)
-    except json.JSONDecodeError:
-        records: list[object] = []
-        for line in stripped.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError:
-                return {}
-        if not records:
-            return {}
-        if len(records) == 1:
-            return records[0]
-        return records
+    return read_json_file(candidate)
 
 
 def read_json_file(path: Path) -> JsonObject:
