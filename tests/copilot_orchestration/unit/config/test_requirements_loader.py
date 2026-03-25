@@ -74,6 +74,7 @@ roles:
           {markers_list}
           ```
         markers: ["Scope", "Files Changed", "Proof", "Ready-for-QA"]
+        description: "Implement the current cycle."
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -224,6 +225,7 @@ roles:
           {markers_list}
           ```
         markers: ["Scope", "Files Changed", "Proof", "Ready-for-QA"]
+        description: "Implement the current cycle."
   qa:
     default_sub_role: verifier
     sub_roles:
@@ -243,6 +245,15 @@ roles:
         assert result["requires_crosschat_block"] is True
         assert result["heading"] == "Implementation Hand-Over"
         assert "Scope" in result["markers"]
+        assert result["description"] == "Implement the current cycle."
+
+    def test_raises_validation_error_when_description_missing(self, tmp_path: Path) -> None:
+        """YAML without description must fail validation in C_DESC.1."""
+        yaml_path = tmp_path / "requirements.yaml"
+        yaml_path.write_text(_MINIMAL_YAML)
+
+        with pytest.raises(ValidationError):
+            SubRoleRequirementsLoader(yaml_path)
 
     def test_raises_on_malformed_yaml(self, tmp_path: Path) -> None:
         """Raises ValidationError when YAML structure does not match expected schema."""

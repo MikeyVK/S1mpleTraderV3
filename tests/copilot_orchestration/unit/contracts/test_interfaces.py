@@ -93,6 +93,10 @@ class TestISubRoleRequirementsLoaderProtocol:
         """block_template is a required field in SubRoleSpec (C_CROSSCHAT.1)."""
         assert "block_template" in SubRoleSpec.__required_keys__
 
+    def test_sub_role_spec_requires_description_field(self) -> None:
+        """description is a required field in SubRoleSpec (C_DESC.1)."""
+        assert "description" in SubRoleSpec.__required_keys__
+
     def test_sub_role_spec_no_legacy_fields(self) -> None:
         """block_prefix, guide_line, block_prefix_hint, marker_verb absent (C_CROSSCHAT.1)."""
         all_keys = SubRoleSpec.__required_keys__ | SubRoleSpec.__optional_keys__
