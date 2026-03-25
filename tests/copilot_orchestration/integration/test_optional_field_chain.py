@@ -130,7 +130,6 @@ _PROJECT_SUB_ROLES = [
 class TestOptionalFieldChain:
     """Integration test suite for optional_field_chain."""
 
-
     @pytest.mark.parametrize(("role", "sub_role"), _PROJECT_SUB_ROLES)
     def test_real_yaml_build_ups_output_injects_description_for_all_sub_roles(
         self,
@@ -177,6 +176,7 @@ class TestOptionalFieldChain:
         workspace_root = find_workspace_root(Path(__file__))
         prompt_path = workspace_root / ".github" / "prompts" / "prepare-qa-brief.prompt.md"
         assert "guide_line" not in prompt_path.read_text()
+
     def test_block_template_content_appears_in_stop_reason(self, tmp_path: Path) -> None:
         """block_template from YAML flows through get_requirement() into build_stop_reason()."""
         yaml_path = tmp_path / "r.yaml"
