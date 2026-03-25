@@ -3,7 +3,7 @@
 # Sub-Role Description Injection — Design
 
 **Status:** DRAFT
-**Version:** 1.0
+**Version:** 1.1
 **Last Updated:** 2026-03-25
 
 ---
@@ -58,7 +58,7 @@ guidance after every user prompt.
 - [ ] Broken reference `guide_line` in `prepare-qa-brief.prompt.md` removed (Phase 1 fix)
 
 **Non-Functional:**
-- [ ] Backward compatible: existing YAML without `description` loads without error (Pydantic default)
+- [ ] **No backward compatibility**: YAML without `description` raises `ValidationError` (Pydantic required field)
 - [ ] Single source of truth: description text lives only in YAML
 - [ ] No new Protocol method on `ISubRoleRequirementsLoader`
 - [ ] Stop hook unchanged
@@ -80,15 +80,15 @@ guidance after every user prompt.
 
 **OQ1 — `tool_guidance` separate field?**
 **Decision: No.** Tool constraints go inline in `description` text where relevant (Optie A from
-RQ6). TypedDict gains only `description: NotRequired[str]`. Rationale: C_CROSSCHAT.1 made
+RQ6). TypedDict gains only `description: str` (required key). Rationale: C_CROSSCHAT.1 made
 `SubRoleSpec` lean. Adding a second new field without strong motivation breaks that principle.
 Most sub-roles share the same tool constraint ("Use MCP tools — see agent.md §5"); a separate
 field is over-engineering for ≤1 sentence.
 
 **OQ2 — YAML update timing?**
-**Decision: Same TDD cycle as code (C_DESC.4 GREEN).** Pydantic default `""` means the code
-changes in C_DESC.1-3 don't require YAML changes. YAML is populated as the GREEN step of
-C_DESC.4 after tests are written that verify description roundtrip via the loader.
+**Decision: C_DESC.1 GREEN — atomically required.** `_SubRoleSchema` has no Pydantic default
+for `description`, so a YAML entry without it raises `ValidationError`. Both YAML files MUST be
+updated in the same cycle as the schema change. YAML cannot wait until C_DESC.4.
 
 **OQ3 — One cycle or two for `build_ups_output()` + `notify_compaction.py`?**
 **Decision: Two cycles (C_DESC.2 and C_DESC.3).** Separate test files, different structural
@@ -422,7 +422,7 @@ doc-reviewer:
 
 ### Dependencies
 
-- C_DESC.2 afhankelijk van C_DESC.1 — `spec.get("description", "")` vereist `SubRoleSpec` update
+- C_DESC.2 afhankelijk van C_DESC.1 — `spec["description"].strip()` vereist `SubRoleSpec` update
 - C_DESC.3 afhankelijk van C_DESC.1 — zelfde reden
 - C_DESC.4 afhankelijk van C_DESC.2 + C_DESC.3 — YAML populatie triggert nieuw gedrag in beide functies
 
@@ -504,4 +504,4 @@ REFACTOR: verify char count ≤ 400 per description; run quality gates scope="br
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-25 | Agent (designer) | Initial design: interface contracts, 4 TDD cycles, 9 design decisions, YAML content for all 11 sub-roles, open questions answered |
-| 1.1 | 2026-03-25 | Agent (designer) | F1: verified `stop_handover_guard.py:60` as external consumer of `requires_crosschat_block()` — YAGNI does not apply, Protocol retained. F2: replaced C_DESC.3 structural test with 4 behavior tests covering all output variants. F3: D1→`description: str` (required, no NotRequired); D2→no Pydantic default; YAML update moved from C_DESC.4 to C_DESC.1 atomical GREEN; all 10 existing fixture constructions identified for update; accessor changed to `spec["description"].strip()` throughout. F4 resolved by F3. |
+| 1.1 | 2026-03-25 | Agent (designer) | F1: verified `stop_handover_guard.py:60` as external consumer of `requires_crosschat_block()` — YAGNI does not apply, Protocol retained. F2: replaced C_DESC.3 structural test with 4 behavior tests covering all output variants. F3: D1→`description: str` (required, no NotRequired); D2→no Pydantic default; YAML update moved from C_DESC.4 to C_DESC.1 atomical GREEN; all 10 existing fixture constructions identified for update; accessor changed to `spec["description"].strip()` throughout. F4 resolved by F3. F5: §1.2 Non-Functional backward-compat requirement replaced with explicit no-backward-compat statement. F6: OQ1 updated NotRequired[str]→str (required key). F7: OQ2 updated YAML timing from C_DESC.4→C_DESC.1 atomically required. F8: Dependencies accessor corrected to spec["description"].strip(). F9: Version header corrected to 1.1. |
