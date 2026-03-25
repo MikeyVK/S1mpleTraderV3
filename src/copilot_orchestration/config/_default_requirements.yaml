@@ -103,20 +103,8 @@ roles:
           behavior - never planned behavior as if it were already done.
 
   qa:
-    default_sub_role: verifier
+    default_sub_role: design-reviewer
     sub_roles:
-      plan-reviewer:
-        requires_crosschat_block: false
-        heading: "Planning Review"
-        block_template: ""
-        markers:
-          - "Findings"
-          - "Plan Coherence"
-          - "Verdict"
-        description: >-
-          You are reviewing a planning deliverable. Assess coherence, completeness, and measurability
-          of exit criteria. Do not modify files. A plan that cannot be falsified has no valid
-          stop-go criteria.
       design-reviewer:
         requires_crosschat_block: false
         heading: "Design Review"
@@ -129,6 +117,26 @@ roles:
           You are reviewing a design deliverable. Assess architecture compliance with
           ARCHITECTURE_PRINCIPLES.md, interface contract completeness, and correctness of component
           boundaries. Do not modify files. Flag deviations from the architecture contract explicitly.
+      plan-verifier:
+        requires_crosschat_block: true
+        heading: "Planning Review"
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          planner
+          QA the plan deliverables. Ensure any findings are resolved before this cycle is done.
+
+          {markers_list}
+          ```
+        markers:
+          - "Findings"
+          - "Plan Coherence"
+          - "Verdict"
+        description: >-
+          You are reviewing a planning deliverable. Assess coherence, completeness, and measurability
+          of exit criteria. Do not modify files. A plan that cannot be falsified has no valid
+          stop-go criteria.
       verifier:
         requires_crosschat_block: true
         heading: "Verification Review"
@@ -151,9 +159,17 @@ roles:
           file and line. Coding standards are the authority: when code violates a standard, the code
           must be fixed - never the standard. Verdict: PASS, CONDITIONAL PASS, or FAIL.
       validation-reviewer:
-        requires_crosschat_block: false
+        requires_crosschat_block: true
         heading: "Validation Review"
-        block_template: ""
+        block_template: |-
+          [{sub_role}] End your response with this block:
+
+          ```text
+          validator
+          QA findings must be resolved before this cycle is done.
+
+          {markers_list}
+          ```
         markers:
           - "Findings"
           - "Coverage Assessment"
