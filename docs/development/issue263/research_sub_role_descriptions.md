@@ -92,16 +92,35 @@ Injecteert `hookEventName: "SessionStart"` met `additionalContext`:
 **Geen sub-rol behavioral context geinjected** — de SessionStart weet niet welke sub-rol
 de agent in deze sessie zal gebruiken (wordt pas bepaald bij de eerste UserPromptSubmit).
 
-**`notify_compaction.py` — `build_compaction_output()`**
+**`notify_compaction.py` — `build_compaction_output()` — Structurele analyse (F3-correctie)**
 
+Het huidige interne call-pattern is:
+
+```python
+if not loader.requires_crosschat_block(role, str(sub_role)):
+    return {"systemMessage": base}                  # ← get_requirement() wordt NOOIT aangeroepen
+
+spec = loader.get_requirement(role, str(sub_role))  # ← alleen bereikt als crosschat=True
+base += "\n\n" + build_crosschat_block_instruction(str(sub_role), spec)
 ```
-state.sub_role aanwezig?
-  Nee: return {}
-  Ja:  base = "Context was compacted. Active sub-role: **{sub_role}**. Use /resume-work..."
-       requires_crosschat_block?
-         Nee: return {systemMessage: base}          ← alleen naam, geen gedragscontext
-         Ja:  return {systemMessage: base + "\n\n" + crosschat_block}
+
+Consequentie voor de uitbreiding: voor sub-rollen **zonder** crosschat block is
+`get_requirement()` momenteel **dead code**. Om description toe te voegen aan het
+compaction-output pad, moet de structuur worden omgebouwd:
+
+```python
+spec = loader.get_requirement(role, str(sub_role))   # altijd aanroepen
+if spec.get("description", "").strip():
+    base += "\n\n" + spec["description"].strip()
+if loader.requires_crosschat_block(role, str(sub_role)):
+    base += "\n\n" + build_crosschat_block_instruction(str(sub_role), spec)
 ```
+
+Of `requires_crosschat_block` via `spec` kan worden afgeleid (index/flag in `SubRoleSpec`)
+moet de designer bepalen — vermijdt dubbele loader-call.
+
+**Dit is een extra structureel aanpassingspunt** naast `build_ups_output()`. De designer
+moet dit als afzonderlijk change-point markeren in het design.
 
 **`stop_handover_guard.py` — `evaluate_stop_hook()`**
 
@@ -197,13 +216,31 @@ Consequenties:
 - Na compactie: `notify_compaction.py` herinjecteert niet — agent verliest gedragscontext.
 - Twee injectie-paden moeten afzonderlijk worden uitgebreid.
 
+### Precisie van het nieuwe return-contract voor `build_ups_output()` (F1-correctie)
+
+Het `{}` return-value heeft een semantische verschuiving na uitbreiding. De designer moet
+werken met de volgende exacte contracttabel:
+
+| `description.strip()` | `requires_crosschat_block` | Return |
+|-----------------------|----------------------------|--------|
+| leeg (`""` of whitespace) | `False` | `{}` |
+| leeg | `True` | `{systemMessage: crosschat_block}` |
+| non-empty | `False` | `{systemMessage: description.strip()}` |
+| non-empty | `True` | `{systemMessage: description.strip() + "\n\n" + crosschat_block}` |
+
+**Normalisatieregel:** `description.strip()` is de guard — een string met alleen spaties of
+newlines wordt beschouwd als leeg. Dit voorkomt een lege `systemMessage` bij YAML-config die
+`description: " "` bevat. Backward compatibility: bestaande YAML zonder `description` geeft
+`""` via Pydantic-default → behandeld als leeg → `{}` return ongewijzigd voor die sub-rollen
+(als ze ook `requires_crosschat_block=False` hebben). Geen regressie.
+
 ### Aanbeveling: **Optie A**
 
 1. **Architectuurconsistentie**: UPS-hook is al het kanaal voor gedragscontext; geen
    nieuwe injectie-paden nodig.
 2. **Compaction-correctheid**: `notify_compaction.py` kan dezelfde `spec.description`
    herinjecteren via hetzelfde pad.
-3. **Eenvoud**: een aanpassingspunt (`build_ups_output()`) vs. drie (SessionStart-imp,
+3. **Eenvoud**: één aanpassingspunt (`build_ups_output()`) vs. drie (SessionStart-imp,
    SessionStart-qa, notify_compaction).
 4. **Timing**: UPS loopt na sub-rol detectie — de description die geinjected wordt is
    altijd die van de correct gedetecteerde sub-rol.
@@ -258,7 +295,7 @@ Criterium: max 400 tekens (ca. 100 tokens), normatief.
 > You are in design mode. Define interface contracts, architecture decisions, and component boundaries. Do not write implementation code. Designs go to `docs/development/issueXX/` via `scaffold_artifact`. All designs must comply with `ARCHITECTURE_PRINCIPLES.md`.
 
 **`implementer`**
-> You are in implementation mode. TDD is non-negotiable: failing test first, minimum code to pass, then refactor. Use `scaffold_artifact` for all new files. Use MCP tools — never `run_in_terminal` for git, tests, or file ops. Coding standards in `ARCHITECTURE_PRINCIPLES.md` are the authority.
+> You are in implementation mode. TDD is non-negotiable: failing test first, minimum code to pass, then refactor. Use `scaffold_artifact` for all new files. Use MCP tools only — never `run_in_terminal` for git, tests, or file ops. Coding standards in `docs/coding_standards/` (CODE_STYLE, QUALITY_GATES, ARCHITECTURE_PRINCIPLES) and `agent.md §4` are the authority.
 
 **`validator`**
 > You are in validation mode. Verify test coverage and validate implementation claims — do not add features or refactor. Run `run_tests` and `run_quality_gates` and report results. Write missing tests if coverage is insufficient. Do not modify production code unless a clear bug is found.
@@ -287,38 +324,36 @@ Criterium: max 400 tekens (ca. 100 tokens), normatief.
 
 ## RQ6 — Tool-Usage Definitie en Injectie-Strategie
 
-### Drie opties geanalyseerd
+### Optie A — Inline in `description` (aanbevolen)
 
-**Optie A — Volledige tool-lijst per sub-rol inline in YAML**
-11 sub-rollen × 15–20 tools = 165–220 regels extra config. Veel overlap.
-Moeilijk te onderhouden. **Niet aanbevolen.**
+Tool-guidance is een onderdeel van gedragscontext, niet een afzonderlijk concept.
+Voeg een compacte tool-constraint-zin toe aan de description van relevante sub-rollen,
+met verwijzing naar `agent.md §5`. Geen nieuwe TypedDict-velden.
 
-**Optie B — Compacte constraint-zin in `description`, verwijzing naar `agent.md`**
-`description` bevat: `"Use MCP tools only — see agent.md §5 Tool Priority Matrix."` plus
-sub-rol-specifieke uitzonderingen waar van toepassing.
-`agent.md` is al de SSOT voor het Tool Priority Matrix en wordt al als `.copilot-instructions.md`
-auto-gelaed door VS Code. **Aanbevolen.**
+**Pro:** TypedDict blijft lean (4 velden). C_CROSSCHAT.1 contract niet opgebroken.
+Geen nieuwe test-surface voor de loader. Eenvoudigere YAML-config (één veld).
 
-**Optie C — Dedicated `tool_usage.md` of `.copilot/tool-usage.md`**
-Goed voor documentatie, maar agent leest het niet automatisch tenzij geinjected.
-Kan nuttig zijn als aanvulling op Optie B.
+**Con:** Description-tekst mengt twee verantwoordelijkheden (gedrag + tooling).
+Bij langere descriptions kan het lastig zijn tool-constraints te isoleren voor updates.
 
-### Wat zeggen LLM-leveranciers en VS Code?
+### Optie B — Apart `tool_guidance: str = ""` veld in `SubRoleSpec` (niet aanbevolen)
 
-- **Claude/Anthropic**: system-prompts zo compact mogelijk. Verwijs naar externe documenten
-  alleen als de agent die actief kan ophalen.
-- **OpenAI**: stijl-instructies beknopt; tool-definitions naast system-prompt meegegeven.
-- **Google/Gemini**: bondig en klaar. Referenties naar externe docs alleen effectief als
-  agent die kan lezen.
-- **VS Code/Copilot**: compact systemMessage is de norm. Er is een experimenteel
-  `toolRules`-veld in hook output (VS Code 1.108+) voor tool-restricties buiten de
-  systemMessage-token-budget.
+Separation of concerns: description is gedragscontext, tool_guidance is restricties.
 
-### Aanbeveling
+**Pro:** Duidelijke scheiding in de YAML-config. Makkelijk afzonderlijk bij te werken.
+Mogelijk nuttig als VS Code `toolRules` experimenteel stabiel wordt (aparte uitvoerwaarde).
 
-Gebruik Optie B. Voeg eventueel een optioneel `tool_guidance: str = ""` veld toe aan
-`SubRoleSpec` voor sub-rol-specifieke tool-constraints (1–2 zinnen). Volledige Tool Priority
-Matrix blijft in `agent.md`.
+**Con:** Elke toevoeging aan `SubRoleSpec` is een uitbreiding van de contractsurface.
+C_CROSSCHAT.1 maakte de TypedDict bewust lean — dit verbreekt dat designprincipe zonder
+sterke motivatie. De meeste sub-rollen hebben dezelfde tool-constraint (zie `agent.md §5`);
+afzonderlijk veld is over-engineering voor ~1 zin.
+
+### Aanbeveling: **Optie A**
+
+Voeg tool-constraints inline toe aan de description-teksten. Sub-rollen die afwijken van
+de standaard `agent.md §5` matrix krijgen een expliciete afwijkingszin. Sub-rollen die
+strikt conform die matrix werken (de meeste) verwijzen alleen naar `agent.md §5`.
+`SubRoleSpec` krijgt alleen het `description`-veld — geen `tool_guidance`.
 
 ---
 
@@ -397,3 +432,4 @@ systemMessage-token-budget.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-25 | Agent (researcher) | Initial complete draft covering RQ1–RQ7 |
+| 1.1 | 2026-03-25 | Agent (researcher) | F1: add exact return-contract table for `build_ups_output()`; F2: reframe `tool_guidance` as explicit architectural choice (inline vs. separate field); F3: correct `notify_compaction.py` structural analysis — `get_requirement()` currently only called on crosschat=True path, requires restructure; F4: fix `implementer` description authority reference (`docs/coding_standards/` + `agent.md §4`) |
