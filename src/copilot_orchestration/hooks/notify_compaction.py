@@ -50,18 +50,19 @@ def build_compaction_output(
         logger.debug("no sub_role in state - empty compaction output")
         return {}
 
+    sub_role_str = str(sub_role)
     base = (
-        f"Context was compacted. Active sub-role: **{sub_role}**. "
+        f"Context was compacted. Active sub-role: **{sub_role_str}**. "
         "Use /resume-work to restore full context."
     )
-    logger.info("compaction output: sub_role=%s", sub_role)
+    logger.info("compaction output: sub_role=%s", sub_role_str)
 
-    spec = loader.get_requirement(role, str(sub_role))
+    spec = loader.get_requirement(role, sub_role_str)
     description = spec["description"].strip()
     if description:
         base += "\n\n" + description
     if spec["requires_crosschat_block"]:
-        base += "\n\n" + build_crosschat_block_instruction(str(sub_role), spec)
+        base += "\n\n" + build_crosschat_block_instruction(sub_role_str, spec)
     return {"systemMessage": base}
 
 
