@@ -15,7 +15,6 @@
 > **STOP.** Do not guess. Do not scan random files.
 > Read **[agent.md](agent.md)** immediately to initialize your cooperation protocol.
 > For MCP server vision/architecture, also see [docs/reference/mcp/mcp_vision_reference.md](docs/reference/mcp/mcp_vision_reference.md).
-> For the lightweight VS Code implementation orchestration on this branch, see [docs/development/issue263/usage.md](docs/development/issue263/usage.md).
 
 ## Fundamental Architectural Shifts
 

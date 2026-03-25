@@ -205,52 +205,6 @@ If there are no findings, say that explicitly.
 
 If you approve despite temporary debt, say why that debt is acceptable in the current cycle and where it is planned to be removed.
 
-## Copy-Paste Prompt For Implementation Chat
-
-When QA finds work that should be addressed in a separate implementation chat, end the review with exactly one fenced `text` block introduced by this heading:
-
-### Copy-Paste Prompt For Implementation Chat
-
-Template:
-
-```text
-@imp Address the latest QA findings on this branch.
-Use imp_agent.md as the project-specific implementation guide.
-
-Task:
-- Fix only the in-scope QA findings from the latest review.
-
-Files likely in scope:
-1. [file path]
-2. [file path]
-3. [file path]
-
-Required fixes:
-1. [specific finding to resolve]
-2. [specific finding to resolve]
-3. [specific finding to resolve]
-
-Out of scope:
-- [explicitly deferred or unrelated work]
-
-Required proof on return:
-- Tests to run: [exact tests]
-- Checks to run: [exact checks]
-- Evidence QA expects: [specific proof items]
-
-Return requirement:
-- Do not widen scope.
-- Prepare an updated hand-over for QA when done.
-- End with a new copy-paste prompt block for the QA chat.
-```
-
-Rules:
-- keep it directly usable in a separate implementation chat
-- state the minimal in-scope fixes clearly
-- include the proof expected on re-review
-- include explicit out-of-scope reminders where useful
-- do not embed a QA verdict inside the prompt block itself
-
 ## GO and NOGO Rules
 
 Say GO only when all of these are true:

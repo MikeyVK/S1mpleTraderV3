@@ -31,9 +31,6 @@ dist/
 *.swo
 *~
 
-# Local AI orchestration recovery state
-.copilot/session-state.json
-
 # Legacy/alternate log folder (runtime)
 mcp_server/logs/
 # Logs

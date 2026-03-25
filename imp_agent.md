@@ -221,51 +221,6 @@ Every implementation hand-over must use this structure:
 ### Ready-for-QA
 - `yes` or `no`
 
-## Two-Chat Handoff Block
-
-Because this repository currently prefers a two-chat model, every implementation hand-over should end with a copy-paste-ready prompt for the QA chat.
-
-After your normal hand-over sections, add exactly one fenced `text` block introduced by this heading:
-
-### Copy-Paste Prompt For QA Chat
-
-Template:
-
-```text
-@qa Review the latest implementation work on this branch.
-Use qa_agent.md as the project-specific QA guide.
-
-Review target:
-- Branch: [branch name or unknown]
-- Hand-over status: implementation claims work is ready for QA review
-- Files in scope:
-  1. [file path]
-  2. [file path]
-  3. [file path]
-
-Implementation claim under review:
-- [precise one- or two-sentence summary of what was changed and what is claimed complete]
-
-Proof provided by implementation:
-- Tests run: [exact tests]
-- Checks run: [exact checks]
-- Outcomes: [exact outcomes]
-- Unverified or deferred items: [explicit list or none]
-
-QA focus:
-- Verify the hand-over against the changed files and direct evidence.
-- Check whether the claimed proof materially supports the implementation claim.
-- Check whether architecture rules were respected on the changed surface.
-- Return findings first, then GO, NOGO, or CONDITIONAL GO.
-```
-
-Rules:
-- keep it directly usable in a separate QA chat
-- include real file paths when known
-- summarize the exact implementation claim under review
-- include exact proof and explicit gaps
-- do not ask QA to continue implementation
-
 ## Truthfulness Rules
 
 Never claim:
