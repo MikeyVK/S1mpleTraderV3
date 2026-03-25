@@ -268,7 +268,7 @@ roles:
     def test_raises_validation_error_when_description_missing(self, tmp_path: Path) -> None:
         """YAML without description must fail validation in C_DESC.1."""
         yaml_path = tmp_path / "requirements.yaml"
-        yaml_path.write_text(_MINIMAL_YAML.replace('        description: ""\n', '', 2))
+        yaml_path.write_text(_MINIMAL_YAML.replace('        description: ""\n', "", 2))
 
         with pytest.raises(ValidationError):
             SubRoleRequirementsLoader(yaml_path)
