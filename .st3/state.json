@@ -2,7 +2,7 @@
   "branch": "feature/257-reorder-workflow-phases",
   "issue_number": 257,
   "workflow_name": "feature",
-  "current_phase": "planning",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -15,7 +15,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Retroactieve correctie \u2014 research fase was al afgerond in eerdere sessies (issues #257 planning.md v3.0 aanwezig)",
+  "skip_reason": "Retroactieve correctie \u2014 design fase was al afgerond, design.md APPROVED aanwezig",
   "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
   "parent_branch": "main",
   "created_at": "2026-03-25T21:57:25.086277+00:00",
@@ -27,6 +27,14 @@
       "human_approval": "Gebruiker goedgekeurd 2026-03-25: handmatige correctie naar implementation fase na MCP state reset door mislukte transition_phase aanroep",
       "forced": true,
       "skip_reason": "Retroactieve correctie \u2014 research fase was al afgerond in eerdere sessies (issues #257 planning.md v3.0 aanwezig)"
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "design",
+      "timestamp": "2026-03-25T22:05:31.789293+00:00",
+      "human_approval": "Gebruiker goedgekeurd 2026-03-25: handmatige correctie naar implementation fase na MCP state reset",
+      "forced": true,
+      "skip_reason": "Retroactieve correctie \u2014 design fase was al afgerond, design.md APPROVED aanwezig"
     }
   ],
   "reconstructed": true
