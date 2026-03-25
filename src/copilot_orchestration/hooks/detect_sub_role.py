@@ -124,22 +124,27 @@ def build_ups_output(
     loader: ISubRoleRequirementsLoader,
     role: str,
 ) -> JsonObject:
-    """Build UserPromptSubmit hookSpecificOutput for front-loading handover instruction.
+    """Build UserPromptSubmit hookSpecificOutput for description and handover guidance.
 
-    Returns a hookSpecificOutput dict with a systemMessage when the sub-role
-    requires a crosschat block, so the agent sees the instruction before
-    generating output — not just at Stop time.
+    Returns a hookSpecificOutput dict with a systemMessage when the sub-role has
+    a non-empty description and/or requires a crosschat block.
 
-    Returns {} when requires_crosschat_block is False (no injection needed).
-    Pure query — no I/O, no side effects.
+    Returns {} when both description and crosschat guidance are absent.
+    Pure query - no I/O, no side effects.
     """
-    if not loader.requires_crosschat_block(role, sub_role):
-        return {}
     spec = loader.get_requirement(role, sub_role)
+    parts: list[str] = []
+    description = spec["description"].strip()
+    if description:
+        parts.append(description)
+    if spec["requires_crosschat_block"]:
+        parts.append(build_crosschat_block_instruction(sub_role, spec))
+    if not parts:
+        return {}
     return {
         "hookSpecificOutput": {
             "hookEventName": "UserPromptSubmit",
-            "systemMessage": build_crosschat_block_instruction(sub_role, spec),
+            "systemMessage": "\n\n".join(parts),
         }
     }
 
