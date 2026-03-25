@@ -407,3 +407,48 @@ def test_extracted_schema_classes_no_longer_defined_in_manager_modules() -> None
 def test_schema_package_contains_no_local_config_error_class() -> None:
     """Pure schema modules must reuse core.exceptions.ConfigError."""
     assert "class ConfigError" not in inspect.getsource(scaffold_schema)
+
+
+def test_no_tool_calls_from_file() -> None:
+    """No tool may call Config.from_file() — all configs must be injected via DI.
+
+    C_LOADER.3 rewired all 14 entry-point tools; this guard prevents regression.
+    Zone 1: source-code inspection only, no YAML or filesystem access.
+    """
+    tools_dir = Path(__file__).parent.parent.parent.parent / "mcp_server" / "tools"
+    violations: list[str] = []
+    for py_file in tools_dir.rglob("*.py"):
+        source = py_file.read_text(encoding="utf-8")
+        for lineno, line in enumerate(source.splitlines(), 1):
+            if ".from_file(" in line and not line.strip().startswith("#"):
+                violations.append(f"{py_file.name}:{lineno}: {line.strip()}")
+    assert not violations, (
+        "Tools must not call Config.from_file() — configs are injected via DI.\n"
+        + "\n".join(violations)
+    )
+
+
+def test_no_manager_imports_config_schema_directly() -> None:
+    """Managers must import config types via mcp_server.schemas, not mcp_server.config.*
+
+    After C_LOADER.3 all managers receive configs via DI and reference schema types
+    through mcp_server.schemas (the public re-export layer).
+    Importing from mcp_server.config.* directly in managers is a violation of the
+    layering contract and signals a regression to the old singleton-load pattern.
+    Zone 1: source-code inspection only.
+    """
+    managers_dir = Path(__file__).parent.parent.parent.parent / "mcp_server" / "managers"
+    violations: list[str] = []
+    for py_file in managers_dir.rglob("*.py"):
+        source = py_file.read_text(encoding="utf-8")
+        for lineno, line in enumerate(source.splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith(("#", '"""', "'''")):
+                continue
+            if "from mcp_server.config" in line:
+                violations.append(f"{py_file.name}:{lineno}: {line.strip()}")
+    assert not violations, (
+        "Managers must not import from mcp_server.config directly. "
+        "Import config types via mcp_server.schemas instead.\n"
+        + "\n".join(violations)
+    )

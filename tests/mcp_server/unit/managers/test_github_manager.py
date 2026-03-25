@@ -20,6 +20,7 @@ import pytest
 
 # Module under test
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.schemas import IssueConfig, LabelConfig, ScopeConfig
 
 
 class TestGitHubManager:
@@ -186,3 +187,110 @@ class TestGitHubManager:
     def _satisfy_typing_policy(self) -> typing.Any:  # noqa: ANN401
         """Use typing to satisfy template policy requirements."""
         return None
+
+
+class TestGitHubManagerValidateIssueParams:
+    """RED tests for GitHubManager.validate_issue_params() — C_LOADER.5.
+
+    Zone 3: no YAML, no filesystem. All config objects built inline.
+    """
+
+    @pytest.fixture
+    def issue_config(self) -> IssueConfig:
+        return IssueConfig(
+            version="1.0",
+            issue_types=[
+                {"name": "feature", "workflow": "feature", "label": "type:feature"},
+                {"name": "bug", "workflow": "bug", "label": "type:bug"},
+            ],
+            required_label_categories=["type", "priority", "scope"],
+            optional_label_inputs={},
+        )
+
+    @pytest.fixture
+    def label_config(self) -> LabelConfig:
+        return LabelConfig(
+            version="1.0",
+            labels=[
+                {"name": "priority:high", "color": "D93F0B", "description": "High priority"},
+                {"name": "priority:low", "color": "0E8A16", "description": "Low priority"},
+            ],
+            freeform_exceptions=[],
+            label_patterns=[],
+        )
+
+    @pytest.fixture
+    def scope_config(self) -> ScopeConfig:
+        return ScopeConfig(version="1.0", scopes=["workflow", "architecture"])
+
+    @pytest.fixture
+    def manager_with_configs(
+        self,
+        issue_config: IssueConfig,
+        label_config: LabelConfig,
+        scope_config: ScopeConfig,
+    ) -> GitHubManager:
+        return GitHubManager(
+            issue_config=issue_config,
+            label_config=label_config,
+            scope_config=scope_config,
+        )
+
+    def test_raises_when_issue_config_not_injected(self) -> None:
+        """Without IssueConfig injection, validate_issue_params must raise ValueError."""
+        mgr = GitHubManager()
+        with pytest.raises(ValueError, match="IssueConfig"):
+            mgr.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="high",
+                scope="workflow",
+            )
+
+    def test_raises_for_unknown_issue_type(
+        self, manager_with_configs: GitHubManager
+    ) -> None:
+        """Unknown issue_type must raise ValueError with descriptive message."""
+        with pytest.raises(ValueError, match="Unknown issue type"):
+            manager_with_configs.validate_issue_params(
+                issue_type="invalid_type",
+                title="My title",
+                priority="high",
+                scope="workflow",
+            )
+
+    def test_raises_for_unknown_priority(
+        self, manager_with_configs: GitHubManager
+    ) -> None:
+        """Priority not in label_config must raise ValueError with descriptive message."""
+        with pytest.raises(ValueError, match="Unknown priority"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="ultra_high",
+                scope="workflow",
+            )
+
+    def test_raises_for_unknown_scope(
+        self, manager_with_configs: GitHubManager
+    ) -> None:
+        """Scope not in scope_config must raise ValueError with descriptive message."""
+        with pytest.raises(ValueError, match="Unknown scope"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="high",
+                scope="nonexistent_scope",
+            )
+
+    def test_valid_input_does_not_raise(
+        self, manager_with_configs: GitHubManager
+    ) -> None:
+        """Valid params matching all injected configs must return None without raising."""
+        result = manager_with_configs.validate_issue_params(
+            issue_type="feature",
+            title="My feature title",
+            priority="high",
+            scope="workflow",
+        )
+        assert result is None
