@@ -1,4 +1,13 @@
-"""Tests for GitConfig (Issue #55)."""
+# tests/mcp_server/config/test_git_config.py
+"""
+Tests for GitConfig (Issue #55).
+
+Validates ConfigLoader-backed GitConfig loading, helper behavior, and fail-fast
+schema validation for explicit git conventions.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.config.loader, mcp_server.config.schemas]
+"""
 
 from pathlib import Path
 
@@ -13,6 +22,38 @@ def _load_git_config(config_path: Path | None = None) -> GitConfig:
     if config_path is None:
         return ConfigLoader(Path(".st3/config")).load_git_config()
     return ConfigLoader(config_path.parent).load_git_config(config_path=config_path)
+
+
+def _git_config_payload(**overrides: object) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "branch_types": ["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+        "tdd_phases": ["red", "green", "refactor", "docs"],
+        "commit_prefix_map": {
+            "red": "test",
+            "green": "feat",
+            "refactor": "refactor",
+            "docs": "docs",
+        },
+        "protected_branches": ["main", "master", "develop"],
+        "branch_name_pattern": r"^[a-z0-9-]+$",
+        "commit_types": [
+            "feat",
+            "fix",
+            "docs",
+            "style",
+            "refactor",
+            "test",
+            "chore",
+            "perf",
+            "ci",
+            "build",
+            "revert",
+        ],
+        "default_base_branch": "main",
+        "issue_title_max_length": 72,
+    }
+    payload.update(overrides)
+    return payload
 
 
 class TestGitConfig:
@@ -47,12 +88,36 @@ class TestGitConfig:
         with pytest.raises(ConfigError, match="Config file not found"):
             _load_git_config(Path(".st3/nonexistent.yaml"))
 
+    def test_git_config_domain_fields_have_no_defaults(self) -> None:
+        """All GitConfig domain fields must be explicit, not Python-defaulted."""
+        fields_with_defaults = [
+            name
+            for name, field in GitConfig.model_fields.items()
+            if not field.is_required() or field.default_factory is not None
+        ]
+
+        assert fields_with_defaults == []
+
     def test_repeated_loads_are_equivalent(self) -> None:
         """Repeated loads of the same file should be value-equivalent."""
         config1 = _load_git_config()
         config2 = _load_git_config()
 
         assert config1 == config2
+
+    def test_invalid_commit_prefix_phase_raises(self) -> None:
+        with pytest.raises(ValueError, match="invalid phases"):
+            GitConfig.model_validate(
+                _git_config_payload(commit_prefix_map={"red": "test", "deploy": "chore"})
+            )
+
+    def test_whitespace_branch_name_pattern_raises(self) -> None:
+        with pytest.raises(ValueError, match="branch_name_pattern cannot be empty"):
+            GitConfig.model_validate(_git_config_payload(branch_name_pattern="   "))
+
+    def test_invalid_branch_name_regex_raises(self) -> None:
+        with pytest.raises(ValueError, match="Invalid branch_name_pattern regex"):
+            GitConfig.model_validate(_git_config_payload(branch_name_pattern="["))
 
     def test_has_branch_type(self) -> None:
         """Test has_branch_type() helper (Convention #1)."""
@@ -68,8 +133,10 @@ class TestGitConfig:
     def test_validate_branch_name(self) -> None:
         """Test validate_branch_name() helper (Convention #5)."""
         config = _load_git_config()
+        GitConfig._compiled_pattern = None
 
         assert config.validate_branch_name("feature-123-name") is True
+        assert GitConfig._compiled_pattern is not None
         assert config.validate_branch_name("fix-bug") is True
         assert config.validate_branch_name("epic-76-tooling") is True
         assert config.validate_branch_name("Feature-123") is False
@@ -86,6 +153,13 @@ class TestGitConfig:
         assert config.has_phase("test") is False
         assert config.has_phase("RED") is False
 
+    def test_has_commit_type(self) -> None:
+        config = _load_git_config()
+
+        assert config.has_commit_type("feat") is True
+        assert config.has_commit_type("FEAT") is True
+        assert config.has_commit_type("unknown") is False
+
     def test_get_prefix(self) -> None:
         """Test get_prefix() helper (Convention #3)."""
         config = _load_git_config()
@@ -97,6 +171,10 @@ class TestGitConfig:
 
         with pytest.raises(KeyError):
             config.get_prefix("invalid")
+
+    def test_get_all_prefixes(self) -> None:
+        config = _load_git_config()
+        assert config.get_all_prefixes() == ["test:", "feat:", "refactor:", "docs:"]
 
     def test_extract_issue_number_returns_int_for_supported_branch_names(self) -> None:
         """extract_issue_number() should parse the numeric issue id from branch names."""

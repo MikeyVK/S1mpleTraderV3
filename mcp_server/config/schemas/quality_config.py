@@ -1,4 +1,17 @@
-"""Pure quality gates schema definitions."""
+# mcp_server/config/schemas/quality_config.py
+"""
+Quality gates schema definitions.
+
+Defines typed value objects for gate execution, parsing, scope filtering,
+and artifact logging configuration loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [dataclasses, fnmatch, pathlib, pydantic, re, typing]
+@responsibilities:
+    - Define typed schema contracts for quality gate configuration
+    - Validate parsing and scope-filtering configuration invariants
+    - Represent artifact logging and violation parsing settings
+"""
 
 from __future__ import annotations
 
@@ -141,7 +154,7 @@ class ArtifactLoggingConfig(BaseModel):
     """Artifact logging behavior for failed gate diagnostics."""
 
     enabled: bool = Field(default=True)
-    output_dir: str = Field(default="temp/qa_logs", min_length=1)
+    output_dir: str = Field(..., min_length=1)
     max_files: int = Field(default=200, ge=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -152,7 +165,7 @@ class QualityConfig(BaseModel):
 
     version: str = Field(..., min_length=1)
     active_gates: list[str] = Field(default_factory=list)
-    artifact_logging: ArtifactLoggingConfig = Field(default_factory=ArtifactLoggingConfig)
+    artifact_logging: ArtifactLoggingConfig = Field(...)
     project_scope: GateScope | None = Field(default=None)
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 

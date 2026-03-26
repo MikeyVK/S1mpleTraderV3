@@ -24,14 +24,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-# Project modules
-from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
 from mcp_server.schemas import ArtifactRegistryConfig
+
+# Project modules
+from mcp_server.utils.template_config import get_template_root
 
 if TYPE_CHECKING:
     pass  # TYPE_CHECKING block for future type-only imports

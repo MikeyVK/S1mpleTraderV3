@@ -33,7 +33,7 @@ from mcp_server.schemas import (
     WorkflowConfig,
 )
 from mcp_server.tools.git_tools import CreateBranchInput
-from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool
+from mcp_server.tools.issue_tools import CreateIssueTool
 from mcp_server.tools.pr_tools import CreatePRInput
 
 
@@ -95,19 +95,6 @@ def load_issue_tool_dependencies(workspace_root: Path | str | None = None) -> di
             "load_workflow_config",
         ),
     }
-
-
-def configure_create_issue_input(workspace_root: Path | str | None = None) -> None:
-    """Configure CreateIssueInput validators with explicit config objects."""
-    dependencies = load_issue_tool_dependencies(workspace_root)
-    CreateIssueInput.configure(
-        issue_config=dependencies["issue_config"],
-        git_config=dependencies["git_config"],
-        label_config=dependencies["label_config"],
-        scope_config=dependencies["scope_config"],
-        milestone_config=dependencies["milestone_config"],
-        contributor_config=dependencies["contributor_config"],
-    )
 
 
 def configure_create_branch_input(workspace_root: Path | str | None = None) -> GitConfig:
@@ -346,4 +333,9 @@ def make_artifact_manager(workspace_root: Path | str) -> ArtifactManager:
 def make_create_issue_tool(manager: MagicMock | None = None) -> CreateIssueTool:
     """Create CreateIssueTool with explicit config objects and a mock manager."""
     dependencies = load_issue_tool_dependencies()
-    return CreateIssueTool(manager=manager or MagicMock(), **dependencies)
+    return CreateIssueTool(
+        manager=manager or MagicMock(),
+        issue_config=dependencies["issue_config"],
+        milestone_config=dependencies["milestone_config"],
+        workflow_config=dependencies["workflow_config"],
+    )

@@ -21,7 +21,6 @@ with audit trail.
 import json
 import logging
 import os
-import re
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -32,6 +31,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from mcp_server.core.interfaces import IStateRepository
+from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import BranchState, FileStateRepository
@@ -75,6 +75,7 @@ class PhaseStateEngine:
         workflow_config: WorkflowConfig,
         workphases_config: WorkphasesConfig,
         state_repository: IStateRepository | None = None,
+        scope_decoder: ScopeDecoder | None = None,
     ) -> None:
         """Initialize PhaseStateEngine."""
         self.workspace_root = Path(workspace_root)
@@ -94,6 +95,9 @@ class PhaseStateEngine:
         self._git_config = git_config
         self._workphases_config = workphases_config
         self._state_repository = state_repository or FileStateRepository(state_file=self.state_file)
+        self._scope_decoder = scope_decoder or ScopeDecoder(
+            workphases_path=self.workspace_root / ".st3" / "config" / "workphases.yaml"
+        )
 
     def initialize_branch(
         self, branch: str, issue_number: int, initial_phase: str, parent_branch: str | None = None
@@ -493,24 +497,27 @@ class PhaseStateEngine:
         return state
 
     def _infer_phase_from_git(self, branch: str, workflow_phases: list[str]) -> str:
-        """Infer current phase from git commit messages.
+        """Infer current phase from git commit messages using ScopeDecoder.
 
-        Searches for phase:label patterns in commits, validates against workflow.
+        Parses Conventional Commits scope format (e.g., type(P_IMPLEMENTATION_SP_RED): msg)
+        to extract the workflow phase. Falls back to the first workflow phase when no
+        valid scope is found.
 
         Args:
             branch: Branch name
             workflow_phases: Valid phases from workflow definition
 
         Returns:
-            Current phase (most recent valid phase:label or first phase)
+            Current phase (most recent valid scope-encoded phase, or first phase as fallback)
         """
         try:
             commits = self._get_git_commits(branch)
-            detected_phase = self._detect_phase_label(commits, workflow_phases)
-
-            if detected_phase:
-                logger.info("Detected phase '%s' from git commits", detected_phase)
-                return detected_phase
+            for commit in commits:
+                result = self._scope_decoder.detect_phase(commit, fallback_to_state=False)
+                phase = result["workflow_phase"]
+                if phase != "unknown" and phase in workflow_phases:
+                    logger.info("Detected phase '%s' from git commits", phase)
+                    return phase
 
         except RuntimeError as e:
             logger.warning("Git command failed during phase detection: %s", e)
@@ -557,42 +564,6 @@ class PhaseStateEngine:
         except subprocess.TimeoutExpired as e:
             msg = "Git log command timed out"
             raise RuntimeError(msg) from e
-
-    def _detect_phase_label(self, commits: list[str], workflow_phases: list[str]) -> str | None:
-        """Detect phase from phase:label patterns in commits.
-
-        Labels.yaml SSOT: Only phase:label format supported (no backwards compat).
-        Handles implementation granularity: phase:red/green/refactor → 'implementation' in workflow.
-
-        Args:
-            commits: List of commit messages (most recent first)
-            workflow_phases: Valid phases from workflow
-
-        Returns:
-            Detected phase or None if no valid labels found
-        """
-        # Implementation labels that map to 'implementation' phase
-        implementation_labels = {"red", "green", "refactor"}
-
-        for commit in commits:
-            # Search for phase:label pattern (case-insensitive)
-            match = re.search(r"phase:(\w+)", commit.lower())
-            if not match:
-                continue
-
-            detected_label = match.group(1)
-
-            # Handle implementation granularity
-            if detected_label in implementation_labels:
-                if "implementation" in workflow_phases:
-                    return "implementation"
-                continue
-
-            # Direct phase match
-            if detected_label in workflow_phases:
-                return detected_label
-
-        return None
 
     def on_enter_implementation_phase(self, branch: str, issue_number: int) -> None:
         """Hook called when entering implementation phase.

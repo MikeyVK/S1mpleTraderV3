@@ -190,11 +190,7 @@ def make_create_issue_tool(manager: MagicMock) -> CreateIssueTool:
     return CreateIssueTool(
         manager=manager,
         issue_config=issue_config,
-        git_config=make_mock_git_config(),
-        label_config=make_mock_label_config(),
-        scope_config=scope_config,
         milestone_config=milestone_config,
-        contributor_config=contributor_config,
         workflow_config=workflow_config,
     )
 

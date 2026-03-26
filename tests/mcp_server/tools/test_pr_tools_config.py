@@ -31,7 +31,9 @@ class TestPRToolsConfigIntegration:
             "commit_prefix_map": {"red": "test", "green": "feat"},
             "protected_branches": ["main", "develop"],
             "branch_name_pattern": "^[a-z0-9-]+$",
+            "commit_types": ["feat", "fix", "docs", "test", "refactor", "chore"],
             "default_base_branch": "develop",  # Custom default
+            "issue_title_max_length": 72,
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:

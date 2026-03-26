@@ -2,7 +2,7 @@
 
 Tests the complete flow:
 1. Machine A: Initialize project (Mode 1 - creates deliverables.json + state.json)
-2. Machine A: Make commits with phase:label
+2. Machine A: Make commits with Conventional Commit scopes
 3. Machine A: Push to git
 4. Machine B: Pull code (state.json missing - not in git)
 5. Machine B: Tools work transparently (Mode 2 - auto-recovery)
@@ -78,7 +78,6 @@ class TestIssue39CrossMachine:
         )
 
         # Initialize project (Mode 1 - atomic creation)
-        # Initialize project (Mode 1 - atomic creation)
         project_manager = make_project_manager(workspace_root)
         git_manager = MagicMock()
         git_manager.get_current_branch.return_value = "fix/42-cross-machine-test"
@@ -115,7 +114,7 @@ class TestIssue39CrossMachine:
         assert state["current_phase"] == "research"
 
         # =====================================================================
-        # MACHINE A: Make phase progression with phase:label commits
+        # MACHINE A: Make phase progression with Conventional Commit scopes
         # =====================================================================
 
         # Commit deliverables.json to git (state.json NOT committed - in .gitignore)
@@ -126,7 +125,7 @@ class TestIssue39CrossMachine:
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "-m", "phase:research - Initial analysis"],
+            ["git", "commit", "-m", "docs(P_RESEARCH): Initial analysis"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -134,19 +133,25 @@ class TestIssue39CrossMachine:
 
         # Simulate phase transitions with commits
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:planning - Define goals"],
+            ["git", "commit", "--allow-empty", "-m", "docs(P_PLANNING): Define goals"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:design - Technical specs"],
+            ["git", "commit", "--allow-empty", "-m", "docs(P_DESIGN): Technical specs"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:red - Write failing tests"],
+            [
+                "git",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "test(P_IMPLEMENTATION_SP_RED): Write failing tests",
+            ],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -200,7 +205,7 @@ class TestIssue39CrossMachine:
 
     @pytest.mark.asyncio
     async def test_recovery_with_no_phase_commits(self, workspace_root: Path) -> None:
-        """Test recovery when branch has no phase:label commits (fallback to first phase)."""
+        """Test fallback when a branch has no commit-scope phase commits."""
         # Create branch
         subprocess.run(
             ["git", "checkout", "-b", "fix/43-no-labels"],
@@ -263,7 +268,13 @@ class TestIssue39CrossMachine:
         # Make commits with phases NOT in docs workflow
         # Git log returns most recent first, so later commits are checked first
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:integration - Not in docs workflow"],
+            [
+                "git",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "docs(P_INTEGRATION): Not in docs workflow",
+            ],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -274,20 +285,20 @@ class TestIssue39CrossMachine:
                 "commit",
                 "--allow-empty",
                 "-m",
-                "phase:implementation - Also not in docs workflow",
+                "docs(P_IMPLEMENTATION): Also not in docs workflow",
             ],
             cwd=workspace_root,
             check=True,
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:design - VALID and most recent"],
+            ["git", "commit", "--allow-empty", "-m", "docs(P_DESIGN): VALID and most recent"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:planning - Valid but earlier"],
+            ["git", "commit", "--allow-empty", "-m", "docs(P_PLANNING): Valid but earlier"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -304,7 +315,7 @@ class TestIssue39CrossMachine:
         recovered_state = state_engine.get_state("docs/44-documentation")
 
         # Git log returns commits newest first.
-        # phase:planning is the most recent valid phase in the docs workflow.
+        # P_PLANNING is the most recent valid phase in the docs workflow.
         assert recovered_state.current_phase == "planning"
         assert recovered_state.reconstructed is True
 

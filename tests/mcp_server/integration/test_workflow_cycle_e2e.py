@@ -37,7 +37,8 @@ def git_repo(tmp_path: Path) -> Path:
 
     # Create .st3 directory structure
     st3_dir = tmp_path / ".st3"
-    st3_dir.mkdir()
+    config_dir = st3_dir / "config"
+    config_dir.mkdir(parents=True)
 
     # Create workphases.yaml
     workphases = {
@@ -81,7 +82,7 @@ def git_repo(tmp_path: Path) -> Path:
             },
         },
     }
-    (st3_dir / "workphases.yaml").write_text(yaml.dump(workphases))
+    (config_dir / "workphases.yaml").write_text(yaml.dump(workphases), encoding="utf-8")
 
     # Create workflows.yaml (feature workflow)
     workflows = {
@@ -103,7 +104,7 @@ def git_repo(tmp_path: Path) -> Path:
             }
         },
     }
-    (st3_dir / "workflows.yaml").write_text(yaml.dump(workflows))
+    (config_dir / "workflows.yaml").write_text(yaml.dump(workflows), encoding="utf-8")
 
     # Create git.yaml (minimal config)
     git_config = {
@@ -114,8 +115,9 @@ def git_repo(tmp_path: Path) -> Path:
         "branch_name_pattern": "^[a-z0-9-]+$",
         "commit_types": ["feat", "fix", "docs", "test", "refactor", "chore"],
         "default_base_branch": "main",
+        "issue_title_max_length": 72,
     }
-    (st3_dir / "git.yaml").write_text(yaml.dump(git_config))
+    (config_dir / "git.yaml").write_text(yaml.dump(git_config), encoding="utf-8")
 
     # Initial commit (required for branch operations)
     readme = tmp_path / "README.md"
@@ -174,7 +176,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager = GitManager(
         git_config=git_config,
         adapter=git_adapter,
-        workphases_path=git_repo / ".st3" / "workphases.yaml",
+        workphases_path=git_repo / ".st3" / "config" / "workphases.yaml",
     )
     decoder = ScopeDecoder()
 

@@ -19,9 +19,9 @@ import pytest
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import ArtifactDefinition, ArtifactRegistryConfig
-from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.utils.template_config import get_template_root
 
 
 class TestServiceTemplateResolution:

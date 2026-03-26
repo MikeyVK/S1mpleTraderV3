@@ -1,16 +1,8 @@
 """
-tests/unit/tools/test_create_issue_errors.py
-=============================================
 Cycle 6 — Error handling in CreateIssueTool.execute().
 
-Tests that all expected failure modes produce ToolResult.error() with actionable
+Tests that expected failure modes produce ToolResult.error() with actionable
 messages instead of leaking raw exceptions to the caller.
-
-Failure modes covered:
-  1. ExecutionError from GitHubManager  → ToolResult.error
-  2. JinjaRenderer TemplateError        → ToolResult.error
-  3. ValueError from _assemble_labels  → ToolResult.error
-  4. ToolResult.is_error is True in all failure cases
 """
 
 from unittest.mock import MagicMock, patch
@@ -20,9 +12,7 @@ import pytest
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
-from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
-
-configure_create_issue_input()
+from tests.mcp_server.test_support import make_create_issue_tool
 
 BODY = IssueBody(problem="Test error scenarios")
 
@@ -38,7 +28,6 @@ def make_valid_params() -> CreateIssueInput:
 
 
 def make_tool(manager: MagicMock | None = None) -> CreateIssueTool:
-    """Return a CreateIssueTool with a mock manager."""
     mgr = manager or MagicMock()
     mgr.create_issue.return_value = {"number": 1, "title": "T", "url": ""}
     return make_create_issue_tool(mgr)
@@ -46,8 +35,18 @@ def make_tool(manager: MagicMock | None = None) -> CreateIssueTool:
 
 class TestExecutionErrorHandling:
     @pytest.mark.asyncio
+    async def test_validation_error_returns_tool_result_error(self) -> None:
+        mock_manager = MagicMock()
+        mock_manager.validate_issue_params.side_effect = ValueError("Unknown issue type")
+        tool = make_create_issue_tool(mock_manager)
+
+        result = await tool.execute(make_valid_params())
+
+        assert result.is_error is True
+        assert "Issue validation failed" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
     async def test_execution_error_returns_tool_result_error(self) -> None:
-        """ExecutionError from GitHubManager must produce ToolResult.error()."""
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("GitHub API rate limit exceeded")
         tool = make_create_issue_tool(mock_manager)
@@ -69,7 +68,6 @@ class TestExecutionErrorHandling:
 
     @pytest.mark.asyncio
     async def test_execution_error_does_not_raise(self) -> None:
-        """execute() must not raise — it must return ToolResult.error()."""
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("Network error")
         tool = make_create_issue_tool(mock_manager)
@@ -81,7 +79,6 @@ class TestExecutionErrorHandling:
 class TestRenderingErrorHandling:
     @pytest.mark.asyncio
     async def test_template_error_returns_tool_result_error(self) -> None:
-        """jinja2.TemplateError from _render_body must produce ToolResult.error()."""
         tool = make_tool()
         with patch.object(
             tool,
@@ -107,7 +104,6 @@ class TestRenderingErrorHandling:
 
     @pytest.mark.asyncio
     async def test_template_not_found_error_is_handled(self) -> None:
-        """jinja2.TemplateNotFound (subclass of TemplateError) is also caught."""
         tool = make_tool()
         with patch.object(
             tool,
@@ -120,7 +116,6 @@ class TestRenderingErrorHandling:
 
     @pytest.mark.asyncio
     async def test_template_error_message_is_actionable(self) -> None:
-        """TemplateError message must hint at the template path — not just 'Unexpected error'."""
         tool = make_tool()
         with patch.object(
             tool,
@@ -136,7 +131,6 @@ class TestRenderingErrorHandling:
 class TestAssembleLabelErrorHandling:
     @pytest.mark.asyncio
     async def test_value_error_from_label_assembly_returns_tool_result_error(self) -> None:
-        """ValueError from _assemble_labels must produce ToolResult.error() not raise."""
         tool = make_tool()
         with patch.object(
             tool,
@@ -150,11 +144,7 @@ class TestAssembleLabelErrorHandling:
     @pytest.mark.asyncio
     async def test_value_error_does_not_raise(self) -> None:
         tool = make_tool()
-        with patch.object(
-            tool,
-            "_assemble_labels",
-            side_effect=ValueError("Unknown workflow"),
-        ):
+        with patch.object(tool, "_assemble_labels", side_effect=ValueError("Unknown workflow")):
             result = await tool.execute(make_valid_params())
 
         assert result is not None
@@ -163,7 +153,6 @@ class TestAssembleLabelErrorHandling:
 class TestNoExceptionLeaks:
     @pytest.mark.asyncio
     async def test_execution_error_does_not_propagate(self) -> None:
-        """No known error type should propagate out of execute()."""
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("fail")
         tool = make_create_issue_tool(mock_manager)

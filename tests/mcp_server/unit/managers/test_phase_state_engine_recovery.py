@@ -4,7 +4,7 @@ Issue #39: Mode 2 - Auto-recovery of missing state.json from git commits.
 
 Tests verify:
 1. Missing state.json triggers reconstruction
-2. Phase inferred from phase:label commits
+2. Phase inferred from Conventional Commits scope (P_PHASE_SP_SUBPHASE format)
 3. State reconstructed from deliverables.json + git
 4. Transparent recovery (no user intervention)
 5. Reconstructed flag set for audit
@@ -73,9 +73,9 @@ class TestPhaseStateEngineMode2:
         # Mock git to return commits with phase labels
         with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
-                "phase:design - Complete technical specifications",
-                "phase:planning - Define implementation goals",
-                "phase:research - Analyze problem",
+                "docs(P_DESIGN): Complete technical specifications",
+                "docs(P_PLANNING): Define implementation goals",
+                "docs(P_RESEARCH): Analyze problem",
             ]
 
             # Call get_state - should auto-recover
@@ -102,13 +102,13 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        # Mock commits with phase:label format (labels.yaml SSOT)
+        # Mock commits with Conventional Commits scope format
         with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
-                "phase:validation - Test cross-machine scenario",
-                "phase:green - Implement feature",
-                "phase:red - Write failing test",
-                "phase:design - Complete design",
+                "test(P_VALIDATION): Test cross-machine scenario",
+                "feat(P_IMPLEMENTATION_SP_GREEN): Implement feature",
+                "test(P_IMPLEMENTATION_SP_RED): Write failing test",
+                "docs(P_DESIGN): Complete design",
             ]
 
             state = state_engine.get_state("fix/39-test")
@@ -127,9 +127,9 @@ class TestPhaseStateEngineMode2:
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
-                "phase:green - Implement Mode 1",
-                "phase:red - Write failing tests",
-                "phase:design - Complete specs",
+                "feat(P_IMPLEMENTATION_SP_GREEN): Implement Mode 1",
+                "test(P_IMPLEMENTATION_SP_RED): Write failing tests",
+                "docs(P_DESIGN): Complete specs",
             ]
 
             state = state_engine.get_state("fix/39-test")
@@ -173,7 +173,7 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
-            mock_git.return_value = ["phase:planning - Define goals"]
+            mock_git.return_value = ["docs(P_PLANNING): Define goals"]
 
             # Should not raise any exceptions
             state = state_engine.get_state("fix/39-test")
@@ -191,7 +191,7 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
-            mock_git.return_value = ["phase:research - Start work"]
+            mock_git.return_value = ["docs(P_RESEARCH): Start work"]
 
             state = state_engine.get_state("fix/39-test-recovery")
 
@@ -213,7 +213,7 @@ class TestPhaseStateEngineMode2:
             projects_file.unlink()
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
-            mock_git.return_value = ["phase:research - Start"]
+            mock_git.return_value = ["docs(P_RESEARCH): Start"]
 
             # Should raise ValueError with helpful message
             with pytest.raises(ValueError, match="Project plan not found"):
@@ -229,7 +229,7 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
-            mock_git.return_value = ["phase:research - Start"]
+            mock_git.return_value = ["docs(P_RESEARCH): Start"]
 
             # Invalid branch name (no issue number)
             with pytest.raises(ValueError, match="Cannot extract issue number"):
@@ -265,7 +265,7 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
-            mock_git.return_value = ["phase:design - Complete specs"]
+            mock_git.return_value = ["docs(P_DESIGN): Complete specs"]
 
             # First call - reconstruction
             state1 = state_engine.get_state("fix/39-test")
@@ -288,10 +288,10 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         with patch.object(state_engine, "_get_git_commits") as mock_git:
-            # phase:invalid not in bug workflow
+            # P_INVALID scope not in bug workflow phases
             mock_git.return_value = [
-                "phase:invalid - This should be ignored",
-                "phase:design - Valid phase",
+                "test(P_INVALID): This should be ignored",
+                "docs(P_DESIGN): Valid phase",
             ]
 
             state = state_engine.get_state("fix/39-test")

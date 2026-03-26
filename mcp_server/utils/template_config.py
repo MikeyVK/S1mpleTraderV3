@@ -1,9 +1,19 @@
+# mcp_server/utils/template_config.py
 """
-Configuration utilities for scaffolding system.
+Template root resolution utilities.
 
-Provides centralized template root resolution with fail-fast behavior.
+Provides centralized fail-fast resolution for scaffold template directories
+across workspace-local and package-bundled template sources.
+
+@layer: Backend (Utils)
+@dependencies: [os, pathlib]
+@responsibilities:
+    - Resolve template root from environment overrides
+    - Prefer workspace-local templates over bundled package templates
+    - Fail fast when no valid template root exists
 """
 
+# Standard library
 import os
 from pathlib import Path
 
@@ -23,7 +33,6 @@ def get_template_root() -> Path:
     Returns:
         Absolute path to template root directory
     """
-    # 1. Check environment variable first
     env_path = os.getenv("TEMPLATE_ROOT")
     if env_path:
         template_root = Path(env_path)
@@ -33,12 +42,10 @@ def get_template_root() -> Path:
             )
         return template_root.resolve()
 
-    # 2. Workspace .st3/templates/ (workspace-local override)
     workspace_root = Path(".st3/templates")
     if workspace_root.exists():
         return workspace_root.resolve()
 
-    # 3. Package-bundled templates (installed via wheel)
     package_root = Path(__file__).parent.parent / "scaffolding" / "templates"
     if package_root.exists():
         return package_root.resolve()

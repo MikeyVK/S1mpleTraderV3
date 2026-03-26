@@ -24,9 +24,9 @@ from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
 from mcp_server.config.compat_roots import resolve_config_root
-from mcp_server.config.label_startup import validate_label_config_on_startup
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.settings import Settings
+from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.managers.artifact_manager import ArtifactManager
@@ -147,9 +147,6 @@ class MCPServer:
             required_files=("git.yaml", "workflows.yaml", "workphases.yaml"),
         )
 
-        # Validate label configuration against the same explicit config root the server will use.
-        validate_label_config_on_startup(str(config_root / "labels.yaml"))
-
         config_loader = ConfigLoader(config_root=config_root)
         git_config = config_loader.load_git_config()
         workflow_config = config_loader.load_workflow_config()
@@ -161,9 +158,22 @@ class MCPServer:
         milestone_config = config_loader.load_milestone_config()
         contributor_config = config_loader.load_contributor_config()
         artifact_registry = config_loader.load_artifact_registry_config()
-        project_structure_config = config_loader.load_project_structure_config()
+        project_structure_config = config_loader.load_project_structure_config(
+            artifact_registry=artifact_registry
+        )
+        operation_policies_config = config_loader.load_operation_policies_config(
+            workflow_config=workflow_config
+        )
         enforcement_config = config_loader.load_enforcement_config()
         phase_contracts_config = config_loader.load_phase_contracts_config()
+        ConfigValidator().validate_startup(
+            policies=operation_policies_config,
+            workflow=workflow_config,
+            structure=project_structure_config,
+            artifact=artifact_registry,
+            phase_contracts=phase_contracts_config,
+            workphases=workphases_config,
+        )
 
         self.git_manager = GitManager(git_config=git_config)
         self.project_manager = ProjectManager(
@@ -186,6 +196,9 @@ class MCPServer:
             issue_config=issue_config,
             label_config=label_config,
             scope_config=scope_config,
+            milestone_config=milestone_config,
+            contributor_config=contributor_config,
+            git_config=git_config,
         )
         self.artifact_manager = ArtifactManager(
             workspace_root=workspace_root,
@@ -309,11 +322,7 @@ class MCPServer:
                     CreateIssueTool(
                         manager=self.github_manager,
                         issue_config=issue_config,
-                        git_config=git_config,
-                        label_config=label_config,
-                        scope_config=scope_config,
                         milestone_config=milestone_config,
-                        contributor_config=contributor_config,
                         workflow_config=workflow_config,
                     ),
                     ListIssuesTool(manager=self.github_manager),
@@ -342,11 +351,7 @@ class MCPServer:
                     CreateIssueTool(
                         manager=self.github_manager,
                         issue_config=issue_config,
-                        git_config=git_config,
-                        label_config=label_config,
-                        scope_config=scope_config,
                         milestone_config=milestone_config,
-                        contributor_config=contributor_config,
                         workflow_config=workflow_config,
                     ),
                     ListIssuesTool(manager=self.github_manager),
@@ -629,8 +634,6 @@ class MCPServer:
     async def run(self) -> None:
         """Run the MCP server."""
         server_name = self._settings.server.name
-        # Validate label configuration at startup
-        validate_label_config_on_startup()
 
         logger.info("Starting MCP server: %s", server_name)
         lifecycle_logger.info("MCP server running")

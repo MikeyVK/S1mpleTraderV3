@@ -9,7 +9,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from mcp_server.config.template_config import get_template_root
+from mcp_server.utils.template_config import get_template_root
 
 
 def extract_template_version(template_path: Path) -> str:

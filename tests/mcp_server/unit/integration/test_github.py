@@ -7,9 +7,7 @@ import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.issue_tools import CreateIssueInput, IssueBody
-from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
-
-configure_create_issue_input()
+from tests.mcp_server.test_support import load_issue_tool_dependencies, make_create_issue_tool
 
 
 @pytest.fixture
@@ -46,7 +44,16 @@ def test_create_issue_tool(mock_adapter: Mock) -> None:
     mock_issue.title = "New Issue"
     mock_adapter.create_issue.return_value = mock_issue
 
-    manager = GitHubManager(adapter=mock_adapter)
+    dependencies = load_issue_tool_dependencies()
+    manager = GitHubManager(
+        adapter=mock_adapter,
+        issue_config=dependencies["issue_config"],
+        label_config=dependencies["label_config"],
+        scope_config=dependencies["scope_config"],
+        milestone_config=dependencies["milestone_config"],
+        contributor_config=dependencies["contributor_config"],
+        git_config=dependencies["git_config"],
+    )
     tool = make_create_issue_tool(manager)
 
     params = CreateIssueInput(

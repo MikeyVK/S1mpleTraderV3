@@ -1,4 +1,17 @@
-"""Pure GitConfig schema for ConfigLoader-managed YAML loading."""
+# mcp_server/config/schemas/git_config.py
+"""
+Git configuration schema value object.
+
+Defines the typed contract for git conventions loaded from YAML by the
+configuration layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, re, typing]
+@responsibilities:
+    - Define the typed GitConfig schema contract
+    - Validate cross-field git configuration consistency
+    - Expose helper methods for branch and commit convention checks
+"""
 
 from __future__ import annotations
 
@@ -12,12 +25,12 @@ class GitConfig(BaseModel):
     """Git conventions configuration value object."""
 
     branch_types: list[str] = Field(
-        default=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+        ...,
         description="Allowed branch types for create_branch()",
         min_length=1,
     )
     tdd_phases: list[str] = Field(
-        default=["red", "green", "refactor", "docs"],
+        ...,
         description=(
             "DEPRECATED: Use workflow phases from workphases.yaml instead. "
             "Legacy TDD phase aliases for backward compatibility"
@@ -25,12 +38,7 @@ class GitConfig(BaseModel):
         min_length=1,
     )
     commit_prefix_map: dict[str, str] = Field(
-        default={
-            "red": "test",
-            "green": "feat",
-            "refactor": "refactor",
-            "docs": "docs",
-        },
+        ...,
         description=(
             "DEPRECATED: Use commit_type parameter in workflow-based commits. "
             "TDD phase to Conventional Commit prefix mapping"
@@ -38,37 +46,25 @@ class GitConfig(BaseModel):
         min_length=1,
     )
     protected_branches: list[str] = Field(
-        default=["main", "master", "develop"],
+        ...,
         description="Branches that cannot be deleted",
         min_length=1,
     )
     branch_name_pattern: str = Field(
-        default=r"^[a-z0-9-]+$",
+        ...,
         description="Regex pattern for branch name validation (kebab-case default)",
     )
     commit_types: list[str] = Field(
-        default=[
-            "feat",
-            "fix",
-            "docs",
-            "style",
-            "refactor",
-            "test",
-            "chore",
-            "perf",
-            "ci",
-            "build",
-            "revert",
-        ],
+        ...,
         description="Allowed Conventional Commit types",
         min_length=1,
     )
     default_base_branch: str = Field(
-        default="main",
+        ...,
         description="Default base branch for PR creation",
     )
     issue_title_max_length: int = Field(
-        default=72,
+        ...,
         description="Maximum allowed length for issue titles",
         ge=1,
     )

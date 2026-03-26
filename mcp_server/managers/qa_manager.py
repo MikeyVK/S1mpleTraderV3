@@ -112,9 +112,11 @@ class QAManager:
             "overall_pass": True,  # Backward compatibility
         }
 
-        # Validate file existence
+        # Validate file existence. Mixed explicit file lists can legitimately contain
+        # deleted branch-diff paths; keep validating the remaining existing files.
+        existing_files = [f for f in files if Path(f).exists()]
         missing_files = [f for f in files if not Path(f).exists()]
-        if missing_files:
+        if missing_files and not existing_files:
             self._update_summary_and_append_gate(
                 results,
                 {
@@ -127,7 +129,7 @@ class QAManager:
             )
             return results
 
-        python_files = list(files)
+        python_files = list(existing_files)
 
         quality_config = self._require_quality_config()
         # Apply artifact logging config (config-first with safe defaults)

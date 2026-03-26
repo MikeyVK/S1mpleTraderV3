@@ -3,26 +3,24 @@
 import copy
 import json
 import unicodedata
-from typing import Any, ClassVar, Literal, cast
+from typing import Any, Literal, cast
 
 import jinja2
 from pydantic import BaseModel, Field, field_validator
 
-from mcp_server.config.contributor_config import ContributorConfig
-from mcp_server.config.git_config import GitConfig
-from mcp_server.config.issue_config import IssueConfig
-from mcp_server.config.label_config import LabelConfig
-from mcp_server.config.milestone_config import MilestoneConfig
-from mcp_server.config.scope_config import ScopeConfig
-from mcp_server.config.template_config import get_template_root
-from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
 from mcp_server.scaffolding.version_hash import compute_version_hash
+from mcp_server.schemas import (
+    IssueConfig,
+    MilestoneConfig,
+    WorkflowConfig,
+)
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.utils.template_config import get_template_root
 
 IssueState = Literal["open", "closed", "all"]
 
@@ -32,52 +30,31 @@ def normalize_unicode(text: str) -> str:
 
     Preserves emoji and other Unicode while fixing malformed surrogates.
     """
-    # Step 1: Encode to UTF-8 bytes, handling surrogates
     try:
         utf8_bytes = text.encode("utf-8", errors="surrogatepass")
     except UnicodeEncodeError:
-        # Fallback: replace bad surrogates
         utf8_bytes = text.encode("utf-8", errors="replace")
 
-    # Step 2: Decode back to string
     normalized = utf8_bytes.decode("utf-8", errors="replace")
-
-    # Step 3: Apply Unicode normalization (NFC = canonical composition)
     return unicodedata.normalize("NFC", normalized)
 
 
 def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
-    """Inline all $ref references in a JSON Schema.
-
-    VS Code / Copilot Chat does not resolve JSON Schema $ref when constructing
-    MCP tool call arguments, so the model cannot build nested objects described
-    with  body: {"$ref": "#/$defs/IssueBody"}.
-
-    This function resolves all $ref entries by inlining the corresponding
-    definition from $defs, producing a fully self-contained schema without
-    $defs or $ref.
-
-    Args:
-        schema: A JSON Schema dict (typically from model_json_schema()).
-
-    Returns:
-        A new schema dict with all $ref references inlined.
-    """
+    """Inline all $ref references in a JSON Schema."""
     schema = copy.deepcopy(schema)
     defs: dict[str, Any] = schema.pop("$defs", {})
 
     def _resolve(node: Any) -> Any:  # noqa: ANN401
         if isinstance(node, dict):
             if "$ref" in node:
-                ref_path: str = node["$ref"]  # e.g. "#/$defs/IssueBody"
-                def_name = ref_path.split("/")[-1]  # noqa: PLC0207
+                ref_path: str = node["$ref"]
+                def_name = ref_path.rsplit("/", maxsplit=1)[-1]
                 resolved = copy.deepcopy(defs.get(def_name, {}))
-                # Merge any sibling keys from the $ref node (e.g. description)
-                for k, v in node.items():
-                    if k != "$ref":
-                        resolved[k] = v
+                for key, value in node.items():
+                    if key != "$ref":
+                        resolved[key] = value
                 return _resolve(resolved)
-            return {k: _resolve(v) for k, v in node.items()}
+            return {key: _resolve(value) for key, value in node.items()}
         if isinstance(node, list):
             return [_resolve(item) for item in node]
         return node
@@ -86,12 +63,7 @@ def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
 
 
 class IssueBody(BaseModel):
-    """Structured body for a GitHub issue, rendered via issue.md.jinja2.
-
-    json_schema_extra examples:
-    - Minimal: only `problem` provided — all other fields omitted
-    - Full: all optional sections populated for a comprehensive report
-    """
+    """Structured body for a GitHub issue, rendered via issue.md.jinja2."""
 
     problem: str = Field(..., description="Clear description of the problem or feature request")
     expected: str | None = Field(default=None, description="Expected behavior")
@@ -126,16 +98,14 @@ class IssueBody(BaseModel):
 class CreateIssueInput(BaseModel):
     """Structured input for creating a GitHub issue.
 
-    All fields are validated against project config (issues.yaml, scopes.yaml,
-    milestones.yaml, contributors.yaml, git.yaml). No free-form labels accepted —
-    labels are assembled internally by CreateIssueTool.
-
-    json_schema_extra examples are below: minimal (required fields only) and full.
+    Only structural validation happens here. Semantic validation against project
+    config is delegated to GitHubManager.validate_issue_params(). No free-form
+    labels are accepted; they are assembled internally by CreateIssueTool.
     """
 
     issue_type: str = Field(..., description="Issue type: feature, bug, hotfix, chore, docs, epic")
-    title: str = Field(..., description="Issue title (max 72 chars from git.yaml)")
-    priority: str = Field(..., description="Priority: critical, high, medium, low, triage")
+    title: str = Field(..., description="Issue title")
+    priority: str = Field(..., description="Priority value")
     scope: str = Field(
         ...,
         description=(
@@ -143,68 +113,6 @@ class CreateIssueInput(BaseModel):
             " tooling, workflow, documentation"
         ),
     )
-
-    _issue_config: ClassVar[IssueConfig | None] = None
-    _git_config: ClassVar[GitConfig | None] = None
-    _label_config: ClassVar[LabelConfig | None] = None
-    _scope_config: ClassVar[ScopeConfig | None] = None
-    _milestone_config: ClassVar[MilestoneConfig | None] = None
-    _contributor_config: ClassVar[ContributorConfig | None] = None
-
-    @classmethod
-    def configure(
-        cls,
-        *,
-        issue_config: IssueConfig,
-        git_config: GitConfig,
-        label_config: LabelConfig,
-        scope_config: ScopeConfig,
-        milestone_config: MilestoneConfig,
-        contributor_config: ContributorConfig,
-    ) -> None:
-        cls._issue_config = issue_config
-        cls._git_config = git_config
-        cls._label_config = label_config
-        cls._scope_config = scope_config
-        cls._milestone_config = milestone_config
-        cls._contributor_config = contributor_config
-
-    @classmethod
-    def _require_issue_config(cls) -> IssueConfig:
-        if cls._issue_config is None:
-            raise ValueError("IssueConfig must be injected before issue input validation")
-        return cls._issue_config
-
-    @classmethod
-    def _require_git_config(cls) -> GitConfig:
-        if cls._git_config is None:
-            raise ValueError("GitConfig must be injected before issue input validation")
-        return cls._git_config
-
-    @classmethod
-    def _require_label_config(cls) -> LabelConfig:
-        if cls._label_config is None:
-            raise ValueError("LabelConfig must be injected before issue input validation")
-        return cls._label_config
-
-    @classmethod
-    def _require_scope_config(cls) -> ScopeConfig:
-        if cls._scope_config is None:
-            raise ValueError("ScopeConfig must be injected before issue input validation")
-        return cls._scope_config
-
-    @classmethod
-    def _require_milestone_config(cls) -> MilestoneConfig:
-        if cls._milestone_config is None:
-            raise ValueError("MilestoneConfig must be injected before issue input validation")
-        return cls._milestone_config
-
-    @classmethod
-    def _require_contributor_config(cls) -> ContributorConfig:
-        if cls._contributor_config is None:
-            raise ValueError("ContributorConfig must be injected before issue input validation")
-        return cls._contributor_config
-
     body: IssueBody = Field(..., description="Structured issue body (IssueBody)")
     is_epic: bool = Field(default=False, description="Mark this issue as an epic")
     parent_issue: int | None = Field(
@@ -216,12 +124,7 @@ class CreateIssueInput(BaseModel):
     @field_validator("body", mode="before")
     @classmethod
     def coerce_body_from_json_string(cls, v: object) -> object:
-        """Accept a JSON string for body and parse it into a dict for IssueBody.
-
-        The MCP chat interface (Copilot Chat) serializes nested objects as JSON
-        strings. Without this coercion every chat call fails with
-        'is not of type object'.
-        """
+        """Accept a JSON string for body and parse it into a dict for IssueBody."""
         if isinstance(v, str):
             try:
                 parsed = json.loads(v)
@@ -230,64 +133,6 @@ class CreateIssueInput(BaseModel):
             if not isinstance(parsed, dict):
                 raise ValueError("body JSON string must decode to an object, not a list or scalar")
             return parsed
-        return v
-
-    @field_validator("issue_type")
-    @classmethod
-    def validate_issue_type(cls, v: str) -> str:
-        cfg = cls._require_issue_config()
-        if not cfg.has_issue_type(v):
-            valid = sorted(e.name for e in cfg.issue_types)
-            raise ValueError(f"Unknown issue type: '{v}'. Valid values: {valid}")
-        return v
-
-    @field_validator("title")
-    @classmethod
-    def validate_title_length(cls, v: str) -> str:
-        git_cfg = cls._require_git_config()
-        max_len = git_cfg.issue_title_max_length
-        if len(v) > max_len:
-            raise ValueError(f"Title too long: {len(v)} chars (max {max_len} from git.yaml)")
-        return v
-
-    @field_validator("priority")
-    @classmethod
-    def validate_priority(cls, v: str) -> str:
-        cfg = cls._require_label_config()
-        valid = {lbl.name.split(":", 1)[1] for lbl in cfg.get_labels_by_category("priority")}
-        if v not in valid:
-            raise ValueError(f"Unknown priority: '{v}'. Valid values: {sorted(valid)}")
-        return v
-
-    @field_validator("scope")
-    @classmethod
-    def validate_scope(cls, v: str) -> str:
-        cfg = cls._require_scope_config()
-        if not cfg.has_scope(v):
-            raise ValueError(f"Unknown scope: '{v}'. Valid values: {sorted(cfg.scopes)}")
-        return v
-
-    @field_validator("milestone")
-    @classmethod
-    def validate_milestone(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        cfg = cls._require_milestone_config()
-        if not cfg.validate_milestone(v):
-            raise ValueError(f"Unknown milestone: '{v}'. Must match a title in milestones.yaml.")
-        return v
-
-    @field_validator("assignees")
-    @classmethod
-    def validate_assignee(cls, v: list[str] | None) -> list[str] | None:
-        if v is None:
-            return None
-        cfg = cls._require_contributor_config()
-        for login in v:
-            if not cfg.validate_assignee(login):
-                raise ValueError(
-                    f"Unknown assignee: '{login}'. Must be listed in contributors.yaml."
-                )
         return v
 
     model_config = {
@@ -334,58 +179,27 @@ class CreateIssueTool(BaseTool):
         self,
         manager: GitHubManager,
         issue_config: IssueConfig,
-        git_config: GitConfig,
-        label_config: LabelConfig,
-        scope_config: ScopeConfig,
         milestone_config: MilestoneConfig,
-        contributor_config: ContributorConfig,
         workflow_config: WorkflowConfig,
     ) -> None:
         self.manager = manager
         self._issue_config = issue_config
-        self._git_config = git_config
-        self._label_config = label_config
-        self._scope_config = scope_config
         self._milestone_config = milestone_config
-        self._contributor_config = contributor_config
         self._workflow_config = workflow_config
-        CreateIssueInput.configure(
-            issue_config=issue_config,
-            git_config=git_config,
-            label_config=label_config,
-            scope_config=scope_config,
-            milestone_config=milestone_config,
-            contributor_config=contributor_config,
-        )
         self._renderer = JinjaRenderer(template_dir=get_template_root())
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        """Return inlined JSON Schema without $ref/$defs for VS Code compatibility.
-
-        VS Code / Copilot Chat does not resolve $ref when constructing tool
-        call arguments, so we inline IssueBody directly into the schema.
-        """
+        """Return inlined JSON Schema without $ref/$defs for VS Code compatibility."""
         return _resolve_schema_refs(CreateIssueInput.model_json_schema())
 
     def _render_body(self, body: IssueBody, title: str = "") -> str:
-        """Render an IssueBody to markdown via issue.md.jinja2.
-
-        Args:
-            body: Structured issue body fields.
-            title: Issue title rendered as H1 heading.
-
-        Returns:
-            Markdown string with SCAFFOLD metadata as invisible HTML comments.
-        """
-        # Compute version_hash from issue template inheritance chain (Issue #239 C3)
-        # output_path=None → compact SCAFFOLD header (no file path, no created/updated)
+        """Render an IssueBody to markdown via issue.md.jinja2."""
         _template_path = "concrete/issue.md.jinja2"
         _template_root = get_template_root()
         _schema = introspect_template_with_inheritance(_template_root, _template_path)
-        _tier_chain = (
-            [(p, "1.0") for p in _schema.parent_chain] if hasattr(_schema, "parent_chain") else []
-        )
+        _parent_chain = getattr(_schema, "parent_chain", [])
+        _tier_chain = [(path, "1.0") for path in _parent_chain]
         _version_hash = compute_version_hash("issue", _template_path, _tier_chain)
 
         return self._renderer.render(
@@ -405,23 +219,11 @@ class CreateIssueTool(BaseTool):
         )
 
     def _assemble_labels(self, params: CreateIssueInput) -> list[str]:
-        """Assemble the full label list from structured input fields.
-
-        Assembly rules (in order):
-          type_label     = "type:epic"                        if is_epic
-                         = IssueConfig.get_label(issue_type)  otherwise
-          scope_label    = "scope:{scope}"
-          priority_label = "priority:{priority}"
-          phase_label    = "phase:{first_phase}"              from workflows.yaml
-          parent_label   = "parent:{n}"                      if parent_issue is not None
-        """
+        """Assemble the full label list from structured input fields."""
         issue_cfg = self._issue_config
         workflow_cfg = self._workflow_config
 
-        # type label
         type_label = "type:epic" if params.is_epic else issue_cfg.get_label(params.issue_type)
-
-        # phase label — derive from first phase of the issue type's workflow
         workflow_name = issue_cfg.get_workflow(params.issue_type)
         first_phase = workflow_cfg.get_first_phase(workflow_name)
         phase_label = f"phase:{first_phase}"
@@ -440,18 +242,29 @@ class CreateIssueTool(BaseTool):
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
+            self.manager.validate_issue_params(
+                issue_type=params.issue_type,
+                title=params.title,
+                priority=params.priority,
+                scope=params.scope,
+                milestone=params.milestone,
+                assignees=params.assignees,
+            )
+        except ValueError as e:
+            return ToolResult.error(f"Issue validation failed: {e}.")
+
+        try:
             title_safe = normalize_unicode(params.title)
             body_safe = normalize_unicode(self._render_body(params.body, title=params.title))
             labels = self._assemble_labels(params)
 
-            # Resolve milestone title → number (GitHub API requires int)
             milestone_number: int | None = None
             if params.milestone is not None:
                 milestone_number = next(
                     (
-                        m.number
-                        for m in self._milestone_config.milestones
-                        if m.title == params.milestone
+                        milestone.number
+                        for milestone in self._milestone_config.milestones
+                        if milestone.title == params.milestone
                     ),
                     None,
                 )
@@ -499,7 +312,6 @@ class GetIssueTool(BaseTool):
         try:
             issue = self.manager.get_issue(params.issue_number)
 
-            # Formatting helpers
             assignees_str = ", ".join(a.login for a in issue.assignees) or "none"
             labels_str = ", ".join(label.name for label in issue.labels) or "none"
             milestone_str = issue.milestone.title if issue.milestone else "none"
@@ -540,14 +352,14 @@ class ListIssuesTool(BaseTool):
 
     async def execute(self, params: ListIssuesInput) -> ToolResult:
         try:
-            # `IssueState` is a typing.Literal alias, not a runtime type.
-            # Pydantic will give us either a string value or None.
             state_str = params.state
             issues = self.manager.list_issues(state=state_str or "open", labels=params.labels)
             if not issues:
                 return ToolResult.text("No issues found.")
 
-            summary = "\n".join([f"#{i.number} {i.title} ({i.state})" for i in issues])
+            summary = "\n".join(
+                [f"#{issue.number} {issue.title} ({issue.state})" for issue in issues]
+            )
             return ToolResult.text(f"Found {len(issues)} issues:\n{summary}")
         except ExecutionError as e:
             return ToolResult.error(str(e))

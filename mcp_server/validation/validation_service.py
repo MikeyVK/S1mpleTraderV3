@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 # Project imports
-from mcp_server.config.template_config import get_template_root
+from mcp_server.utils.template_config import get_template_root
 from mcp_server.validation.base import BaseValidator
 from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator

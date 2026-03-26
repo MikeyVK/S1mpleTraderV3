@@ -16,9 +16,7 @@ from mcp_server.tools.issue_tools import (
     UpdateIssueInput,
     UpdateIssueTool,
 )
-from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
-
-configure_create_issue_input()
+from tests.mcp_server.test_support import make_create_issue_tool
 
 
 @pytest.fixture
@@ -41,6 +39,14 @@ async def test_create_issue_tool(mock_github_manager: MagicMock) -> None:
     )
     result = await tool.execute(params)
 
+    mock_github_manager.validate_issue_params.assert_called_once_with(
+        issue_type="feature",
+        title="New Issue",
+        priority="medium",
+        scope="mcp-server",
+        milestone=None,
+        assignees=None,
+    )
     mock_github_manager.create_issue.assert_called_once()
     assert "Created issue #123" in result.content[0]["text"]
 
@@ -55,11 +61,9 @@ async def test_create_issue_tool_forwards_milestone(mock_github_manager: MagicMo
     milestone_entry.number = 2
     milestone_config = MagicMock()
     milestone_config.milestones = [milestone_entry]
-    milestone_config.validate_milestone.return_value = True
 
     tool = make_create_issue_tool(mock_github_manager)
     tool._milestone_config = milestone_config
-    CreateIssueInput._milestone_config = milestone_config
 
     params = CreateIssueInput(
         issue_type="feature",

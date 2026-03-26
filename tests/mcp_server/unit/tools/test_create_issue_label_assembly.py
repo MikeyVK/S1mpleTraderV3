@@ -1,18 +1,8 @@
 """
-tests/unit/tools/test_create_issue_label_assembly.py
-======================================================
 Cycle 5 — Label assembly in CreateIssueTool.
 
 Tests for the private `_assemble_labels()` method and for `execute()` forwarding
-the assembled label list to GitHubManager (no free-form labels, no `labels=None`).
-
-Assembly rules (in order):
-  type_label     = "type:epic"                   if is_epic
-                 = IssueConfig.get_label(issue_type)   otherwise
-  scope_label    = "scope:{scope}"
-  priority_label = "priority:{priority}"
-  phase_label    = "phase:{first_phase}"          from workflows.yaml via issue_type → workflow
-  parent_label   = "parent:{n}"                  if parent_issue is not None
+assembled labels to GitHubManager.
 """
 
 from unittest.mock import MagicMock
@@ -20,15 +10,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
-from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
-
-configure_create_issue_input()
+from tests.mcp_server.test_support import make_create_issue_tool
 
 BODY = IssueBody(problem="Test problem")
 
 
 def make_params(**overrides: object) -> CreateIssueInput:
-    """Return a minimal valid CreateIssueInput with optional overrides."""
     base = {
         "issue_type": "feature",
         "title": "Test issue",
@@ -54,7 +41,6 @@ class TestTypeLabelAssembly:
         assert "type:bug" in labels
 
     def test_hotfix_produces_type_bug_not_type_hotfix(self) -> None:
-        """hotfix maps to type:bug via IssueConfig.get_label(), not type:hotfix."""
         labels = make_tool()._assemble_labels(make_params(issue_type="hotfix"))
         assert "type:bug" in labels
         assert "type:hotfix" not in labels
@@ -71,7 +57,7 @@ class TestTypeLabelAssembly:
 
     def test_no_duplicate_type_labels(self) -> None:
         labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
-        type_labels = [lbl for lbl in labels if lbl.startswith("type:")]
+        type_labels = [label for label in labels if label.startswith("type:")]
         assert len(type_labels) == 1
 
 
@@ -105,17 +91,14 @@ class TestPriorityLabelAssembly:
 
 class TestPhaseLabelAssembly:
     def test_feature_workflow_first_phase_is_research(self) -> None:
-        """feature → workflow:feature → first phase = research."""
         labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
         assert "phase:research" in labels
 
     def test_hotfix_workflow_first_phase_is_implementation(self) -> None:
-        """hotfix → workflow:hotfix → first phase = implementation."""
         labels = make_tool()._assemble_labels(make_params(issue_type="hotfix"))
         assert "phase:implementation" in labels
 
     def test_docs_workflow_first_phase_is_planning(self) -> None:
-        """docs → workflow:docs → first phase = planning."""
         labels = make_tool()._assemble_labels(make_params(issue_type="docs"))
         assert "phase:planning" in labels
 
@@ -125,7 +108,7 @@ class TestPhaseLabelAssembly:
 
     def test_no_duplicate_phase_labels(self) -> None:
         labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
-        phase_labels = [lbl for lbl in labels if lbl.startswith("phase:")]
+        phase_labels = [label for label in labels if label.startswith("phase:")]
         assert len(phase_labels) == 1
 
 
@@ -136,7 +119,7 @@ class TestParentLabelAssembly:
 
     def test_parent_issue_none_produces_no_parent_label(self) -> None:
         labels = make_tool()._assemble_labels(make_params(parent_issue=None))
-        assert not any(lbl.startswith("parent:") for lbl in labels)
+        assert not any(label.startswith("parent:") for label in labels)
 
     def test_parent_issue_different_value(self) -> None:
         labels = make_tool()._assemble_labels(make_params(parent_issue=149))
@@ -145,7 +128,6 @@ class TestParentLabelAssembly:
 
 class TestFullLabelSet:
     def test_minimal_input_produces_four_labels(self) -> None:
-        """Minimal input → type + scope + priority + phase (no parent)."""
         labels = make_tool()._assemble_labels(make_params())
         assert len(labels) == 4
 
@@ -163,7 +145,6 @@ class TestFullLabelSet:
 class TestExecuteForwardsAssembledLabels:
     @pytest.mark.asyncio
     async def test_execute_passes_assembled_labels_to_manager(self) -> None:
-        """execute() must pass the assembled label list — not None — to create_issue."""
         mock_manager = MagicMock()
         mock_manager.create_issue.return_value = {
             "number": 1,

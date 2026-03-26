@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.template_config import get_template_root
+from mcp_server.utils.template_config import get_template_root
 
 
 class TestGetTemplateRoot:

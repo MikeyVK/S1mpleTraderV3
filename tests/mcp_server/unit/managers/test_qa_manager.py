@@ -66,6 +66,33 @@ class TestQAManager:
             assert "File not found" in result["gates"][0]["issues"][0]["message"]
 
     @pytest.mark.asyncio
+    async def test_run_quality_gates_ignores_missing_files_when_others_exist(
+        self,
+        manager: QAManager,
+        tmp_path: Path,
+    ) -> None:
+        """Deleted files in a mixed file list must not fail branch/file-scoped validation."""
+        existing_file = tmp_path / "existing.py"
+        existing_file.write_text("print('ok')\n", encoding="utf-8")
+
+        with patch.object(manager, "_execute_gate") as mock_execute_gate:
+            mock_execute_gate.side_effect = lambda gate, _files, gate_number, gate_id: {
+                "gate_number": gate_number,
+                "id": gate_id,
+                "name": gate.name,
+                "passed": True,
+                "status": "passed",
+                "score": "passed",
+                "issues": [],
+            }
+
+            result = manager.run_quality_gates([str(existing_file), "deleted.py"])
+
+        assert result["overall_pass"] is True
+        assert all(gate["name"] != "File Validation" for gate in result["gates"])
+        assert mock_execute_gate.called is True
+
+    @pytest.mark.asyncio
     @pytest.mark.skip(
         reason="Legacy test - uses hardcoded gates. "
         "Replaced by config-driven execution tests (TestConfigDrivenExecution)."

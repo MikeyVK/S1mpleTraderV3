@@ -38,7 +38,21 @@ class TestGitToolsConfigIntegration:
             },
             "protected_branches": ["main"],
             "branch_name_pattern": "^[a-z0-9-]+$",
+            "commit_types": [
+                "feat",
+                "fix",
+                "docs",
+                "style",
+                "refactor",
+                "test",
+                "chore",
+                "perf",
+                "ci",
+                "build",
+                "revert",
+            ],
             "default_base_branch": "main",
+            "issue_title_max_length": 72,
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:

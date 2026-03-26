@@ -1,16 +1,12 @@
-"""Tests for quality gates configuration (QualityConfig and related models).
+# tests/mcp_server/unit/config/test_quality_config.py
+"""
+Tests for quality gates configuration (QualityConfig and related models).
 
-Scope:
-- YAML loading (valid YAML, missing file, invalid YAML)
-- Schema validation (required fields, forbidden extra fields)
-- Strategy validation (only exit_code strategy accepted)
-- Success validation (`success.mode` must be 'exit_code')
-- Active gates (config-driven gate selection)
+Covers YAML loading, schema validation, parsing strategies, and file-scope
+filtering behavior for the quality gate configuration layer.
 
-Quality Requirements:
-- Pylint: 10/10
-- Mypy: strict mode passing
-- Coverage: 100% for mcp_server/config/quality_config.py
+@layer: Tests (Unit)
+@dependencies: [pytest, yaml, pathlib, mcp_server.config.loader, mcp_server.config.quality_config]
 """
 
 from __future__ import annotations
@@ -21,12 +17,25 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.quality_config import (
     CapabilitiesMetadata,
     GateScope,
     QualityConfig,
     QualityGate,
+    TextViolationsParsing,
 )
+from mcp_server.core.exceptions import ConfigError
+
+MINIMAL_ARTIFACT_LOGGING = {
+    "enabled": True,
+    "output_dir": "temp/qa_logs",
+    "max_files": 200,
+}
+
+
+def with_artifact_logging(payload: dict[str, object]) -> dict[str, object]:
+    return {"artifact_logging": dict(MINIMAL_ARTIFACT_LOGGING), **payload}
 
 
 @pytest.fixture(name="quality_yaml_path")
@@ -34,6 +43,7 @@ def fixture_quality_yaml_path(tmp_path: Path) -> Path:
     """Create a valid quality.yaml fixture with exit_code gates only."""
     config_data = {
         "version": "1.0",
+        "artifact_logging": dict(MINIMAL_ARTIFACT_LOGGING),
         "gates": {
             "linter": {
                 "name": "Linter",
@@ -140,6 +150,37 @@ class TestQualityConfigValidation:
         """Reject success.mode values other than 'exit_code' (only valid mode)."""
         with pytest.raises(ValidationError):
             QualityConfig.model_validate(
+                with_artifact_logging(
+                    {
+                        "version": "1.0",
+                        "gates": {
+                            "ruff": {
+                                "name": "Ruff",
+                                "description": "",
+                                "execution": {
+                                    "command": ["ruff", "check"],
+                                    "timeout_seconds": 1,
+                                    "working_dir": None,
+                                },
+                                "success": {"mode": "text_regex", "exit_codes_ok": [0]},
+                                "capabilities": {
+                                    "file_types": [".py"],
+                                    "supports_autofix": True,
+                                },
+                            }
+                        },
+                    }
+                )
+            )
+
+
+class TestActiveGatesField:
+    """Test active_gates field for config-driven execution (Issue #131)."""
+
+    def test_active_gates_defaults_to_empty_list(self) -> None:
+        """active_gates defaults to empty list when not provided."""
+        config = QualityConfig.model_validate(
+            with_artifact_logging(
                 {
                     "version": "1.0",
                     "gates": {
@@ -151,7 +192,7 @@ class TestQualityConfigValidation:
                                 "timeout_seconds": 1,
                                 "working_dir": None,
                             },
-                            "success": {"mode": "text_regex", "exit_codes_ok": [0]},
+                            "success": {"exit_codes_ok": [0]},
                             "capabilities": {
                                 "file_types": [".py"],
                                 "supports_autofix": True,
@@ -160,139 +201,118 @@ class TestQualityConfigValidation:
                     },
                 }
             )
-
-
-class TestActiveGatesField:
-    """Test active_gates field for config-driven execution (Issue #131)."""
-
-    def test_active_gates_defaults_to_empty_list(self) -> None:
-        """active_gates defaults to empty list when not provided."""
-        config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "gates": {
-                    "ruff": {
-                        "name": "Ruff",
-                        "description": "",
-                        "execution": {
-                            "command": ["ruff", "check"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
-                        },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": True,
-                        },
-                    }
-                },
-            }
         )
         assert config.active_gates == []
 
     def test_active_gates_accepts_list_of_gate_names(self) -> None:
         """active_gates accepts a list of gate names."""
         config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "active_gates": ["gate1", "gate2"],
-                "gates": {
-                    "gate1": {
-                        "name": "Gate1",
-                        "description": "",
-                        "execution": {
-                            "command": ["tool1"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
+            with_artifact_logging(
+                {
+                    "version": "1.0",
+                    "active_gates": ["gate1", "gate2"],
+                    "gates": {
+                        "gate1": {
+                            "name": "Gate1",
+                            "description": "",
+                            "execution": {
+                                "command": ["tool1"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": False,
+                            },
                         },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": False,
+                        "gate2": {
+                            "name": "Gate2",
+                            "description": "",
+                            "execution": {
+                                "command": ["tool2"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": False,
+                            },
                         },
                     },
-                    "gate2": {
-                        "name": "Gate2",
-                        "description": "",
-                        "execution": {
-                            "command": ["tool2"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
-                        },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": False,
-                        },
-                    },
-                },
-            }
+                }
+            )
         )
         assert config.active_gates == ["gate1", "gate2"]
 
     def test_active_gates_allows_empty_list(self) -> None:
         """active_gates can be explicitly set to empty list."""
         config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "active_gates": [],
-                "gates": {
-                    "ruff": {
-                        "name": "Ruff",
-                        "description": "",
-                        "execution": {
-                            "command": ["ruff", "check"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
-                        },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": True,
-                        },
-                    }
-                },
-            }
+            with_artifact_logging(
+                {
+                    "version": "1.0",
+                    "active_gates": [],
+                    "gates": {
+                        "ruff": {
+                            "name": "Ruff",
+                            "description": "",
+                            "execution": {
+                                "command": ["ruff", "check"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": True,
+                            },
+                        }
+                    },
+                }
+            )
         )
         assert config.active_gates == []
 
     def test_active_gates_subset_of_catalog(self) -> None:
         """active_gates can reference subset of gates catalog."""
         config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "active_gates": ["gate1"],
-                "gates": {
-                    "gate1": {
-                        "name": "Gate1",
-                        "description": "",
-                        "execution": {
-                            "command": ["tool1"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
+            with_artifact_logging(
+                {
+                    "version": "1.0",
+                    "active_gates": ["gate1"],
+                    "gates": {
+                        "gate1": {
+                            "name": "Gate1",
+                            "description": "",
+                            "execution": {
+                                "command": ["tool1"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": False,
+                            },
                         },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": False,
+                        "gate2": {
+                            "name": "Gate2",
+                            "description": "",
+                            "execution": {
+                                "command": ["tool2"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": False,
+                            },
                         },
                     },
-                    "gate2": {
-                        "name": "Gate2",
-                        "description": "",
-                        "execution": {
-                            "command": ["tool2"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
-                        },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": False,
-                        },
-                    },
-                },
-            }
+                }
+            )
         )
         assert config.active_gates == ["gate1"]
         assert "gate2" in config.gates  # gate2 exists but not active
@@ -301,6 +321,7 @@ class TestActiveGatesField:
         """active_gates field loads correctly from YAML file."""
         yaml_data = {
             "version": "1.0",
+            "artifact_logging": dict(MINIMAL_ARTIFACT_LOGGING),
             "active_gates": ["ruff"],
             "gates": {
                 "ruff": {
@@ -335,32 +356,35 @@ class TestRuffGateDefinitions:
 class TestArtifactLoggingConfig:
     """Test artifact_logging root config behavior."""
 
-    def test_artifact_logging_defaults(self) -> None:
-        config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "gates": {
-                    "ruff": {
-                        "name": "Ruff",
-                        "description": "",
-                        "execution": {
-                            "command": ["ruff", "check"],
-                            "timeout_seconds": 1,
-                            "working_dir": None,
-                        },
-                        "success": {"exit_codes_ok": [0]},
-                        "capabilities": {
-                            "file_types": [".py"],
-                            "supports_autofix": True,
-                        },
-                    }
-                },
-            }
+    def test_artifact_logging_missing_block_raises_config_error(self, tmp_path: Path) -> None:
+        yaml_path = tmp_path / "quality.yaml"
+        yaml_path.write_text(
+            yaml.dump(
+                {
+                    "version": "1.0",
+                    "gates": {
+                        "ruff": {
+                            "name": "Ruff",
+                            "description": "",
+                            "execution": {
+                                "command": ["ruff", "check"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": True,
+                            },
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
         )
 
-        assert config.artifact_logging.enabled is True
-        assert config.artifact_logging.output_dir == "temp/qa_logs"
-        assert config.artifact_logging.max_files == 200
+        with pytest.raises(ConfigError):
+            ConfigLoader(config_root=tmp_path).load_quality_config(config_path=yaml_path)
 
     def test_artifact_logging_custom_values(self) -> None:
         config = QualityConfig.model_validate(
@@ -393,6 +417,40 @@ class TestArtifactLoggingConfig:
         assert config.artifact_logging.enabled is False
         assert config.artifact_logging.output_dir == "temp/custom_artifacts"
         assert config.artifact_logging.max_files == 50
+
+    def test_artifact_logging_missing_output_dir_raises_config_error(self, tmp_path: Path) -> None:
+        yaml_path = tmp_path / "quality.yaml"
+        yaml_path.write_text(
+            yaml.dump(
+                {
+                    "version": "1.0",
+                    "artifact_logging": {
+                        "enabled": True,
+                        "max_files": 200,
+                    },
+                    "gates": {
+                        "ruff": {
+                            "name": "Ruff",
+                            "description": "",
+                            "execution": {
+                                "command": ["ruff", "check"],
+                                "timeout_seconds": 1,
+                                "working_dir": None,
+                            },
+                            "success": {"exit_codes_ok": [0]},
+                            "capabilities": {
+                                "file_types": [".py"],
+                                "supports_autofix": True,
+                            },
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ConfigError):
+            ConfigLoader(config_root=tmp_path).load_quality_config(config_path=yaml_path)
 
     def test_gate1_formatting_loads_from_yaml(self) -> None:
         """gate1_formatting definition loads correctly from quality.yaml."""
@@ -502,6 +560,48 @@ class TestActiveGatesContract:
         )
 
 
+class TestTextViolationsParsing:
+    """Tests for text parser placeholder validation."""
+
+    def test_defaults_placeholders_reject_unknown_group(self) -> None:
+        with pytest.raises(ValidationError, match="defaults references placeholder"):
+            TextViolationsParsing(
+                pattern=r"^(?P<file>[^:]+):(?P<line>\d+): (?P<message>.+)$",
+                defaults={"rule": "{missing_group}"},
+            )
+
+
+class TestGateScopeFiltering:
+    """Tests for GateScope file filtering branches."""
+
+    def test_filter_files_returns_all_when_no_globs(self) -> None:
+        scope = GateScope()
+        files = ["mcp_server/server.py", "tests/mcp_server/unit/test_x.py"]
+
+        assert scope.filter_files(files) == files
+
+    def test_filter_files_applies_include_globs(self) -> None:
+        scope = GateScope(include_globs=["mcp_server/**/*.py"])
+        files = ["mcp_server/core/server.py", "tests/mcp_server/unit/test_x.py"]
+
+        assert scope.filter_files(files) == ["mcp_server/core/server.py"]
+
+    def test_filter_files_applies_exclude_globs(self) -> None:
+        scope = GateScope(exclude_globs=["tests/**/*.py"])
+        files = ["mcp_server/core/server.py", "tests/mcp_server/unit/test_x.py"]
+
+        assert scope.filter_files(files) == ["mcp_server/core/server.py"]
+
+    def test_filter_files_applies_include_and_exclude_globs(self) -> None:
+        scope = GateScope(
+            include_globs=["**/*.py"],
+            exclude_globs=["tests/**/*.py"],
+        )
+        files = ["mcp_server/core/server.py", "tests/mcp_server/unit/test_x.py", "README.md"]
+
+        assert scope.filter_files(files) == ["mcp_server/core/server.py"]
+
+
 class TestProjectScopeField:
     """Tests for project_scope field on QualityConfig (Issue #251 C3).
 
@@ -527,13 +627,15 @@ class TestProjectScopeField:
     def test_accepts_project_scope_with_include_globs(self) -> None:
         """QualityConfig accepts project_scope.include_globs without validation error."""
         config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "gates": {"ruff": self._MINIMAL_GATE},
-                "project_scope": {
-                    "include_globs": ["mcp_server/**/*.py", "tests/mcp_server/**/*.py"],
-                },
-            }
+            with_artifact_logging(
+                {
+                    "version": "1.0",
+                    "gates": {"ruff": self._MINIMAL_GATE},
+                    "project_scope": {
+                        "include_globs": ["mcp_server/**/*.py", "tests/mcp_server/**/*.py"],
+                    },
+                }
+            )
         )
         assert config.project_scope is not None
         assert "mcp_server/**/*.py" in config.project_scope.include_globs
@@ -541,18 +643,20 @@ class TestProjectScopeField:
     def test_project_scope_defaults_to_none(self) -> None:
         """QualityConfig.project_scope is None when not specified."""
         config = QualityConfig.model_validate(
-            {"version": "1.0", "gates": {"ruff": self._MINIMAL_GATE}}
+            with_artifact_logging({"version": "1.0", "gates": {"ruff": self._MINIMAL_GATE}})
         )
         assert config.project_scope is None
 
     def test_project_scope_is_gate_scope_instance(self) -> None:
         """project_scope is a GateScope instance when provided."""
         config = QualityConfig.model_validate(
-            {
-                "version": "1.0",
-                "gates": {"ruff": self._MINIMAL_GATE},
-                "project_scope": {"include_globs": ["backend/**/*.py"]},
-            }
+            with_artifact_logging(
+                {
+                    "version": "1.0",
+                    "gates": {"ruff": self._MINIMAL_GATE},
+                    "project_scope": {"include_globs": ["backend/**/*.py"]},
+                }
+            )
         )
         assert isinstance(config.project_scope, GateScope)
 

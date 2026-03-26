@@ -1,11 +1,40 @@
-"""Configuration settings for the MCP server."""
+# mcp_server/config/settings.py
+"""
+Configuration settings for the MCP server.
 
+Defines runtime settings loaded from environment variables and optional YAML
+overrides for server, logging, and GitHub integration.
+
+@layer: Backend (Config)
+@dependencies: [importlib.metadata, os, pathlib, pydantic, yaml]
+@responsibilities:
+    - Define typed settings models for MCP server runtime configuration
+    - Load settings from environment variables with YAML overlay support
+    - Resolve server version metadata from installed package information
+"""
+
+# Standard library
 import os
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
+# Third-party
 import yaml
 from pydantic import BaseModel, Field
+
+
+def _default_server_version() -> str:
+    """Resolve server version from installed package metadata."""
+    for package_name in ("mcp_server", "simpletraderv3"):
+        try:
+            return metadata.version(package_name)
+        except metadata.PackageNotFoundError:
+            continue
+
+    raise metadata.PackageNotFoundError(
+        "Unable to resolve installed package metadata for 'mcp_server' or 'simpletraderv3'."
+    )
 
 
 class LogSettings(BaseModel):
@@ -19,7 +48,7 @@ class ServerSettings(BaseModel):
     """Server configuration settings."""
 
     name: str = "st3-workflow"
-    version: str = "1.0.0"
+    version: str = Field(default_factory=_default_server_version)
     workspace_root: str = Field(default_factory=os.getcwd)
     config_root: str | None = None
 

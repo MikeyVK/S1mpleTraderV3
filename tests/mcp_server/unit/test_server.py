@@ -194,7 +194,7 @@ class TestServerToolRegistration:
         self,
         tmp_path: Path,
     ) -> None:
-        """Dispatch post-hook should commit state files after a successful transition."""
+        """Dispatch post-hook should run after a successful phase transition."""
         config_dir = tmp_path / ".st3" / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
         (config_dir / "enforcement.yaml").write_text(
@@ -234,39 +234,37 @@ class TestServerToolRegistration:
         research_doc.parent.mkdir(parents=True, exist_ok=True)
         research_doc.write_text("# Research\n", encoding="utf-8")
 
-        with (
-            patch("mcp_server.server.Settings") as mock_settings_cls,
-            patch(
-                "mcp_server.managers.enforcement_runner.GitManager.commit_with_scope"
-            ) as mock_commit,
-        ):
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
             _patch_server_settings(mock_settings_cls, workspace_root=str(tmp_path))
-            mock_commit.return_value = "abc1234"
 
             server = MCPServer()
             server.tools = [
                 TransitionPhaseTool(
                     workspace_root=tmp_path,
-                    project_manager=server.project_manager,
-                    state_engine=server.phase_state_engine,
+                    project_manager=project_manager,
+                    state_engine=state_engine,
                 )
             ]
             handler = server.server.request_handlers[CallToolRequest]
 
-            req = CallToolRequest(
-                params=CallToolRequestParams(
-                    name="transition_phase",
-                    arguments={
-                        "branch": "feature/257-reorder-workflow-phases",
-                        "to_phase": "planning",
-                        "human_approval": "Move into planning",
-                    },
+            with patch.object(server.enforcement_runner, "run", return_value=[]) as mock_run:
+                req = CallToolRequest(
+                    params=CallToolRequestParams(
+                        name="transition_phase",
+                        arguments={
+                            "branch": "feature/257-reorder-workflow-phases",
+                            "to_phase": "planning",
+                            "human_approval": "Move into planning",
+                        },
+                    )
                 )
-            )
-            response = await handler(req)
+                response = await handler(req)
 
         assert "Successfully transitioned" in response.root.content[0].text
-        mock_commit.assert_called_once()
+        assert any(
+            call.kwargs.get("event") == "transition_phase" and call.kwargs.get("timing") == "post"
+            for call in mock_run.call_args_list
+        )
 
     @pytest.mark.asyncio
     async def test_call_tool_force_phase_post_enforcement_returns_warning(
@@ -332,10 +330,7 @@ class TestServerToolRegistration:
         ) -> AsyncIterator[tuple[MagicMock, MagicMock]]:
             yield MagicMock(), MagicMock()
 
-        with (
-            patch("mcp_server.server.Settings") as mock_settings_cls,
-            patch("mcp_server.server.validate_label_config_on_startup"),
-        ):
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
             _patch_server_settings(mock_settings_cls)
             injected_settings = mock_settings_cls.from_env.return_value
             server = MCPServer(settings=injected_settings)

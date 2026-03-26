@@ -3,7 +3,14 @@
 from typing import TYPE_CHECKING, Any
 
 from mcp_server.adapters.github_adapter import GitHubAdapter
-from mcp_server.schemas import IssueConfig, LabelConfig, ScopeConfig
+from mcp_server.schemas import (
+    ContributorConfig,
+    GitConfig,
+    IssueConfig,
+    LabelConfig,
+    MilestoneConfig,
+    ScopeConfig,
+)
 
 if TYPE_CHECKING:
     from github.Issue import Issue
@@ -21,12 +28,18 @@ class GitHubManager:
         issue_config: IssueConfig | None = None,
         label_config: LabelConfig | None = None,
         scope_config: ScopeConfig | None = None,
+        milestone_config: MilestoneConfig | None = None,
+        contributor_config: ContributorConfig | None = None,
+        git_config: GitConfig | None = None,
     ) -> None:
         """Initialize the GitHub manager."""
         self._adapter = adapter
         self._issue_config = issue_config
         self._label_config = label_config
         self._scope_config = scope_config
+        self._milestone_config = milestone_config
+        self._contributor_config = contributor_config
+        self._git_config = git_config
 
     @property
     def adapter(self) -> GitHubAdapter:
@@ -38,11 +51,11 @@ class GitHubManager:
     def validate_issue_params(
         self,
         issue_type: str,
-        title: str,  # noqa: ARG002
+        title: str,
         priority: str,
         scope: str,
-        milestone: str | None = None,  # noqa: ARG002
-        assignees: list[str] | None = None,  # noqa: ARG002
+        milestone: str | None = None,
+        assignees: list[str] | None = None,
     ) -> None:
         """Validate issue creation parameters against injected config objects.
 
@@ -68,6 +81,29 @@ class GitHubManager:
             raise ValueError(
                 f"Unknown scope: '{scope}'. Valid values: {sorted(self._scope_config.scopes)}"
             )
+
+        if self._git_config is not None:
+            max_len = self._git_config.issue_title_max_length
+            if len(title) > max_len:
+                raise ValueError(
+                    f"Title too long: {len(title)} chars (max {max_len} from git.yaml)"
+                )
+
+        if (
+            milestone is not None
+            and self._milestone_config is not None
+            and not self._milestone_config.validate_milestone(milestone)
+        ):
+            raise ValueError(
+                f"Unknown milestone: '{milestone}'. Must match a title in milestones.yaml."
+            )
+
+        if assignees is not None and self._contributor_config is not None:
+            for login in assignees:
+                if not self._contributor_config.validate_assignee(login):
+                    raise ValueError(
+                        f"Unknown assignee: '{login}'. Must be listed in contributors.yaml."
+                    )
 
     def get_issues_resource_data(self) -> dict[str, Any]:
         """Get data for st3://github/issues resource."""
