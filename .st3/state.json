@@ -3,9 +3,15 @@
   "issue_number": 257,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": null,
-  "last_cycle": null,
-  "cycle_history": [],
+  "current_cycle": 8,
+  "last_cycle": 0,
+  "cycle_history": [
+    {
+      "cycle_number": 8,
+      "forced": false,
+      "entered": "2026-03-26T12:32:34.173579+00:00"
+    }
+  ],
   "required_phases": [
     "research",
     "planning",
