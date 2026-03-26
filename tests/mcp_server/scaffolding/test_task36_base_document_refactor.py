@@ -2,7 +2,10 @@
 Task 3.6.1: Test tier1_base_document.jinja2 refactor
 Tests that tier1_base_document has all required composable blocks for tier3 pattern injection.
 
-TDD Phase: RED → GREEN
+TDD Phase: RED -> GREEN
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

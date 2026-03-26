@@ -8,6 +8,9 @@ This test proves that the unified exception hierarchy works end-to-end:
 5. Client can access structured error information
 
 This addresses Gap A from slice1_gaps.md.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.scaffold_artifact]
 """
 
 from unittest.mock import Mock

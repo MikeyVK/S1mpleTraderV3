@@ -6,6 +6,9 @@ RED phase: Tests for tier0_base_artifact.jinja2 2-line SCAFFOLD format:
 - Line 1: # {filepath} (ONLY filepath)
 - Line 2: # template={type} version={hash} created={iso8601} updated=
 - NO "SCAFFOLD:" prefix
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

@@ -9,6 +9,9 @@ Validation:
 - Phase must exist in workphases.yaml
 - sub_phase must be in workphases.yaml[phase].subphases (STRICT)
 - Empty subphases list = no subphases allowed
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.core.scope_encoder
 """
 
 from pathlib import Path

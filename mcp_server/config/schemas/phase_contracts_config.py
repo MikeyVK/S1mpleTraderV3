@@ -1,4 +1,17 @@
-"""Pure phase contracts schema definitions."""
+# mcp_server/config/schemas/phase_contracts_config.py
+"""
+Phase contracts schema definitions.
+
+Defines typed value objects for workflow phase contracts and cycle
+requirements loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define phase contract and check schema contracts
+    - Validate workflow contract metadata structure
+    - Represent cycle requirements for phase orchestration
+"""
 
 from __future__ import annotations
 

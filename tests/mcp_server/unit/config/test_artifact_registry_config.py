@@ -5,6 +5,9 @@ Tests configuration loading from artifacts.yaml with:
 - Field validation
 - Error handling (missing file, invalid YAML)
 - LLM-friendly error messages
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server.config.schemas.artifact_registry_config
 """
 
 from pathlib import Path

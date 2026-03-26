@@ -5,6 +5,9 @@ Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Execution mode handling (interactive/autonomous)
 - Custom phases with skip_reason
 - Project plan storage in .st3/deliverables.json
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.project_manager
 """
 
 import json

@@ -1,4 +1,17 @@
-"""Pure ScopeConfig schema for ConfigLoader-managed YAML loading."""
+# mcp_server/config/schemas/scope_config.py
+"""
+Scope configuration schema definitions.
+
+Defines typed value objects for issue and workflow scopes loaded by the
+configuration layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic]
+@responsibilities:
+    - Define scope config schema contracts
+    - Validate configured scope values
+    - Provide scope lookup helpers for issue tooling
+"""
 
 from pydantic import BaseModel
 

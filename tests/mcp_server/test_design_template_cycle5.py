@@ -2,6 +2,9 @@
 
 Tests for full DESIGN_TEMPLATE structure with numbered sections,
 options comparison, and key decisions table.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

@@ -6,6 +6,9 @@ Tests workflow-based phase transition validation:
 - Valid sequential transitions (allowed by workflow)
 - Invalid transitions (rejected by workflow validation)
 - Force transitions (bypass validation with skip_reason)
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 from __future__ import annotations

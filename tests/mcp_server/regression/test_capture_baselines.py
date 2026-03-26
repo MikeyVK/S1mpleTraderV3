@@ -6,6 +6,9 @@ byte-identical regression validation in Cycle 4.
 RED Phase: These tests expect baseline files that don't exist yet.
 GREEN Phase: Run scaffolding and save outputs to tests/baselines/
 REFACTOR Phase: Document baseline regeneration process
+
+@layer: Tests (Regression)
+@dependencies: pytest, pathlib, tests/baselines artifacts
 """
 
 from pathlib import Path

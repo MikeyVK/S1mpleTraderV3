@@ -6,6 +6,9 @@ RED phase: Tests that scaffold_artifact() integrates with TemplateRegistry:
 - Calls registry.save_version() with tier chain
 - Injects version_hash into template context
 - Creates .st3/template_registry.yaml if not exists
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.artifact_manager, mcp_server.scaffolding.template_registry
 """
 
 from pathlib import Path
@@ -13,7 +16,7 @@ from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.schemas.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.template_registry import TemplateRegistry

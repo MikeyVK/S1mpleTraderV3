@@ -12,7 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.schemas.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 

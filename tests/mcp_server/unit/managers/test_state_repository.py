@@ -5,6 +5,9 @@ Issue #257 Cycle 2 RED:
 - FileStateRepository and InMemoryStateRepository
 - AtomicJsonWriter shared utility
 - IStateReader / IStateRepository protocol split
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, json, pathlib, mcp_server.managers.state_repository
 """
 
 from __future__ import annotations

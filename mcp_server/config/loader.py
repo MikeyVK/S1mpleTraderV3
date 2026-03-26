@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TypeVar
 
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from mcp_server.config.compat_roots import normalize_config_file_path, normalize_config_root
 from mcp_server.config.schemas import (
     ArtifactRegistryConfig,
     ContributorConfig,
@@ -29,6 +29,63 @@ from mcp_server.config.schemas import (
 from mcp_server.core.exceptions import ConfigError
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+
+def normalize_config_root(config_root: Path | str) -> Path:
+    """Return the canonical .st3/config directory for a workspace or config path."""
+    candidate = Path(config_root).resolve()
+    if candidate.name == "config" and candidate.parent.name == ".st3":
+        return candidate
+    if candidate.name == ".st3":
+        return candidate / "config"
+    return candidate / ".st3" / "config"
+
+
+def resolve_config_root(
+    preferred_root: Path | str | None = None,
+    explicit_root: Path | str | None = None,
+    required_files: Iterable[str] = (),
+) -> Path:
+    """Resolve one canonical ST3 config root without legacy compatibility fallbacks."""
+    required = tuple(required_files)
+
+    def _has_required_files(candidate: Path) -> bool:
+        return all((candidate / file_name).exists() for file_name in required)
+
+    if explicit_root is not None:
+        explicit_candidate = normalize_config_root(explicit_root)
+        if explicit_candidate.exists() and _has_required_files(explicit_candidate):
+            return explicit_candidate
+        missing = [
+            file_name for file_name in required if not (explicit_candidate / file_name).exists()
+        ]
+        if missing:
+            missing_text = ", ".join(str(file_name) for file_name in missing)
+            raise FileNotFoundError(
+                "Explicit config_root is missing required files: "
+                f"{missing_text} ({explicit_candidate})"
+            )
+        raise FileNotFoundError(f"Explicit config_root does not exist: {explicit_candidate}")
+
+    candidates: list[Path] = []
+    if preferred_root is not None:
+        candidates.append(normalize_config_root(preferred_root))
+    candidates.append(normalize_config_root(Path.cwd()))
+    candidates.append(normalize_config_root(Path(__file__).resolve().parents[2]))
+
+    unique_candidates: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        unique_candidates.append(candidate)
+
+    for candidate in unique_candidates:
+        if candidate.exists() and _has_required_files(candidate):
+            return candidate
+
+    raise FileNotFoundError("Could not locate canonical ST3 config directory")
 
 
 class ConfigLoader:
@@ -258,7 +315,7 @@ class ConfigLoader:
     def _resolve_yaml_path(self, file_name: str | Path, config_path: Path | None = None) -> Path:
         if config_path is None:
             return self.config_root / file_name
-        return normalize_config_file_path(config_path)
+        return Path(config_path).resolve()
 
     def _load_yaml(
         self,

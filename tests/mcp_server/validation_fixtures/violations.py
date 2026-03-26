@@ -2,6 +2,9 @@
 
 DO NOT FIX these violations — they are deliberate test fixtures used in live
 validation of the run_quality_gates MCP tool. Each section targets a specific gate.
+
+@layer: Tests (Fixtures)
+@dependencies: quality gate parsers, validation fixture consumers
 """
 
 # gate2: wrong import order (sys before os — isort expects alphabetical: os, sys)

@@ -17,6 +17,9 @@ Exit criteria:
 RED contract:
   _parse_text_violations always sets fixable=False → assertions fail.
   TextViolationsParsing has no fixable_when field → ValidationError on construction.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.schemas.quality_config, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 
@@ -24,7 +27,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp_server.config.quality_config import TextViolationsParsing
+from mcp_server.config.schemas.quality_config import TextViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
 from tests.mcp_server.test_support import make_qa_manager
 

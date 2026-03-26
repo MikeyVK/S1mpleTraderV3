@@ -1,4 +1,8 @@
-"""Test server lifecycle audit logging."""
+"""Test server lifecycle audit logging.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pathlib, mcp_server.server]
+"""
 
 import json
 from pathlib import Path

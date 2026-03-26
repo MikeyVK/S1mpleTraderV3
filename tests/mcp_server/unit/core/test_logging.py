@@ -1,4 +1,8 @@
-"""Tests for structured logging."""
+"""Tests for structured logging.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.core.logging
+"""
 
 from __future__ import annotations
 

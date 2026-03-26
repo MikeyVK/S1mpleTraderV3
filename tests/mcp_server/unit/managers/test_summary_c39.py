@@ -7,13 +7,16 @@ F-19: Summary line lacks any scope-resolution context (scope name, file count).
       planning: include scope for all inputs (auto, branch, project, files).
 duration_ms: Summary line missing; present in compact JSON root (should be reversed).
 F-18: Gate 4b (Pyright) messages verbatim — contain \\n and \\u00a0 from pyright JSON.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.qa_manager, tests.mcp_server.test_support
 """
 
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import JsonViolationsParsing
+from mcp_server.config.schemas.quality_config import JsonViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
 from tests.mcp_server.test_support import make_qa_manager
 

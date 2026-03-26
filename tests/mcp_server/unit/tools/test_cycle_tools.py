@@ -1,7 +1,11 @@
 # pyright: reportMissingImports=false
 # tests\mcp_server\unit\tools\test_cycle_tools.py
 # template=unit_test version=3d15d309 created=2026-03-13T11:30Z updated=
-"""Unit tests for the renamed cycle tools module and dispatch hooks."""
+"""Unit tests for the renamed cycle tools module and dispatch hooks.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp.types, mcp_server.tools.cycle_tools, tests.mcp_server.test_support
+"""
 
 from pathlib import Path
 from shutil import copytree

@@ -2,7 +2,10 @@
 Tests for Template Registry (Issue #72 Task 3.8).
 
 Covers TemplateRegistry CRUD operations, hash collision detection,
-current version tracking, JSON persistence, and YAML→JSON migration.
+current version tracking, JSON persistence, and YAML->JSON migration.
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server.scaffolding.template_registry
 """
 
 from __future__ import annotations

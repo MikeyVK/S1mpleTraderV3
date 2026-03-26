@@ -1,3 +1,9 @@
+"""Guard tests for removed pytest helper methods.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.qa_manager
+"""
+
 from __future__ import annotations
 
 from mcp_server.managers.qa_manager import QAManager

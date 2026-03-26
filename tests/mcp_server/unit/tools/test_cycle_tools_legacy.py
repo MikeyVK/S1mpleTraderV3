@@ -2,7 +2,10 @@
 
 Issue #146 Cycle 4: TDD Cycle transition management.
 Issue #146 Cycle 6: Spec alignment - audit schema, history entries, exit criteria.
-Issue #229 Cycle 10: GAP-17 — blocking deliverables must appear BEFORE ✅ in response.
+Issue #229 Cycle 10: GAP-17 — blocking deliverables must appear BEFORE OK in response.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.cycle_tools]
 """
 
 import json

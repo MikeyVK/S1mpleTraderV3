@@ -18,6 +18,9 @@ Test cases per type (5):
   1. Minimal valid context (required fields only)
   2. Full context (all optional fields populated)
   3. Schema validation rejection (invalid input → ValidationError)
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, schema parity fixtures, mcp_server schema artifacts
   4. V2 pipeline was routed (not fallen back to v1)
   5. Output contains class definition
 

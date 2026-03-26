@@ -1,4 +1,17 @@
-"""Pure enforcement schema definitions."""
+# mcp_server/config/schemas/enforcement_config.py
+"""
+Enforcement configuration schema definitions.
+
+Defines typed value objects for pre and post-operation enforcement rules
+loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define enforcement rule and action schema contracts
+    - Validate enforcement configuration structure
+    - Represent policy hooks for runtime enforcement execution
+"""
 
 from __future__ import annotations
 

@@ -1,6 +1,12 @@
+"""Guard tests for removal of legacy quality-gate parsers.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.qa_manager, mcp_server.config.schemas.quality_config
+"""
+
 from __future__ import annotations
 
-import mcp_server.config.quality_config as quality_config_module
+import mcp_server.config.schemas.quality_config as quality_config_module
 from mcp_server.managers.qa_manager import QAManager
 
 

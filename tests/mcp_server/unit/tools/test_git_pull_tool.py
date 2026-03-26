@@ -1,4 +1,8 @@
-"""RED/Green tests for GitPullTool existence."""
+"""RED/Green tests for GitPullTool existence.
+
+@layer: Tests (Unit)
+@dependencies: [importlib, mcp_server.tools.git_pull_tool]
+"""
 
 import importlib
 

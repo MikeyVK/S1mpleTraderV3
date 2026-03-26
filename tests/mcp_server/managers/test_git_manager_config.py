@@ -1,4 +1,8 @@
-"""Tests for GitManager (Issue #55 integration)."""
+"""Tests for GitManager (Issue #55 integration).
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.adapters.git_adapter, mcp_server.managers.git_manager
+"""
 
 from pathlib import Path
 from unittest.mock import MagicMock

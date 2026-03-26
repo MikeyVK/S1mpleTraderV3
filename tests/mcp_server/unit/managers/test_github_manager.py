@@ -1,5 +1,9 @@
 # tests/mcp_server/unit/managers/test_github_manager.py
-"""Unit tests for GitHubManager."""
+"""Unit tests for GitHubManager.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.github_manager, mcp_server.schemas
+"""
 
 from datetime import UTC, datetime
 from unittest.mock import MagicMock

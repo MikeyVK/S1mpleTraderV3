@@ -7,6 +7,9 @@ Verifies the behavior of the TradePlan execution anchor, including:
 - ID format validation
 - Enum usage
 - Immutability of identifiers
+
+@layer: Tests (Unit)
+@dependencies: [pytest, datetime, backend.dtos.strategy.trade_plan]
 """
 
 from datetime import UTC, datetime

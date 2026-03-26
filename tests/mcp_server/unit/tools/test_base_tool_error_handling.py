@@ -3,6 +3,9 @@ Integration tests for error handling with actual MCP tools.
 
 Tests that @tool_error_handler is automatically applied to all tools
 via BaseTool.__init_subclass__.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.tools.base, mcp_server.tools.tool_result
 """
 
 from typing import Any

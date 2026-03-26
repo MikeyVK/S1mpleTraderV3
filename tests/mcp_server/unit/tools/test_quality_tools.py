@@ -1,5 +1,9 @@
 # tests/unit/mcp_server/tools/test_quality_tools.py
-"""Tests for quality tools."""
+"""Tests for quality tools.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.quality_tools]
+"""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 
 # Standard library

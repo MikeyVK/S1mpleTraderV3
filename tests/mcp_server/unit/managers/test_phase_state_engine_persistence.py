@@ -6,6 +6,9 @@ Tests verify:
 1. state.json contains single branch state (not multi-branch dictionary)
 2. Branch switch overwrites state.json completely
 3. State is immediately written and readable after get_state()
+
+@layer: Tests (Unit)
+@dependencies: pytest, json, pathlib, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 from __future__ import annotations

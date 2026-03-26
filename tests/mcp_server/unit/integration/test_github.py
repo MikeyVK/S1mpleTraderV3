@@ -1,4 +1,8 @@
-"""Tests for GitHub integration."""
+"""Tests for GitHub integration.
+
+@layer: Tests (Integration)
+@dependencies: pytest, asyncio, unittest.mock, mcp_server.managers.github_manager, mcp_server.tools.issue_tools, tests.mcp_server.test_support
+"""
 
 import asyncio
 from unittest.mock import Mock

@@ -1,4 +1,8 @@
-"""Unit tests for ScopeConfig loader-based access (Issue #149, Cycle 1)."""
+"""Unit tests for ScopeConfig loader-based access (Issue #149, Cycle 1).
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server.config.schemas
+"""
 
 import tempfile
 from pathlib import Path

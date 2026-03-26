@@ -1,4 +1,8 @@
-"""Integration-style tests for CreateIssueTool."""
+"""Integration-style tests for CreateIssueTool.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.issue_tools]
+"""
 
 from __future__ import annotations
 

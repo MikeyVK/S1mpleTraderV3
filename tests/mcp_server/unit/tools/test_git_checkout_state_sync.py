@@ -1,4 +1,8 @@
-"""Tests for GitCheckoutTool state synchronization with PhaseStateEngine."""
+"""Tests for GitCheckoutTool state synchronization with PhaseStateEngine.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.git_tools]
+"""
 
 from unittest.mock import Mock
 

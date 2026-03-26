@@ -10,6 +10,9 @@ Test Categories:
 - Action Tests (4): execute/cancel/modify/cancel_group
 - Immutability Tests (2): frozen, replace
 - JSON Serialization (1): roundtrip
+
+@layer: Tests (Unit)
+@dependencies: [pytest, decimal, backend.dtos.strategy.execution_plan]
 """
 
 from decimal import Decimal

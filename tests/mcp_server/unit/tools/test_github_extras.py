@@ -1,4 +1,8 @@
-"""Tests for PR and Label tools."""
+"""Tests for PR and Label tools.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.pr_tools]
+"""
 
 import asyncio
 from pathlib import Path

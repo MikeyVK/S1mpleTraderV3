@@ -4,6 +4,9 @@ Issue #146 Cycle 4: TDD phase lifecycle hooks.
 Issue #229 Cycle 6: Research phase exit gate — file_glob support (GAP-10).
 Issue #229 Cycle 7: Per-phase deliverable gate on design exit (GAP-11/D7.2).
 Issue #229 Cycle 9: Per-phase deliverable gates for validation and documentation exit (GAP-16).
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 from __future__ import annotations

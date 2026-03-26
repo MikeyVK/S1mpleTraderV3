@@ -18,6 +18,10 @@ Note on ephemeral artifacts:
 
 Note on parity definition (aligned with Cycles 5+6 docstring):
   Parity = smoke: both pipelines produce valid output with routing confirmed.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, tracking artifact schemas, mcp_server scaffolding pipeline
+
   Tracking artifacts have no SCAFFOLD header (output_type=ephemeral, no disk persistence).
 """
 

@@ -6,6 +6,9 @@ Validates that concrete DOCUMENT templates:
 - use {% import %} composition with tier3 patterns
 - maintain enforcement: GUIDELINE
 - import correct patterns per template
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.scaffolding.templates
 """
 
 from __future__ import annotations

@@ -1,4 +1,8 @@
-"""RED/Green tests for GitFetchTool existence."""
+"""RED/Green tests for GitFetchTool existence.
+
+@layer: Tests (Unit)
+@dependencies: [mcp_server.tools.git_fetch_tool]
+"""
 
 from mcp_server.tools.git_fetch_tool import GitFetchTool
 

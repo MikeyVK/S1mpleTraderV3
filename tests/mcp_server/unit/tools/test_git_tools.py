@@ -1,4 +1,8 @@
-"""Unit tests for git_tools.py."""
+"""Unit tests for git_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.git_tools]
+"""
 
 from pathlib import Path
 from unittest.mock import MagicMock

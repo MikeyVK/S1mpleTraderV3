@@ -6,6 +6,9 @@ RED phase: Tests for tier2_base_markdown.jinja2 Markdown-specific syntax:
 - Link definitions section (before Version History)
 - Link format: [id]: path/to/file.md "Title"
 - Link definitions invisible in Markdown preview
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

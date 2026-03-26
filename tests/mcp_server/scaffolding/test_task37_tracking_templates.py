@@ -1,6 +1,9 @@
 """
 Task 3.7: Integration tests for tracking templates
 Tests tier1_base_tracking + tier2 text/markdown + concrete tracking templates.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, pathlib, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

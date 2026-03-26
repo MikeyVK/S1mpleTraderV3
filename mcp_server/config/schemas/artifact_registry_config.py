@@ -1,4 +1,17 @@
-"""Pure artifact registry schema definitions."""
+# mcp_server/config/schemas/artifact_registry_config.py
+"""
+Artifact registry schema definitions.
+
+Defines typed value objects for artifact types, lifecycle state machines,
+and registry lookups loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [enum, typing, pydantic, mcp_server.core.exceptions]
+@responsibilities:
+    - Define artifact registry and lifecycle schema contracts
+    - Validate artifact registry invariants and type identifiers
+    - Provide artifact lookup helpers for config consumers
+"""
 
 from __future__ import annotations
 

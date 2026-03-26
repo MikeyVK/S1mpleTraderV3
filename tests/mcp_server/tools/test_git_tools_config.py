@@ -4,6 +4,9 @@ Cycle 8-9 follow-up: Verify field validators derive from GitConfig.
 
 Conventions tested:
 - #7: Branch type validation pattern
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server.tools.git_tools
 """
 
 import tempfile

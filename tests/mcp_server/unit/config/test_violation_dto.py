@@ -2,11 +2,14 @@
 
 Validates object creation, field defaults, and required field enforcement
 for the uniform violation contract returned by all gate parsers.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.schemas.quality_config
 """
 
 from __future__ import annotations
 
-from mcp_server.config.quality_config import ViolationDTO
+from mcp_server.config.schemas.quality_config import ViolationDTO
 
 
 class TestViolationDTOCreation:

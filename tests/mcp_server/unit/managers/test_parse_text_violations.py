@@ -1,8 +1,14 @@
+"""Tests for line-based text violations parsing.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.qa_manager
+"""
+
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import TextViolationsParsing, ViolationDTO
+from mcp_server.config.schemas.quality_config import TextViolationsParsing, ViolationDTO
 from mcp_server.managers.qa_manager import QAManager
 from tests.mcp_server.test_support import make_qa_manager
 

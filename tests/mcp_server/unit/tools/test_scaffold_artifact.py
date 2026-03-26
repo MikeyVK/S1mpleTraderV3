@@ -1,4 +1,8 @@
-"""Unit tests for ScaffoldArtifactTool (Cycle 11)."""
+"""Unit tests for ScaffoldArtifactTool (Cycle 11).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.scaffold_artifact]
+"""
 
 from unittest.mock import AsyncMock, MagicMock
 

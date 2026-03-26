@@ -9,6 +9,9 @@ Tests:
 - V2 pipeline validates via Pydantic
 - Schema-typed enrichment (_enrich_context_v2)
 - Naming Convention lookup (DTOContext → DTORenderContext)
+
+@layer: Tests (Unit)
+@dependencies: pytest, asyncio, pydantic, mcp_server.managers.artifact_manager
 """
 
 # Standard library

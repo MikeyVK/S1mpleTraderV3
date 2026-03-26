@@ -4,6 +4,9 @@ TDD Cycle 10: Verify PR tools use GitConfig for default base branch.
 
 Convention tested:
 - #9-11: Default base branch for PR creation
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server.tools.pr_tools
 """
 
 import tempfile

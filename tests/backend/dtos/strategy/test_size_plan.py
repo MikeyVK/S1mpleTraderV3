@@ -3,6 +3,9 @@ Unit tests for SizePlan DTO.
 
 Tests creation, validation, and edge cases for lean position sizing output.
 SizePlan represents HOW MUCH (absolute position sizing only).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, decimal, backend.dtos.strategy.size_plan]
 """
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives for optional fields

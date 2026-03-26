@@ -3,6 +3,9 @@
 Issue #79: Tests for parent_branch in state management.
 - initialize_branch with parent_branch
 - Auto-recovery includes parent_branch from deliverables.json
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 from __future__ import annotations

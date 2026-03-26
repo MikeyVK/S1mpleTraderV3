@@ -1,4 +1,8 @@
-"""Unit tests for SearchService (Cycle 9)."""
+"""Unit tests for SearchService (Cycle 9).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, mcp_server.services.search_service]
+"""
 
 import pytest
 

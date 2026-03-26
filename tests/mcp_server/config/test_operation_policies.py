@@ -1,7 +1,11 @@
+# tests/mcp_server/config/test_operation_policies.py
 """Unit tests for OperationPoliciesConfig model.
 
 Tests Phase 1B: .st3/config/policies.yaml + OperationPoliciesConfig
-Cross-validates allowed_phases against workflows.yaml
+Cross-validates allowed_phases against workflows.yaml.
+
+@layer: Tests (Unit)
+@dependencies: [pathlib, pytest, mcp_server.config.loader, mcp_server.config.schemas]
 """
 
 from pathlib import Path
@@ -9,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from mcp_server.config.loader import ConfigLoader
-from mcp_server.config.schemas import OperationPoliciesConfig
+from mcp_server.config.schemas import OperationPoliciesConfig, OperationPolicy
 from mcp_server.core.exceptions import ConfigError
 
 
@@ -110,6 +114,24 @@ class TestOperationPoliciesConfig:
         assert create.is_extension_allowed("config.yaml") is True
         assert create.is_extension_allowed("backend/foo.py") is False
         assert create.is_extension_allowed("test.exe") is False
+
+    def test_is_extension_allowed_without_restrictions(self) -> None:
+        """Policies with no extension restrictions should allow any suffix."""
+        policy = OperationPolicy(
+            operation_id="create_file",
+            description="Create file",
+        )
+
+        assert policy.is_extension_allowed("backend/service.py") is True
+
+    def test_validate_extension_format_rejects_missing_dot(self) -> None:
+        """Extensions without a leading dot must be rejected."""
+        with pytest.raises(ValueError, match="must start with dot"):
+            OperationPolicy(
+                operation_id="create_file",
+                description="Create file",
+                allowed_extensions=["py"],
+            )
 
     def test_validate_commit_message_required(self) -> None:
         """Test TDD prefix validation when required."""

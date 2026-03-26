@@ -1,11 +1,14 @@
 """
 tests/unit/tools/test_issue_body.py
 ====================================
-Cycle 3 — IssueBody Pydantic model and _render_body() helper.
+Cycle 3 - IssueBody Pydantic model and _render_body() helper.
 
 Tests:
 - IssueBody field requirements and defaults
 - Rendering via CreateIssueTool._render_body() with issue.md.jinja2
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pydantic, mcp_server.tools.issue_tools]
 """
 
 import pytest

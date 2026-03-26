@@ -2,6 +2,9 @@
 """
 C21: Resolve scope=project from project_scope globs (expand globs against workspace root).
 C22: Resolve scope=branch using git diff parent...HEAD (merge-base semantics).
+
+@layer: Tests (Unit)
+@dependencies: pytest, subprocess, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 

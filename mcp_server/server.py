@@ -23,8 +23,7 @@ from mcp.types import (
 from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
-from mcp_server.config.compat_roots import resolve_config_root
-from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.loader import ConfigLoader, resolve_config_root
 from mcp_server.config.settings import Settings
 from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.exceptions import MCPError

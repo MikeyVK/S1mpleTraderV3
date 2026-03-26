@@ -1,4 +1,17 @@
-"""Pure operation policies schema definitions."""
+# mcp_server/config/schemas/operation_policies_config.py
+"""
+Operation policies schema definitions.
+
+Defines typed value objects for operation policy metadata loaded by the
+configuration layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define operation policy schema contracts
+    - Validate allowed phase and extension metadata structure
+    - Represent policy inputs for the runtime policy engine
+"""
 
 from __future__ import annotations
 

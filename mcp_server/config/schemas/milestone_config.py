@@ -1,4 +1,16 @@
-"""Pure milestone config schema definitions."""
+# mcp_server/config/schemas/milestone_config.py
+"""
+Milestone configuration schema definitions.
+
+Defines typed value objects for milestone metadata loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic]
+@responsibilities:
+    - Define milestone entry and root config schema contracts
+    - Validate milestone metadata loaded from YAML
+    - Provide milestone lookup helpers for issue workflows
+"""
 
 from pydantic import BaseModel, Field
 

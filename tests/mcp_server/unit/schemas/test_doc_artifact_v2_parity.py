@@ -14,6 +14,9 @@ SCOPE (Cycle 6 - Doc Artifact V2):
 Note on parity definition (aligned with Cycle 5 docstring):
   Parity = smoke: both pipelines produce valid markdown with metadata header.
   True output-equivalence deferred to Cycle 6 template simplification.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, asyncio, mcp_server document artifact schemas
 """
 
 import asyncio  # noqa: I001

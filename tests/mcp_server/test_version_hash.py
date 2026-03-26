@@ -3,6 +3,9 @@ Tests for compute_version_hash utility (Issue #72 Task 1.2).
 
 RED phase: Tests for version hash computation with collision safety,
 artifact_type prefix, and tier chain hashing.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.scaffolding.version_hash
 """
 
 # Module under test does not exist yet (RED phase)

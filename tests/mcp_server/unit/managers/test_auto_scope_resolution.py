@@ -5,6 +5,9 @@ C23: Resolve scope=auto happy path — baseline present.
 Union of git diff --name-only baseline_sha..HEAD and persisted failed_files.
 
 C24: Resolve scope=auto edge cases — no baseline fallback and empty union.
+
+@layer: Tests (Unit)
+@dependencies: pytest, subprocess, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 

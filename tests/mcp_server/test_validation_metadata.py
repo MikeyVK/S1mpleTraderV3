@@ -3,6 +3,9 @@ Tests for Issue #52 alignment - Validation TEMPLATE_METADATA (Issue #72 Task 1.5
 
 RED phase: Tests for TemplateAnalyzer.extract_metadata() on Tier 0-2 templates.
 Validates that all base templates have enforcement/level/validates structure.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.validation.template_analyzer
 """
 
 from pathlib import Path

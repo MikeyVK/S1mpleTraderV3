@@ -1,6 +1,10 @@
 # tests\mcp_server\unit\managers\test_phase_contract_resolver.py
 # template=unit_test version=3d15d309 created=2026-03-12T21:27Z updated=
-"""Unit tests for phase contract config loading and resolution."""
+"""Unit tests for phase contract config loading and resolution.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_contract_resolver
+"""
 
 from __future__ import annotations
 

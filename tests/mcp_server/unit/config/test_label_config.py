@@ -16,7 +16,7 @@ from unittest.mock import Mock
 import pytest
 
 # Project modules
-from mcp_server.config.label_config import Label
+from mcp_server.config.schemas.label_config import Label
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import LabelConfig
 from mcp_server.core.exceptions import ConfigError

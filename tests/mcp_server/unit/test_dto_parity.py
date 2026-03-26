@@ -18,6 +18,9 @@ RISK MARKER (Cycle 4):
 - Full output equivalence validation deferred to Cycle 5
 
 Test Coverage (10 smoke test cases):
+
+@layer: Tests (Unit)
+@dependencies: pytest, dto artifact schemas, scaffolding pipeline parity checks
 1. Basic DTO (2 fields)
 2. Complex DTO (10+ fields)
 3. Empty fields list

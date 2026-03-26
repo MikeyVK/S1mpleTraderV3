@@ -1,4 +1,8 @@
-"""Tests for administrative tools (server restart functionality)."""
+"""Tests for administrative tools (server restart functionality).
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.tools.admin_tools
+"""
 
 import asyncio
 import json

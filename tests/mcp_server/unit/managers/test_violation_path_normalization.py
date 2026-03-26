@@ -11,6 +11,9 @@ Exit criteria:
   - Integration test: Gate 0 (text_violations) + Gate 1 (json_violations) for the
     same file produce identical file field values after normalization.
   - No absolute paths in compact payload.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 

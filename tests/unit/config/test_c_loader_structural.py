@@ -1,7 +1,12 @@
-"""Structural tests for C_LOADER schema migration cycles.
+# tests/unit/config/test_c_loader_structural.py
+"""
+Structural tests for C_LOADER schema migration cycles.
 
 Zone 1 only: schema/package introspection and ConfigLoader behavior.
 No manager/tool consumer rewiring is validated here.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, yaml, pathlib, inspect, mcp_server.config.loader]
 """
 
 from __future__ import annotations
@@ -188,6 +193,11 @@ def config_root(tmp_path: Path) -> Path:
         "quality.yaml",
         {
             "version": "1.0",
+            "artifact_logging": {
+                "enabled": True,
+                "output_dir": "temp/qa_logs",
+                "max_files": 200,
+            },
             "active_gates": [],
             "gates": {
                 "ruff": {
@@ -370,6 +380,31 @@ def test_all_fifteen_schema_classes_have_no_self_loading_methods() -> None:
 def test_no_from_file_on_any_config_schema() -> None:
     """Planning alias for the structural delete guard used in C_LOADER.4 proof."""
     _assert_no_self_loading_methods()
+
+
+def test_config_package_contains_no_legacy_wrapper_modules() -> None:
+    """The legacy config compatibility wrapper files must be deleted flag-day."""
+    config_dir = Path(__file__).resolve().parents[3] / "mcp_server" / "config"
+    legacy_wrappers = {
+        "artifact_registry_config.py",
+        "compat_roots.py",
+        "contributor_config.py",
+        "git_config.py",
+        "issue_config.py",
+        "label_config.py",
+        "milestone_config.py",
+        "operation_policies.py",
+        "project_structure.py",
+        "quality_config.py",
+        "scaffold_metadata_config.py",
+        "scope_config.py",
+        "workflows.py",
+        "workphases_config.py",
+    }
+    present_wrappers = sorted(
+        path.name for path in config_dir.iterdir() if path.is_file() and path.name in legacy_wrappers
+    )
+    assert present_wrappers == []
 
 
 def test_no_hardcoded_config_paths_in_schema_package() -> None:

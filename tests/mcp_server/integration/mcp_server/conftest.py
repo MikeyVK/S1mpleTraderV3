@@ -1,4 +1,8 @@
-"""Integration test configuration for MCP server tests."""
+"""Integration test configuration for MCP server tests.
+
+@layer: Tests (Support)
+@dependencies: pytest, unittest.mock, mcp_server.server
+"""
 
 from unittest.mock import MagicMock, patch
 

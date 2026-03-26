@@ -4,8 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from mcp_server.config.compat_roots import resolve_config_root
-from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.loader import ConfigLoader, resolve_config_root
 from mcp_server.resources.base import BaseResource
 
 

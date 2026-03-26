@@ -8,6 +8,9 @@ Tests cover:
 5. Path resolution (symlinks, relative paths)
 
 Coverage goal: 100% of get_template_root() function.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.utils.template_config
 """
 
 import os

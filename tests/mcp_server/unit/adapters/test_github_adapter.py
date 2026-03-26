@@ -1,4 +1,8 @@
-"""Unit tests for GitHubAdapter."""
+"""Unit tests for GitHubAdapter.
+
+@layer: Tests (Unit)
+@dependencies: pytest, github, mcp_server.adapters.github_adapter
+"""
 
 from collections.abc import Iterator
 from datetime import date

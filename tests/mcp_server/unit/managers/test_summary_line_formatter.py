@@ -6,6 +6,9 @@ Design contract (design.md §4.8):
   Pass:       "✅ Quality gates: N/N passed (0 violations)"
   Fail:       "❌ Quality gates: N/M passed — V violations in gate_id[, gate_id]"
   Skip+pass:  "⚠️ Quality gates: N/N active (S skipped)"
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 

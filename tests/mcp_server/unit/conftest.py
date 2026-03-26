@@ -1,4 +1,8 @@
-"""Test fixtures for MCP server unit tests."""
+"""Test fixtures for MCP server unit tests.
+
+@layer: Tests (Support)
+@dependencies: pytest, shared unit-test fixtures
+"""
 
 import pytest
 

@@ -2,6 +2,9 @@
 
 Tests verify that the correct tools are registered in the server
 and that legacy tools have been properly removed.
+
+@layer: Tests (Integration)
+@dependencies: pytest, mcp_server.server
 """
 
 from mcp_server.server import MCPServer

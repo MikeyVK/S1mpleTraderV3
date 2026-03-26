@@ -1,4 +1,8 @@
-"""Integration tests for the MCP server."""
+"""Integration tests for the MCP server.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, mcp_server.server]
+"""
 
 import pytest
 

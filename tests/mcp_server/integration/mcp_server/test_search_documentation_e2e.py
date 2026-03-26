@@ -1,4 +1,8 @@
-"""E2E tests for SearchDocumentationTool with production docs."""
+"""E2E tests for SearchDocumentationTool with production docs.
+
+@layer: Tests (Integration)
+@dependencies: pytest, mcp_server.config.settings, mcp_server.tools.discovery_tools
+"""
 
 from pathlib import Path
 

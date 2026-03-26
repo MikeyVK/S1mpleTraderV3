@@ -10,6 +10,9 @@ Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
 Issue #229 Cycle 7: Per-phase deliverables schema in save_planning_deliverables (D7.1).
 Issue #229 Cycle 8: update_planning_deliverables per-phase merge + exit_criteria
   (D8.1/D8.2/D8.3/GAP-12/GAP-15).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.project_tools]
 """
 
 import json

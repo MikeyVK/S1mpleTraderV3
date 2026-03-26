@@ -1,6 +1,9 @@
 """Unit tests for ArtifactRegistryConfig.
 
 Tests config loading and validation for artifacts.yaml.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.config.loader, mcp_server.config.schemas
 """
 
 from pathlib import Path

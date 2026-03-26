@@ -2,6 +2,9 @@
 
 Tests that tier0/tier1/tier2 templates have STRICT enforcement
 and concrete templates have GUIDELINE enforcement.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.validation.template_analyzer
 """
 
 from pathlib import Path

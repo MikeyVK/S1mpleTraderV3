@@ -1,4 +1,8 @@
-"""Tests for base tool classes."""
+"""Tests for base tool classes.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, mcp_server.tools.base, mcp_server.tools.tool_result]
+"""
 
 import pytest
 

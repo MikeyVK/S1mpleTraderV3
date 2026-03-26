@@ -1,4 +1,8 @@
-"""Tests for Git integration."""
+"""Tests for Git integration.
+
+@layer: Tests (Integration)
+@dependencies: pytest, pathlib, unittest.mock, mcp_server.config.loader, mcp_server.config.schemas, mcp_server.managers.git_manager
+"""
 
 from pathlib import Path
 from unittest.mock import Mock

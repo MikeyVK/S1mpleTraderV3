@@ -1,4 +1,17 @@
-"""Pure contributor config schema definitions."""
+# mcp_server/config/schemas/contributor_config.py
+"""
+Contributor configuration schema definitions.
+
+Defines typed value objects for contributor metadata used by issue and
+milestone workflows.
+
+@layer: Backend (Config)
+@dependencies: [pydantic]
+@responsibilities:
+    - Define contributor entry and root config schema contracts
+    - Validate contributor metadata loaded from YAML
+    - Provide assignee lookup helpers for workflow consumers
+"""
 
 from pydantic import BaseModel, Field
 

@@ -1,6 +1,10 @@
-# tests\mcp_server\unit\managers\test_enforcement_runner.py
+# tests/mcp_server/unit/managers/test_enforcement_runner.py
 # template=unit_test version=3d15d309 created=2026-03-13T10:02Z updated=
-"""Unit tests for enforcement runner configuration and dispatch."""
+"""Unit tests for enforcement runner configuration and dispatch.
+
+@layer: Tests (Unit)
+@dependencies: [pathlib, pytest, unittest.mock, mcp_server.managers.enforcement_runner]
+"""
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -136,3 +140,32 @@ class TestEnforcementRunner:
                     ),
                 ),
             )
+
+
+class TestEnforcementSchemaValidation:
+    """Direct schema validation coverage for enforcement config models."""
+
+    def test_branch_policy_action_requires_rules(self) -> None:
+        """check_branch_policy actions must declare at least one rule."""
+        with pytest.raises(ValueError, match="requires non-empty rules"):
+            EnforcementAction(type="check_branch_policy")
+
+    def test_commit_state_files_action_requires_paths(self) -> None:
+        """commit_state_files actions must declare tracked paths."""
+        with pytest.raises(ValueError, match="requires non-empty paths"):
+            EnforcementAction(type="commit_state_files")
+
+    def test_delete_file_action_requires_path(self) -> None:
+        """delete_file actions must declare a single target path."""
+        with pytest.raises(ValueError, match="requires path"):
+            EnforcementAction(type="delete_file")
+
+    def test_tool_event_source_requires_tool_name(self) -> None:
+        """Tool-triggered rules must include the tool name."""
+        with pytest.raises(ValueError, match="requires tool"):
+            EnforcementRule(event_source="tool", timing="pre")
+
+    def test_phase_event_source_requires_phase_name(self) -> None:
+        """Phase-triggered rules must include the phase name."""
+        with pytest.raises(ValueError, match="requires phase"):
+            EnforcementRule(event_source="phase", timing="post")

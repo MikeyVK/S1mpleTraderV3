@@ -7,6 +7,9 @@ Tests:
 - Structural validation only; semantic validation moved to GitHubManager
 - Optional fields: is_epic, parent_issue, milestone, assignees
 - body JSON-string coercion for MCP chat compatibility
+
+@layer: Tests (Unit)
+@dependencies: [pytest, json, mcp_server.tools.issue_tools]
 """
 
 import json

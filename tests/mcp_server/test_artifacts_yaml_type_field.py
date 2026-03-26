@@ -4,6 +4,9 @@ Tests for artifacts.yaml type field (TDD Cycle 1).
 
 RED phase: Validate that all artifacts have type field set to code|doc|config|tracking
 per tdd-planning.md Cycle 1 and tracking-type-architecture.md.
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server configuration artifacts
 """
 
 from pathlib import Path

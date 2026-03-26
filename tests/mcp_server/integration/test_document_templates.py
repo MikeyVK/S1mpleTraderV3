@@ -7,6 +7,9 @@ Tests verify:
 - No frontmatter (removed per BASE_TEMPLATE alignment)
 - Title fallback to name parameter
 - Proper whitespace control (no excessive blank lines)
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pathlib, jinja2]
 """
 
 from pathlib import Path

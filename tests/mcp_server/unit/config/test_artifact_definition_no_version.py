@@ -4,9 +4,12 @@ Unit tests for ArtifactDefinition - version field removal (Task 1.5b).
 RED phase: Documents that version field should NOT exist in ArtifactDefinition.
 Rationale: artifacts.yaml = selection config (variants), registry = provenance (versions).
 Having ArtifactDefinition.version conflicts with "templates+registry=SSOT" principle.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.schemas.artifact_registry_config
 """
 
-from mcp_server.config.artifact_registry_config import ArtifactDefinition
+from mcp_server.config.schemas.artifact_registry_config import ArtifactDefinition
 
 
 class TestArtifactDefinitionNoVersion:

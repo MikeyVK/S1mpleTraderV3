@@ -1,4 +1,8 @@
-"""Tests for GitAdapter - extended git operations."""
+"""Tests for GitAdapter - extended git operations.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.adapters.git_adapter
+"""
 
 from unittest.mock import MagicMock, patch
 

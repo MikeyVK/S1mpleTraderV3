@@ -1,6 +1,9 @@
 """Unit tests for DirectoryPolicyResolver.
 
 Tests Phase 3: Directory policy resolution with inheritance
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.core.directory_policy_resolver
 """
 
 from tests.mcp_server.test_support import make_directory_policy_resolver

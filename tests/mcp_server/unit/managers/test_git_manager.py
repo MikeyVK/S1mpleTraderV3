@@ -1,4 +1,8 @@
-"""Unit tests for GitManager."""
+"""Unit tests for GitManager.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.git_manager, mcp_server.config.schemas
+"""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives
 

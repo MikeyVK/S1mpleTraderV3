@@ -3,6 +3,9 @@ Cycle 5 — Label assembly in CreateIssueTool.
 
 Tests for the private `_assemble_labels()` method and for `execute()` forwarding
 assembled labels to GitHubManager.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.issue_tools]
 """
 
 from unittest.mock import MagicMock

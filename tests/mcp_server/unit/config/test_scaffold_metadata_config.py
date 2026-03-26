@@ -3,6 +3,9 @@ Unit tests for scaffold metadata configuration models.
 
 Tests the Pydantic models that load and validate .st3/scaffold_metadata.yaml.
 Following TDD: These tests are written BEFORE implementation (RED phase).
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, mcp_server.config.schemas
 """
 
 from pathlib import Path

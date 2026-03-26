@@ -1,6 +1,9 @@
 """Behavior tests for GitFetchTool.
 
 Also covers input schema helpers for 100% module coverage.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.git_fetch_tool]
 """
 
 from unittest.mock import AsyncMock, Mock, patch

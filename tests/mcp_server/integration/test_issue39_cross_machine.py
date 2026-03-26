@@ -8,6 +8,9 @@ Tests the complete flow:
 5. Machine B: Tools work transparently (Mode 2 - auto-recovery)
 
 This validates that the dual-mode system works end-to-end across machines.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, subprocess, tests.mcp_server.test_support]
 """
 
 import json

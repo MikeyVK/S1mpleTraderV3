@@ -1,4 +1,8 @@
-"""Tests for Test and Code tools."""
+"""Tests for Test and Code tools.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.test_tools]
+"""
 
 from __future__ import annotations
 

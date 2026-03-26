@@ -1,4 +1,8 @@
-"""Tests for base resource classes."""
+"""Tests for base resource classes.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.resources.base
+"""
 
 import pytest
 

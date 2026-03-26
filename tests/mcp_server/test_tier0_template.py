@@ -3,6 +3,9 @@ Tests for Tier 0 base template rendering (Issue #72 Task 1.3).
 
 RED phase: Tests for tier0_base_artifact.jinja2 SCAFFOLD metadata generation
 with format-adaptive comment styles (2-line format).
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

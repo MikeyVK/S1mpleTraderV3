@@ -3,6 +3,9 @@ Unit tests for scaffold metadata parser.
 
 Tests parsing SCAFFOLD comments from scaffolded files.
 Following TDD: These tests are written BEFORE implementation (RED phase).
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.scaffolding.metadata
 """
 
 # pyright: basic

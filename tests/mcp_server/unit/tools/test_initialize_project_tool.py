@@ -8,6 +8,9 @@ Tests verify:
 3. First phase determined from workflow
 4. state.json properly initialized with correct structure
 5. Error handling when git or state creation fails
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.project_tools]
 """
 
 import json

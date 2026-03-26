@@ -9,6 +9,9 @@ Author: AI Agent
 Created: 2026-01-26
 Issue: #72 (Template Library Management)
 TDD Cycle: 1
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.schemas.artifact_registry_config
 """
 
 from pathlib import Path

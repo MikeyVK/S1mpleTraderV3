@@ -176,6 +176,12 @@ class TestGitConfig:
         config = _load_git_config()
         assert config.get_all_prefixes() == ["test:", "feat:", "refactor:", "docs:"]
 
+    def test_build_branch_type_regex(self) -> None:
+        """build_branch_type_regex should expose the configured branch alternatives."""
+        config = _load_git_config()
+
+        assert config.build_branch_type_regex() == "(?:feature|bug|fix|refactor|docs|hotfix|epic)"
+
     def test_extract_issue_number_returns_int_for_supported_branch_names(self) -> None:
         """extract_issue_number() should parse the numeric issue id from branch names."""
         config = _load_git_config()

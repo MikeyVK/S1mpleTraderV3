@@ -1,4 +1,8 @@
-"""Unit tests for ArtifactManager metadata enrichment via public API."""
+"""Unit tests for ArtifactManager metadata enrichment via public API.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.artifact_manager
+"""
 
 from datetime import UTC, datetime
 from pathlib import Path

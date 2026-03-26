@@ -1,4 +1,6 @@
-"""Tests for PhaseStateEngine auto-recovery (Mode 2).
+# tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py
+"""
+Tests for PhaseStateEngine auto-recovery (Mode 2).
 
 Issue #39: Mode 2 - Auto-recovery of missing state.json from git commits.
 
@@ -9,6 +11,9 @@ Tests verify:
 4. Transparent recovery (no user intervention)
 5. Reconstructed flag set for audit
 6. Safe fallback to first phase
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, unittest.mock, mcp_server.managers.phase_state_engine]
 """
 
 from __future__ import annotations
@@ -19,7 +24,8 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.workflows import WorkflowConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas.workflows import WorkflowConfig
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 if TYPE_CHECKING:
@@ -28,7 +34,7 @@ if TYPE_CHECKING:
 
 
 def _load_workflow_config() -> WorkflowConfig:
-    return WorkflowConfig.load(Path(".st3/config/workflows.yaml"))
+    return ConfigLoader(Path(".st3/config")).load_workflow_config()
 
 
 class TestPhaseStateEngineMode2:

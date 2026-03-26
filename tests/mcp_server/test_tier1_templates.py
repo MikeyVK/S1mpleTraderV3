@@ -3,6 +3,9 @@ Tests for Tier 1 base templates (Issue #72 Task 1.3).
 
 RED phase: Tests for tier1_base_{code,document,config}.jinja2 inheritance
 from Tier 0, block structure, and format-specific patterns.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

@@ -2,6 +2,9 @@
 
 Phase 1.3: Verify all tools are operational and return expected results.
 These tests use mocks but test the full flow from Tool -> Manager -> Adapter.
+
+@layer: Tests (Integration)
+@dependencies: pytest, unittest.mock, mcp_server.tools
 """
 
 from unittest.mock import MagicMock, patch

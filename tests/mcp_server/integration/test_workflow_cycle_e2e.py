@@ -1,7 +1,10 @@
 """End-to-end test for full workflow cycle (Issue #138 Cycle 3.6).
 
-Tests complete workflow cycle: research → planning → design → implementation → validation
-→ documentation with commit-scope encoding and ScopeDecoder validation.
+Tests complete workflow cycle: research -> planning -> design -> implementation -> validation
+-> documentation with commit-scope encoding and ScopeDecoder validation.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, subprocess, mcp_server.managers.git_manager]
 """
 
 import subprocess

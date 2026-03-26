@@ -1,4 +1,17 @@
-"""Pure WorkphasesConfig schema for ConfigLoader-managed YAML loading."""
+# mcp_server/config/schemas/workphases.py
+"""
+Workphase metadata schema definitions.
+
+Defines typed value objects for phase display metadata, entry expectations,
+and exit requirements loaded by the configuration layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define phase metadata and root workphase schema contracts
+    - Validate workphase metadata structure
+    - Provide entry and exit requirement lookup helpers
+"""
 
 from __future__ import annotations
 

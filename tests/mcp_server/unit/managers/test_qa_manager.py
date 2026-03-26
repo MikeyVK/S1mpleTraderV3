@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-from mcp_server.config.quality_config import (
+from mcp_server.config.schemas.quality_config import (
     CapabilitiesMetadata,
     ExecutionConfig,
     QualityGate,

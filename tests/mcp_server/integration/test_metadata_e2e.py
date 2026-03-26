@@ -1,11 +1,14 @@
 """
 End-to-end tests for scaffold metadata system.
 
-Tests the full workflow: scaffold → file write → parse → validate.
+Tests the full workflow: scaffold -> file write -> parse -> validate.
 Following TDD: Tests metadata enrichment with EXISTING templates.
 
 NOTE: Phase 0.4 scope is metadata enrichment, not new templates.
 Using existing DTO template to verify metadata injection works.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pathlib, mcp_server.managers.artifact_manager]
 """
 
 # pyright: basic

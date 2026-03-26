@@ -1,9 +1,15 @@
+"""Tests for TextViolationsParsing defaults placeholder validation.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, mcp_server.config.schemas.quality_config
+"""
+
 from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.quality_config import TextViolationsParsing
+from mcp_server.config.schemas.quality_config import TextViolationsParsing
 
 
 class TestDefaultsPlaceholderValidation:

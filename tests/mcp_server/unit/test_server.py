@@ -1,5 +1,9 @@
 # pyright: reportMissingImports=false
-"""Tests for MCP Server tool registration and dispatch hooks."""
+"""Tests for MCP Server tool registration and dispatch hooks.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.server, mcp.types
+"""
 
 import logging
 import shutil

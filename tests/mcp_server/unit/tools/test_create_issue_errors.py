@@ -3,6 +3,9 @@ Cycle 6 — Error handling in CreateIssueTool.execute().
 
 Tests that expected failure modes produce ToolResult.error() with actionable
 messages instead of leaking raw exceptions to the caller.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.issue_tools]
 """
 
 from unittest.mock import MagicMock, patch

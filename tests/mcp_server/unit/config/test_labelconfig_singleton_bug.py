@@ -1,4 +1,8 @@
-"""Regression tests for label config freshness after the C_LOADER migration."""
+"""Regression tests for label config freshness after the C_LOADER migration.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.loader, mcp_server.config.schemas
+"""
 
 import time
 from pathlib import Path

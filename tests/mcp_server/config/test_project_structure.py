@@ -1,7 +1,11 @@
+# tests/mcp_server/config/test_project_structure.py
 """Unit tests for ProjectStructureConfig model.
 
 Tests Phase 2: .st3/config/project_structure.yaml + ProjectStructureConfig
-Cross-validates allowed_component_types against artifacts.yaml
+Cross-validates allowed_component_types against artifacts.yaml.
+
+@layer: Tests (Unit)
+@dependencies: [pathlib, pytest, mcp_server.config.loader, mcp_server.config.schemas]
 """
 
 from pathlib import Path
@@ -11,6 +15,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import (
     ArtifactRegistryConfig,
+    DirectoryPolicy,
     OperationPoliciesConfig,
     ProjectStructureConfig,
 )
@@ -128,6 +133,33 @@ class TestProjectStructureConfig:
         assert st3.allowed_component_types == []
         assert ".yaml" in st3.allowed_extensions
         assert ".yml" in st3.allowed_extensions
+
+    def test_directory_policy_allowed_component_types_alias(self) -> None:
+        """allowed_component_types should mirror allowed_artifact_types."""
+        policy = DirectoryPolicy(
+            path="backend",
+            description="Backend code",
+            allowed_artifact_types=["dto", "worker"],
+        )
+
+        assert policy.allowed_component_types == ["dto", "worker"]
+
+    def test_manual_project_structure_accessors(self) -> None:
+        """Accessor helpers should work on manually constructed configs."""
+        config = ProjectStructureConfig(
+            directories={
+                "backend": DirectoryPolicy(path="backend", description="Backend code"),
+                "backend/dtos": DirectoryPolicy(
+                    path="backend/dtos",
+                    parent="backend",
+                    description="DTOs",
+                ),
+            }
+        )
+
+        assert config.get_directory("backend") is not None
+        assert config.get_directory("missing") is None
+        assert config.get_all_directories() == ["backend", "backend/dtos"]
 
     def test_test_directory_policy(self) -> None:
         """Test tests directory allows no components."""

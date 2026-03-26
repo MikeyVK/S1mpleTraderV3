@@ -1,4 +1,17 @@
-"""Pure issue config schema definitions."""
+# mcp_server/config/schemas/issue_config.py
+"""
+Issue configuration schema definitions.
+
+Defines typed value objects for issue types, workflow mapping, and label
+requirements loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic]
+@responsibilities:
+    - Define issue type and root issue config schema contracts
+    - Validate issue workflow and label requirement metadata
+    - Provide issue-type lookup helpers for workflow consumers
+"""
 
 from __future__ import annotations
 

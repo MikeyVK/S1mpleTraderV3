@@ -1,4 +1,8 @@
-"""Unit tests for milestone_tools.py."""
+"""Unit tests for milestone_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.milestone_tools]
+"""
 
 from unittest.mock import MagicMock
 

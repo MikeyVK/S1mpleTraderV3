@@ -1,17 +1,37 @@
-"""Pure LabelConfig schema for ConfigLoader-managed YAML loading."""
+# mcp_server/config/schemas/label_config.py
+"""
+Label configuration schema value objects.
+
+Defines typed label and pattern metadata loaded by the configuration layer.
+
+@layer: Backend (Config)
+@dependencies: [re, typing, pydantic]
+@responsibilities:
+    - Define label and label-pattern schema contracts
+    - Validate label color and duplicate-name invariants
+    - Provide lookup helpers used by label-aware tooling
+"""
 
 import re
+from dataclasses import FrozenInstanceError
 from typing import Any
 
-from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
 
 class Label(BaseModel):
     """Immutable label definition from labels.yaml."""
 
+    model_config = ConfigDict(frozen=True)
+
     name: str
     color: str
     description: str = ""
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name in type(self).model_fields and name in self.__dict__:
+            raise FrozenInstanceError(f"cannot assign to field '{name}'")
+        super().__setattr__(name, value)
 
     @field_validator("color")
     @classmethod

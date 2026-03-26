@@ -7,6 +7,9 @@ GAP-02: planning_deliverables check in on_enter_implementation_phase is wrong la
 C2 Deliverables:
   D2.1: on_exit_planning_phase wired to WorkphasesConfig + DeliverableChecker (Option B).
   D2.2: on_enter_implementation_phase no longer raises when planning_deliverables absent.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 from pathlib import Path

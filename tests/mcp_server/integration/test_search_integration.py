@@ -1,4 +1,8 @@
-"""Integration tests for SearchService with DocumentIndexer (Cycle 10)."""
+"""Integration tests for SearchService with DocumentIndexer (Cycle 10).
+
+@layer: Tests (Integration)
+@dependencies: [pytest, mcp_server.services.document_indexer, mcp_server.services.search_service]
+"""
 
 import pytest
 

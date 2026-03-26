@@ -1,4 +1,8 @@
-"""Tests for PolicyEngine (Issue #55 integration)."""
+"""Tests for PolicyEngine (Issue #55 integration).
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.core.policy_engine
+"""
 
 from tests.mcp_server.test_support import make_policy_engine
 

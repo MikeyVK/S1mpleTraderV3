@@ -3,6 +3,9 @@ Tests for Tier 2 language base templates (Issue #72 Task 1.4).
 
 RED phase: Tests for tier2_base_{python,markdown,yaml}.jinja2 inheritance
 from Tier 1, language-specific patterns, and SCAFFOLD metadata propagation.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

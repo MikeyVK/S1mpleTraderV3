@@ -1,4 +1,17 @@
-"""Pure project structure schema definitions."""
+# mcp_server/config/schemas/project_structure_config.py
+"""
+Project structure schema definitions.
+
+Defines typed value objects for directory policies and scaffold placement
+rules loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define directory policy schema contracts
+    - Validate project structure metadata shape
+    - Represent scaffold placement rules for artifact routing
+"""
 
 from __future__ import annotations
 

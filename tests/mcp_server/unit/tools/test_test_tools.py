@@ -1,4 +1,8 @@
-"""Unit tests for test_tools.py."""
+"""Unit tests for test_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.test_tools]
+"""
 
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch

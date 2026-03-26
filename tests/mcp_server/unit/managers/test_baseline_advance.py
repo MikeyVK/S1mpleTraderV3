@@ -2,6 +2,9 @@
 """
 C19: When all gates pass, persist HEAD as baseline_sha and reset failed_files.
 C20: Union newly failed files with persisted failed_files set.
+
+@layer: Tests (Unit)
+@dependencies: pytest, json, pathlib, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 

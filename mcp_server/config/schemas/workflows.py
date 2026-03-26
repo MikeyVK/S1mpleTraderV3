@@ -1,4 +1,17 @@
-"""Pure WorkflowConfig schema for ConfigLoader-managed YAML loading."""
+# mcp_server/config/schemas/workflows.py
+"""
+Workflow configuration schema definitions.
+
+Defines typed value objects for workflow templates and transition rules
+loaded by the configuration layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define workflow template and root config schema contracts
+    - Validate workflow phase ordering and uniqueness
+    - Provide transition validation helpers for runtime orchestration
+"""
 
 from __future__ import annotations
 

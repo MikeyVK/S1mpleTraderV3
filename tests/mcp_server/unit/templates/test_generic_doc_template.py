@@ -1,4 +1,8 @@
-"""Unit tests for structured generic document template."""
+"""Unit tests for structured generic document template.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, jinja2]
+"""
 
 from pathlib import Path
 from typing import Any

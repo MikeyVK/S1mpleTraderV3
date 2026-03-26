@@ -13,6 +13,9 @@ C35 additions (F-2, F-3):
 
 C39 change (duration_ms contract):
   - `duration_ms` removed from compact JSON root; moved to summary line text.
+
+@layer: Tests (Unit)
+@dependencies: pytest, json, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 

@@ -1,4 +1,8 @@
-"""Shared test helpers for DI-heavy MCP components and tools."""
+"""Shared test helpers for DI-heavy MCP components and tools.
+
+@layer: Tests (Support)
+@dependencies: shared test helpers, mcp_server managers, scaffolders, and policy components
+"""
 
 from __future__ import annotations
 
@@ -7,13 +11,7 @@ from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock
 
-from mcp_server.config.compat_roots import (
-    get_candidate_config_roots,
-)
-from mcp_server.config.compat_roots import (
-    resolve_config_root as resolve_runtime_config_root,
-)
-from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.loader import ConfigLoader, normalize_config_root, resolve_config_root as resolve_runtime_config_root
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.policy_engine import PolicyEngine
 from mcp_server.managers.artifact_manager import ArtifactManager
@@ -38,8 +36,21 @@ from mcp_server.tools.pr_tools import CreatePRInput
 
 
 def _candidate_config_roots(workspace_root: Path | str | None = None) -> list[Path]:
-    """Return workspace-first candidate .st3 roots from the shared runtime resolver."""
-    return get_candidate_config_roots(workspace_root)
+    """Return workspace-first candidate canonical config roots for tests."""
+    candidates: list[Path] = []
+    if workspace_root is not None:
+        candidates.append(normalize_config_root(workspace_root))
+    candidates.append(normalize_config_root(Path.cwd()))
+    candidates.append(normalize_config_root(Path(__file__).resolve().parents[2]))
+
+    unique_candidates: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        unique_candidates.append(candidate)
+    return unique_candidates
 
 
 def resolve_config_root(

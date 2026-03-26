@@ -1,7 +1,10 @@
 """End-to-End test for complete template scaffolding (TDD Cycle 7).
 
-Tests full template chain: tier0 → tier1 → tier2 → concrete design.
+Tests full template chain: tier0 -> tier1 -> tier2 -> concrete design.
 Validates SCAFFOLD metadata, link definitions, Version History, and GUIDELINE enforcement.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.validation.template_analyzer
 """
 
 from pathlib import Path

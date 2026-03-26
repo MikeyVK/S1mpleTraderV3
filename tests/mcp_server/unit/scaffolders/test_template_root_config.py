@@ -3,6 +3,9 @@ Tests for template root configuration with fail-fast behavior.
 
 RED phase: Issue #72 Clean Break - Tier templates as default.
 Tests that template root is configurable but fails fast on invalid config.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.validation.validation_service, tests.mcp_server.test_support
 """
 
 import os

@@ -1,11 +1,15 @@
-"""Unit tests for ArtifactManager."""
+"""Unit tests for ArtifactManager.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.artifact_manager
+"""
 
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.schemas.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder

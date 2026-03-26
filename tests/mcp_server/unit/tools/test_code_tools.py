@@ -1,4 +1,8 @@
-"""Unit tests for code_tools.py."""
+"""Unit tests for code_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.code_tools]
+"""
 
 from pathlib import Path
 

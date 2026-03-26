@@ -9,6 +9,9 @@ Quality Requirements:
 - Pylint: 10/10 (no exceptions)
 - Mypy: strict mode passing
 - Coverage: 100% for workflow schema behavior
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, pydantic, mcp_server.config.schemas
 """
 
 from pathlib import Path

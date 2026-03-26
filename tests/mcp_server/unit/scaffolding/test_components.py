@@ -1,4 +1,8 @@
-"""Unit tests for scaffolding components."""
+"""Unit tests for scaffolding components.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.scaffolding.components, mcp_server.scaffolding.renderer
+"""
 
 from unittest.mock import MagicMock
 

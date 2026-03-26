@@ -1,8 +1,14 @@
+"""Tests for gate file selection helpers.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.qa_manager
+"""
+
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import (
+from mcp_server.config.schemas.quality_config import (
     CapabilitiesMetadata,
     ExecutionConfig,
     QualityGate,

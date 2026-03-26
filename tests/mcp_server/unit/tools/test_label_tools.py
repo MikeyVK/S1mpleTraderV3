@@ -1,4 +1,8 @@
-"""Unit tests for label_tools.py."""
+"""Unit tests for label_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.tools.label_tools, mcp_server.config.schemas
+"""
 
 from collections.abc import Generator
 from pathlib import Path

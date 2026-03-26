@@ -1,13 +1,18 @@
-"""Structural tests for C_SETTINGS.1 — settings singleton removal.
+# tests/unit/config/test_c_settings_structural.py
+"""
+Structural tests for C_SETTINGS singleton and wrapper removal.
 
 Zone 1: class introspection and source inspection; no YAML, no filesystem.
-These tests must all be GREEN after C_SETTINGS.1 completes.
+These tests must all be GREEN after the settings and loader flag-day work.
+
+@layer: Tests (Unit)
+@dependencies: [importlib.util, inspect, mcp_server.config.settings]
 """
 
+import importlib.util
 import inspect
 
 import mcp_server.config.settings as _settings_module
-import mcp_server.config.workflows as _workflows_module
 from mcp_server.config.settings import Settings
 
 
@@ -30,15 +35,9 @@ def test_settings_exposes_from_env_not_load() -> None:
     )
 
 
-def test_workflows_module_does_not_export_singleton() -> None:
-    """Module-level 'workflow_config' must not exist — singleton deleted.
-
-    Ref: c_settings_2.workflow_singleton_deleted.
-    """
-    assert not hasattr(_workflows_module, "workflow_config"), (
-        "mcp_server.config.workflows must not export a module-level 'workflow_config' singleton. "
-        "Inject WorkflowConfig from the composition root or tool layer."
-    )
+def test_legacy_workflows_wrapper_module_deleted() -> None:
+    """The legacy workflows wrapper must be removed after the loader flag-day."""
+    assert importlib.util.find_spec("mcp_server.config.workflows") is None
 
 
 def test_log_level_env_var_renamed() -> None:

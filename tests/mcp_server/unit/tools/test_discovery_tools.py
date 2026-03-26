@@ -1,4 +1,10 @@
-"""Tests for Discovery Tools (search_documentation, get_work_context)."""
+# tests/mcp_server/unit/tools/test_discovery_tools.py
+"""
+Tests for Discovery Tools (search_documentation, get_work_context).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, tempfile, unittest.mock, mcp_server.tools.discovery_tools]
+"""
 
 import tempfile
 from pathlib import Path
@@ -9,9 +15,9 @@ from pydantic import ValidationError
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import GitConfig
+from mcp_server.config.schemas.workflows import WorkflowConfig
+from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.config.settings import Settings
-from mcp_server.config.workflows import WorkflowConfig
-from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.tools.discovery_tools import (
     GetWorkContextInput,
     GetWorkContextTool,
@@ -44,7 +50,7 @@ def make_work_context_tool(
 
 
 def load_workflow_config() -> WorkflowConfig:
-    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
+    return ConfigLoader(Path(".st3/config")).load_workflow_config()
 
 
 def load_git_config() -> GitConfig:
@@ -52,7 +58,7 @@ def load_git_config() -> GitConfig:
 
 
 def load_workphases_config() -> WorkphasesConfig:
-    return WorkphasesConfig(Path(".st3/workphases.yaml"))
+    return ConfigLoader(Path(".st3/config")).load_workphases_config()
 
 
 class TestSearchDocumentationTool:

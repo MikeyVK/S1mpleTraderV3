@@ -9,6 +9,9 @@ propagates correctly through the entire call stack:
 4. Tool error_handler converts to ToolResult with preserved contract
 
 This test uses NO MOCKS - real template loading against temp workspace.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pathlib, mcp_server.tools.scaffold_artifact]
 """
 
 from pathlib import Path

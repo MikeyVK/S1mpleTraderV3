@@ -1,4 +1,17 @@
-"""Pure scaffold metadata schema definitions."""
+# mcp_server/config/schemas/scaffold_metadata_config.py
+"""
+Scaffold metadata schema definitions.
+
+Defines typed value objects for scaffold comment patterns and metadata field
+rules loaded by the config layer.
+
+@layer: Backend (Config)
+@dependencies: [pydantic, typing]
+@responsibilities:
+    - Define scaffold metadata and comment-pattern schema contracts
+    - Validate metadata-field format rules
+    - Represent scaffold header parsing rules for metadata tooling
+"""
 
 from __future__ import annotations
 

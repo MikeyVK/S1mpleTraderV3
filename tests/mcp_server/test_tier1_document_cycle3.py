@@ -9,6 +9,9 @@ RED phase: Tests for tier1_base_document.jinja2 universal document structure:
 - Prerequisites (optional)
 - Related Documentation
 - Version History table
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path

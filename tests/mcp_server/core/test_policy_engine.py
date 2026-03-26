@@ -1,6 +1,9 @@
 """Unit tests for PolicyEngine (refactored, config-driven).
 
 Tests Phase 4: Policy decision engine with config integration
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.core.policy_engine
 """
 
 from tests.mcp_server.test_support import make_policy_engine

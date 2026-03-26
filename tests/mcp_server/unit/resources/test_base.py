@@ -1,5 +1,9 @@
 # tests/unit/mcp_server/resources/test_base.py
-"""Tests for base resource."""
+"""Tests for base resource.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.resources.base
+"""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 
 # Third-party

@@ -4,7 +4,10 @@ Issue #50 - Step 4: Force Transition Tool
 
 Tests MCP tool that exposes PhaseStateEngine.force_transition() to users.
 Allows non-sequential phase transitions with skip_reason and approval.
-Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE ✅ in response.
+Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE OK in response.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.phase_tools]
 """
 
 import json

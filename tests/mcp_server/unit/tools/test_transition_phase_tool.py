@@ -4,6 +4,9 @@ Issue #50 - Step 5: Update TransitionPhaseTool to New API
 
 Tests MCP tool that exposes PhaseStateEngine.transition() to users.
 Enforces strict sequential phase transitions per workflow definition.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.phase_tools]
 """
 
 from pathlib import Path

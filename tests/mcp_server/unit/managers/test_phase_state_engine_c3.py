@@ -4,6 +4,9 @@ GAP-03: Forced transitions bypass all hooks and deliverable checks with no warni
 
 C3 Deliverables:
   D3.1: force_transition logs warning listing skipped_gates when gates exist.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 import json
