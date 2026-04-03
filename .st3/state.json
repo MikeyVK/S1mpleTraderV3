@@ -2,7 +2,7 @@
   "branch": "feature/257-reorder-workflow-phases",
   "issue_number": 257,
   "workflow_name": "feature",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -15,7 +15,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Reaffirm research phase after finalizing minimal refactor scope before entering design.",
+  "skip_reason": "Proceed to design after recording the finalized research scope and threshold decision.",
   "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
   "parent_branch": "main",
   "created_at": "2026-03-26T20:10:23.657586+00:00",
@@ -43,6 +43,14 @@
       "human_approval": "User approved in chat on 2026-04-03 to force the branch to research before continuing to design.",
       "forced": true,
       "skip_reason": "Reaffirm research phase after finalizing minimal refactor scope before entering design."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-04-03T19:38:13.981275+00:00",
+      "human_approval": "User approved in chat on 2026-04-03 to force the branch to design after the research commit.",
+      "forced": true,
+      "skip_reason": "Proceed to design after recording the finalized research scope and threshold decision."
     }
   ],
   "reconstructed": true
