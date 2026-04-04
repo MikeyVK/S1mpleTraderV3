@@ -102,7 +102,10 @@ class TestTransitionCycleTool:
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         state = state.with_updates(current_cycle=1)
-        state_engine._save_state("feature/146-tdd-cycle-tracking", state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            "feature/146-tdd-cycle-tracking",
+            state,
+        )
 
         return workspace_root, issue_number
 
@@ -151,7 +154,10 @@ class TestTransitionCycleTool:
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         state = state.with_updates(current_cycle=2)
-        state_engine._save_state("feature/146-tdd-cycle-tracking", state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            "feature/146-tdd-cycle-tracking",
+            state,
+        )
 
         #  Mock git
         with (
@@ -211,7 +217,10 @@ class TestTransitionCycleTool:
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         state = state.with_updates(current_phase="design")
-        state_engine._save_state("feature/146-tdd-cycle-tracking", state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            "feature/146-tdd-cycle-tracking",
+            state,
+        )
 
         # Mock git
         with (
@@ -300,6 +309,11 @@ class TestForceCycleTransitionTool:
 
         # Transition to implementation phase and set cycle to 2
         branch = "feature/146-tdd-cycle-tracking"
+        state_engine.initialize_branch(
+            branch=branch,
+            issue_number=issue_number,
+            initial_phase="implementation",
+        )
         state = state_engine.get_state(branch)
         state = state.with_updates(
             current_phase="implementation",
@@ -307,7 +321,10 @@ class TestForceCycleTransitionTool:
             last_cycle=1,
             cycle_history=[],
         )
-        state_engine._save_state(branch, state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            branch,
+            state,
+        )
 
         return workspace_root, issue_number
 
@@ -444,180 +461,6 @@ class TestForceCycleTransitionTool:
         assert "approval" in text.lower() or "human" in text.lower()
 
 
-class TestForceCycleTransitionSkippedDeliverables:
-    """Tests for force_cycle_transition ⚠️ warning on unvalidated skipped cycle deliverables.
-
-    Issue #229 Cycle 3 D3.2 (GAP-08): When force_cycle_transition skips cycles whose
-    deliverables fail DeliverableChecker, the tool response must include a ⚠️ warning
-    listing the unvalidated items. The transition itself still succeeds.
-    """
-
-    @pytest.fixture()
-    def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
-        """Fixture to instantiate ForceCycleTransitionTool."""
-        project_manager = make_project_manager(tmp_path)
-        return ForceCycleTransitionTool(
-            workspace_root=tmp_path,
-            project_manager=project_manager,
-            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
-            git_manager=make_git_manager(tmp_path),
-        )
-
-    def _setup_project_with_validates_deliverables(
-        self, tmp_path: Path, cycle3_file_contains: str | None
-    ) -> tuple[Path, int]:
-        """Set up a project in TDD phase C2 where cycle 3 has a contains_text deliverable.
-
-        Args:
-            tmp_path: Workspace root.
-            cycle3_file_contains: Text to write in the validated file, or None to omit file.
-        """
-        workspace_root = tmp_path
-        issue_number = 229
-        branch = "feature/229-phase-deliverables-enforcement"
-
-        project_manager = make_project_manager(workspace_root)
-        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
-
-        project_manager.initialize_project(
-            issue_number=issue_number,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-
-        # Create the target file for the check (or not, to simulate failure)
-        target_file = workspace_root / "mcp_server" / "tools" / "cycle_tools.py"
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        if cycle3_file_contains is not None:
-            target_file.write_text(cycle3_file_contains)
-        # If None: leave file absent → contains_text check fails
-
-        # Save planning deliverables: 4 cycles, cycle 3 has a validates spec
-        planning_deliverables = {
-            "tdd_cycles": {
-                "total": 4,
-                "cycles": [
-                    {
-                        "cycle_number": 1,
-                        "deliverables": [{"id": "D1.1", "description": "placeholder"}],
-                        "exit_criteria": "C1 done",
-                    },
-                    {
-                        "cycle_number": 2,
-                        "deliverables": [{"id": "D2.1", "description": "placeholder"}],
-                        "exit_criteria": "C2 done",
-                    },
-                    {
-                        "cycle_number": 3,
-                        "deliverables": [
-                            {
-                                "id": "D3.2",
-                                "description": "cycle_tools.py contains warning text",
-                                "validates": {
-                                    "type": "contains_text",
-                                    "file": "mcp_server/tools/cycle_tools.py",
-                                    "text": "Unvalidated cycle deliverables",
-                                },
-                            }
-                        ],
-                        "exit_criteria": "D3.2 passes",
-                    },
-                    {
-                        "cycle_number": 4,
-                        "deliverables": [{"id": "D4.1", "description": "placeholder"}],
-                        "exit_criteria": "C4 done",
-                    },
-                ],
-            }
-        }
-        project_manager.save_planning_deliverables(
-            issue_number=issue_number, planning_deliverables=planning_deliverables
-        )
-
-        # Set state: implementation phase, cycle 2
-        state = state_engine.get_state(branch)
-        state = state.with_updates(
-            current_phase="implementation",
-            current_cycle=2,
-            last_cycle=1,
-            cycle_history=[],
-        )
-        state_engine._save_state(branch, state)
-
-        return workspace_root, issue_number
-
-    @pytest.mark.asyncio()
-    async def test_force_cycle_transition_warns_unvalidated_skipped_cycle_deliverables(
-        self, tool: ForceCycleTransitionTool, tmp_path: Path
-    ) -> None:
-        """When skipping C2→C4, cycle 3 D3.2 fails check → ⚠️ in tool response.
-
-        The transition still succeeds (forced = unconditional). Only the warning is added.
-        Issue #229 D3.2 (GAP-08).
-        """
-        _workspace_root, _ = self._setup_project_with_validates_deliverables(
-            tmp_path,
-            cycle3_file_contains=None,  # File absent → check fails
-        )
-
-        with (
-            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-        ):
-            mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
-            mock_git_class.return_value = mock_git
-
-            result = await tool.execute(
-                ForceCycleTransitionInput(
-                    to_cycle=4,
-                    skip_reason="Cycle 3 handled elsewhere",
-                    human_approval="Michel approved on 2026-02-19",
-                    issue_number=229,
-                )
-            )
-
-        assert not result.is_error, f"Expected success, got error: {result.content}"
-        text = result.content[0]["text"]
-        assert "⚠️" in text, f"Expected warning in response, got: {text}"
-        assert "cycle:3:D3.2" in text, f"Expected cycle:3:D3.2 in warning, got: {text}"
-        assert "Unvalidated cycle deliverables" in text
-
-    @pytest.mark.asyncio()
-    async def test_force_cycle_transition_no_warning_when_skipped_cycles_pass_checks(
-        self, tool: ForceCycleTransitionTool, tmp_path: Path
-    ) -> None:
-        """When skipping C2→C4 and cycle 3 D3.2 passes check → no ⚠️ in response.
-
-        Issue #229 D3.2 (GAP-08).
-        """
-        _workspace_root, _ = self._setup_project_with_validates_deliverables(
-            tmp_path,
-            cycle3_file_contains="def warn():\n    msg = 'Unvalidated cycle deliverables'\n",
-        )
-
-        with (
-            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-        ):
-            mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
-            mock_git_class.return_value = mock_git
-
-            result = await tool.execute(
-                ForceCycleTransitionInput(
-                    to_cycle=4,
-                    skip_reason="Cycle 3 fully validated",
-                    human_approval="Michel approved on 2026-02-19",
-                    issue_number=229,
-                )
-            )
-
-        assert not result.is_error, f"Expected success, got error: {result.content}"
-        text = result.content[0]["text"]
-        assert "Unvalidated cycle deliverables" not in text, (
-            f"Expected no warning when checks pass, got: {text}"
-        )
-
-
 class TestForceCycleAuditSchema:
     """Tests for force_cycle_transition audit schema alignment.
 
@@ -698,7 +541,10 @@ class TestForceCycleAuditSchema:
             last_cycle=1,
             cycle_history=[],
         )
-        state_engine._save_state(branch, state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            branch,
+            state,
+        )
 
         return workspace_root, issue_number
 
@@ -890,7 +736,10 @@ class TestTransitionCycleHistory:
             last_cycle=None,
             cycle_history=[],
         )
-        state_engine._save_state(branch, state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            branch,
+            state,
+        )
 
         return workspace_root, issue_number
 
@@ -1044,7 +893,10 @@ class TestTransitionCycleExitCriteria:
             last_cycle=None,
             cycle_history=[],
         )
-        state_engine._save_state(branch, state)
+        state_engine._save_state(  # pyright: ignore[reportPrivateUsage]  # Legacy state fixture setup.
+            branch,
+            state,
+        )
 
         return workspace_root
 
@@ -1164,174 +1016,3 @@ class TestTransitionCycleExitCriteria:
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
         assert not result.is_error, f"Must succeed when exit_criteria present: {result.content}"
-
-
-# ---------------------------------------------------------------------------
-# C10: GAP-17 — force_cycle_transition: blocking deliverables BEFORE ✅ (Issue #229)
-# ---------------------------------------------------------------------------
-
-
-class TestForceCycleTransitionResponseFormat:
-    """Blocking deliverables appear BEFORE ✅; passing deliverables appear AFTER ✅.
-
-    Issue #229 Cycle 10 (GAP-17):
-    D10.4: Unvalidated (blocking) deliverables emitted before ✅ in force_cycle_transition.
-    D10.5: Validated (passing) deliverables listed informatively after ✅.
-    """
-
-    @pytest.fixture()
-    def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
-        """Fixture to instantiate ForceCycleTransitionTool."""
-        project_manager = make_project_manager(tmp_path)
-        return ForceCycleTransitionTool(
-            workspace_root=tmp_path,
-            project_manager=project_manager,
-            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
-            git_manager=make_git_manager(tmp_path),
-        )
-
-    def _setup_for_cycle_transition(
-        self, tmp_path: Path, *, cycle3_file_present: bool
-    ) -> tuple[Path, int, str]:
-        """Build project in TDD phase C2; cycle 3 has a file_glob deliverable."""
-        workspace_root = tmp_path
-        issue_number = 229
-        branch = "feature/229-phase-deliverables-enforcement"
-
-        pm = make_project_manager(workspace_root)
-        se = make_phase_state_engine(workspace_root, project_manager=pm)
-
-        pm.initialize_project(
-            issue_number=issue_number,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-
-        if cycle3_file_present:
-            target_dir = workspace_root / "mcp_server" / "tools"
-            target_dir.mkdir(parents=True, exist_ok=True)
-            (target_dir / "cycle_tools.py").write_text("# validated content")
-
-        planning_deliverables: dict = {
-            "tdd_cycles": {
-                "total": 4,
-                "cycles": [
-                    {
-                        "cycle_number": 1,
-                        "deliverables": [{"id": "D1.1", "description": "p"}],
-                        "exit_criteria": "C1",
-                    },
-                    {
-                        "cycle_number": 2,
-                        "deliverables": [{"id": "D2.1", "description": "p"}],
-                        "exit_criteria": "C2",
-                    },
-                    {
-                        "cycle_number": 3,
-                        "deliverables": [
-                            {
-                                "id": "D3.2",
-                                "description": "cycle_tools.py exists",
-                                "validates": {
-                                    "type": "file_glob",
-                                    "dir": "mcp_server/tools",
-                                    "pattern": "cycle_tools.py",
-                                },
-                            }
-                        ],
-                        "exit_criteria": "D3.2 passes",
-                    },
-                    {
-                        "cycle_number": 4,
-                        "deliverables": [{"id": "D4.1", "description": "p"}],
-                        "exit_criteria": "C4",
-                    },
-                ],
-            }
-        }
-        pm.save_planning_deliverables(
-            issue_number=issue_number, planning_deliverables=planning_deliverables
-        )
-
-        state = se.get_state(branch)
-        state = state.with_updates(
-            current_phase="implementation",
-            current_cycle=2,
-            last_cycle=1,
-            cycle_history=[],
-        )
-        se._save_state(branch, state)
-
-        return workspace_root, issue_number, branch
-
-    @pytest.mark.asyncio()
-    async def test_force_cycle_transition_response_blocking_deliverable_appears_before_success(
-        self, tool: ForceCycleTransitionTool, tmp_path: Path
-    ) -> None:
-        """Unvalidated (blocking) deliverables appear BEFORE ✅ in response (GAP-17/D10.4)."""
-        _workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
-            tmp_path,
-            cycle3_file_present=False,  # file absent → deliverable FAILS → blocks
-        )
-
-        with (
-            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-        ):
-            mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
-            mock_git_class.return_value = mock_git
-
-            result = await tool.execute(
-                ForceCycleTransitionInput(
-                    to_cycle=4,
-                    skip_reason="Force skip C3",
-                    human_approval="Approved",
-                    issue_number=issue_number,
-                )
-            )
-
-        assert not result.is_error, f"Forced transition must succeed: {result.content}"
-        text = result.content[0]["text"]
-
-        assert "Unvalidated" in text, f"Expected 'Unvalidated' in response: {text}"
-        assert "✅" in text
-        # Blocking warning MUST appear BEFORE ✅
-        assert text.index("Unvalidated") < text.index("✅"), (
-            f"Blocking warning must precede ✅, got:\n{text}"
-        )
-
-    @pytest.mark.asyncio()
-    async def test_force_cycle_transition_response_passing_deliverable_appears_after_success(
-        self, tool: ForceCycleTransitionTool, tmp_path: Path
-    ) -> None:
-        """Validated (passing) deliverables listed informatively AFTER ✅ (GAP-17/D10.5)."""
-        _workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
-            tmp_path,
-            cycle3_file_present=True,  # file present → deliverable PASSES
-        )
-
-        with (
-            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-        ):
-            mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
-            mock_git_class.return_value = mock_git
-
-            result = await tool.execute(
-                ForceCycleTransitionInput(
-                    to_cycle=4,
-                    skip_reason="Force skip C3 (validated)",
-                    human_approval="Approved",
-                    issue_number=issue_number,
-                )
-            )
-
-        assert not result.is_error, f"Forced transition must succeed: {result.content}"
-        text = result.content[0]["text"]
-
-        assert "✅" in text
-        # Validated deliverable D3.2 should be reported informatively AFTER ✅
-        assert "cycle:3:D3.2" in text, f"Expected cycle:3:D3.2 in informational section: {text}"
-        assert text.index("✅") < text.index("cycle:3:D3.2"), (
-            f"Informational deliverable info must follow ✅, got:\n{text}"
-        )

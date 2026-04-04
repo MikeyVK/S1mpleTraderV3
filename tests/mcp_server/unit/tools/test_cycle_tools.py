@@ -15,15 +15,44 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.server import MCPServer
-from mcp_server.tools.cycle_tools import ForceCycleTransitionTool, TransitionCycleTool
+from mcp_server.tools.cycle_tools import (
+    ForceCycleTransitionInput,
+    ForceCycleTransitionTool,
+    TransitionCycleTool,
+)
 from mcp_server.tools.tool_result import ToolResult
 from tests.mcp_server.test_support import (
     make_git_manager,
     make_phase_state_engine,
     make_project_manager,
 )
+
+
+class FakeForceCycleStateEngine:
+    """Minimal force-cycle state engine fake for wrapper tests."""
+
+    def __init__(self, result: dict[str, object]) -> None:
+        self._result = result
+        self.last_call: dict[str, object] | None = None
+
+    def force_cycle_transition(
+        self,
+        *,
+        branch: str,
+        to_cycle: int,
+        skip_reason: str,
+        human_approval: str,
+        gate_runner: object | None = None,
+    ) -> dict[str, object]:
+        self.last_call = {
+            "branch": branch,
+            "to_cycle": to_cycle,
+            "skip_reason": skip_reason,
+            "human_approval": human_approval,
+            "gate_runner": gate_runner,
+        }
+        return self._result
 
 
 class TestCycleTools:
@@ -108,7 +137,6 @@ class TestCycleTools:
         state_engine = make_phase_state_engine(
             tmp_path,
             project_manager=project_manager,
-            state_repository=InMemoryStateRepository(),
         )
         branch = "feature/257-reorder-workflow-phases"
         state_engine.initialize_branch(
@@ -152,6 +180,7 @@ class TestCycleTools:
                     project_manager=server.project_manager,
                     state_engine=server.phase_state_engine,
                     git_manager=server.git_manager,
+                    gate_runner=server.workflow_gate_runner,
                 )
             ]
             handler = server.server.request_handlers[CallToolRequest]
@@ -195,6 +224,7 @@ class TestCycleTools:
                     project_manager=server.project_manager,
                     state_engine=server.phase_state_engine,
                     git_manager=server.git_manager,
+                    gate_runner=server.workflow_gate_runner,
                 )
             ]
             handler = server.server.request_handlers[CallToolRequest]
@@ -231,3 +261,94 @@ class TestCycleTools:
         assert "⚠️" in text
         assert "cycle hook failed" in text
         assert "✅" in text
+
+
+class TestForceCycleToolFormatting:
+    """Formatting tests for the shared force-cycle gate report path."""
+
+    @pytest.mark.asyncio
+    async def test_force_cycle_tool_formats_blocking_gates_before_success(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Blocking gate warnings must appear before the success line."""
+        gate_runner = object()
+        git_manager = MagicMock()
+        git_manager.get_current_branch.return_value = "feature/257-cycle-orchestration"
+        state_engine = FakeForceCycleStateEngine(
+            {
+                "success": True,
+                "from_cycle": 2,
+                "to_cycle": 4,
+                "total_cycles": 4,
+                "cycle_name": "Cycle orchestration",
+                "skipped_gates": ["cycle-checklist"],
+                "passing_gates": ["cycle-docs"],
+            }
+        )
+        tool = ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=MagicMock(),
+            state_engine=state_engine,
+            git_manager=git_manager,
+            gate_runner=gate_runner,
+        )
+
+        result = await tool.execute(
+            ForceCycleTransitionInput(
+                to_cycle=4,
+                skip_reason="audited skip",
+                human_approval="Verifier approved",
+                issue_number=257,
+            )
+        )
+
+        assert not result.is_error
+        assert state_engine.last_call is not None
+        assert state_engine.last_call["gate_runner"] is gate_runner
+        text = result.content[0]["text"]
+        assert "ACTION REQUIRED" in text
+        assert "cycle-checklist" in text
+        assert text.index("ACTION REQUIRED") < text.index("✅")
+
+    @pytest.mark.asyncio
+    async def test_force_cycle_tool_formats_passing_gates_after_success(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Passing gate information must remain informational after the success line."""
+        git_manager = MagicMock()
+        git_manager.get_current_branch.return_value = "feature/257-cycle-orchestration"
+        state_engine = FakeForceCycleStateEngine(
+            {
+                "success": True,
+                "from_cycle": 2,
+                "to_cycle": 3,
+                "total_cycles": 4,
+                "cycle_name": "State recovery",
+                "skipped_gates": [],
+                "passing_gates": ["cycle-docs"],
+            }
+        )
+        tool = ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=MagicMock(),
+            state_engine=state_engine,
+            git_manager=git_manager,
+            gate_runner=object(),
+        )
+
+        result = await tool.execute(
+            ForceCycleTransitionInput(
+                to_cycle=3,
+                skip_reason="audited skip",
+                human_approval="Verifier approved",
+                issue_number=257,
+            )
+        )
+
+        assert not result.is_error
+        text = result.content[0]["text"]
+        assert "✅" in text
+        assert "cycle-docs" in text
+        assert text.index("✅") < text.index("cycle-docs")
