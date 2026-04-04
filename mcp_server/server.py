@@ -314,12 +314,14 @@ class MCPServer:
                 project_manager=self.project_manager,
                 state_engine=self.phase_state_engine,
                 git_manager=self.git_manager,
+                gate_runner=self.workflow_gate_runner,
             ),
             ForceCycleTransitionTool(
                 workspace_root=Path(settings.server.workspace_root),
                 project_manager=self.project_manager,
                 state_engine=self.phase_state_engine,
                 git_manager=self.git_manager,
+                gate_runner=self.workflow_gate_runner,
             ),
             # Scaffold tools (unified artifact scaffolding)
             ScaffoldArtifactTool(manager=self.artifact_manager),

@@ -282,6 +282,117 @@ class PhaseStateEngine:
             "gate_report": report_payload,
         }
 
+    def transition_cycle(
+        self,
+        branch: str,
+        to_cycle: int,
+        gate_runner: IWorkflowGateRunner | None = None,
+    ) -> dict[str, Any]:
+        """Execute one strict sequential implementation-cycle transition."""
+        state = self._load_state_or_reconstruct(branch)
+        issue_number = self._require_issue_number(branch, state)
+        cycles, total_cycles = self._get_tdd_cycles(issue_number)
+        self._validate_cycle_phase(state.current_phase)
+        self._validate_cycle_number_range(to_cycle, issue_number)
+        self._validate_strict_cycle_progression(state.current_cycle, to_cycle)
+        self._validate_current_cycle_exit_criteria(state.current_cycle, cycles)
+
+        runner = gate_runner or self._workflow_gate_runner
+        if state.current_cycle is not None:
+            runner.enforce(
+                workflow_name=state.workflow_name,
+                phase="implementation",
+                cycle_number=state.current_cycle,
+            )
+
+        from_cycle = state.current_cycle or 0
+        cycle_name = self._get_cycle_name(cycles, to_cycle)
+        history_entry = {
+            "cycle_number": to_cycle,
+            "name": cycle_name,
+            "forced": False,
+            "entered": datetime.now(UTC).isoformat(),
+        }
+        updated_state = state.with_updates(
+            last_cycle=from_cycle,
+            current_cycle=to_cycle,
+            cycle_history=[*state.cycle_history, history_entry],
+        )
+        self._save_state(branch, updated_state)
+
+        return {
+            "success": True,
+            "from_cycle": from_cycle,
+            "to_cycle": to_cycle,
+            "total_cycles": total_cycles,
+            "cycle_name": cycle_name,
+        }
+
+    def force_cycle_transition(
+        self,
+        branch: str,
+        to_cycle: int,
+        skip_reason: str,
+        human_approval: str,
+        gate_runner: IWorkflowGateRunner | None = None,
+    ) -> dict[str, Any]:
+        """Execute one forced implementation-cycle transition with gate inspection."""
+        if not skip_reason or not skip_reason.strip():
+            raise ValueError(
+                "skip_reason is required for forced transitions. "
+                "Provide justification for backward/skip transition."
+            )
+        if not human_approval or not human_approval.strip():
+            raise ValueError(
+                "human_approval is required for forced transitions. "
+                "Provide approval (e.g., 'John approved on 2026-02-17')."
+            )
+
+        state = self._load_state_or_reconstruct(branch)
+        issue_number = self._require_issue_number(branch, state)
+        cycles, total_cycles = self._get_tdd_cycles(issue_number)
+        self._validate_cycle_phase(state.current_phase)
+        self._validate_cycle_number_range(to_cycle, issue_number)
+
+        runner = gate_runner or self._workflow_gate_runner
+        report = runner.inspect(
+            workflow_name=state.workflow_name,
+            phase="implementation",
+            cycle_number=state.current_cycle,
+        )
+
+        from_cycle = state.current_cycle or 0
+        cycle_name = self._get_cycle_name(cycles, to_cycle)
+        skipped_cycles = list(range(min(from_cycle, to_cycle) + 1, max(from_cycle, to_cycle)))
+        history_entry = {
+            "cycle_number": to_cycle,
+            "name": cycle_name,
+            "entered": datetime.now(UTC).isoformat(),
+            "forced": True,
+            "skip_reason": skip_reason,
+            "human_approval": human_approval,
+            "skipped_cycles": skipped_cycles,
+        }
+        updated_state = state.with_updates(
+            last_cycle=from_cycle,
+            current_cycle=to_cycle,
+            cycle_history=[*state.cycle_history, history_entry],
+        )
+        self._save_state(branch, updated_state)
+
+        return {
+            "success": True,
+            "from_cycle": from_cycle,
+            "to_cycle": to_cycle,
+            "total_cycles": total_cycles,
+            "cycle_name": cycle_name,
+            "forced": True,
+            "skip_reason": skip_reason,
+            "skipped_gates": list(report.blocking),
+            "passing_gates": list(report.passing),
+            "gate_report": self._gate_report_to_payload(report),
+        }
+
     def get_current_phase(self, branch: str) -> str:
         """Get current phase for branch."""
         return self.get_state(branch).current_phase
@@ -375,6 +486,91 @@ class PhaseStateEngine:
         self._save_state(branch, reconstructed_state)
         return reconstructed_state
 
+    def _require_issue_number(self, branch: str, state: BranchState) -> int:
+        """Return the persisted issue number or raise a descriptive error."""
+        issue_number = state.issue_number
+        if issue_number is None:
+            raise ValueError(f"Branch '{branch}' has no issue_number in state")
+        return issue_number
+
+    def _get_tdd_cycles(self, issue_number: int) -> tuple[list[dict[str, Any]], int]:
+        """Return planned TDD cycles and total count for one issue."""
+        self._validate_planning_deliverables_exist(issue_number)
+        plan = self.project_manager.get_project_plan(issue_number)
+        assert plan is not None
+        planning_deliverables = plan["planning_deliverables"]
+        tdd_cycles = planning_deliverables.get("tdd_cycles", {})
+        cycles = tdd_cycles.get("cycles", [])
+        total_cycles = tdd_cycles.get("total", 0)
+        return cycles, total_cycles
+
+    def _validate_cycle_phase(self, current_phase: str) -> None:
+        """Ensure cycle transitions only run inside implementation."""
+        if current_phase != "implementation":
+            raise ValueError(
+                f"Not in implementation phase (current: {current_phase}). "
+                "Cycle transitions only allowed during implementation phase."
+            )
+
+    def _validate_strict_cycle_progression(
+        self,
+        current_cycle: int | None,
+        to_cycle: int,
+    ) -> None:
+        """Validate forward-only, sequential strict cycle movement."""
+        if current_cycle is not None and to_cycle <= current_cycle:
+            raise ValueError(
+                f"Backwards transition not allowed (current: {current_cycle}, "
+                f"target: {to_cycle}). Use force_cycle_transition for backwards transitions."
+            )
+        if current_cycle is not None and to_cycle != current_cycle + 1:
+            raise ValueError(
+                f"Non-sequential transition not allowed (current: {current_cycle}, "
+                f"target: {to_cycle}). Use force_cycle_transition to skip cycles."
+            )
+
+    def _validate_current_cycle_exit_criteria(
+        self,
+        current_cycle: int | None,
+        cycles: list[dict[str, Any]],
+    ) -> None:
+        """Ensure the current cycle defines exit criteria before a strict move."""
+        if current_cycle is None:
+            return
+
+        current_cycle_data = next(
+            (
+                cycle
+                for cycle in cycles
+                if isinstance(cycle, dict) and cycle.get("cycle_number") == current_cycle
+            ),
+            None,
+        )
+        if current_cycle_data is None:
+            return
+
+        exit_criteria = current_cycle_data.get("exit_criteria", "")
+        if not isinstance(exit_criteria, str) or not exit_criteria.strip():
+            raise ValueError(
+                f"Cycle {current_cycle} exit criteria not defined. "
+                "Define exit_criteria in planning deliverables before transitioning."
+            )
+
+    def _get_cycle_name(self, cycles: list[dict[str, Any]], to_cycle: int) -> str:
+        """Resolve the display name for one target cycle."""
+        cycle_details = next(
+            (
+                cycle
+                for cycle in cycles
+                if isinstance(cycle, dict) and cycle.get("cycle_number") == to_cycle
+            ),
+            None,
+        )
+        if cycle_details is None:
+            return "Unknown"
+        name = cycle_details.get("name")
+        return name if isinstance(name, str) and name else "Unknown"
+
     def _validate_cycle_number_range(self, cycle_number: int, issue_number: int) -> None:
         """Validate cycle_number is within valid range [1..total].
 
@@ -387,16 +583,8 @@ class PhaseStateEngine:
 
         Issue #146 Cycle 2: Range validation for TDD cycle transitions.
         """
-        # Get planning deliverables
-        plan = self.project_manager.get_project_plan(issue_number)
-        if not plan or "planning_deliverables" not in plan:
-            msg = f"Planning deliverables not found for issue {issue_number}"
-            raise ValueError(msg)
+        _cycles, total_cycles = self._get_tdd_cycles(issue_number)
 
-        # Get total cycles
-        total_cycles = plan["planning_deliverables"]["tdd_cycles"]["total"]
-
-        # Validate range [1..total]
         if cycle_number < 1 or cycle_number > total_cycles:
             msg = f"cycle_number must be in range [1..{total_cycles}], got {cycle_number}"
             raise ValueError(msg)
