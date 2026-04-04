@@ -3,24 +3,9 @@
   "issue_number": 257,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 2,
-  "last_cycle": 1,
-  "cycle_history": [
-    {
-      "cycle_number": 1,
-      "name": null,
-      "entered": "2026-04-04T17:38:34.929179+00:00",
-      "forced": true,
-      "skip_reason": "User approved direct transition into cycle 1 on 2026-04-04 to begin C_GATE_API TDD.",
-      "human_approval": "User approved in chat on 2026-04-04",
-      "skipped_cycles": []
-    },
-    {
-      "cycle_number": 2,
-      "forced": false,
-      "entered": "2026-04-04T18:50:21.430181+00:00"
-    }
-  ],
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
   "required_phases": [
     "research",
     "planning",
@@ -30,59 +15,10 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "User approved direct transition from planning to implementation on 2026-04-04 to start Cycle 1 TDD after planning deliverables were finalized.",
+  "skip_reason": null,
   "issue_title": "Reorder workflow phases: research \u2192 design \u2192 planning \u2192 tdd",
   "parent_branch": "main",
-  "created_at": "2026-03-26T20:10:23.657586+00:00",
-  "transitions": [
-    {
-      "from_phase": "implementation",
-      "to_phase": "validation",
-      "timestamp": "2026-03-26T20:57:38.881152+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "validation",
-      "to_phase": "research",
-      "timestamp": "2026-03-27T18:46:09.476491+00:00",
-      "human_approval": "User: MikeyVK approved op 2026-03-27 \u2014 blijven op branch 257 voor PSE-schuld analyse en eventuele extra cycles",
-      "forced": true,
-      "skip_reason": "Voortgezette analyse-cyclus: EnforcementRunner en PhaseContractResolver grondig onderzoeken alvorens nieuwe implementatiecycles te starten. Validation-fase artifacts zijn reeds voltooid en gepusht (2670 tests groen)."
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "research",
-      "timestamp": "2026-04-03T19:37:48.902667+00:00",
-      "human_approval": "User approved in chat on 2026-04-03 to force the branch to research before continuing to design.",
-      "forced": true,
-      "skip_reason": "Reaffirm research phase after finalizing minimal refactor scope before entering design."
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "design",
-      "timestamp": "2026-04-03T19:38:13.981275+00:00",
-      "human_approval": "User approved in chat on 2026-04-03 to force the branch to design after the research commit.",
-      "forced": true,
-      "skip_reason": "Proceed to design after recording the finalized research scope and threshold decision."
-    },
-    {
-      "from_phase": "design",
-      "to_phase": "planning",
-      "timestamp": "2026-04-04T14:51:09.966902+00:00",
-      "human_approval": "User explicitly requested forced transition from design to planning on 2026-04-04.",
-      "forced": true,
-      "skip_reason": "Backtracking from design to planning to create a new Threshold B planning deliverable after finalizing and committing the design document for issue 257."
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-04-04T17:38:29.863338+00:00",
-      "human_approval": "User approved in chat on 2026-04-04",
-      "forced": true,
-      "skip_reason": "User approved direct transition from planning to implementation on 2026-04-04 to start Cycle 1 TDD after planning deliverables were finalized."
-    }
-  ],
+  "created_at": "2026-04-04T19:22:37.053830+00:00",
+  "transitions": [],
   "reconstructed": true
 }

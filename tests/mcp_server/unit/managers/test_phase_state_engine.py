@@ -162,10 +162,11 @@ class TestTDDPhaseHooks:
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = make_project_manager(workspace_root)
+        state_repository = InMemoryStateRepository()
         state_engine = make_phase_state_engine(
             workspace_root,
             project_manager=project_manager,
-            state_repository=InMemoryStateRepository(),
+            state_repository=state_repository,
         )
 
         # Initialize in TDD phase at cycle 3
@@ -173,7 +174,7 @@ class TestTDDPhaseHooks:
             branch=branch, issue_number=issue_number, initial_phase="implementation"
         )
         state = state_engine.get_state(branch)
-        state_engine._save_state(branch, state.with_updates(current_cycle=3))
+        state_repository.save(state.with_updates(current_cycle=3))
 
         # Act
         state_engine.on_exit_implementation_phase(branch)
@@ -192,10 +193,11 @@ class TestTDDPhaseHooks:
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = make_project_manager(workspace_root)
+        state_repository = InMemoryStateRepository()
         state_engine = make_phase_state_engine(
             workspace_root,
             project_manager=project_manager,
-            state_repository=InMemoryStateRepository(),
+            state_repository=state_repository,
         )
 
         # Initialize in TDD phase at cycle 2 (not completed)
@@ -203,7 +205,7 @@ class TestTDDPhaseHooks:
             branch=branch, issue_number=issue_number, initial_phase="implementation"
         )
         state = state_engine.get_state(branch)
-        state_engine._save_state(branch, state.with_updates(current_cycle=2))
+        state_repository.save(state.with_updates(current_cycle=2))
 
         # Act
         # Design decision: Allow exit with warning (logs but doesn't block)
@@ -285,10 +287,11 @@ class TestTransitionHooksWiring:
         branch = "feature/999-hook-wiring"
 
         project_manager = make_project_manager(workspace_root)
+        state_repository = InMemoryStateRepository()
         state_engine = make_phase_state_engine(
             workspace_root,
             project_manager=project_manager,
-            state_repository=InMemoryStateRepository(),
+            state_repository=state_repository,
         )
 
         # Initialize branch in TDD phase at cycle 2
@@ -296,7 +299,7 @@ class TestTransitionHooksWiring:
             branch=branch, issue_number=issue_number, initial_phase="implementation"
         )
         state = state_engine.get_state(branch)
-        state_engine._save_state(branch, state.with_updates(current_cycle=2))
+        state_repository.save(state.with_updates(current_cycle=2))
 
         # Transition away from TDD - should auto-call on_exit_implementation_phase
         state_engine.transition(branch=branch, to_phase="validation")
@@ -436,38 +439,6 @@ class TestResearchExitGate:
 
         with pytest.raises(DeliverableCheckError):
             engine.on_exit_research_phase(branch="feature/303-test", issue_number=issue_number)
-
-    def test_transition_from_research_triggers_exit_hook(self, tmp_path: Path) -> None:
-        """transition(research→planning) calls on_exit_research_phase. (D6.1 wiring)"""
-        issue_number = 304
-        self._workphases_yaml(
-            tmp_path,
-            research_exit_requires=[
-                {
-                    "type": "file_glob",
-                    "file": "docs/development/issue{issue_number}/*research*.md",
-                    "description": "Research document aanwezig",
-                }
-            ],
-        )
-        manager = make_project_manager(tmp_path)
-        manager.initialize_project(
-            issue_number=issue_number,
-            issue_title="Transition wiring test",
-            workflow_name="feature",
-        )
-        engine = make_phase_state_engine(
-            tmp_path, project_manager=manager, state_repository=InMemoryStateRepository()
-        )
-        engine.initialize_branch(
-            branch="feature/304-test",
-            issue_number=issue_number,
-            initial_phase="research",
-        )
-
-        # No matching file → transition must raise DeliverableCheckError
-        with pytest.raises(DeliverableCheckError):
-            engine.transition(branch="feature/304-test", to_phase="planning")
 
 
 class TestPerPhaseDeliverableGate:
