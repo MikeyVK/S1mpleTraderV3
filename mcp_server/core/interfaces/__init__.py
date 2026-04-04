@@ -21,7 +21,7 @@ class GateReport:
     details: dict[str, str] = field(default_factory=dict)
 
 
-class GateViolation(ValueError):  # noqa: N818
+class GateViolation(ValueError):  # noqa: N818 - domain event name, not a technical error type
     """Raised when enforce mode encounters a blocking gate."""
 
     def __init__(self, message: str, report: GateReport) -> None:

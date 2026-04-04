@@ -156,7 +156,7 @@ def test_phase_state_engine_accepts_workflow_gate_runner_dependency(
         state_reconstructor=state_reconstructor,
     )
 
-    assert engine._workflow_gate_runner is gate_runner
+    assert engine._workflow_gate_runner is gate_runner  # pyright: ignore[reportPrivateUsage]  # TODO: C_GATE_WIRING - replace with behavioural test once gate runner is on transition path
 
 
 def test_phase_state_engine_accepts_state_reconstructor_dependency(
@@ -182,7 +182,7 @@ def test_phase_state_engine_accepts_state_reconstructor_dependency(
         state_reconstructor=state_reconstructor,
     )
 
-    assert engine._state_reconstructor is state_reconstructor
+    assert engine._state_reconstructor is state_reconstructor  # pyright: ignore[reportPrivateUsage]  # TODO: C_STATE_RECOVERY - replace with behavioural test once reconstruction is extracted
 
 
 def test_workflow_gate_runner_exposes_enforce_and_inspect_modes(

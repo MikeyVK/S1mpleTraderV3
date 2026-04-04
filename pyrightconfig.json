@@ -47,7 +47,6 @@
   "reportUntypedClassDecorator": false,
   "reportUntypedBaseClass": false,
   "reportUntypedNamedTuple": false,
-  "reportPrivateUsage": false,
   "reportConstantRedefinition": true,
   "reportIncompatibleMethodOverride": true,
   "reportIncompatibleVariableOverride": true,
