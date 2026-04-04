@@ -3,9 +3,19 @@
   "issue_number": 257,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": null,
-  "last_cycle": null,
-  "cycle_history": [],
+  "current_cycle": 1,
+  "last_cycle": 0,
+  "cycle_history": [
+    {
+      "cycle_number": 1,
+      "name": null,
+      "entered": "2026-04-04T17:38:34.929179+00:00",
+      "forced": true,
+      "skip_reason": "User approved direct transition into cycle 1 on 2026-04-04 to begin C_GATE_API TDD.",
+      "human_approval": "User approved in chat on 2026-04-04",
+      "skipped_cycles": []
+    }
+  ],
   "required_phases": [
     "research",
     "planning",
