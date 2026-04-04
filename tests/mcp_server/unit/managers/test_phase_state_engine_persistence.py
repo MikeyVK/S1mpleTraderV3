@@ -1,150 +1,95 @@
-"""Tests for PhaseStateEngine state.json persistence.
-
-Issue #85: Single-branch state model - state.json should contain ONLY current branch.
-
-Tests verify:
-1. state.json contains single branch state (not multi-branch dictionary)
-2. Branch switch overwrites state.json completely
-3. State is immediately written and readable after get_state()
-
-@layer: Tests (Unit)
-@dependencies: pytest, json, pathlib, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
-"""
+"""Tests for PhaseStateEngine state.json persistence."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
-
-if TYPE_CHECKING:
-    from mcp_server.managers.phase_state_engine import PhaseStateEngine
-    from mcp_server.managers.project_manager import ProjectManager
 
 
 class TestPhaseStateEnginePersistence:
-    """Test state.json persistence and single-branch model."""
+    """Test persistence through explicit write operations, not query-side effects."""
 
     @pytest.fixture
     def workspace_root(self, tmp_path: Path) -> Path:
-        """Create temporary workspace."""
         return tmp_path
 
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
-        """Create ProjectManager with two test projects."""
         manager = make_project_manager(workspace_root)
-        # Create project 1
         manager.initialize_project(
-            issue_number=1, issue_title="First feature", workflow_name="feature"
+            issue_number=1,
+            issue_title="First feature",
+            workflow_name="feature",
         )
-        # Create project 2
         manager.initialize_project(
-            issue_number=2, issue_title="Second feature", workflow_name="feature"
+            issue_number=2,
+            issue_title="Second feature",
+            workflow_name="feature",
         )
         return manager
 
     @pytest.fixture
     def state_engine(
-        self, workspace_root: Path, project_manager: ProjectManager
+        self,
+        workspace_root: Path,
+        project_manager: ProjectManager,
     ) -> PhaseStateEngine:
-        """Create PhaseStateEngine instance."""
-        return make_phase_state_engine(workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+        )
 
-    def test_state_json_contains_single_branch_only(
-        self, state_engine: PhaseStateEngine, workspace_root: Path
+    def test_initialize_branch_writes_single_branch_state(
+        self,
+        state_engine: PhaseStateEngine,
+        workspace_root: Path,
     ) -> None:
-        """Test that state.json contains ONLY the current branch state.
+        state_engine.initialize_branch("feature/1-first-feature", 1, "research")
 
-        GIVEN: Two branches exist (feature/1-first, feature/2-second)
-        WHEN: get_state() is called for feature/1-first
-        THEN: state.json should contain ONLY feature/1-first state (top-level dict)
-        AND: state.json should NOT contain nested branch dictionaries
-        """
-        # Get state for first branch
-        state_engine.get_state("feature/1-first-feature")
-
-        # Read state.json directly from disk
         state_file = workspace_root / ".st3" / "state.json"
-        assert state_file.exists(), "state.json should be created"
+        assert state_file.exists()
 
-        with open(state_file, encoding="utf-8") as f:
-            disk_state = json.load(f)
+        disk_state = json.loads(state_file.read_text(encoding="utf-8"))
+        assert disk_state["branch"] == "feature/1-first-feature"
+        assert disk_state["issue_number"] == 1
+        assert "feature/1-first-feature" not in disk_state
 
-        # Verify single-branch model: top-level dict should BE the branch state
-        assert disk_state.get("branch") == "feature/1-first-feature", (
-            "state.json should contain the current branch at top level"
-        )
-        assert disk_state.get("issue_number") == 1, (
-            "state.json should contain branch fields at top level"
-        )
-
-        # Verify no nested branch dictionaries
-        assert "feature/1-first-feature" not in disk_state, (
-            "state.json should NOT contain branch name as nested key"
-        )
-        assert "feature/2-second-feature" not in disk_state, (
-            "state.json should NOT contain other branches"
-        )
-
-    def test_branch_switch_overwrites_state_json_completely(
-        self, state_engine: PhaseStateEngine, workspace_root: Path
+    def test_initializing_second_branch_overwrites_state_json_completely(
+        self,
+        state_engine: PhaseStateEngine,
+        workspace_root: Path,
     ) -> None:
-        """Test that switching branches completely overwrites state.json.
+        state_engine.initialize_branch("feature/1-first-feature", 1, "research")
+        state_engine.initialize_branch("feature/2-second-feature", 2, "research")
 
-        GIVEN: state.json contains feature/1-first state
-        WHEN: get_state() is called for feature/2-second
-        THEN: state.json should be completely replaced with feature/2-second state
-        AND: No trace of feature/1-first should remain
-        """
-        # Set up: Get state for first branch
-        state_engine.get_state("feature/1-first-feature")
-
-        # Switch to second branch
-        state_engine.get_state("feature/2-second-feature")
-
-        # Read state.json
         state_file = workspace_root / ".st3" / "state.json"
-        with open(state_file, encoding="utf-8") as f:
-            disk_state = json.load(f)
+        disk_state = json.loads(state_file.read_text(encoding="utf-8"))
+        assert disk_state["branch"] == "feature/2-second-feature"
+        assert disk_state["issue_number"] == 2
+        assert "feature/1-first-feature" not in json.dumps(disk_state)
 
-        # Verify complete overwrite
-        assert disk_state.get("branch") == "feature/2-second-feature", (
-            "state.json should contain new branch"
-        )
-        assert disk_state.get("issue_number") == 2, "state.json should contain new issue number"
-
-        # Verify old branch is gone
-        assert disk_state.get("issue_number") != 1, "Old branch data should be completely removed"
-        assert "feature/1-first-feature" not in json.dumps(disk_state), (
-            "No reference to old branch should exist"
-        )
-
-    def test_state_immediately_readable_after_get_state(
-        self, state_engine: PhaseStateEngine, workspace_root: Path
+    def test_transition_persists_updated_state_immediately(
+        self,
+        state_engine: PhaseStateEngine,
+        workspace_root: Path,
     ) -> None:
-        """Test that state.json is immediately readable after get_state().
+        branch = "feature/1-first-feature"
+        state_engine.initialize_branch(branch, 1, "research")
 
-        GIVEN: No state.json exists
-        WHEN: get_state() is called
-        THEN: state.json should be immediately readable from disk
-        AND: Content should match the returned state
-        """
-        # Get state
-        returned_state = state_engine.get_state("feature/1-first-feature")
-
-        # Immediately read from disk (no delay, no flush needed)
+        result = state_engine.transition(branch=branch, to_phase="planning")
         state_file = workspace_root / ".st3" / "state.json"
-        assert state_file.exists(), "state.json should exist immediately"
+        disk_state = json.loads(state_file.read_text(encoding="utf-8"))
 
-        with open(state_file, encoding="utf-8") as f:
-            disk_state = json.load(f)
-
-        # Verify content matches
-        assert disk_state == returned_state.model_dump(mode="json"), (
-            "Disk state should match returned state immediately"
-        )
+        assert result == {
+            "success": True,
+            "from_phase": "research",
+            "to_phase": "planning",
+        }
+        assert disk_state["current_phase"] == "planning"
+        assert disk_state["branch"] == branch

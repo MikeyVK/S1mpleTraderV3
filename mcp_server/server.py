@@ -195,7 +195,14 @@ class MCPServer:
             deliverable_checker=DeliverableChecker(workspace_root),
             phase_contract_resolver=self.phase_contract_resolver,
         )
-        self.state_reconstructor = StateReconstructor()
+        self.state_reconstructor = StateReconstructor(
+            workspace_root=workspace_root,
+            git_config=git_config,
+            project_manager=self.project_manager,
+            scope_decoder=ScopeDecoder(
+                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
+            ),
+        )
         self.phase_state_engine = PhaseStateEngine(
             workspace_root=workspace_root,
             project_manager=self.project_manager,

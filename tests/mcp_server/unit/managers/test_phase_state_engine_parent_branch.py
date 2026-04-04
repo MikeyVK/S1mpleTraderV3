@@ -12,12 +12,17 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
 from mcp_server.managers.project_manager import ProjectInitOptions
-from mcp_server.managers.state_repository import FileStateRepository, InMemoryStateRepository
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from mcp_server.managers.state_repository import InMemoryStateRepository
+from tests.mcp_server.test_support import (
+    make_phase_state_engine,
+    make_project_manager,
+    make_state_reconstructor,
+)
 
 if TYPE_CHECKING:
     from mcp_server.managers.phase_state_engine import PhaseStateEngine
@@ -170,18 +175,17 @@ class TestPhaseStateEngineParentBranch:
             options=ProjectInitOptions(parent_branch="epic/76-qa"),
         )
 
-        # Simulate cross-machine: delete state.json but keep deliverables.json
-        state_file = workspace_root / ".st3" / "state.json"
-        if state_file.exists():
-            state_file.unlink()
-
-        # Execute - get_state triggers auto-recovery
-        recovery_engine = make_phase_state_engine(
+        reconstructor = make_state_reconstructor(
             workspace_root,
             project_manager=project_manager,
-            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
         )
-        state = recovery_engine.get_state("feature/82-test-reconstruction")
+
+        with patch.object(
+            reconstructor,
+            "_get_git_commits",
+            return_value=["docs(P_RESEARCH): Start"],
+        ):
+            state = reconstructor.reconstruct("feature/82-test-reconstruction")
 
         # Verify - parent_branch reconstructed from deliverables.json
         assert state.parent_branch == "epic/76-qa"
@@ -200,18 +204,17 @@ class TestPhaseStateEngineParentBranch:
             issue_number=83, issue_title="Old Project", workflow_name="bug"
         )
 
-        # Simulate cross-machine: delete state.json
-        state_file = workspace_root / ".st3" / "state.json"
-        if state_file.exists():
-            state_file.unlink()
-
-        # Execute - get_state triggers auto-recovery
-        recovery_engine = make_phase_state_engine(
+        reconstructor = make_state_reconstructor(
             workspace_root,
             project_manager=project_manager,
-            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
         )
-        state = recovery_engine.get_state("bug/83-old-project")
+
+        with patch.object(
+            reconstructor,
+            "_get_git_commits",
+            return_value=["docs(P_RESEARCH): Start"],
+        ):
+            state = reconstructor.reconstruct("bug/83-old-project")
 
         # Verify - parent_branch is None (backward compat)
         assert state.parent_branch is None
@@ -331,18 +334,17 @@ class TestTddCycleTrackingFields:
             issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
         )
 
-        # Simulate cross-machine: delete state.json
-        state_file = workspace_root / ".st3" / "state.json"
-        if state_file.exists():
-            state_file.unlink()
-
-        # Execute - get_state triggers auto-recovery
-        recovery_engine = make_phase_state_engine(
+        reconstructor = make_state_reconstructor(
             workspace_root,
             project_manager=project_manager,
-            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
         )
-        state = recovery_engine.get_state("feature/146-tdd-cycle-tracking")
+
+        with patch.object(
+            reconstructor,
+            "_get_git_commits",
+            return_value=["docs(P_RESEARCH): Start"],
+        ):
+            state = reconstructor.reconstruct("feature/146-tdd-cycle-tracking")
 
         # Verify - reconstructed flag
         assert state.reconstructed is True
@@ -433,7 +435,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - cycle_number 0 should raise
         with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
-            engine._validate_cycle_number_range(cycle_number=0, issue_number=146)
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=0,
+                issue_number=146,
+            )
 
     def test_validate_cycle_number_range_rejects_negative(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -463,7 +468,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - negative cycle_number should raise
         with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
-            engine._validate_cycle_number_range(cycle_number=-1, issue_number=146)
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=-1,
+                issue_number=146,
+            )
 
     def test_validate_cycle_number_range_rejects_exceeds_total(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -493,7 +501,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - cycle_number 5 (> 4) should raise
         with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
-            engine._validate_cycle_number_range(cycle_number=5, issue_number=146)
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=5,
+                issue_number=146,
+            )
 
     def test_validate_cycle_number_range_accepts_valid_range(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -523,9 +534,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - all valid cycle numbers should pass
         for cycle_num in [1, 2, 3, 4]:
-            engine._validate_cycle_number_range(
-                cycle_number=cycle_num, issue_number=146
-            )  # Should not raise
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=cycle_num,
+                issue_number=146,
+            )
 
     def test_validate_planning_deliverables_exist_raises_if_missing(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -541,7 +553,9 @@ class TestCycleValidationLogic:
 
         # Act & Assert - should raise descriptive error
         with pytest.raises(ValueError, match="Planning deliverables not found for issue 147"):
-            engine._validate_planning_deliverables_exist(issue_number=147)
+            engine._validate_planning_deliverables_exist(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                issue_number=147,
+            )
 
     def test_validate_planning_deliverables_exist_passes_if_present(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -570,4 +584,6 @@ class TestCycleValidationLogic:
         project_manager.save_planning_deliverables(146, planning_deliverables)
 
         # Act & Assert - should not raise
-        engine._validate_planning_deliverables_exist(issue_number=146)
+        engine._validate_planning_deliverables_exist(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+            issue_number=146,
+        )

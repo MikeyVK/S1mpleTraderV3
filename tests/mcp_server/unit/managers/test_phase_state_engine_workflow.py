@@ -219,11 +219,8 @@ class TestPhaseStateEngineTransitions:
         self, phase_engine: PhaseStateEngine
     ) -> None:
         """Test get_state fails if state.json doesn't exist."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(FileNotFoundError, match="No such file"):
             phase_engine.get_state(branch="feature/88-test")
-
-        error_msg = str(exc_info.value)
-        assert "Project plan not found" in error_msg
 
     def test_phase_state_engine_get_state_unknown_branch(
         self,
@@ -232,7 +229,6 @@ class TestPhaseStateEngineTransitions:
         feature_phases: list[str],
     ) -> None:
         """Test get_state fails for unknown branch."""
-        # Initialize one branch to create state.json
         project_manager.initialize_project(
             issue_number=50, issue_title="Test", workflow_name="feature"
         )
@@ -240,9 +236,5 @@ class TestPhaseStateEngineTransitions:
             branch="feature/50-test", issue_number=50, initial_phase=feature_phases[0]
         )
 
-        # Try to get state for different branch
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(FileNotFoundError, match="Branch state"):
             phase_engine.get_state(branch="feature/99-unknown")
-
-        error_msg = str(exc_info.value)
-        assert "Project plan not found" in error_msg

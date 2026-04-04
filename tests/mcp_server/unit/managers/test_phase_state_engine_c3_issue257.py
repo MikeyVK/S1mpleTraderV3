@@ -9,7 +9,6 @@ Cycle 3 goals covered here:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -44,7 +43,7 @@ class RaisingRepository:
         self._exc = exc
         self.saved_states: list[BranchState] = []
 
-    def load(self, branch: str) -> BranchState:
+    def load(self, _branch: str) -> BranchState:
         raise self._exc
 
     def save(self, state: BranchState) -> None:
@@ -100,7 +99,9 @@ class FixedStateReconstructor:
         self._state = state
 
     def reconstruct(self, branch: str) -> BranchState:
-        return self._state if self._state.branch == branch else self._state.with_updates(branch=branch)
+        if self._state.branch == branch:
+            return self._state
+        return self._state.with_updates(branch=branch)
 
 
 class ExplodingStateReconstructor:
@@ -174,9 +175,12 @@ def test_transition_reconstructs_state_via_state_reconstructor_when_load_fails(
 
     result = engine.transition(branch=branch, to_phase="planning")
 
-    assert result == {"success": True, "from_phase": "research", "to_phase": "planning"}
+    assert result == {
+        "success": True,
+        "from_phase": "research",
+        "to_phase": "planning",
+    }
     assert repository.load(branch).current_phase == "planning"
-
 
 
 def test_transition_saves_reconstructed_state_before_continuing(
@@ -210,12 +214,15 @@ def test_transition_saves_reconstructed_state_before_continuing(
     result = engine.transition(branch=branch, to_phase="validation")
     recovered_state = repository.load(branch)
 
-    assert result == {"success": True, "from_phase": "implementation", "to_phase": "validation"}
+    assert result == {
+        "success": True,
+        "from_phase": "implementation",
+        "to_phase": "validation",
+    }
     assert repository.save_count >= 2
     assert recovered_state.last_cycle == 2
     assert recovered_state.current_cycle is None
     assert recovered_state.current_phase == "validation"
-
 
 
 def test_force_transition_loads_state_or_reconstructs_when_missing(
@@ -255,7 +262,6 @@ def test_force_transition_loads_state_or_reconstructs_when_missing(
     assert repository.load(branch).current_phase == "design"
 
 
-
 def test_get_state_does_not_reconstruct_or_save_on_load_failure(
     workspace_root: Path,
     project_manager: ProjectManager,
@@ -279,7 +285,6 @@ def test_get_state_does_not_reconstruct_or_save_on_load_failure(
         engine.get_state("feature/257-c3-pure-query")
 
     assert repository.saved_states == []
-
 
 
 def test_get_state_raises_when_repository_load_fails(

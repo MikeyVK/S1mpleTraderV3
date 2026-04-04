@@ -179,6 +179,30 @@ def make_project_manager(
     )
 
 
+def make_state_reconstructor(
+    workspace_root: Path | str,
+    project_manager: ProjectManager | None = None,
+    git_config: GitConfig | None = None,
+    scope_decoder: object | None = None,
+) -> StateReconstructor:
+    """Build a StateReconstructor with explicit dependency injection."""
+    workspace_path = Path(workspace_root)
+    manager = project_manager or make_project_manager(workspace_root)
+    resolved_git_config = git_config or cast(
+        GitConfig,
+        _load_config(workspace_root, "git.yaml", "load_git_config"),
+    )
+    resolved_scope_decoder = scope_decoder or ScopeDecoder(
+        workphases_path=workspace_path / ".st3" / "config" / "workphases.yaml"
+    )
+    return StateReconstructor(
+        workspace_root=workspace_root,
+        git_config=resolved_git_config,
+        project_manager=manager,
+        scope_decoder=resolved_scope_decoder,
+    )
+
+
 def make_phase_state_engine(
     workspace_root: Path | str,
     project_manager: ProjectManager | None = None,
@@ -228,7 +252,12 @@ def make_phase_state_engine(
         deliverable_checker=DeliverableChecker(workspace_path),
         phase_contract_resolver=resolver,
     )
-    resolved_state_reconstructor = state_reconstructor or StateReconstructor()
+    resolved_state_reconstructor = state_reconstructor or make_state_reconstructor(
+        workspace_root=workspace_root,
+        project_manager=manager,
+        git_config=git_config,
+        scope_decoder=resolved_scope_decoder,
+    )
     return PhaseStateEngine(
         workspace_root=workspace_root,
         project_manager=manager,

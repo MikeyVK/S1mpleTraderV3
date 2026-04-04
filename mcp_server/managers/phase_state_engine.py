@@ -85,11 +85,11 @@ class PhaseStateEngine:
         state_reconstructor: IStateReconstructor,
     ) -> None:
         """Initialize PhaseStateEngine."""
-        self.workspace_root = Path(workspace_root)
-        self.state_file = self.workspace_root / ".st3" / "state.json"
+        workspace_path = Path(workspace_root)
+        self.state_file = workspace_path / ".st3" / "state.json"
         self.project_manager = project_manager
 
-        workspace_workphases_path = self.workspace_root / ".st3" / "config" / "workphases.yaml"
+        workspace_workphases_path = workspace_path / ".st3" / "config" / "workphases.yaml"
         if not workspace_workphases_path.exists():
             relaxed_payload = workphases_config.model_dump()
             for phase_definition in relaxed_payload.get("phases", {}).values():
@@ -168,7 +168,7 @@ class PhaseStateEngine:
         self, branch: str, to_phase: str, human_approval: str | None = None
     ) -> dict[str, Any]:
         """Execute strict sequential phase transition."""
-        state = self.get_state(branch)
+        state = self._load_state_or_reconstruct(branch)
         from_phase = state.current_phase
         workflow_name = state.workflow_name
 
@@ -186,7 +186,7 @@ class PhaseStateEngine:
 
         if from_phase == "implementation":
             self.on_exit_implementation_phase(branch)
-            state = self.get_state(branch)
+            state = self._load_state_or_reconstruct(branch)
 
         transition = TransitionRecord(
             from_phase=from_phase,
@@ -211,7 +211,7 @@ class PhaseStateEngine:
         self, branch: str, to_phase: str, skip_reason: str, human_approval: str
     ) -> dict[str, Any]:
         """Execute forced non-sequential phase transition."""
-        state = self.get_state(branch)
+        state = self._load_state_or_reconstruct(branch)
         from_phase = state.current_phase
         workflow_name = state.workflow_name
         issue_number = state.issue_number
@@ -340,7 +340,7 @@ class PhaseStateEngine:
 
             result = subprocess.run(
                 ["git", "status", "--porcelain", "--", ".st3/state.json"],
-                cwd=self.workspace_root,
+                cwd=self._workspace_root_path(),
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
@@ -357,15 +357,21 @@ class PhaseStateEngine:
             return False
 
     def get_state(self, branch: str) -> BranchState:
-        """Get full state for branch with auto-recovery."""
+        """Get persisted state for one branch without reconstruction side effects."""
+        loaded_state = self._state_repository.load(branch)
+        if loaded_state.branch != branch:
+            msg = f"Branch state for '{branch}' not found"
+            raise FileNotFoundError(msg)
+        return loaded_state
+
+    def _load_state_or_reconstruct(self, branch: str) -> BranchState:
+        """Load persisted state or reconstruct it explicitly for transition flows."""
         try:
-            loaded_state = self._state_repository.load(branch)
-            if loaded_state.branch == branch:
-                return loaded_state
+            return self.get_state(branch)
         except (FileNotFoundError, OSError, json.JSONDecodeError, ValidationError):
             logger.warning("Invalid or missing state.json, reconstructing", exc_info=True)
 
-        reconstructed_state = self._reconstruct_branch_state(branch)
+        reconstructed_state = self._state_reconstructor.reconstruct(branch)
         self._save_state(branch, reconstructed_state)
         return reconstructed_state
 
@@ -434,149 +440,9 @@ class PhaseStateEngine:
             "skip_reason": transition.skip_reason,
         }
 
-    # -------------------------------------------------------------------------
-    # Mode 2: Auto-recovery methods (Issue #39)
-    # -------------------------------------------------------------------------
-
-    def _reconstruct_branch_state(self, branch: str) -> BranchState:
-        """Reconstruct branch state from deliverables.json + git commits.
-
-        Mode 2: Cross-machine scenario - state.json missing after git pull.
-        Automatically reconstructs state using:
-        1. Issue number from branch name
-        2. Workflow definition from deliverables.json
-        3. Current phase from phase:label commits
-        4. Parent branch from deliverables.json (Issue #79)
-
-        Args:
-            branch: Branch name (e.g., 'fix/39-test')
-
-        Returns:
-            Reconstructed state dict with reconstructed=True flag,
-            includes parent_branch from deliverables.json
-
-        Raises:
-            ValueError: If branch format invalid or project not found
-        """
-        logger.info("Reconstructing state for branch '%s'...", branch)
-
-        # Step 1: Extract issue number from branch
-        issue_number = self._git_config.extract_issue_number(branch)
-        if issue_number is None:
-            msg = (
-                f"Cannot extract issue number from branch '{branch}'. "
-                "Expected format: <type>/<number>-<title>"
-            )
-            raise ValueError(msg)
-
-        # Step 2: Get project plan (SSOT for workflow)
-        project = self.project_manager.get_project_plan(issue_number)
-        if not project:
-            msg = f"Project plan not found for issue {issue_number}"
-            raise ValueError(msg)
-
-        # Step 3: Infer current phase from git commits
-        workflow_phases = project["required_phases"]
-        current_phase = self._infer_phase_from_git(branch, workflow_phases)
-
-        # Step 4: Extract parent_branch from project
-        parent_branch = project.get("parent_branch")
-
-        state = BranchState(
-            branch=branch,
-            issue_number=issue_number,
-            workflow_name=project["workflow_name"],
-            current_phase=current_phase,
-            current_cycle=None,
-            last_cycle=None,
-            cycle_history=[],
-            required_phases=project.get("required_phases", workflow_phases),
-            execution_mode=project.get("execution_mode", "normal"),
-            issue_title=project.get("issue_title"),
-            parent_branch=parent_branch,
-            created_at=datetime.now(UTC).isoformat(),
-            transitions=[],
-            reconstructed=True,
-        )
-
-        logger.info(
-            "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
-            issue_number,
-            current_phase,
-            project["workflow_name"],
-            parent_branch,
-        )
-
-        return state
-
-    def _infer_phase_from_git(self, branch: str, workflow_phases: list[str]) -> str:
-        """Infer current phase from git commit messages using ScopeDecoder.
-
-        Parses Conventional Commits scope format (e.g., type(P_IMPLEMENTATION_SP_RED): msg)
-        to extract the workflow phase. Falls back to the first workflow phase when no
-        valid scope is found.
-
-        Args:
-            branch: Branch name
-            workflow_phases: Valid phases from workflow definition
-
-        Returns:
-            Current phase (most recent valid scope-encoded phase, or first phase as fallback)
-        """
-        try:
-            commits = self._get_git_commits(branch)
-            for commit in commits:
-                result = self._scope_decoder.detect_phase(commit, fallback_to_state=False)
-                phase = result["workflow_phase"]
-                if phase != "unknown" and phase in workflow_phases:
-                    logger.info("Detected phase '%s' from git commits", phase)
-                    return phase
-
-        except RuntimeError as e:
-            logger.warning("Git command failed during phase detection: %s", e)
-
-        # Fallback: First phase of workflow
-        fallback_phase = workflow_phases[0]
-        logger.info("No valid phase detected, using fallback: %s", fallback_phase)
-        return fallback_phase
-
-    def _get_git_commits(self, branch: str, limit: int = 50) -> list[str]:
-        """Get commit messages from git log for branch.
-
-        Args:
-            branch: Branch name
-            limit: Maximum commits to retrieve
-
-        Returns:
-            List of commit messages (most recent first)
-
-        Raises:
-            RuntimeError: If git command fails
-        """
-        try:
-            env = os.environ.copy()
-            env.setdefault("GIT_TERMINAL_PROMPT", "0")
-            env.setdefault("GIT_PAGER", "cat")
-            env.setdefault("PAGER", "cat")
-
-            result = subprocess.run(
-                ["git", "log", f"--max-count={limit}", "--pretty=%s", branch],
-                cwd=self.workspace_root,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=2,  # Short timeout to avoid blocking MCP (Issue #85)
-                env=env,
-            )
-            return [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-        except subprocess.CalledProcessError as e:
-            msg = f"Git log failed: {e.stderr}"
-            raise RuntimeError(msg) from e
-        except subprocess.TimeoutExpired as e:
-            msg = "Git log command timed out"
-            raise RuntimeError(msg) from e
+    def _workspace_root_path(self) -> Path:
+        """Return the workspace root derived from the tracked state file location."""
+        return self.state_file.parent.parent
 
     def on_enter_implementation_phase(self, branch: str, issue_number: int) -> None:
         """Hook called when entering implementation phase.
@@ -622,7 +488,7 @@ class PhaseStateEngine:
             return
 
         project_plan = self.project_manager.get_project_plan(issue_number)
-        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
 
         for requirement in exit_requires:
             key = requirement["key"]
@@ -684,7 +550,7 @@ class PhaseStateEngine:
             req_type = requirement.get("type", "key")
             if req_type == "file_glob":
                 pattern = requirement["file"].format(issue_number=issue_number)
-                matches = list(self.workspace_root.glob(pattern))
+                matches = list(self._workspace_root_path().glob(pattern))
                 if not matches:
                     description = requirement.get("description", f"file_glob: {pattern}")
                     raise DeliverableCheckError(
@@ -727,7 +593,7 @@ class PhaseStateEngine:
             logger.info(f"No design deliverables gate defined; skipped for branch {branch}")
             return
 
-        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
         for deliverable in deliverables:
             if "validates" in deliverable:
                 checker.check(deliverable["id"], deliverable["validates"])
@@ -758,7 +624,7 @@ class PhaseStateEngine:
             logger.info(f"No validation deliverables gate defined; skipped for branch {branch}")
             return
 
-        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
         for deliverable in deliverables:
             if "validates" in deliverable:
                 checker.check(deliverable["id"], deliverable["validates"])
@@ -789,7 +655,7 @@ class PhaseStateEngine:
             logger.info(f"No documentation deliverables gate defined; skipped for branch {branch}")
             return
 
-        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
         for deliverable in deliverables:
             if "validates" in deliverable:
                 checker.check(deliverable["id"], deliverable["validates"])
