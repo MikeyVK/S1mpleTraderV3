@@ -3,7 +3,7 @@
 # Threshold B Minimal Refactor Design
 
 **Status:** DRAFT  
-**Version:** 1.1  
+**Version:** 1.3  
 **Last Updated:** 2026-04-04
 
 ---
@@ -59,6 +59,7 @@ The current MCP server has the core components needed for cleaner phase and cycl
 - Do not preserve direct tool access to protected state-engine methods.
 - Do not leave branch-state reconstruction inside `PhaseStateEngine` if Threshold B is required.
 - Do not let enforcement semantics carry post-success state persistence behavior.
+- `PhaseStateEngine` retains no filesystem path parameters after the refactor.
 - Do not depend on `workphases.yaml` as the long-term gate contract source when `phase_contracts.yaml` already models gate contracts.
 
 ---
@@ -134,6 +135,7 @@ A dedicated gate owner is the central missing component.
 - accept transition boundary context: workflow name, current phase, cycle number when relevant, issue context, and planning deliverables context
 - build a resolver context for the active issue and workflow boundary
 - use `PhaseContractResolver.resolve()` to obtain `CheckSpec` instances
+- serialize each resolved `CheckSpec` with `spec.model_dump(exclude_none=True)` before calling `DeliverableChecker.check(spec.id, ...)`, so typed `file_glob` and other checks flow through the existing checker contract unchanged
 - execute resolved checks through `DeliverableChecker`
 - provide both blocking and inspection behavior
 
@@ -225,6 +227,7 @@ The refactor needs an explicit source-of-truth decision.
 - `phase_contracts.yaml` becomes the source of truth for phase and cycle gate contracts and commit-type mappings
 - `workphases.yaml` remains for phase metadata and subphase whitelist concerns, but not as the long-term gate contract source
 - issue-specific hardcoded paths are removed from `phase_contracts.yaml`; gate contracts must be workflow-generic and accept issue context through runtime data
+- `file_glob` gate contracts in `phase_contracts.yaml` use workflow-generic patterns for every active feature-workflow boundary rather than issue-specific document paths
 
 This lets the runtime ask one config family what to check and another config family what movement is legal.
 
@@ -296,6 +299,74 @@ This design intentionally leaves the following to planning and implementation, n
 
 The design is complete once the ownership model, component boundaries, and runtime flows are clear enough that planning can turn them into one final Threshold B refactor cycle.
 
+---
+
+## 8. Test Architecture
+
+### 8.1 Test doubles — behavioral fakes, not interaction mocks
+
+For all new Protocol interfaces, tests use behavioral fakes rather than `Mock(spec=...)` objects with call-count assertions.
+
+**Binding rule:**
+- A test using `mock.enforce.assert_called_once()` is a DIP §1.5 + LoD §7 violation.
+- The test couples to the internal call order of the SUT rather than to the contract of the abstraction.
+
+**Correct pattern:**
+
+```python
+class RaisingGateRunner:
+    """Simulates a gate that blocks."""
+
+    def enforce(self, ...):
+        raise GateViolation("blocked")
+
+    def inspect(self, ...):
+        return GateReport(blocked=["check_a"])
+
+
+class PassingGateRunner:
+    """Simulates a gate that allows everything."""
+
+    def enforce(self, ...):
+        return None
+
+    def inspect(self, ...):
+        return GateReport(blocked=[])
+```
+
+Tests prove observable behavior: `with pytest.raises(GateViolation): pse.transition(...)`, rather than proving that `enforce()` was called.
+
+### 8.2 Fake inventory for this refactor
+
+The following fakes are introduced, each as a concrete Python class in a unit `conftest.py` or a dedicated fake module.
+
+| Fake class | Implements | Behavior |
+|---|---|---|
+| `PassingGateRunner` | `IWorkflowGateRunner` | `enforce()` is a no-op; `inspect()` returns an empty report |
+| `RaisingGateRunner` | `IWorkflowGateRunner` | `enforce()` raises `GateViolation`; `inspect()` returns a blocked report |
+| `FakeStateReconstructor` | `IStateReconstructor` | Constructs and returns a preconfigured `BranchState` |
+| `FailingStateReconstructor` | `IStateReconstructor` | `reconstruct()` raises an exception |
+| `InMemoryStateRepository` | `IStateRepository` | Reuse the existing in-memory fake or extend it for state load/save assertions |
+
+### 8.3 Structural close-out checks — separate from behavior tests
+
+Two test categories are intentionally different and must not be merged:
+
+- **Behavior tests (RED phase):** inject a fake, call production code, and prove the observable result through returned state or raised exception
+- **Structural close-out checks (post-cycle verification):** prove forbidden patterns are gone via grep-based or AST-based assertions on source code
+
+Close-out checks live in a separate `test_structural_*.py` per cycle and do not share the same reason to change as behavior tests.
+
+### 8.4 No filesystem dependencies in unit tests
+
+Unit tests for `PhaseStateEngine`, `WorkflowGateRunner`, and `StateReconstructor` must not touch real files. `IStateRepository` is always injected as `InMemoryStateRepository`. `IStateReconstructor` is injected as `FakeStateReconstructor`.
+
+This rule has concrete design deliverables:
+- **C_GATE_API:** `IStateRepository` and `IStateReconstructor` become required `PhaseStateEngine` constructor parameters with no `| None` fallback and no internal fallback construction. `ScopeDecoder` fallback construction is removed under the same DI §11 requirement. `GateViolation` and `GateReport` are introduced as part of the gate-contract surface in `core/interfaces/` so the behavioral fakes in §8.1 and §8.2 have a real contract to implement.
+- **C_STATE_RECOVERY:** `workspace_root` is removed from the `PhaseStateEngine` constructor once the last filesystem-derived responsibilities have moved out of the class.
+
+This is required to keep `PhaseStateEngine` unit tests fully filesystem-free and to avoid preserving a dead constructor parameter after the refactor.
+
 ## Related Documentation
 - **[docs/development/issue257/research_minimal_refactor_scope.md][related-1]**
 - **[docs/development/issue257/research_runner_architecture_baseline.md][related-2]**
@@ -315,5 +386,7 @@ The design is complete once the ownership model, component boundaries, and runti
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.3 | 2026-04-04 | imp | Made the `CheckSpec -> model_dump(exclude_none=True) -> DeliverableChecker.check()` bridge explicit in WorkflowGateRunner responsibilities and clarified that `phase_contracts.yaml` uses workflow-generic `file_glob` patterns for every feature-workflow boundary |
+| 1.2 | 2026-04-04 | imp | Added §8 Test Architecture: fake inventory, behavioral test contracts, close-out check separation, no-filesystem rule; clarified mandatory DI/no-fallback constructor requirements and `workspace_root` removal from PSE |
 | 1.1 | 2026-04-04 | imp | Applied 5 design decisions from QA dialogue: removed StateRecoveryService, removed TransitionStateCommitter, explicit recovery in PSE.transition(), explicit if-chain removal, protocol interfaces added |
 | 1.0 | 2026-04-03 | imp | Initial Threshold B design for the final minimal refactor cycle |

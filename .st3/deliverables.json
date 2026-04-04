@@ -15,7 +15,7 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-03-03T14:20:50.753090+00:00",
-    "planning_deliverables": {
+    "planning_deliverables_legacy_2026_04_04": {
       "tdd_cycles": {
         "total": 10,
         "cycles": [
@@ -385,6 +385,203 @@
               }
             ],
             "exit_criteria": "Test-Path config/template_config.py -> False; importlib.metadata in settings.py; full suite green"
+          }
+        ]
+      }
+    },
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 5,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "c_gate_api.contract_surface",
+                "description": "Gate contract surface introduced in core/interfaces with IWorkflowGateRunner, GateViolation, and GateReport",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/core/interfaces/__init__.py",
+                  "text": "IWorkflowGateRunner"
+                }
+              },
+              {
+                "id": "c_gate_api.required_state_deps",
+                "description": "PhaseStateEngine constructor requires IStateRepository and IStateReconstructor with no internal fallback construction and no FileStateRepository fallback path inside PhaseStateEngine",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "FileStateRepository("
+                }
+              },
+              {
+                "id": "c_gate_api.no_scope_decoder_fallback",
+                "description": "ScopeDecoder fallback construction removed under DI rule",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "ScopeDecoder("
+                }
+              },
+              {
+                "id": "c_gate_api.checkspec_bridge",
+                "description": "WorkflowGateRunner serializes each resolved CheckSpec with model_dump(exclude_none=True) before calling DeliverableChecker.check(), preserving file_glob and other typed checks through the existing checker contract",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/workflow_gate_runner.py",
+                  "text": "model_dump(exclude_none=True)"
+                }
+              }
+            ],
+            "exit_criteria": "Gate contract surface exists; WorkflowGateRunner bridges resolved CheckSpec objects into DeliverableChecker.check() via model_dump(exclude_none=True); no FileStateRepository(...) fallback remains in PhaseStateEngine; PSE constructor uses required injected collaborators without fallback construction; RED tests for contract seam and file_glob failure path are in place"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "c_gate_wiring.workflow_gate_runner",
+                "description": "WorkflowGateRunner introduced as runtime gate owner",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/workflow_gate_runner.py"
+                }
+              },
+              {
+                "id": "c_gate_wiring.phase_contract_resolve_live",
+                "description": "Phase transitions enforce contracts through PhaseContractResolver.resolve() on the runtime path",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/workflow_gate_runner.py",
+                  "text": "resolve("
+                }
+              },
+              {
+                "id": "c_gate_wiring.phase_dispatch_deleted",
+                "description": "PhaseStateEngine no longer contains hardcoded phase-specific exit dispatch",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_planning_phase("
+                }
+              },
+              {
+                "id": "c_gate_wiring.feature_boundary_globs",
+                "description": "phase_contracts.yaml defines workflow-generic file_glob patterns for all six boundaries of the active feature workflow",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/phase_contracts.yaml",
+                  "text": "type: file_glob"
+                }
+              },
+              {
+                "id": "c_gate_wiring.no_issue_specific_paths",
+                "description": "phase_contracts.yaml contains no issue-specific issue257 path literals after feature-boundary glob migration",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".st3/config/phase_contracts.yaml",
+                  "text": "issue257"
+                }
+              }
+            ],
+            "exit_criteria": "WorkflowGateRunner owns strict and forced phase gate evaluation; PhaseContractResolver.resolve() is live; phase_contracts.yaml uses workflow-generic file_glob patterns for all six feature workflow boundaries; no issue257 path literals remain in phase_contracts.yaml; phase-specific dispatch is removed"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "c_state_recovery.state_reconstructor",
+                "description": "StateReconstructor introduced as dedicated reconstruction component",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/state_reconstructor.py"
+                }
+              },
+              {
+                "id": "c_state_recovery.get_state_pure",
+                "description": "PhaseStateEngine.get_state no longer performs reconstruction or persistence side effects",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "self._save_state("
+                }
+              },
+              {
+                "id": "c_state_recovery.workspace_root_removed",
+                "description": "The self.workspace_root attribute is removed from PhaseStateEngine after reconstruction extraction",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "self.workspace_root"
+                }
+              }
+            ],
+            "exit_criteria": "Reconstruction lives in StateReconstructor; get_state is pure query behavior; self.workspace_root is gone from PhaseStateEngine; recovery orchestration remains explicit in transition()"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "c_cycle_orchestration.no_checker_in_cycle_tools",
+                "description": "cycle_tools no longer instantiate DeliverableChecker directly",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/cycle_tools.py",
+                  "text": "DeliverableChecker("
+                }
+              },
+              {
+                "id": "c_cycle_orchestration.no_protected_save",
+                "description": "cycle_tools no longer call protected state save methods",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/cycle_tools.py",
+                  "text": "_save_state("
+                }
+              },
+              {
+                "id": "c_cycle_orchestration.shared_gate_path",
+                "description": "cycle_tools reach shared inspection/enforcement through a concrete gate_runner dependency",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/cycle_tools.py",
+                  "text": "gate_runner"
+                }
+              }
+            ],
+            "exit_criteria": "Cycle tools use a concrete gate_runner path for shared inspection/enforcement; tool-layer validation and protected save calls are removed; state persistence for cycles follows the shared orchestration path"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "c_enforcement_cleanup.no_commit_state_files",
+                "description": "commit_state_files removed from enforcement config",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "commit_state_files"
+                }
+              },
+              {
+                "id": "c_enforcement_cleanup.no_force_heuristic",
+                "description": "server.py no longer uses force-tool-name heuristics",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/server.py",
+                  "text": "startswith(\"force_\")"
+                }
+              },
+              {
+                "id": "c_enforcement_cleanup.no_issue_specific_gate_paths",
+                "description": "phase_contracts gate paths are workflow-generic and not pinned to issue257",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".st3/config/phase_contracts.yaml",
+                  "text": "issue257"
+                }
+              }
+            ],
+            "exit_criteria": "Enforcement remains tool guards only; force-name heuristic is gone; phase contract paths are workflow-generic"
           }
         ]
       }
