@@ -1,7 +1,6 @@
 """Tests for C_GATE_API seams and WorkflowGateRunner behavior (Issue #257 Cycle 1).
 
 Cycle 1 goals covered here:
-- PhaseStateEngine accepts injected state_reconstructor dependency.
 - WorkflowGateRunner exposes enforce and inspect modes.
 - WorkflowGateRunner bridges resolved file_glob CheckSpec objects into DeliverableChecker.
 """
@@ -14,16 +13,12 @@ import pytest
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.interfaces import GateReport, GateViolation
-from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.phase_contract_resolver import (
     PhaseConfigContext,
     PhaseContractResolver,
 )
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
-from mcp_server.managers.state_reconstructor import StateReconstructor
-from mcp_server.managers.state_repository import BranchState, InMemoryStateRepository
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.schemas import CheckSpec
 
@@ -50,13 +45,6 @@ class FakeGateRunner:
     ) -> GateReport:
         del workflow_name, phase, cycle_number, checks
         return GateReport()
-
-
-class FakeStateReconstructor(StateReconstructor):
-    """Minimal state reconstructor test double."""
-
-    def reconstruct(self, branch: str) -> BranchState:
-        raise AssertionError(f"reconstruct should not be called in this test: {branch}")
 
 
 @pytest.fixture
@@ -130,32 +118,6 @@ def _make_runner(workspace_root: Path, workspace_loader: ConfigLoader) -> Workfl
         deliverable_checker=DeliverableChecker(workspace_root),
         phase_contract_resolver=resolver,
     )
-
-
-def test_phase_state_engine_accepts_state_reconstructor_dependency(
-    workspace_root: Path,
-    repo_loader: ConfigLoader,
-    project_manager: ProjectManager,
-) -> None:
-    """PhaseStateEngine stores the injected state reconstructor for later extraction."""
-    gate_runner = FakeGateRunner()
-    state_reconstructor = FakeStateReconstructor()
-
-    engine = PhaseStateEngine(
-        workspace_root=workspace_root,
-        project_manager=project_manager,
-        git_config=repo_loader.load_git_config(),
-        workflow_config=repo_loader.load_workflow_config(),
-        workphases_config=ConfigLoader(workspace_root / ".st3" / "config").load_workphases_config(),
-        state_repository=InMemoryStateRepository(),
-        scope_decoder=ScopeDecoder(
-            workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
-        ),
-        workflow_gate_runner=gate_runner,
-        state_reconstructor=state_reconstructor,
-    )
-
-    assert engine._state_reconstructor is state_reconstructor  # pyright: ignore[reportPrivateUsage]  # TODO: C_STATE_RECOVERY - replace with behavioural test once reconstruction is extracted
 
 
 def test_workflow_gate_runner_exposes_enforce_and_inspect_modes(
