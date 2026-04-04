@@ -1,7 +1,6 @@
 """Tests for C_GATE_API seams and WorkflowGateRunner behavior (Issue #257 Cycle 1).
 
 Cycle 1 goals covered here:
-- PhaseStateEngine accepts injected workflow_gate_runner dependency.
 - PhaseStateEngine accepts injected state_reconstructor dependency.
 - WorkflowGateRunner exposes enforce and inspect modes.
 - WorkflowGateRunner bridges resolved file_glob CheckSpec objects into DeliverableChecker.
@@ -131,32 +130,6 @@ def _make_runner(workspace_root: Path, workspace_loader: ConfigLoader) -> Workfl
         deliverable_checker=DeliverableChecker(workspace_root),
         phase_contract_resolver=resolver,
     )
-
-
-def test_phase_state_engine_accepts_workflow_gate_runner_dependency(
-    workspace_root: Path,
-    repo_loader: ConfigLoader,
-    project_manager: ProjectManager,
-) -> None:
-    """PhaseStateEngine stores the injected workflow gate runner for later wiring."""
-    gate_runner = FakeGateRunner()
-    state_reconstructor = FakeStateReconstructor()
-
-    engine = PhaseStateEngine(
-        workspace_root=workspace_root,
-        project_manager=project_manager,
-        git_config=repo_loader.load_git_config(),
-        workflow_config=repo_loader.load_workflow_config(),
-        workphases_config=ConfigLoader(workspace_root / ".st3" / "config").load_workphases_config(),
-        state_repository=InMemoryStateRepository(),
-        scope_decoder=ScopeDecoder(
-            workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
-        ),
-        workflow_gate_runner=gate_runner,
-        state_reconstructor=state_reconstructor,
-    )
-
-    assert engine._workflow_gate_runner is gate_runner  # pyright: ignore[reportPrivateUsage]  # TODO: C_GATE_WIRING - replace with behavioural test once gate runner is on transition path
 
 
 def test_phase_state_engine_accepts_state_reconstructor_dependency(
