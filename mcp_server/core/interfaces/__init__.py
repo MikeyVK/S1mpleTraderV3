@@ -21,15 +21,12 @@ class GateReport:
     details: dict[str, str] = field(default_factory=dict)
 
 
-class GateViolationError(ValueError):
+class GateViolation(ValueError):  # noqa: N818
     """Raised when enforce mode encounters a blocking gate."""
 
     def __init__(self, message: str, report: GateReport) -> None:
         super().__init__(message)
         self.report = report
-
-
-GateViolation = GateViolationError
 
 
 class IStateReader(Protocol):

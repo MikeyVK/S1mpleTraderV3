@@ -17,7 +17,7 @@ class WorkflowGateRunner:
     def __init__(
         self,
         deliverable_checker: DeliverableChecker,
-        phase_contract_resolver: PhaseContractResolver | None = None,
+        phase_contract_resolver: PhaseContractResolver,
     ) -> None:
         self._deliverable_checker = deliverable_checker
         self._phase_contract_resolver = phase_contract_resolver
@@ -29,7 +29,7 @@ class WorkflowGateRunner:
         cycle_number: int | None = None,
         checks: list[CheckSpec] | None = None,
     ) -> GateReport:
-        """Run blocking gate evaluation and raise on the first blocking check."""
+        """Run blocking gate evaluation and raise with the full blocking report."""
         return self._run_checks(
             workflow_name=workflow_name,
             phase=phase,
@@ -63,8 +63,6 @@ class WorkflowGateRunner:
     ) -> list[CheckSpec]:
         if checks is not None:
             return list(checks)
-        if self._phase_contract_resolver is None:
-            raise ValueError("PhaseContractResolver must be provided when checks are not passed")
         return self._phase_contract_resolver.resolve(workflow_name, phase, cycle_number)
 
     def _run_checks(
@@ -87,18 +85,15 @@ class WorkflowGateRunner:
             except DeliverableCheckError as exc:
                 blocking.append(spec.id)
                 details[spec.id] = str(exc)
-                report = GateReport(
-                    passing=tuple(passing),
-                    blocking=tuple(blocking),
-                    details=details,
-                )
-                if raise_on_block:
-                    raise GateViolation(str(exc), report) from exc
             else:
                 passing.append(spec.id)
 
-        return GateReport(
+        report = GateReport(
             passing=tuple(passing),
             blocking=tuple(blocking),
             details=details,
         )
+        if raise_on_block and blocking:
+            first_blocking = blocking[0]
+            raise GateViolation(details[first_blocking], report)
+        return report

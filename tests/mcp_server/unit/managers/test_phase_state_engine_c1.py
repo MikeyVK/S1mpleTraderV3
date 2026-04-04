@@ -17,12 +17,16 @@ from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.interfaces import GateReport, GateViolation
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.deliverable_checker import DeliverableChecker
-from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, PhaseContractResolver
+from mcp_server.managers.phase_contract_resolver import (
+    PhaseConfigContext,
+    PhaseContractResolver,
+)
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_reconstructor import StateReconstructor
 from mcp_server.managers.state_repository import BranchState, InMemoryStateRepository
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
+from mcp_server.schemas import CheckSpec
 
 
 class FakeGateRunner:
@@ -213,3 +217,42 @@ def test_workflow_gate_runner_enforce_raises_when_resolved_file_glob_matches_no_
     assert report.passing == ()
     assert report.blocking == ("cycle-docs",)
     assert "cycle-docs" in report.details
+
+
+def test_workflow_gate_runner_enforce_reports_all_blocking_checks(
+    workspace_root: Path,
+    workspace_loader: ConfigLoader,
+) -> None:
+    """enforce() raises with a complete GateReport when multiple checks block."""
+    runner = _make_runner(workspace_root, workspace_loader)
+    checks = [
+        CheckSpec.model_validate(
+            {
+                "id": "missing-a",
+                "type": "file_glob",
+                "dir": "docs/development",
+                "pattern": "issue*/missing_a_*.md",
+            }
+        ),
+        CheckSpec.model_validate(
+            {
+                "id": "missing-b",
+                "type": "file_glob",
+                "dir": "docs/development",
+                "pattern": "issue*/missing_b_*.md",
+            }
+        ),
+    ]
+
+    with pytest.raises(GateViolation) as exc_info:
+        runner.enforce(
+            workflow_name="feature",
+            phase="implementation",
+            cycle_number=1,
+            checks=checks,
+        )
+
+    report = exc_info.value.report
+    assert report.passing == ()
+    assert report.blocking == ("missing-a", "missing-b")
+    assert set(report.details) == {"missing-a", "missing-b"}
