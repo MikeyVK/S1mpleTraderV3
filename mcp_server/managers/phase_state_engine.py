@@ -30,11 +30,11 @@ from typing import Any
 # Project modules
 from pydantic import ValidationError
 
-from mcp_server.core.interfaces import IStateRepository
+from mcp_server.core.interfaces import IStateReconstructor, IStateRepository, IWorkflowGateRunner
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
-from mcp_server.managers.state_repository import BranchState, FileStateRepository
+from mcp_server.managers.state_repository import BranchState
 from mcp_server.schemas import GitConfig, WorkflowConfig, WorkphasesConfig
 
 logger = logging.getLogger(__name__)
@@ -74,8 +74,10 @@ class PhaseStateEngine:
         git_config: GitConfig,
         workflow_config: WorkflowConfig,
         workphases_config: WorkphasesConfig,
-        state_repository: IStateRepository | None = None,
-        scope_decoder: ScopeDecoder | None = None,
+        state_repository: IStateRepository,
+        scope_decoder: ScopeDecoder,
+        workflow_gate_runner: IWorkflowGateRunner,
+        state_reconstructor: IStateReconstructor,
     ) -> None:
         """Initialize PhaseStateEngine."""
         self.workspace_root = Path(workspace_root)
@@ -94,10 +96,10 @@ class PhaseStateEngine:
         self._workflow_config = workflow_config
         self._git_config = git_config
         self._workphases_config = workphases_config
-        self._state_repository = state_repository or FileStateRepository(state_file=self.state_file)
-        self._scope_decoder = scope_decoder or ScopeDecoder(
-            workphases_path=self.workspace_root / ".st3" / "config" / "workphases.yaml"
-        )
+        self._state_repository = state_repository
+        self._scope_decoder = scope_decoder
+        self._workflow_gate_runner = workflow_gate_runner
+        self._state_reconstructor = state_reconstructor
 
     def initialize_branch(
         self, branch: str, issue_number: int, initial_phase: str, parent_branch: str | None = None

@@ -28,7 +28,9 @@ from mcp_server.config.settings import Settings
 from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger, setup_logging
+from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
@@ -36,6 +38,9 @@ from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, Phas
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
+from mcp_server.managers.state_reconstructor import StateReconstructor
+from mcp_server.managers.state_repository import FileStateRepository
+from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
@@ -180,12 +185,29 @@ class MCPServer:
             workflow_config=workflow_config,
             git_manager=self.git_manager,
         )
+        self.phase_contract_resolver = PhaseContractResolver(
+            PhaseConfigContext(
+                workphases=workphases_config,
+                phase_contracts=phase_contracts_config,
+            )
+        )
+        self.workflow_gate_runner = WorkflowGateRunner(
+            deliverable_checker=DeliverableChecker(workspace_root),
+            phase_contract_resolver=self.phase_contract_resolver,
+        )
+        self.state_reconstructor = StateReconstructor()
         self.phase_state_engine = PhaseStateEngine(
             workspace_root=workspace_root,
             project_manager=self.project_manager,
             git_config=git_config,
             workflow_config=workflow_config,
             workphases_config=workphases_config,
+            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
+            scope_decoder=ScopeDecoder(
+                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
+            ),
+            workflow_gate_runner=self.workflow_gate_runner,
+            state_reconstructor=self.state_reconstructor,
         )
         self.qa_manager = QAManager(
             workspace_root=workspace_root,
@@ -204,12 +226,6 @@ class MCPServer:
             template_registry=self.template_registry,
             registry=artifact_registry,
             project_structure_config=project_structure_config,
-        )
-        self.phase_contract_resolver = PhaseContractResolver(
-            PhaseConfigContext(
-                workphases=workphases_config,
-                phase_contracts=phase_contracts_config,
-            )
         )
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,

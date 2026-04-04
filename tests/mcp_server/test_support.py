@@ -11,15 +11,29 @@ from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock
 
-from mcp_server.config.loader import ConfigLoader, normalize_config_root, resolve_config_root as resolve_runtime_config_root
+from mcp_server.config.loader import (
+    ConfigLoader,
+    normalize_config_root,
+)
+from mcp_server.config.loader import (
+    resolve_config_root as resolve_runtime_config_root,
+)
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
+from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.core.policy_engine import PolicyEngine
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.managers.phase_contract_resolver import PhaseConfigContext
+from mcp_server.managers.phase_contract_resolver import (
+    PhaseConfigContext,
+    PhaseContractResolver,
+)
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
+from mcp_server.managers.state_reconstructor import StateReconstructor
+from mcp_server.managers.state_repository import FileStateRepository
+from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
 from mcp_server.schemas import (
@@ -168,26 +182,54 @@ def make_phase_state_engine(
     workspace_root: Path | str,
     project_manager: ProjectManager | None = None,
     state_repository: object | None = None,
+    scope_decoder: object | None = None,
+    workflow_gate_runner: object | None = None,
+    state_reconstructor: object | None = None,
 ) -> PhaseStateEngine:
-    """Build a PhaseStateEngine with explicit config objects."""
+    """Build a PhaseStateEngine with explicit config objects and injected seams."""
+    workspace_path = Path(workspace_root)
     manager = project_manager or make_project_manager(workspace_root)
-    kwargs: dict[str, object] = {}
-    if state_repository is not None:
-        kwargs["state_repository"] = state_repository
+    git_config = cast(GitConfig, _load_config(workspace_root, "git.yaml", "load_git_config"))
+    workflow_config = cast(
+        WorkflowConfig,
+        _load_config(workspace_root, "workflows.yaml", "load_workflow_config"),
+    )
+    workphases_config = _load_config(
+        workspace_root,
+        "workphases.yaml",
+        "load_workphases_config",
+    )
+    resolver = PhaseContractResolver(
+        PhaseConfigContext(
+            workphases=workphases_config,
+            phase_contracts=_load_config(
+                workspace_root,
+                "phase_contracts.yaml",
+                "load_phase_contracts_config",
+            ),
+        )
+    )
+    resolved_state_repository = state_repository or FileStateRepository(
+        state_file=workspace_path / ".st3" / "state.json"
+    )
+    resolved_scope_decoder = scope_decoder or ScopeDecoder(
+        workphases_path=workspace_path / ".st3" / "config" / "workphases.yaml"
+    )
+    resolved_workflow_gate_runner = workflow_gate_runner or WorkflowGateRunner(
+        deliverable_checker=DeliverableChecker(workspace_path),
+        phase_contract_resolver=resolver,
+    )
+    resolved_state_reconstructor = state_reconstructor or StateReconstructor()
     return PhaseStateEngine(
         workspace_root=workspace_root,
         project_manager=manager,
-        git_config=cast(GitConfig, _load_config(workspace_root, "git.yaml", "load_git_config")),
-        workflow_config=cast(
-            WorkflowConfig,
-            _load_config(workspace_root, "workflows.yaml", "load_workflow_config"),
-        ),
-        workphases_config=_load_config(
-            workspace_root,
-            "workphases.yaml",
-            "load_workphases_config",
-        ),
-        **kwargs,
+        git_config=git_config,
+        workflow_config=workflow_config,
+        workphases_config=workphases_config,
+        state_repository=resolved_state_repository,
+        scope_decoder=resolved_scope_decoder,
+        workflow_gate_runner=resolved_workflow_gate_runner,
+        state_reconstructor=resolved_state_reconstructor,
     )
 
 

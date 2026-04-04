@@ -21,7 +21,7 @@ from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, Phas
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_reconstructor import StateReconstructor
-from mcp_server.managers.state_repository import InMemoryStateRepository
+from mcp_server.managers.state_repository import BranchState, InMemoryStateRepository
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 
 
@@ -49,10 +49,10 @@ class FakeGateRunner:
         return GateReport()
 
 
-class FakeStateReconstructor:
+class FakeStateReconstructor(StateReconstructor):
     """Minimal state reconstructor test double."""
 
-    def reconstruct(self, branch: str) -> object:
+    def reconstruct(self, branch: str) -> BranchState:
         raise AssertionError(f"reconstruct should not be called in this test: {branch}")
 
 
