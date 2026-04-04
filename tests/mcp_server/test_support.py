@@ -39,6 +39,7 @@ from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
 from mcp_server.schemas import (
     ArtifactRegistryConfig,
     GitConfig,
+    PhaseContractsConfig,
     ProjectStructureConfig,
     QualityConfig,
     ScaffoldMetadataConfig,
@@ -199,14 +200,22 @@ def make_phase_state_engine(
         "workphases.yaml",
         "load_workphases_config",
     )
-    resolver = PhaseContractResolver(
-        PhaseConfigContext(
-            workphases=workphases_config,
-            phase_contracts=_load_config(
+    phase_contracts_path = workspace_path / ".st3" / "config" / "phase_contracts.yaml"
+    if phase_contracts_path.exists():
+        phase_contracts_config = cast(
+            PhaseContractsConfig,
+            _load_config(
                 workspace_root,
                 "phase_contracts.yaml",
                 "load_phase_contracts_config",
             ),
+        )
+    else:
+        phase_contracts_config = PhaseContractsConfig.model_validate({"workflows": {}})
+    resolver = PhaseContractResolver(
+        PhaseConfigContext(
+            workphases=workphases_config,
+            phase_contracts=phase_contracts_config,
         )
     )
     resolved_state_repository = state_repository or FileStateRepository(

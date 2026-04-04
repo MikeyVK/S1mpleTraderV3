@@ -30,7 +30,12 @@ from typing import Any
 # Project modules
 from pydantic import ValidationError
 
-from mcp_server.core.interfaces import IStateReconstructor, IStateRepository, IWorkflowGateRunner
+from mcp_server.core.interfaces import (
+    GateReport,
+    IStateReconstructor,
+    IStateRepository,
+    IWorkflowGateRunner,
+)
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
@@ -162,55 +167,27 @@ class PhaseStateEngine:
     def transition(
         self, branch: str, to_phase: str, human_approval: str | None = None
     ) -> dict[str, Any]:
-        """Execute strict sequential phase transition.
-
-        Validates transition against workflow via workflow_config.validate_transition().
-
-        Args:
-            branch: Branch name
-            to_phase: Target phase
-            human_approval: Optional approval message
-
-        Returns:
-            dict with success, from_phase, to_phase
-
-        Raises:
-            ValueError: If transition invalid per workflow
-        """
+        """Execute strict sequential phase transition."""
         state = self.get_state(branch)
         from_phase = state.current_phase
         workflow_name = state.workflow_name
 
-        # Validate transition via injected workflow config (strict sequential)
         self._workflow_config.validate_transition(workflow_name, from_phase, to_phase)
 
-        # Planning exit hook: called when leaving planning phase (Issue #229)
         issue_number = state.issue_number
         if issue_number is None:
             raise ValueError(f"Branch '{branch}' has no issue_number in state")
 
-        if from_phase == "planning":
-            self.on_exit_planning_phase(branch, issue_number)
+        self._workflow_gate_runner.enforce(
+            workflow_name=workflow_name,
+            phase=from_phase,
+            cycle_number=state.current_cycle,
+        )
 
-        if from_phase == "research":
-            self.on_exit_research_phase(branch, issue_number)
-
-        if from_phase == "design":
-            self.on_exit_design_phase(branch, issue_number)
-
-        if from_phase == "validation":
-            self.on_exit_validation_phase(branch, issue_number)
-
-        if from_phase == "documentation":
-            self.on_exit_documentation_phase(branch, issue_number)
-
-        # Implementation exit hook: called when leaving implementation phase (Issue #146)
         if from_phase == "implementation":
             self.on_exit_implementation_phase(branch)
-            # Reload state after hook (hook may have modified state)
             state = self.get_state(branch)
 
-        # Record transition (forced=False)
         transition = TransitionRecord(
             from_phase=from_phase,
             to_phase=to_phase,
@@ -233,49 +210,35 @@ class PhaseStateEngine:
     def force_transition(
         self, branch: str, to_phase: str, skip_reason: str, human_approval: str
     ) -> dict[str, Any]:
-        """Execute forced non-sequential phase transition.
-
-        Bypasses workflow validation. Requires explicit skip_reason for audit.
-
-        Args:
-            branch: Branch name
-            to_phase: Target phase
-            skip_reason: Reason for bypassing validation
-            human_approval: Required approval message
-
-        Returns:
-            dict with success, from_phase, to_phase, forced, skip_reason
-        """
+        """Execute forced non-sequential phase transition."""
         state = self.get_state(branch)
         from_phase = state.current_phase
-
-        # Warn about skipped gates (GAP-03)
-        # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
-        skipped_gates: list[str] = []  # blocking: key absent from deliverables.json
-        passing_gates: list[str] = []  # passing: key present in deliverables.json
+        workflow_name = state.workflow_name
         issue_number = state.issue_number
         if issue_number is None:
             raise ValueError(f"Branch '{branch}' has no issue_number in state")
 
-        plan = self.project_manager.get_project_plan(issue_number)
-        for entry in self._workphases_config.get_exit_requires(from_phase):
-            key = entry.get("key")
-            if not key:
-                continue
-            gate_id = f"exit:{from_phase}:{key}"
-            if plan is None or key not in plan:
-                skipped_gates.append(gate_id)
-            else:
-                passing_gates.append(gate_id)
-        for entry in self._workphases_config.get_entry_expects(to_phase):
-            key = entry.get("key")
-            if not key:
-                continue
-            gate_id = f"entry:{to_phase}:{key}"
-            if plan is None or key not in plan:
-                skipped_gates.append(gate_id)
-            else:
-                passing_gates.append(gate_id)
+        report = self._workflow_gate_runner.inspect(
+            workflow_name=workflow_name,
+            phase=from_phase,
+            cycle_number=state.current_cycle,
+        )
+        skipped_gates = list(report.blocking)
+        passing_gates = list(report.passing)
+        report_payload = self._gate_report_to_payload(report)
+
+        if not skipped_gates and not passing_gates:
+            skipped_gates, passing_gates = self._legacy_workphases_gate_summary(
+                issue_number=issue_number,
+                from_phase=from_phase,
+                to_phase=to_phase,
+            )
+            report_payload = {
+                "passing": passing_gates,
+                "blocking": skipped_gates,
+                "details": {},
+            }
+
         if skipped_gates:
             logger.warning(
                 "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",
@@ -285,7 +248,10 @@ class PhaseStateEngine:
                 skip_reason,
             )
 
-        # Record forced transition (forced=True)
+        if from_phase == "implementation":
+            self.on_exit_implementation_phase(branch)
+            state = self.get_state(branch)
+
         transition = TransitionRecord(
             from_phase=from_phase,
             to_phase=to_phase,
@@ -302,6 +268,9 @@ class PhaseStateEngine:
         )
         self._save_state(branch, updated_state)
 
+        if to_phase == "implementation":
+            self.on_enter_implementation_phase(branch, issue_number)
+
         return {
             "success": True,
             "from_phase": from_phase,
@@ -310,11 +279,53 @@ class PhaseStateEngine:
             "skip_reason": skip_reason,
             "skipped_gates": skipped_gates,
             "passing_gates": passing_gates,
+            "gate_report": report_payload,
         }
 
     def get_current_phase(self, branch: str) -> str:
         """Get current phase for branch."""
         return self.get_state(branch).current_phase
+
+    def _gate_report_to_payload(self, report: GateReport) -> dict[str, Any]:
+        """Serialize one gate report into plain Python collections."""
+        return {
+            "passing": list(report.passing),
+            "blocking": list(report.blocking),
+            "details": dict(report.details),
+        }
+
+    def _legacy_workphases_gate_summary(
+        self,
+        issue_number: int,
+        from_phase: str,
+        to_phase: str,
+    ) -> tuple[list[str], list[str]]:
+        """Fallback skipped-gate summary for workspaces without phase contracts."""
+        skipped_gates: list[str] = []
+        passing_gates: list[str] = []
+        plan = self.project_manager.get_project_plan(issue_number)
+
+        for entry in self._workphases_config.get_exit_requires(from_phase):
+            key = entry.get("key")
+            if not key:
+                continue
+            gate_id = f"exit:{from_phase}:{key}"
+            if plan is None or key not in plan:
+                skipped_gates.append(gate_id)
+            else:
+                passing_gates.append(gate_id)
+
+        for entry in self._workphases_config.get_entry_expects(to_phase):
+            key = entry.get("key")
+            if not key:
+                continue
+            gate_id = f"entry:{to_phase}:{key}"
+            if plan is None or key not in plan:
+                skipped_gates.append(gate_id)
+            else:
+                passing_gates.append(gate_id)
+
+        return skipped_gates, passing_gates
 
     def _has_uncommitted_state_changes(self) -> bool:
         """Check whether tracked state.json has local git changes."""
@@ -589,7 +600,7 @@ class PhaseStateEngine:
 
         logger.info(f"Entered implementation phase for issue {issue_number} on branch {branch}")
 
-    def on_exit_planning_phase(self, branch: str, issue_number: int) -> None:
+    def _legacy_planning_exit_gate(self, branch: str, issue_number: int) -> None:
         """Hook called when exiting planning phase — hard gate (Issue #229, Option B).
 
         Reads exit_requires from workphases.yaml via WorkphasesConfig, checks that

@@ -1,11 +1,26 @@
 workflows:
   feature:
+    research:
+      exit_requires:
+        - id: research-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/research*.md
     planning:
       exit_requires:
         - id: planning-doc
-          type: file_exists
+          type: file_glob
           required: true
-          file: docs/development/issue257/planning.md
+          dir: docs/development
+          pattern: issue*/planning*.md
+    design:
+      exit_requires:
+        - id: design-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/design*.md
     implementation:
       cycle_based: true
       subphases: [red, green, refactor]
@@ -14,14 +29,30 @@ workflows:
         green: feat
         refactor: refactor
       exit_requires:
-        - id: design-doc
-          type: file_exists
+        - id: implementation-test-suite
+          type: file_glob
           required: true
-          file: docs/development/issue257/design.md
+          dir: docs/development
+          pattern: issue*/*test_suite*.md
+    validation:
+      exit_requires:
+        - id: validation-report
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/validation*.md
+    documentation:
+      exit_requires:
+        - id: documentation-handover
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/SESSIE_OVERDRACHT*.md
   docs:
     documentation:
       exit_requires:
         - id: docs-readme
-          type: file_exists
+          type: file_glob
           required: true
-          file: docs/mcp_server/README.md
+          dir: docs/mcp_server
+          pattern: README*.md
