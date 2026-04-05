@@ -1,7 +1,18 @@
-"""Workflow gate orchestration skeleton for phase and cycle boundaries."""
+# mcp_server/managers/workflow_gate_runner.py
+"""Workflow gate orchestration for phase and cycle boundaries.
+
+@layer: Platform
+@dependencies: [DeliverableChecker, PhaseContractResolver]
+@responsibilities:
+    - Resolve workflow and cycle gate checks from config
+    - Execute checks through DeliverableChecker
+    - Expose enforce and inspect orchestration modes
+    - Report whether a workflow phase is cycle_based
+"""
 
 from __future__ import annotations
 
+# Project modules
 from mcp_server.core.interfaces import GateReport, GateViolation
 from mcp_server.managers.deliverable_checker import (
     DeliverableChecker,
@@ -21,6 +32,10 @@ class WorkflowGateRunner:
     ) -> None:
         self._deliverable_checker = deliverable_checker
         self._phase_contract_resolver = phase_contract_resolver
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        """Report whether one workflow phase supports TDD cycle transitions."""
+        return self._phase_contract_resolver.is_cycle_based_phase(workflow_name, phase)
 
     def enforce(
         self,

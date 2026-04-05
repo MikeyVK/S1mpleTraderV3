@@ -15,9 +15,6 @@ from pathlib import Path
 from typing import cast
 
 from mcp_server.core.exceptions import ConfigError, ValidationError
-from mcp_server.managers.git_manager import GitManager
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
 
@@ -79,16 +76,10 @@ class EnforcementRunner:
         self,
         workspace_root: Path,
         config: EnforcementConfig,
-        git_manager: GitManager,
-        project_manager: ProjectManager,
-        state_engine: PhaseStateEngine,
         registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
     ) -> None:
         self.workspace_root = Path(workspace_root)
         self._config = config
-        self._git_manager = git_manager
-        self._project_manager = project_manager
-        self._state_engine = state_engine
         if registry is None:
             self._registry = self._build_default_registry()
         elif isinstance(registry, EnforcementRegistry):
@@ -134,10 +125,6 @@ class EnforcementRunner:
             "check_branch_policy",
             self._handle_check_branch_policy,
         )
-        registry.register(
-            "commit_state_files",
-            self._handle_commit_state_files,
-        )
         return registry
 
     def _handle_check_branch_policy(
@@ -164,31 +151,3 @@ class EnforcementRunner:
             f"Branch type '{branch_type}' cannot be created from base '{base_branch}'",
             hints=[f"Allowed bases: {', '.join(allowed_patterns)}"],
         )
-
-    def _handle_commit_state_files(
-        self,
-        action: EnforcementAction,
-        context: EnforcementContext,
-        workspace_root: Path,
-    ) -> str | None:
-        """Commit state files after a successful tool execution."""
-        del workspace_root
-        branch = context.get_param("branch")
-        if not isinstance(branch, str) or not branch:
-            if hasattr(self._git_manager, "get_current_branch"):
-                branch = self._git_manager.get_current_branch()
-            else:
-                branch = self._git_manager.adapter.get_current_branch()
-        if not isinstance(branch, str) or not branch:
-            return None
-
-        state = self._state_engine.get_state(branch)
-        cycle_number = state.current_cycle if state.current_phase == "implementation" else None
-        commit_hash = self._git_manager.commit_with_scope(
-            workflow_phase=state.current_phase,
-            message=action.message or "persist state after phase transition",
-            cycle_number=cycle_number,
-            commit_type="chore",
-            files=action.paths,
-        )
-        return f"Enforcement committed state files: {commit_hash[:7]}"

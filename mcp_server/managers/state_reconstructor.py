@@ -1,13 +1,25 @@
-"""Branch state reconstruction logic extracted from PhaseStateEngine."""
+# mcp_server/managers/state_reconstructor.py
+"""Branch state reconstruction from git metadata and project context.
+
+@layer: Platform
+@dependencies: [ScopeDecoder, ProjectManager, BranchState]
+@responsibilities:
+    - Reconstruct missing branch state from project metadata
+    - Infer the active workflow phase from git commit scopes
+    - Fall back safely when no valid phase can be detected
+    - Produce reconstructed BranchState payloads for transition flows
+"""
 
 from __future__ import annotations
 
+# Standard library
 import logging
 import os
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+# Project modules
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import BranchState

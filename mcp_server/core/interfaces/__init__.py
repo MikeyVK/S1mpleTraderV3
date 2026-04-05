@@ -75,3 +75,7 @@ class IWorkflowGateRunner(Protocol):
     ) -> GateReport:
         """Run non-blocking gate inspection."""
         ...
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        """Report whether the requested workflow phase supports TDD cycles."""
+        ...

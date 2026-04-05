@@ -177,33 +177,38 @@ class TestIssue39CrossMachine:
         # =====================================================================
 
         # Create PhaseStateEngine (like tools would do)
-        # Create PhaseStateEngine (like tools would do)
         project_manager = make_project_manager(workspace_root)
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
-        # Get state - should trigger auto-recovery
-        recovered_state = state_engine.get_state("fix/42-cross-machine-test")
+        # Pure-query contract: missing state.json must not auto-reconstruct via get_state().
+        with pytest.raises(FileNotFoundError):
+            state_engine.get_state("fix/42-cross-machine-test")
 
-        # Verify state was reconstructed correctly
+        # Recovery is triggered on the transition path.
+        recovery_result = state_engine.force_transition(
+            branch="fix/42-cross-machine-test",
+            to_phase="integration",
+            skip_reason="Trigger cross-machine recovery",
+            human_approval="Verifier approved on 2026-04-05",
+        )
+
+        # Verify recovery inferred the pre-transition state correctly.
+        assert recovery_result["from_phase"] == "implementation"
+        assert recovery_result["to_phase"] == "integration"
+
+        recovered_state = state_engine.get_state("fix/42-cross-machine-test")
         assert recovered_state.branch == "fix/42-cross-machine-test"
         assert recovered_state.issue_number == 42
         assert recovered_state.workflow_name == "bug"
-
-        # phase:red now maps to the implementation phase in bug workflows
-        assert recovered_state.current_phase == "implementation"
-
-        # Reconstructed flag set for audit
+        assert recovered_state.current_phase == "integration"
         assert recovered_state.reconstructed is True
-
-        # Transitions empty (cannot reconstruct history)
-        assert recovered_state.transitions == []
 
         # Verify state.json was recreated
         assert state_file.exists()
 
-        # Subsequent calls should return cached state (idempotent)
+        # Subsequent calls should return persisted state (idempotent)
         state_again = state_engine.get_state("fix/42-cross-machine-test")
-        assert state_again.current_phase == "implementation"
+        assert state_again.current_phase == "integration"
         assert state_again.issue_number == 42
 
     @pytest.mark.asyncio
@@ -242,13 +247,24 @@ class TestIssue39CrossMachine:
         if state_file.exists():
             state_file.unlink()
 
-        # Auto-recovery should fallback to first phase
+        # Recovery now happens only on transition paths.
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
-        recovered_state = state_engine.get_state("fix/43-no-labels")
+        with pytest.raises(FileNotFoundError):
+            state_engine.get_state("fix/43-no-labels")
 
-        # Should fallback to first phase of feature workflow
-        assert recovered_state.current_phase == "research"  # First phase
+        recovery_result = state_engine.force_transition(
+            branch="fix/43-no-labels",
+            to_phase="planning",
+            skip_reason="Trigger recovery without scoped commits",
+            human_approval="Verifier approved on 2026-04-05",
+        )
+
+        # Recovery should fallback to the first phase of the workflow.
+        assert recovery_result["from_phase"] == "research"
+
+        recovered_state = state_engine.get_state("fix/43-no-labels")
+        assert recovered_state.current_phase == "planning"
         assert recovered_state.reconstructed is True
 
     @pytest.mark.asyncio
@@ -312,19 +328,30 @@ class TestIssue39CrossMachine:
         if state_file.exists():
             state_file.unlink()
 
-        # Auto-recovery should ignore invalid phases
+        # Recovery now happens only on transition paths.
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
-        recovered_state = state_engine.get_state("docs/44-documentation")
+        with pytest.raises(FileNotFoundError):
+            state_engine.get_state("docs/44-documentation")
+
+        recovery_result = state_engine.force_transition(
+            branch="docs/44-documentation",
+            to_phase="documentation",
+            skip_reason="Trigger recovery for docs workflow",
+            human_approval="Verifier approved on 2026-04-05",
+        )
 
         # Git log returns commits newest first.
         # P_PLANNING is the most recent valid phase in the docs workflow.
-        assert recovered_state.current_phase == "planning"
+        assert recovery_result["from_phase"] == "planning"
+
+        recovered_state = state_engine.get_state("docs/44-documentation")
+        assert recovered_state.current_phase == "documentation"
         assert recovered_state.reconstructed is True
 
     @pytest.mark.asyncio
     async def test_recovery_with_invalid_branch_name(self, workspace_root: Path) -> None:
-        """Test that recovery fails gracefully with helpful error for invalid branch."""
+        """Test that get_state() remains a pure query for invalid branches."""
         # Create branch with invalid format (no issue number)
         subprocess.run(
             ["git", "checkout", "-b", "invalid-branch-name"],
@@ -333,9 +360,9 @@ class TestIssue39CrossMachine:
             capture_output=True,
         )
 
-        # Try to recover - should fail with clear error
+        # Pure-query contract: loading missing state should surface the repository error.
         project_manager = make_project_manager(workspace_root)
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
-        with pytest.raises(ValueError, match="Cannot extract issue number"):
+        with pytest.raises(FileNotFoundError):
             state_engine.get_state("invalid-branch-name")

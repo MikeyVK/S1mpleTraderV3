@@ -48,6 +48,18 @@ class PhaseContractResolver:
     def __init__(self, config: PhaseConfigContext) -> None:
         self._config = config
 
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        """Report whether one workflow phase is marked cycle_based in config."""
+        workflow_contracts = self._config.phase_contracts.workflows.get(workflow_name)
+        if workflow_contracts is None:
+            return False
+
+        phase_contract = workflow_contracts.get(phase)
+        if phase_contract is None:
+            return False
+
+        return phase_contract.cycle_based
+
     def resolve_commit_type(
         self,
         workflow_name: str,
@@ -99,11 +111,16 @@ class PhaseContractResolver:
         if cycle_number is not None:
             config_checks.extend(phase_contract.cycle_exit_requires.get(cycle_number, []))
 
-        issue_checks = self._resolve_issue_checks(phase=phase, cycle_number=cycle_number)
+        issue_checks = self._resolve_issue_checks(
+            workflow_name=workflow_name,
+            phase=phase,
+            cycle_number=cycle_number,
+        )
         return self._merge_checks(config_checks=config_checks, issue_checks=issue_checks)
 
     def _resolve_issue_checks(
         self,
+        workflow_name: str,
         phase: str,
         cycle_number: int | None,
     ) -> list[CheckSpec]:
@@ -113,7 +130,7 @@ class PhaseContractResolver:
             return []
 
         deliverables: list[dict[str, Any]] = []
-        if phase == "implementation" and cycle_number is not None:
+        if self.is_cycle_based_phase(workflow_name, phase) and cycle_number is not None:
             tdd_cycles = planning_deliverables.get("tdd_cycles", {})
             cycles = tdd_cycles.get("cycles", [])
             matching_cycle = next(

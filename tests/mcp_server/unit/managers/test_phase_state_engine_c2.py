@@ -1,3 +1,4 @@
+# tests/mcp_server/unit/managers/test_phase_state_engine_c2.py
 """Tests for C_GATE_WIRING runtime gate ownership (Issue #257 Cycle 2).
 
 Cycle 2 goals covered here:
@@ -8,6 +9,9 @@ Cycle 2 goals covered here:
 These tests intentionally replace the old planning-hook assertions with behavioural
 coverage on the real transition API. That carries the cycle-1 lesson forward:
 prove runtime ownership through observable outcomes, not private seam inspection.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine]
 """
 
 from __future__ import annotations
@@ -24,6 +28,10 @@ from tests.mcp_server.test_support import make_phase_state_engine, make_project_
 
 class BlockingGateRunner:
     """Behavioral fake that always blocks strict transitions."""
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        del workflow_name
+        return phase == "implementation"
 
     def enforce(
         self,
@@ -53,6 +61,10 @@ class BlockingGateRunner:
 
 class InspectingGateRunner:
     """Behavioral fake that reports, but does not block, forced transitions."""
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        del workflow_name
+        return phase == "implementation"
 
     def enforce(
         self,

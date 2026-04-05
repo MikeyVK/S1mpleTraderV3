@@ -194,27 +194,11 @@ class TestServerToolRegistration:
         manager.create_branch.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_call_tool_post_enforcement_commits_state_files_after_transition(
+    async def test_call_tool_post_enforcement_runs_after_transition(
         self,
         tmp_path: Path,
     ) -> None:
-        """Dispatch post-hook should run after a successful phase transition."""
-        config_dir = tmp_path / ".st3" / "config"
-        config_dir.mkdir(parents=True, exist_ok=True)
-        (config_dir / "enforcement.yaml").write_text(
-            """
-            enforcement:
-              - event_source: tool
-                tool: transition_phase
-                timing: post
-                actions:
-                  - type: commit_state_files
-                    paths: [\".st3/state.json\"]
-                    message: persist state after phase transition
-            """,
-            encoding="utf-8",
-        )
-
+        """Dispatch post-hook should still run after a successful phase transition."""
         _bootstrap_workspace_configs(tmp_path)
 
         project_manager = make_project_manager(tmp_path)
@@ -251,7 +235,14 @@ class TestServerToolRegistration:
             ]
             handler = server.server.request_handlers[CallToolRequest]
 
-            with patch.object(server.enforcement_runner, "run", return_value=[]) as mock_run:
+            with (
+                patch.object(server.enforcement_runner, "run", return_value=[]) as mock_run,
+                patch.object(
+                    TransitionPhaseTool,
+                    "execute",
+                    new=AsyncMock(return_value=ToolResult.text("Successfully transitioned")),
+                ),
+            ):
                 req = CallToolRequest(
                     params=CallToolRequestParams(
                         name="transition_phase",
@@ -271,11 +262,11 @@ class TestServerToolRegistration:
         )
 
     @pytest.mark.asyncio
-    async def test_call_tool_force_phase_post_enforcement_returns_warning(
+    async def test_call_tool_force_phase_post_enforcement_returns_error(
         self,
         tmp_path: Path,
     ) -> None:
-        """Force phase transitions should warn on hook failures instead of blocking."""
+        """Force phase transitions should fail when post-enforcement raises."""
         _bootstrap_workspace_configs(tmp_path)
 
         with patch("mcp_server.server.Settings") as mock_settings_cls:
@@ -320,9 +311,9 @@ class TestServerToolRegistration:
                 response = await handler(req)
 
         text = response.root.content[0].text
-        assert "⚠️" in text
         assert "post hook failed" in text
-        assert "✅" in text
+        assert "⚠️" not in text
+        assert "✅" not in text
 
     @pytest.mark.asyncio
     async def test_run_uses_injected_settings_without_extra_from_env(self) -> None:

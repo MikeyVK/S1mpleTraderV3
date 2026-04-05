@@ -1,3 +1,4 @@
+# tests/mcp_server/unit/managers/test_phase_state_engine_c3_issue257.py
 """Tests for C_STATE_RECOVERY behavior (Issue #257 Cycle 3).
 
 Cycle 3 goals covered here:
@@ -5,6 +6,9 @@ Cycle 3 goals covered here:
 - reconstructed state is saved before transition flow continues.
 - force_transition() reconstructs missing state through the same recovery path.
 - get_state() is a pure query and does not reconstruct or persist on failure.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine]
 """
 
 from __future__ import annotations
@@ -52,6 +56,10 @@ class RaisingRepository:
 
 class PassingGateRunner:
     """Gate runner fake that allows every transition."""
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        del workflow_name
+        return phase == "implementation"
 
     def enforce(
         self,

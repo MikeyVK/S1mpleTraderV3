@@ -8,7 +8,6 @@
 
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -36,9 +35,6 @@ def _make_runner(
     return EnforcementRunner(
         workspace_root=tmp_path,
         config=config,
-        git_manager=MagicMock(),
-        project_manager=MagicMock(),
-        state_engine=MagicMock(),
         registry=registry,
     )
 
@@ -70,10 +66,13 @@ class TestEnforcementRunner:
             enforcement=[
                 EnforcementRule(
                     event_source="tool",
-                    tool="transition_phase",
-                    timing="post",
+                    tool="create_branch",
+                    timing="pre",
                     actions=[
-                        EnforcementAction(type="commit_state_files", paths=[".st3/state.json"])
+                        EnforcementAction(
+                            type="check_branch_policy",
+                            rules={"feature": ["main", "epic/*"]},
+                        )
                     ],
                 )
             ]
@@ -92,21 +91,21 @@ class TestEnforcementRunner:
         runner = _make_runner(
             tmp_path,
             config,
-            registry={"commit_state_files": fake_handler},
+            registry={"check_branch_policy": fake_handler},
         )
 
         notes = runner.run(
-            event="transition_phase",
-            timing="post",
+            event="create_branch",
+            timing="pre",
             context=EnforcementContext(
                 workspace_root=tmp_path,
-                tool_name="transition_phase",
-                params=SimpleNamespace(branch="feature/257-reorder-workflow-phases"),
+                tool_name="create_branch",
+                params=SimpleNamespace(branch_type="feature", base_branch="main"),
             ),
         )
 
         assert notes == ["handled"]
-        assert calls == [("commit_state_files", "transition_phase")]
+        assert calls == [("check_branch_policy", "create_branch")]
 
     def test_check_branch_policy_rejects_invalid_base_branch(self, tmp_path: Path) -> None:
         """Branch policy must block disallowed base branches."""
@@ -141,6 +140,43 @@ class TestEnforcementRunner:
                 ),
             )
 
+    def test_enforcement_runner_handles_tool_guards_only(self, tmp_path: Path) -> None:
+        """Guard-only enforcement should not require state-commit collaborators."""
+        config = EnforcementConfig(
+            enforcement=[
+                EnforcementRule(
+                    event_source="tool",
+                    tool="create_branch",
+                    timing="pre",
+                    actions=[
+                        EnforcementAction(
+                            type="check_branch_policy",
+                            rules={"feature": ["main", "epic/*"]},
+                        )
+                    ],
+                )
+            ]
+        )
+        runner = EnforcementRunner(
+            workspace_root=tmp_path,
+            config=config,
+        )
+
+        notes = runner.run(
+            event="create_branch",
+            timing="pre",
+            context=EnforcementContext(
+                workspace_root=tmp_path,
+                tool_name="create_branch",
+                params=SimpleNamespace(
+                    branch_type="feature",
+                    base_branch="main",
+                ),
+            ),
+        )
+
+        assert notes == []
+
 
 class TestEnforcementSchemaValidation:
     """Direct schema validation coverage for enforcement config models."""
@@ -150,10 +186,24 @@ class TestEnforcementSchemaValidation:
         with pytest.raises(ValueError, match="requires non-empty rules"):
             EnforcementAction(type="check_branch_policy")
 
-    def test_commit_state_files_action_requires_paths(self) -> None:
-        """commit_state_files actions must declare tracked paths."""
-        with pytest.raises(ValueError, match="requires non-empty paths"):
-            EnforcementAction(type="commit_state_files")
+    def test_legacy_commit_state_files_action_is_rejected_by_runner(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Legacy commit_state_files actions should fail fast at startup."""
+        config = EnforcementConfig(
+            enforcement=[
+                EnforcementRule(
+                    event_source="tool",
+                    tool="transition_phase",
+                    timing="post",
+                    actions=[EnforcementAction(type="commit_state_files")],
+                )
+            ]
+        )
+
+        with pytest.raises(ConfigError, match="commit_state_files"):
+            _make_runner(tmp_path, config)
 
     def test_delete_file_action_requires_path(self) -> None:
         """delete_file actions must declare a single target path."""

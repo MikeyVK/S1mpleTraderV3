@@ -26,7 +26,6 @@ class EnforcementAction(BaseModel):
     type: str
     policy: str | None = None
     rules: dict[str, list[str]] = Field(default_factory=dict)
-    paths: list[str] = Field(default_factory=list)
     path: str | None = None
     message: str | None = None
 
@@ -34,8 +33,6 @@ class EnforcementAction(BaseModel):
     def validate_required_fields(self) -> EnforcementAction:
         if self.type == "check_branch_policy" and not self.rules:
             raise ValueError("check_branch_policy requires non-empty rules")
-        if self.type == "commit_state_files" and not self.paths:
-            raise ValueError("commit_state_files requires non-empty paths")
         if self.type == "delete_file" and not self.path:
             raise ValueError("delete_file requires path")
         return self

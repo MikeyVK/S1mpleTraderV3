@@ -37,7 +37,6 @@ from mcp_server.core.interfaces import (
     IWorkflowGateRunner,
 )
 from mcp_server.core.phase_detection import ScopeDecoder
-from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import BranchState
 from mcp_server.schemas import GitConfig, WorkflowConfig, WorkphasesConfig
@@ -184,7 +183,7 @@ class PhaseStateEngine:
             cycle_number=state.current_cycle,
         )
 
-        if from_phase == "implementation":
+        if self._is_cycle_based_phase(workflow_name, from_phase):
             self.on_exit_implementation_phase(branch)
             state = self._load_state_or_reconstruct(branch)
 
@@ -202,7 +201,7 @@ class PhaseStateEngine:
         )
         self._save_state(branch, updated_state)
 
-        if to_phase == "implementation":
+        if self._is_cycle_based_phase(workflow_name, to_phase):
             self.on_enter_implementation_phase(branch, issue_number)
 
         return {"success": True, "from_phase": from_phase, "to_phase": to_phase}
@@ -248,7 +247,7 @@ class PhaseStateEngine:
                 skip_reason,
             )
 
-        if from_phase == "implementation":
+        if self._is_cycle_based_phase(workflow_name, from_phase):
             self.on_exit_implementation_phase(branch)
             state = self.get_state(branch)
 
@@ -268,7 +267,7 @@ class PhaseStateEngine:
         )
         self._save_state(branch, updated_state)
 
-        if to_phase == "implementation":
+        if self._is_cycle_based_phase(workflow_name, to_phase):
             self.on_enter_implementation_phase(branch, issue_number)
 
         return {
@@ -288,20 +287,24 @@ class PhaseStateEngine:
         to_cycle: int,
         gate_runner: IWorkflowGateRunner | None = None,
     ) -> dict[str, Any]:
-        """Execute one strict sequential implementation-cycle transition."""
+        """Execute one strict sequential cycle transition inside the active cycle-based phase."""
         state = self._load_state_or_reconstruct(branch)
         issue_number = self._require_issue_number(branch, state)
         cycles, total_cycles = self._get_tdd_cycles(issue_number)
-        self._validate_cycle_phase(state.current_phase)
+        runner = gate_runner or self._workflow_gate_runner
+        self._validate_cycle_phase(
+            workflow_name=state.workflow_name,
+            current_phase=state.current_phase,
+            gate_runner=runner,
+        )
         self._validate_cycle_number_range(to_cycle, issue_number)
         self._validate_strict_cycle_progression(state.current_cycle, to_cycle)
         self._validate_current_cycle_exit_criteria(state.current_cycle, cycles)
 
-        runner = gate_runner or self._workflow_gate_runner
         if state.current_cycle is not None:
             runner.enforce(
                 workflow_name=state.workflow_name,
-                phase="implementation",
+                phase=state.current_phase,
                 cycle_number=state.current_cycle,
             )
 
@@ -336,7 +339,7 @@ class PhaseStateEngine:
         human_approval: str,
         gate_runner: IWorkflowGateRunner | None = None,
     ) -> dict[str, Any]:
-        """Execute one forced implementation-cycle transition with gate inspection."""
+        """Execute one forced cycle transition inside the active cycle-based phase."""
         if not skip_reason or not skip_reason.strip():
             raise ValueError(
                 "skip_reason is required for forced transitions. "
@@ -351,13 +354,17 @@ class PhaseStateEngine:
         state = self._load_state_or_reconstruct(branch)
         issue_number = self._require_issue_number(branch, state)
         cycles, total_cycles = self._get_tdd_cycles(issue_number)
-        self._validate_cycle_phase(state.current_phase)
+        runner = gate_runner or self._workflow_gate_runner
+        self._validate_cycle_phase(
+            workflow_name=state.workflow_name,
+            current_phase=state.current_phase,
+            gate_runner=runner,
+        )
         self._validate_cycle_number_range(to_cycle, issue_number)
 
-        runner = gate_runner or self._workflow_gate_runner
         report = runner.inspect(
             workflow_name=state.workflow_name,
-            phase="implementation",
+            phase=state.current_phase,
             cycle_number=state.current_cycle,
         )
 
@@ -504,12 +511,27 @@ class PhaseStateEngine:
         total_cycles = tdd_cycles.get("total", 0)
         return cycles, total_cycles
 
-    def _validate_cycle_phase(self, current_phase: str) -> None:
-        """Ensure cycle transitions only run inside implementation."""
-        if current_phase != "implementation":
+    def _is_cycle_based_phase(
+        self,
+        workflow_name: str,
+        phase: str,
+        gate_runner: IWorkflowGateRunner | None = None,
+    ) -> bool:
+        """Return whether one workflow phase is configured for cycle transitions."""
+        runner = gate_runner or self._workflow_gate_runner
+        return runner.is_cycle_based_phase(workflow_name, phase)
+
+    def _validate_cycle_phase(
+        self,
+        workflow_name: str,
+        current_phase: str,
+        gate_runner: IWorkflowGateRunner | None = None,
+    ) -> None:
+        """Ensure cycle transitions only run inside phases marked cycle_based."""
+        if not self._is_cycle_based_phase(workflow_name, current_phase, gate_runner):
             raise ValueError(
-                f"Not in implementation phase (current: {current_phase}). "
-                "Cycle transitions only allowed during implementation phase."
+                "Cycle transitions only allowed during cycle-based phases "
+                f"(current: {current_phase})."
             )
 
     def _validate_strict_cycle_progression(
@@ -653,202 +675,6 @@ class PhaseStateEngine:
             self._save_state(branch, updated_state)
 
         logger.info(f"Entered implementation phase for issue {issue_number} on branch {branch}")
-
-    def _legacy_planning_exit_gate(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting planning phase — hard gate (Issue #229, Option B).
-
-        Reads exit_requires from workphases.yaml via WorkphasesConfig, checks that
-        each required key exists in deliverables.json, and runs DeliverableChecker.check()
-        on any ``validates`` entries declared directly under the key value.
-
-        Args:
-            branch: Branch name
-            issue_number: GitHub issue number
-
-        Raises:
-            ValueError: If a required key is absent from the project plan
-            DeliverableCheckError: If a validates entry fails structural checks
-        """
-        exit_requires = self._workphases_config.get_exit_requires("planning")
-
-        if not exit_requires:
-            logger.info(f"No exit_requires for planning phase; gate skipped for branch {branch}")
-            return
-
-        project_plan = self.project_manager.get_project_plan(issue_number)
-        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
-
-        for requirement in exit_requires:
-            key = requirement["key"]
-            if not project_plan or key not in project_plan:
-                msg = (
-                    f"{key} not found for issue {issue_number}. "
-                    f"Save {key} before leaving the planning phase."
-                )
-                raise ValueError(msg)
-
-            # Run top-level validates entries declared directly under the key value
-            plan_value = project_plan[key]
-            if isinstance(plan_value, dict):
-                for validate_spec in plan_value.get("validates", []):
-                    checker.check(validate_spec.get("id", key), validate_spec)
-
-                # Validate nested cycle deliverables validates specs
-                tdd_cycles = plan_value.get("tdd_cycles", {})
-                for cycle in tdd_cycles.get("cycles", []):
-                    for deliverable in cycle.get("deliverables", []):
-                        if not isinstance(deliverable, dict):
-                            continue
-                        if "validates" in deliverable:
-                            checker.check(deliverable.get("id", "?"), deliverable["validates"])
-
-                # Validate phase-key deliverables validates specs (design/validation/documentation)
-                for phase_key in ("design", "validation", "documentation"):
-                    phase_entry = plan_value.get(phase_key, {})
-                    for deliverable in phase_entry.get("deliverables", []):
-                        if not isinstance(deliverable, dict):
-                            continue
-                        if "validates" in deliverable:
-                            checker.check(deliverable.get("id", "?"), deliverable["validates"])
-
-        logger.info(f"Planning exit gate passed for branch {branch} (issue {issue_number})")
-
-    def on_exit_research_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting research phase — file_glob gate (Issue #229 C6).
-
-        Reads exit_requires from workphases.yaml for 'research'. For entries with
-        ``type: file_glob``, interpolates ``{issue_number}`` and checks that at least
-        one file matches the resulting glob pattern.
-
-        Args:
-            branch: Branch name
-            issue_number: GitHub issue number
-
-        Raises:
-            DeliverableCheckError: If a file_glob gate finds no matching files.
-            ValueError: If a key-type gate key is absent from deliverables.json.
-        """
-        exit_requires = self._workphases_config.get_exit_requires("research")
-
-        if not exit_requires:
-            logger.info(f"No exit_requires for research phase; gate skipped for branch {branch}")
-            return
-
-        for requirement in exit_requires:
-            req_type = requirement.get("type", "key")
-            if req_type == "file_glob":
-                pattern = requirement["file"].format(issue_number=issue_number)
-                matches = list(self._workspace_root_path().glob(pattern))
-                if not matches:
-                    description = requirement.get("description", f"file_glob: {pattern}")
-                    raise DeliverableCheckError(
-                        f"[research.exit_requires] {description}: "
-                        f"no files matching '{pattern}' in workspace root"
-                    )
-            else:
-                key = requirement["key"]
-                plan = self.project_manager.get_project_plan(issue_number)
-                if not plan or key not in plan:
-                    msg = (
-                        f"{key} not found for issue {issue_number}. "
-                        f"Save {key} before leaving the research phase."
-                    )
-                    raise ValueError(msg)
-
-        logger.info(f"Research exit gate passed for branch {branch} (issue {issue_number})")
-
-    def on_exit_design_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting design phase — per-phase deliverable gate (Issue #229 C7).
-
-        Reads ``planning_deliverables.design.deliverables`` from state.json. For entries
-        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
-        Gate is optional: if no design key is present, the check is skipped silently.
-
-        Args:
-            branch: Branch name
-            issue_number: GitHub issue number
-
-        Raises:
-            DeliverableCheckError: If a validates spec is not satisfied.
-        """
-        plan = self.project_manager.get_project_plan(issue_number)
-        phase_delivs: dict[str, Any] = (
-            (plan or {}).get("planning_deliverables", {}).get("design", {})
-        )
-        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
-
-        if not deliverables:
-            logger.info(f"No design deliverables gate defined; skipped for branch {branch}")
-            return
-
-        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
-        for deliverable in deliverables:
-            if "validates" in deliverable:
-                checker.check(deliverable["id"], deliverable["validates"])
-
-        logger.info(f"Design exit gate passed for branch {branch} (issue {issue_number})")
-
-    def on_exit_validation_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting validation phase — per-phase deliverable gate (Issue #229 C9).
-
-        Reads ``planning_deliverables.validation.deliverables`` from state.json. For entries
-        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
-        Gate is optional: if no validation key is present, the check is skipped silently.
-
-        Args:
-            branch: Branch name
-            issue_number: GitHub issue number
-
-        Raises:
-            DeliverableCheckError: If a validates spec is not satisfied.
-        """
-        plan = self.project_manager.get_project_plan(issue_number)
-        phase_delivs: dict[str, Any] = (
-            (plan or {}).get("planning_deliverables", {}).get("validation", {})
-        )
-        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
-
-        if not deliverables:
-            logger.info(f"No validation deliverables gate defined; skipped for branch {branch}")
-            return
-
-        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
-        for deliverable in deliverables:
-            if "validates" in deliverable:
-                checker.check(deliverable["id"], deliverable["validates"])
-
-        logger.info(f"Validation exit gate passed for branch {branch} (issue {issue_number})")
-
-    def on_exit_documentation_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting documentation phase — deliverable gate (Issue #229 C9).
-
-        Reads ``planning_deliverables.documentation.deliverables`` from state.json. For entries
-        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
-        Gate is optional: if no documentation key is present, the check is skipped silently.
-
-        Args:
-            branch: Branch name
-            issue_number: GitHub issue number
-
-        Raises:
-            DeliverableCheckError: If a validates spec is not satisfied.
-        """
-        plan = self.project_manager.get_project_plan(issue_number)
-        phase_delivs: dict[str, Any] = (
-            (plan or {}).get("planning_deliverables", {}).get("documentation", {})
-        )
-        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
-
-        if not deliverables:
-            logger.info(f"No documentation deliverables gate defined; skipped for branch {branch}")
-            return
-
-        checker = DeliverableChecker(workspace_root=self._workspace_root_path())
-        for deliverable in deliverables:
-            if "validates" in deliverable:
-                checker.check(deliverable["id"], deliverable["validates"])
-
-        logger.info(f"Documentation exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_implementation_phase(self, branch: str) -> None:
         """Hook called when exiting implementation phase.

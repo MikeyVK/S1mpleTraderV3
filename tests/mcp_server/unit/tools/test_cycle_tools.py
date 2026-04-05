@@ -85,26 +85,13 @@ class TestCycleTools:
         assert force_tool.enforcement_event == "transition_cycle"
 
     @pytest.mark.asyncio
-    async def test_call_tool_post_enforcement_commits_state_files_after_cycle_transition(
+    async def test_call_tool_post_enforcement_runs_after_cycle_transition(
         self,
         tmp_path: Path,
     ) -> None:
-        """Dispatch post-hook should commit state files after a successful cycle transition."""
+        """Dispatch post-hook should still run after a successful cycle transition."""
         config_dir = tmp_path / ".st3" / "config"
         copytree(Path.cwd() / ".st3" / "config", config_dir, dirs_exist_ok=True)
-        (config_dir / "enforcement.yaml").write_text(
-            """
-            enforcement:
-              - event_source: tool
-                tool: transition_cycle
-                timing: post
-                actions:
-                  - type: commit_state_files
-                    paths: [\".st3/state.json\"]
-                    message: persist state after cycle transition
-            """,
-            encoding="utf-8",
-        )
 
         project_manager = make_project_manager(tmp_path)
         project_manager.initialize_project(
@@ -148,10 +135,6 @@ class TestCycleTools:
         with (
             patch("mcp_server.server.Settings") as mock_settings_cls,
             patch(
-                "mcp_server.managers.enforcement_runner.GitManager.commit_with_scope"
-            ) as mock_commit,
-            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-            patch(
                 "mcp_server.tools.cycle_tools.TransitionCycleTool.execute",
                 new=AsyncMock(
                     return_value=ToolResult.text("✅ Transitioned to TDD Cycle 1/2: One")
@@ -168,10 +151,6 @@ class TestCycleTools:
             mock_settings_cls.from_env.return_value.github.repo = "repo"
             mock_settings_cls.from_env.return_value.logging.level = "INFO"
             mock_settings_cls.from_env.return_value.logging.audit_log = ".logs/mcp_audit.log"
-            mock_commit.return_value = "abc1234"
-            mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = branch
-            mock_git_class.return_value = mock_git
 
             server = MCPServer()
             server.tools = [
@@ -181,27 +160,35 @@ class TestCycleTools:
                     state_engine=server.phase_state_engine,
                     git_manager=server.git_manager,
                     gate_runner=server.workflow_gate_runner,
-                )
+                ),
             ]
             handler = server.server.request_handlers[CallToolRequest]
 
-            req = CallToolRequest(
-                params=CallToolRequestParams(
-                    name="transition_cycle",
-                    arguments={"to_cycle": 1, "issue_number": 257},
+            with patch.object(
+                server.enforcement_runner,
+                "run",
+                return_value=[],
+            ) as mock_run:
+                req = CallToolRequest(
+                    params=CallToolRequestParams(
+                        name="transition_cycle",
+                        arguments={"to_cycle": 1, "issue_number": 257},
+                    )
                 )
-            )
-            response = await handler(req)
+                response = await handler(req)
 
         assert "✅" in response.root.content[0].text
-        mock_commit.assert_called_once()
+        assert any(
+            call.kwargs.get("event") == "transition_cycle" and call.kwargs.get("timing") == "post"
+            for call in mock_run.call_args_list
+        )
 
     @pytest.mark.asyncio
-    async def test_call_tool_force_cycle_post_enforcement_returns_warning(
+    async def test_call_tool_force_cycle_post_enforcement_returns_error(
         self,
         tmp_path: Path,
     ) -> None:
-        """Force cycle transitions should warn on hook failures instead of blocking."""
+        """Force cycle transitions should fail when post-enforcement raises."""
         config_dir = tmp_path / ".st3" / "config"
         copytree(Path.cwd() / ".st3" / "config", config_dir, dirs_exist_ok=True)
 
@@ -225,7 +212,7 @@ class TestCycleTools:
                     state_engine=server.phase_state_engine,
                     git_manager=server.git_manager,
                     gate_runner=server.workflow_gate_runner,
-                )
+                ),
             ]
             handler = server.server.request_handlers[CallToolRequest]
 
@@ -258,9 +245,9 @@ class TestCycleTools:
                 response = await handler(req)
 
         text = response.root.content[0].text
-        assert "⚠️" in text
         assert "cycle hook failed" in text
-        assert "✅" in text
+        assert "⚠️" not in text
+        assert "✅" not in text
 
 
 class TestForceCycleToolFormatting:

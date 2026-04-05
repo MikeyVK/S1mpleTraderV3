@@ -26,6 +26,10 @@ from mcp_server.schemas import CheckSpec
 class FakeGateRunner:
     """Minimal workflow gate runner test double."""
 
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        del workflow_name
+        return phase == "implementation"
+
     def enforce(
         self,
         workflow_name: str,

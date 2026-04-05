@@ -237,9 +237,6 @@ class MCPServer:
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,
             config=enforcement_config,
-            git_manager=self.git_manager,
-            project_manager=self.project_manager,
-            state_engine=self.phase_state_engine,
         )
 
         self.server = Server(server_name)
@@ -522,13 +519,7 @@ class MCPServer:
         try:
             self.enforcement_runner.run(event=event, timing=timing, context=context)
         except Exception as exc:  # noqa: BLE001
-            enforcement_result = self._tool_result_from_exception(exc)
-            if timing == "post" and result is not None and tool.name.startswith("force_"):
-                warning_text = enforcement_result.content[0]["text"]
-                original_text = result.content[0]["text"]
-                result.content[0]["text"] = f"⚠️ {warning_text}\n{original_text}"
-                return None
-            return enforcement_result
+            return self._tool_result_from_exception(exc)
         return None
 
     def setup_handlers(self) -> None:
