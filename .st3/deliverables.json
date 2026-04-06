@@ -586,5 +586,20 @@
         ]
       }
     }
+  },
+  "270": {
+    "issue_title": "Remove legacy dead fields from workphases.yaml and policies.yaml",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "implementation",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": null,
+    "created_at": "2026-04-06T14:42:41.692888+00:00"
   }
 }

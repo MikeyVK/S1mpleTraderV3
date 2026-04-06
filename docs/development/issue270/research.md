@@ -55,32 +55,62 @@ Code path analysis:
 - BUT activation condition (PSE.force_transition lines 228-230): only reached when `not skipped_gates and not passing_gates` after WGR.inspect() — which never happens now that phase_contracts.yaml has entries for all workflows
 - PSE constructor (lines 96-97): nullifies both fields when workphases.yaml does NOT exist (test fallback) — confirms they are not relied on at runtime
 
-**Finding 2 — planning and design subphase whitelists**
+**Finding 2a — planning and design subphase whitelists (NOT dead)**
 
-Planning defines subphases: [c1, c2, c3, c4]; design defines subphases: [contracts, flows, schemas]. ScopeEncoder validates subphases strictly against workphases.yaml for phases that appear in commit scopes. Planning and design phases use commit_type_hint: docs and generate no subphase tokens in practice — agents commit with P_PLANNING or P_DESIGN, never P_PLANNING_SP_C1. The whitelists are enforced IF used, but they are never used.
+Planning defines subphases: `[c1, c2, c3, c4]`; design defines subphases: `[contracts, flows, schemas]`. These are **actively enforced by ScopeEncoder** — when a commit scope includes a subphase token (e.g., `P_PLANNING_SP_C1`), ScopeEncoder validates it against the whitelist for that phase from workphases.yaml. This was a deliberate design decision (A5 from issue #257 design.md).
 
-Risk consideration: removing them means ScopeEncoder would reject P_PLANNING_SP_C1 as an invalid subphase (since validation would hit an empty list). This is actually stricter, not looser — removal tightens the contract.
+However, ScopeEncoder's enforcement is not wired through `phase_contracts.yaml`. The whitelists live only in `workphases.yaml`, which is a DRY violation: workflow-phase membership lives partly in `phase_contracts.yaml` (gate enforcement) and partly in `workphases.yaml` (subphase whitelists). That concern is **issue #271 scope**.
 
-**Finding 3 — policies.yaml commit.allowed_prefixes**
+**Conclusion for #270:** Leave subphase whitelists intact. Do NOT remove. They are live ScopeEncoder enforcement data.
 
-The commit operation in policies.yaml has `allowed_prefixes: [red:, green:, refactor:, docs:]`. `OperationPoliciesConfig` schema (operation_policies_config.py line 33) DOES define the field and line 59 has `has_allowed_prefix()` method. However, the regression test (test_policy_engine_config.py) documents explicitly: 'Bug: policies.yaml had red:, green: but GitManager generates test:, feat:. Fix: PolicyEngine derives prefixes from GitConfig.' The field was not removed from the YAML after the policy was changed. `PolicyEngine.decide()` for commit operations calls `_git_config.get_all_prefixes()` instead.
+**Finding 2b — exit_requires / entry_expects in workphases.yaml (stranded legacy)**
+
+All phase definitions contain `exit_requires` and/or `entry_expects` blocks (research, planning, implementation). These were the pre-#257 gate mechanism. The code path that reads them (`PSE._legacy_workphases_gate_summary()`) is explicitly named "legacy" by the original author and is permanently bypassed: the activation condition in `PSE.force_transition` (lines 228-230) only fires when both `skipped_gates` and `passing_gates` are empty after `WGR.inspect()` — which never occurs with current `phase_contracts.yaml` coverage.
+
+PSE constructor also nullifies fallback when `workphases.yaml` does not exist (lines 96-97), confirming no runtime dependency.
+
+**Conclusion for #270:** Safe to remove from YAML only. `WorkphasesConfig` schema fields stay (issue #271 scope).
+
+**Finding 3a — policies.yaml commit.allowed_prefixes (dead)**
+
+The commit operation has `allowed_prefixes: [red:, green:, refactor:, docs:]`. The `OperationPoliciesConfig` schema parses this field (line 33) and a `has_allowed_prefix()` method exists (line 59). But `PolicyEngine.decide()` never calls either — for commit prefix validation it calls `self._git_config.get_all_prefixes()` directly (lines 155-162). The regression test `test_policy_engine_config.py` explicitly documents this as a deliberate fix: "Bug: policies.yaml had red:, green: but GitManager generates test:, feat:. Fix: PolicyEngine derives prefixes from GitConfig."
+
+The field was never removed from policies.yaml after the Convention #6 fix. `validate_commit_message()` in the schema is also dead (never called outside the class).
+
+**Conclusion for #270:** Safe to remove `allowed_prefixes` from YAML. Schema field in `operation_policies_config.py` stays (out of scope).
+
+**Finding 3b — policies.yaml commit.require_tdd_prefix (live, misleadingly named)**
+
+`require_tdd_prefix: true` is used in `PolicyEngine.decide()` (line 155). When True, every commit message must start with a prefix from `_git_config.get_all_prefixes()`. This is a **phase-blind** check: the `phase` parameter passed to `decide()` is ignored in this block. It enforces conventional commit prefixes on ALL commits, not just TDD-phase commits.
+
+The name (`require_tdd_prefix`) implies TDD-exclusivity, but the implementation is a generic "must use a valid conventional commit prefix" guard. The underlying infrastructure (`commit_prefix_map`, `tdd_phases` in `git_config.py`) is itself **marked DEPRECATED** in the schema docstrings: "DEPRECATED: Use workflow phases from workphases.yaml instead."
+
+The rename (`require_tdd_prefix` → `require_commit_prefix`) and the full `commit_prefix_map` deprecation cleanup belong to the GitConfig migration work — future issue, not #270.
+
+**Conclusion for #270:** Leave `require_tdd_prefix` intact. It is live. The naming concern is out of scope.
 
 ---
 
 ## Findings
 
-All three field groups are confirmed dead:
+**Removal targets for #270 (confirmed dead — YAML only, no code changes):**
 
-1. **exit_requires / entry_expects in workphases.yaml** — schema parses them, code path exists, but activation condition is permanently false with current phase_contracts.yaml coverage. Safe to remove from YAML only. WorkphasesConfig schema field remains (issue #271 scope).
+1. **`exit_requires` / `entry_expects` in workphases.yaml** — permanently bypassed since phase_contracts.yaml owns all exit gates. Safe to remove from YAML; `WorkphasesConfig` schema fields remain.
 
-2. **planning/design subphase whitelists** — never used in commit scopes. Removing tightens the contract (ScopeEncoder would reject any future P_PLANNING_SP_* attempt). Treat as informational-only or remove. Recommendation: remove; add a comment in workphases.yaml if documentation of past intent is desired.
+2. **`allowed_prefixes` in policies.yaml** — PolicyEngine.decide() never reads this field; it derives prefixes from GitConfig instead. Safe to remove from YAML; schema field in `operation_policies_config.py` remains.
 
-3. **policies.yaml allowed_prefixes** — schema field parses it, has_allowed_prefix() exists in the model, but PolicyEngine.decide() never calls it for commits. Confirmed dead by regression test. Safe to remove from YAML only. Schema field in operation_policies_config.py may stay (out of scope).
+**Leave intact (not dead):**
+
+3. **Subphase whitelists in workphases.yaml** (`planning: [c1,c2,c3,c4]`, `design: [contracts,flows,schemas]`) — actively used by ScopeEncoder. DRY concern (no wire-up to phase_contracts.yaml) is issue #271 scope.
+
+4. **`require_tdd_prefix` in policies.yaml** — live, used in PolicyEngine.decide(). Naming concern + deprecated dependency (`commit_prefix_map`) is future GitConfig migration work.
 
 ## Open Questions
 
-- ❓ Are there any other callers of WorkphasesConfig.get_exit_requires() or get_entry_expects() outside of PSE._legacy_workphases_gate_summary()?
-- ❓ Are there tests that assert specific exit_requires/entry_expects values from the YAML fixture (not from code) that would need updating?
+- ✅ Subphase whitelists dead? NO — ScopeEncoder reads them actively (design decision A5)
+- ✅ `require_tdd_prefix` TDD-only? NO — phase-blind check on all commits; but depends on deprecated `commit_prefix_map`
+- ✅ Tests asserting `exit_requires`/`entry_expects` from real YAML? NO — `test_force_phase_transition_tool.py` builds its own inline YAML fixtures; schema field stays → no breakage
+- ✅ Tests asserting `allowed_prefixes` from real YAML? YES — `tests/mcp_server/config/test_operation_policies.py` lines 50-51 assert `"red:" in commit.allowed_prefixes` and `"green:" in commit.allowed_prefixes`. These will fail when field is removed from policies.yaml. **Must fix as part of #270.**
 
 
 ## Related Documentation
