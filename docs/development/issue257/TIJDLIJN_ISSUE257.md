@@ -2,31 +2,29 @@
 <!-- template=research version=8b7bb3ab created=2026-03-27T06:52Z updated=2026-03-27 -->
 # Issue #257 — Chronologische tijdlijn van concept tot voltooiing
 
-**Status:** COMPLETE
-**Version:** 1.0
-**Last Updated:** 2026-03-27
+**Status:** DOCUMENTATION CLOSE-OUT
+**Version:** 1.1
+**Last Updated:** 2026-04-06
 
 ---
 
 ## Samenvatting
 
-Issue #257 doorliep een buitengewoon lange en meervoudig-pivoterende ontwikkeling van ruim drie
-weken (2026-03-03 t/m 2026-03-26). Wat begon als een smalle `workflows.yaml`-volgorde­wijziging
-(design voor planning) groeide uit tot een volledige refactoring van de gehele
-`mcp_server/config/`-architectuur.
+Issue #257 doorliep een lange en meervoudig-pivoterende ontwikkeling van 2026-03-03 t/m 2026-04-06. Wat begon als een smalle `workflows.yaml`-volgordewijziging
+(design voor planning) groeide eerst uit tot een volledige refactoring van de
+`mcp_server/config/`-architectuur en eindigde daarna in een gerichte Threshold B close-out voor de MCP workflow-orchestratie.
 
-**Vier grote fases:**
+**Vijf grote fases:**
 
 | Fase | Periode | Kern-resultaat |
 |------|---------|----------------|
 | **PSE-architectuur** | 03-03 t/m 03-13 | Config-First PSE met StateRepository, PhaseContractResolver, EnforcementRunner — 7 TDD-cycli |
 | **Gap-analyse + Recovery** | 03-13 | 10/20 KPIs rood; 8 root-causes gevonden; recovery research |
 | **Config Layer SRP** | 03-14 t/m 03-26 | Volledig nieuwe scope: ConfigLoader centralisatie, singleton-eliminatie, 10 cycli (C_SETTINGS.1/2 + C_LOADER.1-5 + opschoon) |
-| **Validatie + afsluiting** | 03-26 | 2670 tests groen, alle quality gates groen, branch gepusht |
+| **Threshold B close-out** | 04-04 t/m 04-05 | QA blockers weggewerkt; cycle-based overgangspad config-driven; MCP-verify groen; server restart OK |
+| **Documentatie + follow-ups** | 04-06 | Tijdlijn, issue-body close-out, en follow-up context voor issues #269 en #270 voorbereid |
 
-**Eindtoestand:** Alle config-singletons verwijderd. `ConfigLoader` centraal. `Settings.from_env()`
-is de enige entry-point. Alle legacy `from_file()`-fallbacks weg.
-`GitHubManager.validate_issue_params()` toegevoegd als slotcyclus. Branch klaar voor PR.
+**Eindtoestand op 2026-04-06:** De oorspronkelijke config-pivot was al afgerond, maar issue #257 kreeg daarna nog een gerichte MCP-close-out. `get_state()` is nu een pure query, cycle-overgangen zijn config-driven via `cycle_based`, de relevante MCP-validatie is groen, en resterende niet-blokkerende restschuld is expliciet doorgeschoven naar follow-up issues #269 en #270.
 
 ---
 
@@ -55,6 +53,10 @@ is de enige entry-point. Alle legacy `from_file()`-fallbacks weg.
 | 2026-03-26 | QA remediation; alle quality gates groen | `408789c` |
 | 2026-03-26 | Validatiefase: `pytest_plugins` fix + import-sort fixes | `50ae9cd`, `867bf8c` |
 | 2026-03-26 | Branch gepusht naar remote; worktree clean; **2670 tests groen** | `867bf8c` gepusht |
+| 2026-04-04 | Threshold B minimal-refactor plan/design opnieuw gekaderd; cycle 5 enforcement cleanup voorbereid | `planning_threshold_b_minimal_refactor.md`, `design_threshold_b_minimal_refactor.md` |
+| 2026-04-05 | QA blocker-overdracht verwerkt; B1, M1a, M1b/c en M2 opgelost; focused MCP verify groen | `SESSIE_OVERDRACHT_20260405_QA_BLOCKER.md`, `3605913` |
+| 2026-04-05 | Server herstart en health-check groen; branch naar validation en daarna documentation getransitioned | validation/documentation transitions |
+| 2026-04-06 | Follow-up issues #269 en #270 expliciet meegenomen in documentatiefase-close-out | issues `#269`, `#270` |
 
 ---
 
@@ -647,18 +649,56 @@ dan het herstelplan had kunnen leveren.
 
 ---
 
-## Huidige Staat (2026-03-26)
+## Fase 5 — Threshold B close-out en documentatiefase (2026-04-04 t/m 2026-04-06)
+
+### 2026-04-04 — Scope-herkadering naar minimale MCP-close-out
+
+Na de eerdere config-layer pivot werd issue #257 opnieuw benaderd vanuit een smallere Threshold B-scope:
+
+- `planning_threshold_b_minimal_refactor.md` en `design_threshold_b_minimal_refactor.md` bakenden de resterende MCP-architectuurschuld af
+- focus verschoof naar `PhaseStateEngine`, `WorkflowGateRunner`, `StateReconstructor`, cycle-tools en enforcement cleanup
+- doel was niet nog een brede config-ombouw, maar het afronden van de resterende God Class- en orchestratieproblemen in de MCP-laag
+
+### 2026-04-05 — QA blockers opgelost en branch opnieuw gevalideerd
+
+Een expliciete QA blocker-overdracht leidde tot drie gerichte remediatiestromen:
+
+- **B1:** cross-machine integratietests aangepast aan het pure-query contract van `get_state()`
+- **M1a:** dode legacy gate-dispatch methoden verwijderd uit `PhaseStateEngine`
+- **M1b/c:** cycle-overgangen en cycle-validatie config-driven gemaakt via `cycle_based` in `phase_contracts.yaml`
+- **M2:** ontbrekende code-style headers/metadata aangevuld op de gevraagde bestanden
+
+Daarna volgde een gerichte MCP-validatie:
+
+- file-scoped quality gates op alle relevante MCP-bestanden: groen
+- `tests/mcp_server/`: `2158 passed, 12 skipped, 2 xfailed, 19 warnings`
+- server restart + health check: `OK`
+
+De branch werd vervolgens van `implementation` naar `validation` en daarna naar `documentation` getransitioned.
+
+### 2026-04-06 — Follow-up issues expliciet gemaakt in de documentatiefase
+
+Tijdens de documentatiefase zijn de overgebleven niet-blokkerende vervolgpunten expliciet vastgelegd als vervolgwerk:
+
+- **Issue #269:** overgangstools/API-contracten tussen phase- en cycle-tools harmoniseren
+- **Issue #270:** dode legacy velden verwijderen uit `workphases.yaml` en `policies.yaml`
+
+Belangrijk: issue #270 hoort inhoudelijk bij eigen vervolgwerk, maar wordt vanaf dit moment wel meegenomen in de issue #257 documentatiecontext zodat het close-out verhaal compleet is.
+
+---
+
+## Huidige Staat (2026-04-06)
 
 | Aspect | Status |
 |--------|--------|
-| Branch | `feature/257-reorder-workflow-phases` — gepusht, clean |
-| Testresultaat | 2670 passed, 12 skipped, 2 xfailed |
-| Quality gates | Alle 6 actieve gates groen |
-| ConfigLoader | Centraal; alle `from_file()`/`load()` verwijderd buiten config-laag |
-| Settings | `Settings.from_env()` — module-level singleton weg |
-| Singletons | Alle `ClassVar _instance` verwijderd uit schema-classes |
-| Workflow-fase | `validation` (`P_VALIDATION`) |
-| Openstaande blockers | Geen — PR-aanvraag gereed |
+| Branch | `feature/257-reorder-workflow-phases` — documentatiefase actief |
+| Testresultaat | Focused MCP verify: `2158 passed, 12 skipped, 2 xfailed, 19 warnings` |
+| Quality gates | File-scoped gates op alle gewijzigde MCP-bestanden groen |
+| Transition state | `get_state()` pure query; cycle-overgangen config-driven via `cycle_based` |
+| Server | Herstart uitgevoerd; `health_check()` = `OK` |
+| Workflow-fase | `documentation` (`P_DOCUMENTATION`) |
+| Follow-up issues | `#269` (transition tool harmonisatie), `#270` (dead config fields) |
+| Openstaande blockers | Geen — resterend werk is documentatie en nette close-out |
 
 ---
 
@@ -682,4 +722,5 @@ dan het herstelplan had kunnen leveren.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-04-06 | Copilot | April-close-out toegevoegd: Threshold B blockerremediatie, documentatiefase, en follow-up issues #269/#270 |
 | 1.0 | 2026-03-27 | Copilot | Initieel: chronologische tijdlijn op basis van ~100 branch-commits + alle issue257-documenten inclusief #archive/ |
