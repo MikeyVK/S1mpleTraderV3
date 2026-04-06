@@ -47,8 +47,7 @@ class TestOperationPoliciesConfig:
 
         commit = config.operations["commit"]
         assert commit.require_tdd_prefix is True
-        assert "red:" in commit.allowed_prefixes
-        assert "green:" in commit.allowed_prefixes
+        assert commit.allowed_prefixes == []  # dead field removed from policies.yaml (issue #270)
 
     def test_repeated_loads_are_equivalent(self) -> None:
         """Repeated loads of the same file should be value-equivalent."""
