@@ -41,10 +41,4 @@ operations:
   commit:
     description: "Git commit with message"
     allowed_phases: []  # All phases allowed
-    require_tdd_prefix: true  # Commit messages must start with TDD phase
-    allowed_prefixes:
-      # Valid TDD prefixes for commit messages
-      - "red:"
-      - "green:"
-      - "refactor:"
-      - "docs:"
+    require_tdd_prefix: true  # Commit messages must start with TDD phase prefix (via GitConfig.commit_prefix_map)

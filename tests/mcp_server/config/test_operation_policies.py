@@ -133,14 +133,20 @@ class TestOperationPoliciesConfig:
             )
 
     def test_validate_commit_message_required(self) -> None:
-        """Test TDD prefix validation when required."""
+        """Test validate_commit_message() with empty allowed_prefixes after issue #270.
+
+        Note: validate_commit_message() is dead code - PolicyEngine.decide() uses
+        GitConfig.get_all_prefixes() instead (Convention #6 fix). With allowed_prefixes
+        removed from policies.yaml (issue #270), the method returns False for all messages
+        when require_tdd_prefix=True and allowed_prefixes=[].
+        """
         config = _load_operation_policies()
         commit = config.get_operation_policy("commit")
-        assert commit.validate_commit_message("red: add failing test") is True
-        assert commit.validate_commit_message("green: implement feature") is True
-        assert commit.validate_commit_message("refactor: cleanup") is True
-        assert commit.validate_commit_message("docs: update readme") is True
-        assert commit.validate_commit_message("invalid: bad prefix") is False
+        assert commit.require_tdd_prefix is True
+        assert commit.allowed_prefixes == []
+        # With empty allowed_prefixes, validate_commit_message() always returns False.
+        # Actual commit prefix validation is done via GitConfig.get_all_prefixes() in PolicyEngine.
+        assert commit.validate_commit_message("test: add failing test") is False
         assert commit.validate_commit_message("no prefix message") is False
 
     def test_validate_commit_message_not_required(self) -> None:
