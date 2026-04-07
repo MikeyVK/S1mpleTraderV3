@@ -1,10 +1,12 @@
 """Base classes for validation."""
+
 from abc import ABC, abstractmethod
 from typing import Any, NamedTuple
 
 
 class ValidationIssue(NamedTuple):
     """Represents a single validation issue."""
+
     message: str
     line: int | None = None
     column: int | None = None
@@ -14,6 +16,7 @@ class ValidationIssue(NamedTuple):
 
 class ValidationResult(NamedTuple):
     """Result of a validation run."""
+
     passed: bool
     score: float  # 0.0 to 10.0
     issues: list[ValidationIssue]
@@ -44,9 +47,11 @@ class BaseValidator(ABC):
     """
     Abstract base class for content validators.
     """
+
     def __repr__(self) -> str:
         """Return string representation."""
         return f"{self.__class__.__name__}()"
+
     @abstractmethod
     async def validate(self, path: str, content: str | None = None) -> ValidationResult:
         """

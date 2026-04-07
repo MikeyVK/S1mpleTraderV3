@@ -1,50 +1,42 @@
-# tests/unit/mcp_server/managers/test_github_manager.py
-"""
-Unit tests for GitHubManager.
-
-Tests according to TDD principles with comprehensive coverage.
+# tests/mcp_server/unit/managers/test_github_manager.py
+"""Unit tests for GitHubManager.
 
 @layer: Tests (Unit)
-@dependencies: [pytest]
+@dependencies: pytest, mcp_server.managers.github_manager, mcp_server.schemas
 """
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
-# Suppress Pydantic FieldInfo false positives
 
-# Standard library
-import typing  # noqa: F401
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-# Third-party
 import pytest
 
-# Module under test
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.schemas import (
+    ContributorConfig,
+    GitConfig,
+    IssueConfig,
+    LabelConfig,
+    MilestoneConfig,
+    ScopeConfig,
+)
 
 
 class TestGitHubManager:
-    """Test suite for GitHubManager."""
-
     @pytest.fixture
     def mock_adapter(self) -> MagicMock:
-        """Fixture for mocked GitHubAdapter."""
         return MagicMock()
 
     @pytest.fixture
     def manager(self, mock_adapter: MagicMock) -> GitHubManager:
-        """Fixture for GitHubManager."""
         return GitHubManager(adapter=mock_adapter)
 
     def test_init_default(self) -> None:
-        """Test initialization with default adapter."""
         mgr = GitHubManager()
         assert mgr.adapter is not None
 
     def test_get_issues_resource_data(
         self, manager: GitHubManager, mock_adapter: MagicMock
     ) -> None:
-        """Test issues resource data transformation."""
-        # Setup mock issue
         mock_issue = MagicMock()
         mock_issue.number = 1
         mock_issue.title = "Test Issue"
@@ -73,7 +65,6 @@ class TestGitHubManager:
         mock_adapter.list_issues.assert_called_with(state="open")
 
     def test_create_issue(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test issue creation."""
         mock_issue = MagicMock()
         mock_issue.number = 10
         mock_issue.html_url = "http://issue/10"
@@ -89,7 +80,6 @@ class TestGitHubManager:
         )
 
     def test_create_pr(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test PR creation."""
         mock_pr = MagicMock()
         mock_pr.number = 20
         mock_pr.html_url = "http://pr/20"
@@ -104,47 +94,38 @@ class TestGitHubManager:
         )
 
     def test_add_labels(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test adding labels."""
         manager.add_labels(1, ["bug"])
         mock_adapter.add_labels.assert_called_with(1, ["bug"])
 
     def test_list_issues_delegation(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test list_issues delegation."""
         manager.list_issues(state="closed")
         mock_adapter.list_issues.assert_called_with(state="closed", labels=None)
 
     def test_get_issue(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test getting specific issue."""
         manager.get_issue(99)
         mock_adapter.get_issue.assert_called_with(99)
 
     def test_close_issue(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test closing issue."""
         manager.close_issue(1, "Fixed")
         mock_adapter.close_issue.assert_called_with(1, comment="Fixed")
 
     def test_list_labels(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test listing labels."""
         manager.list_labels()
         mock_adapter.list_labels.assert_called_once()
 
     def test_create_label(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test creating label."""
         manager.create_label("bug", "red")
         mock_adapter.create_label.assert_called_with(name="bug", color="red", description="")
 
     def test_delete_label(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test deleting label."""
         manager.delete_label("bug")
         mock_adapter.delete_label.assert_called_with("bug")
 
     def test_remove_labels(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test removing labels."""
         manager.remove_labels(1, ["bug"])
         mock_adapter.remove_labels.assert_called_with(1, ["bug"])
 
     def test_update_issue(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test updating issue."""
         manager.update_issue(1, title="New")
         mock_adapter.update_issue.assert_called_with(
             issue_number=1,
@@ -157,32 +138,190 @@ class TestGitHubManager:
         )
 
     def test_list_milestones(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test listing milestones."""
         manager.list_milestones()
         mock_adapter.list_milestones.assert_called_with(state="open")
 
     def test_create_milestone(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test creating milestone."""
         manager.create_milestone("v1")
         mock_adapter.create_milestone.assert_called_with(title="v1", description=None, due_on=None)
 
     def test_close_milestone(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test closing milestone."""
         manager.close_milestone(1)
         mock_adapter.close_milestone.assert_called_with(1)
 
     def test_list_prs_delegation(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test list_prs delegation."""
         manager.list_prs(base="main")
         mock_adapter.list_prs.assert_called_with(state="open", base="main", head=None)
 
     def test_merge_pr(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
-        """Test merging PR."""
         manager.merge_pr(1, "Merged")
         mock_adapter.merge_pr.assert_called_with(
             pr_number=1, commit_message="Merged", merge_method="merge"
         )
 
-    def _satisfy_typing_policy(self) -> typing.Any:  # noqa: ANN401
-        """Use typing to satisfy template policy requirements."""
-        return None
+
+class TestGitHubManagerValidateIssueParams:
+    @pytest.fixture
+    def issue_config(self) -> IssueConfig:
+        return IssueConfig(
+            version="1.0",
+            issue_types=[
+                {"name": "feature", "workflow": "feature", "label": "type:feature"},
+                {"name": "bug", "workflow": "bug", "label": "type:bug"},
+            ],
+            required_label_categories=["type", "priority", "scope"],
+            optional_label_inputs={},
+        )
+
+    @pytest.fixture
+    def label_config(self) -> LabelConfig:
+        return LabelConfig(
+            version="1.0",
+            labels=[
+                {"name": "priority:high", "color": "D93F0B", "description": "High priority"},
+                {"name": "priority:low", "color": "0E8A16", "description": "Low priority"},
+            ],
+            freeform_exceptions=[],
+            label_patterns=[],
+        )
+
+    @pytest.fixture
+    def scope_config(self) -> ScopeConfig:
+        return ScopeConfig(version="1.0", scopes=["workflow", "architecture"])
+
+    @pytest.fixture
+    def milestone_config(self) -> MilestoneConfig:
+        return MilestoneConfig(version="1.0", milestones=[{"number": 1, "title": "v1.0"}])
+
+    @pytest.fixture
+    def contributor_config(self) -> ContributorConfig:
+        return ContributorConfig(
+            version="1.0",
+            contributors=[{"login": "alice", "name": "Alice"}],
+        )
+
+    @pytest.fixture
+    def git_config(self) -> GitConfig:
+        return GitConfig(
+            branch_types=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+            tdd_phases=["red", "green", "refactor", "docs"],
+            commit_prefix_map={
+                "red": "test",
+                "green": "feat",
+                "refactor": "refactor",
+                "docs": "docs",
+            },
+            protected_branches=["main", "master", "develop"],
+            branch_name_pattern=r"^[a-z0-9-]+$",
+            commit_types=[
+                "feat",
+                "fix",
+                "docs",
+                "style",
+                "refactor",
+                "test",
+                "chore",
+                "perf",
+                "ci",
+                "build",
+                "revert",
+            ],
+            default_base_branch="main",
+            issue_title_max_length=72,
+        )
+
+    @pytest.fixture
+    def manager_with_configs(
+        self,
+        issue_config: IssueConfig,
+        label_config: LabelConfig,
+        scope_config: ScopeConfig,
+        milestone_config: MilestoneConfig,
+        contributor_config: ContributorConfig,
+        git_config: GitConfig,
+    ) -> GitHubManager:
+        return GitHubManager(
+            issue_config=issue_config,
+            label_config=label_config,
+            scope_config=scope_config,
+            milestone_config=milestone_config,
+            contributor_config=contributor_config,
+            git_config=git_config,
+        )
+
+    def test_raises_when_issue_config_not_injected(self) -> None:
+        mgr = GitHubManager()
+        with pytest.raises(ValueError, match="IssueConfig"):
+            mgr.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="high",
+                scope="workflow",
+            )
+
+    def test_raises_for_unknown_issue_type(self, manager_with_configs: GitHubManager) -> None:
+        with pytest.raises(ValueError, match="Unknown issue type"):
+            manager_with_configs.validate_issue_params(
+                issue_type="invalid_type",
+                title="My title",
+                priority="high",
+                scope="workflow",
+            )
+
+    def test_raises_for_unknown_priority(self, manager_with_configs: GitHubManager) -> None:
+        with pytest.raises(ValueError, match="Unknown priority"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="ultra_high",
+                scope="workflow",
+            )
+
+    def test_raises_for_unknown_scope(self, manager_with_configs: GitHubManager) -> None:
+        with pytest.raises(ValueError, match="Unknown scope"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="high",
+                scope="nonexistent_scope",
+            )
+
+    def test_title_too_long(self, manager_with_configs: GitHubManager) -> None:
+        with pytest.raises(ValueError, match="Title too long"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="X" * 73,
+                priority="high",
+                scope="workflow",
+            )
+
+    def test_unknown_milestone(self, manager_with_configs: GitHubManager) -> None:
+        with pytest.raises(ValueError, match="Unknown milestone"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="high",
+                scope="workflow",
+                milestone="v9.9",
+            )
+
+    def test_unknown_assignee(self, manager_with_configs: GitHubManager) -> None:
+        with pytest.raises(ValueError, match="Unknown assignee"):
+            manager_with_configs.validate_issue_params(
+                issue_type="feature",
+                title="My title",
+                priority="high",
+                scope="workflow",
+                assignees=["bob"],
+            )
+
+    def test_valid_input_does_not_raise(self, manager_with_configs: GitHubManager) -> None:
+        result = manager_with_configs.validate_issue_params(
+            issue_type="feature",
+            title="My feature title",
+            priority="high",
+            scope="workflow",
+            milestone="v1.0",
+            assignees=["alice"],
+        )
+        assert result is None

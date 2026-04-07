@@ -2,7 +2,10 @@
 Task 3.6.1: Test tier1_base_document.jinja2 refactor
 Tests that tier1_base_document has all required composable blocks for tier3 pattern injection.
 
-TDD Phase: RED → GREEN
+TDD Phase: RED -> GREEN
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path
@@ -20,7 +23,7 @@ def tier1_base_document():
     return TIER1_BASE_DOC.read_text(encoding="utf-8")
 
 
-def test_tier1_base_document_has_purpose_block(tier1_base_document):
+def test_tier1_base_document_has_purpose_block(tier1_base_document) -> None:
     """
     Test that tier1_base_document has purpose_section block.
     This enables tier3 patterns to inject custom purpose content.
@@ -29,7 +32,7 @@ def test_tier1_base_document_has_purpose_block(tier1_base_document):
     assert "block purpose_section" in content, "tier1_base_document missing purpose_section block"
 
 
-def test_tier1_base_document_has_scope_block(tier1_base_document):
+def test_tier1_base_document_has_scope_block(tier1_base_document) -> None:
     """
     Test that tier1_base_document has scope_section block.
     This enables tier3 patterns to inject custom scope content.
@@ -38,7 +41,7 @@ def test_tier1_base_document_has_scope_block(tier1_base_document):
     assert "block scope_section" in content, "tier1_base_document missing scope_section block"
 
 
-def test_tier1_base_document_has_prerequisites_block(tier1_base_document):
+def test_tier1_base_document_has_prerequisites_block(tier1_base_document) -> None:
     """
     Test that tier1_base_document has prerequisites_section block.
     This enables tier3 patterns to inject custom prerequisites content.
@@ -49,7 +52,7 @@ def test_tier1_base_document_has_prerequisites_block(tier1_base_document):
     )
 
 
-def test_tier1_base_document_has_related_docs_block(tier1_base_document):
+def test_tier1_base_document_has_related_docs_block(tier1_base_document) -> None:
     """
     Test that tier1_base_document has related_docs_section block.
     This enables tier3 patterns to inject custom related docs content.
@@ -60,7 +63,7 @@ def test_tier1_base_document_has_related_docs_block(tier1_base_document):
     )
 
 
-def test_tier1_base_document_has_version_history_block(tier1_base_document):
+def test_tier1_base_document_has_version_history_block(tier1_base_document) -> None:
     """
     Test that tier1_base_document has version_history_section block.
     This enables tier3 patterns to inject custom version history content.

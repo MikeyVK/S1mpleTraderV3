@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 """MCP Server Entrypoint."""
 
 import asyncio
@@ -22,11 +23,24 @@ from mcp.types import (
 from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
-from mcp_server.config.label_startup import validate_label_config_on_startup
-from mcp_server.config.settings import settings
+from mcp_server.config.loader import ConfigLoader, resolve_config_root
+from mcp_server.config.settings import Settings
+from mcp_server.config.validator import ConfigValidator
+from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger, setup_logging
+from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.managers.deliverable_checker import DeliverableChecker
+from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
+from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, PhaseContractResolver
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
+from mcp_server.managers.state_reconstructor import StateReconstructor
+from mcp_server.managers.state_repository import FileStateRepository
+from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
@@ -38,6 +52,7 @@ from mcp_server.scaffolding.template_registry import TemplateRegistry
 from mcp_server.tools.admin_tools import RestartServerTool
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.cycle_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.git_fetch_tool import GitFetchTool
@@ -53,6 +68,7 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool,
     GitStashTool,
     GitStatusTool,
+    build_commit_type_resolver,
     build_phase_guard,
 )
 from mcp_server.tools.health_tools import HealthCheckTool
@@ -91,11 +107,8 @@ from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.tools.transition_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
-# Initialize logging
-setup_logging()
 logger = get_logger("server")
 lifecycle_logger = get_logger("server_lifecycle")
 
@@ -103,18 +116,21 @@ lifecycle_logger = get_logger("server_lifecycle")
 class MCPServer:
     """Main MCP server class that handles resources and tools."""
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Initialize the MCP server with resources and tools."""
+        settings = settings or Settings.from_env()
+        self._settings = settings
         server_name = settings.server.name
+
+        # Configure logging with values from settings
+        setup_logging(settings.logging.level, settings.logging.audit_log)
 
         # Log server startup
         lifecycle_logger.info("MCP server starting")
 
-        # Validate label configuration at startup
-        validate_label_config_on_startup()
-
         # Initialize template registry (Issue #72 Task 1.6)
         workspace_root = Path(settings.server.workspace_root)
+        self._workspace_root = workspace_root
         registry_path = workspace_root / ".st3" / "template_registry.json"
 
         # Bootstrap registry file if missing
@@ -124,6 +140,104 @@ class MCPServer:
 
         self.template_registry = TemplateRegistry(registry_path=registry_path)
         lifecycle_logger.info("Template registry initialized")
+
+        explicit_config_root = settings.server.config_root
+        if explicit_config_root is not None and not str(explicit_config_root).strip():
+            explicit_config_root = None
+
+        config_root = resolve_config_root(
+            preferred_root=workspace_root,
+            explicit_root=explicit_config_root,
+            required_files=("git.yaml", "workflows.yaml", "workphases.yaml"),
+        )
+
+        config_loader = ConfigLoader(config_root=config_root)
+        git_config = config_loader.load_git_config()
+        workflow_config = config_loader.load_workflow_config()
+        workphases_config = config_loader.load_workphases_config()
+        quality_config = config_loader.load_quality_config()
+        label_config = config_loader.load_label_config()
+        issue_config = config_loader.load_issue_config()
+        scope_config = config_loader.load_scope_config()
+        milestone_config = config_loader.load_milestone_config()
+        contributor_config = config_loader.load_contributor_config()
+        artifact_registry = config_loader.load_artifact_registry_config()
+        project_structure_config = config_loader.load_project_structure_config(
+            artifact_registry=artifact_registry
+        )
+        operation_policies_config = config_loader.load_operation_policies_config(
+            workflow_config=workflow_config
+        )
+        enforcement_config = config_loader.load_enforcement_config()
+        phase_contracts_config = config_loader.load_phase_contracts_config()
+        ConfigValidator().validate_startup(
+            policies=operation_policies_config,
+            workflow=workflow_config,
+            structure=project_structure_config,
+            artifact=artifact_registry,
+            phase_contracts=phase_contracts_config,
+            workphases=workphases_config,
+        )
+
+        self.git_manager = GitManager(git_config=git_config)
+        self.project_manager = ProjectManager(
+            workspace_root=workspace_root,
+            workflow_config=workflow_config,
+            git_manager=self.git_manager,
+        )
+        self.phase_contract_resolver = PhaseContractResolver(
+            PhaseConfigContext(
+                workphases=workphases_config,
+                phase_contracts=phase_contracts_config,
+            )
+        )
+        self.workflow_gate_runner = WorkflowGateRunner(
+            deliverable_checker=DeliverableChecker(workspace_root),
+            phase_contract_resolver=self.phase_contract_resolver,
+        )
+        self.state_reconstructor = StateReconstructor(
+            workspace_root=workspace_root,
+            git_config=git_config,
+            project_manager=self.project_manager,
+            scope_decoder=ScopeDecoder(
+                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
+            ),
+        )
+        self.phase_state_engine = PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=self.project_manager,
+            git_config=git_config,
+            workflow_config=workflow_config,
+            workphases_config=workphases_config,
+            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
+            scope_decoder=ScopeDecoder(
+                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
+            ),
+            workflow_gate_runner=self.workflow_gate_runner,
+            state_reconstructor=self.state_reconstructor,
+        )
+        self.qa_manager = QAManager(
+            workspace_root=workspace_root,
+            quality_config=quality_config,
+        )
+        self.github_manager = GitHubManager(
+            issue_config=issue_config,
+            label_config=label_config,
+            scope_config=scope_config,
+            milestone_config=milestone_config,
+            contributor_config=contributor_config,
+            git_config=git_config,
+        )
+        self.artifact_manager = ArtifactManager(
+            workspace_root=workspace_root,
+            template_registry=self.template_registry,
+            registry=artifact_registry,
+            project_structure_config=project_structure_config,
+        )
+        self.enforcement_runner = EnforcementRunner(
+            workspace_root=workspace_root,
+            config=enforcement_config,
+        )
 
         self.server = Server(server_name)
 
@@ -136,53 +250,87 @@ class MCPServer:
         # Core tools (always available)
         self.tools = [
             # Git tools
-            CreateBranchTool(),
-            GitStatusTool(),
-            GitCommitTool(phase_guard=build_phase_guard(Path(settings.server.workspace_root))),
-            GitCheckoutTool(),
-            GitFetchTool(),
-            GitPullTool(),
-            GitPushTool(),
-            GitMergeTool(),
-            GitDeleteBranchTool(),
-            GitStashTool(),
-            GitRestoreTool(),
-            GitListBranchesTool(),
-            GitDiffTool(),
-            GetParentBranchTool(),
-            # Quality tools
-            RunQualityGatesTool(
-                manager=QAManager(workspace_root=Path(settings.server.workspace_root))
+            CreateBranchTool(manager=self.git_manager),
+            GitStatusTool(manager=self.git_manager),
+            GitCommitTool(
+                manager=self.git_manager,
+                phase_guard=build_phase_guard(Path(settings.server.workspace_root)),
+                commit_type_resolver=build_commit_type_resolver(
+                    self.phase_state_engine,
+                    self.phase_contract_resolver,
+                ),
+                state_engine=self.phase_state_engine,
             ),
-            ValidationTool(),
+            GitCheckoutTool(manager=self.git_manager, state_engine=self.phase_state_engine),
+            GitFetchTool(manager=self.git_manager),
+            GitPullTool(manager=self.git_manager, state_engine=self.phase_state_engine),
+            GitPushTool(manager=self.git_manager),
+            GitMergeTool(manager=self.git_manager),
+            GitDeleteBranchTool(manager=self.git_manager),
+            GitStashTool(manager=self.git_manager),
+            GitRestoreTool(manager=self.git_manager),
+            GitListBranchesTool(manager=self.git_manager),
+            GitDiffTool(manager=self.git_manager),
+            GetParentBranchTool(manager=self.git_manager, state_engine=self.phase_state_engine),
+            # Quality tools
+            RunQualityGatesTool(manager=self.qa_manager),
+            ValidationTool(manager=self.qa_manager),
             ValidateDTOTool(),
             SafeEditTool(),
             TemplateValidationTool(),
             # Development tools
             HealthCheckTool(),
             RestartServerTool(),
-            RunTestsTool(),
-            CreateFileTool(),
+            RunTestsTool(settings=settings),
+            CreateFileTool(settings=settings),
             # Project tools (Phase 0.5)
-            InitializeProjectTool(workspace_root=Path(settings.server.workspace_root)),
-            GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
-            SavePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
-            UpdatePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
-            # Phase tools (Phase B)
-            TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
-            ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
-            # TDD Cycle tools (Issue #146)
-            TransitionCycleTool(),
-            ForceCycleTransitionTool(),
-            # Scaffold tools (unified artifact scaffolding)
-            ScaffoldArtifactTool(
-                manager=ArtifactManager(
-                    workspace_root=workspace_root, template_registry=self.template_registry
-                )
+            InitializeProjectTool(
+                workspace_root=Path(settings.server.workspace_root),
+                workflow_config=workflow_config,
+                manager=self.project_manager,
+                git_manager=self.git_manager,
+                state_engine=self.phase_state_engine,
             ),
+            GetProjectPlanTool(manager=self.project_manager),
+            SavePlanningDeliverablesTool(manager=self.project_manager),
+            UpdatePlanningDeliverablesTool(manager=self.project_manager),
+            # Phase tools (Phase B)
+            TransitionPhaseTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+            ),
+            ForcePhaseTransitionTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+            ),
+            # TDD Cycle tools (Issue #146)
+            TransitionCycleTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+                git_manager=self.git_manager,
+                gate_runner=self.workflow_gate_runner,
+            ),
+            ForceCycleTransitionTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+                git_manager=self.git_manager,
+                gate_runner=self.workflow_gate_runner,
+            ),
+            # Scaffold tools (unified artifact scaffolding)
+            ScaffoldArtifactTool(manager=self.artifact_manager),
             # Discovery tools
-            SearchDocumentationTool(),
-            GetWorkContextTool(),
+            SearchDocumentationTool(settings=settings),
+            GetWorkContextTool(
+                settings=settings,
+                git_manager=self.git_manager,
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+                github_manager=self.github_manager,
+            ),
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)
@@ -192,20 +340,25 @@ class MCPServer:
             self.tools.extend(
                 [
                     # GitHub Issue tools
-                    CreateIssueTool(),
-                    ListIssuesTool(),
-                    GetIssueTool(),
-                    CloseIssueTool(),
-                    UpdateIssueTool(),
+                    CreateIssueTool(
+                        manager=self.github_manager,
+                        issue_config=issue_config,
+                        milestone_config=milestone_config,
+                        workflow_config=workflow_config,
+                    ),
+                    ListIssuesTool(manager=self.github_manager),
+                    GetIssueTool(manager=self.github_manager),
+                    CloseIssueTool(manager=self.github_manager),
+                    UpdateIssueTool(manager=self.github_manager),
                     # PR and Label tools (require token at init time)
-                    CreatePRTool(),
-                    ListPRsTool(),
-                    MergePRTool(),
-                    AddLabelsTool(),
-                    ListLabelsTool(),
-                    CreateLabelTool(),
-                    DeleteLabelTool(),
-                    RemoveLabelsTool(),
+                    CreatePRTool(manager=self.github_manager, git_config=git_config),
+                    ListPRsTool(manager=self.github_manager, git_config=git_config),
+                    MergePRTool(manager=self.github_manager, git_config=git_config),
+                    AddLabelsTool(manager=self.github_manager, label_config=label_config),
+                    ListLabelsTool(manager=self.github_manager, label_config=label_config),
+                    CreateLabelTool(manager=self.github_manager, label_config=label_config),
+                    DeleteLabelTool(manager=self.github_manager, label_config=label_config),
+                    RemoveLabelsTool(manager=self.github_manager, label_config=label_config),
                     ListMilestonesTool(),
                     CreateMilestoneTool(),
                     CloseMilestoneTool(),
@@ -216,11 +369,16 @@ class MCPServer:
             # Register issue tools without token so schemas are available; execution will error.
             self.tools.extend(
                 [
-                    CreateIssueTool(),
-                    ListIssuesTool(),
-                    GetIssueTool(),
-                    CloseIssueTool(),
-                    UpdateIssueTool(),
+                    CreateIssueTool(
+                        manager=self.github_manager,
+                        issue_config=issue_config,
+                        milestone_config=milestone_config,
+                        workflow_config=workflow_config,
+                    ),
+                    ListIssuesTool(manager=self.github_manager),
+                    GetIssueTool(manager=self.github_manager),
+                    CloseIssueTool(manager=self.github_manager),
+                    UpdateIssueTool(manager=self.github_manager),
                 ]
             )
             logger.info(
@@ -325,6 +483,45 @@ class MCPServer:
 
         return response_content
 
+    @staticmethod
+    def _tool_result_from_exception(exc: Exception) -> ToolResult:
+        """Convert one enforcement exception into ToolResult.error()."""
+        if isinstance(exc, MCPError):
+            return ToolResult.error(
+                message=exc.message,
+                error_code=exc.code,
+                hints=exc.hints if exc.hints else None,
+            )
+        if isinstance(exc, ValueError):
+            return ToolResult.error(f"Invalid input: {exc}")
+        if isinstance(exc, FileNotFoundError):
+            return ToolResult.error(f"Configuration error: {exc}")
+        return ToolResult.error(f"Unexpected error: {type(exc).__name__}: {exc}")
+
+    def _run_tool_enforcement(
+        self,
+        tool: BaseTool,
+        timing: str,
+        params: BaseModel | dict[str, Any],
+        result: ToolResult | None = None,
+    ) -> ToolResult | None:
+        """Execute pre/post enforcement for one tool when configured."""
+        event = getattr(tool, "enforcement_event", None)
+        if event is None:
+            return None
+
+        context = EnforcementContext(
+            workspace_root=self._workspace_root,
+            tool_name=tool.name,
+            params=params,
+            tool_result=result,
+        )
+        try:
+            self.enforcement_runner.run(event=event, timing=timing, context=context)
+        except Exception as exc:  # noqa: BLE001
+            return self._tool_result_from_exception(exc)
+        return None
+
     def setup_handlers(self) -> None:
         """Set up the MCP protocol handlers."""
 
@@ -382,8 +579,22 @@ class MCPServer:
                         if isinstance(validated, list):
                             return validated
 
+                        pre_result = self._run_tool_enforcement(tool, "pre", validated)
+                        if pre_result is not None:
+                            return self._convert_tool_result_to_content(pre_result)
+
                         # Execute tool
                         result = await tool.execute(validated)
+
+                        if not result.is_error:
+                            post_result = self._run_tool_enforcement(
+                                tool,
+                                "post",
+                                validated,
+                                result=result,
+                            )
+                            if post_result is not None:
+                                return self._convert_tool_result_to_content(post_result)
 
                         # Convert result to MCP content
                         response_content = self._convert_tool_result_to_content(result)
@@ -437,10 +648,7 @@ class MCPServer:
 
     async def run(self) -> None:
         """Run the MCP server."""
-        server_name = settings.server.name
-
-        # Validate label configuration at startup
-        validate_label_config_on_startup()
+        server_name = self._settings.server.name
 
         logger.info("Starting MCP server: %s", server_name)
         lifecycle_logger.info("MCP server running")
@@ -473,9 +681,10 @@ class MCPServer:
         lifecycle_logger.info("MCP server shutting down")
 
 
-def main() -> None:
+def main(settings: Settings | None = None) -> None:
     """Entry point for the MCP server."""
-    server = MCPServer()
+    settings = settings or Settings.from_env()
+    server = MCPServer(settings=settings)
     asyncio.run(server.run())
 
 

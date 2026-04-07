@@ -1,19 +1,22 @@
 """
 tests/unit/tools/test_issue_body.py
 ====================================
-Cycle 3 — IssueBody Pydantic model and _render_body() helper.
+Cycle 3 - IssueBody Pydantic model and _render_body() helper.
 
 Tests:
 - IssueBody field requirements and defaults
 - Rendering via CreateIssueTool._render_body() with issue.md.jinja2
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pydantic, mcp_server.tools.issue_tools]
 """
 
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.template_config import get_template_root
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.tools.issue_tools import CreateIssueTool, IssueBody
+from mcp_server.utils.template_config import get_template_root
 
 
 @pytest.fixture(name="renderer")

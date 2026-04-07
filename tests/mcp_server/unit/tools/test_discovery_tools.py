@@ -1,4 +1,10 @@
-"""Tests for Discovery Tools (search_documentation, get_work_context)."""
+# tests/mcp_server/unit/tools/test_discovery_tools.py
+"""
+Tests for Discovery Tools (search_documentation, get_work_context).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, tempfile, unittest.mock, mcp_server.tools.discovery_tools]
+"""
 
 import tempfile
 from pathlib import Path
@@ -7,15 +13,52 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.settings import settings
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
+from mcp_server.config.schemas.workflows import WorkflowConfig
+from mcp_server.config.schemas.workphases import WorkphasesConfig
+from mcp_server.config.settings import Settings
 from mcp_server.tools.discovery_tools import (
     GetWorkContextInput,
     GetWorkContextTool,
     SearchDocumentationInput,
     SearchDocumentationTool,
 )
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+
+def make_settings(workspace_root: Path | str = ".", github_token: str | None = None) -> Settings:
+    """Create explicit settings for discovery tool tests."""
+    return Settings(
+        server={"workspace_root": str(workspace_root)},
+        github={"token": github_token},
+    )
+
+
+def make_work_context_tool(
+    workspace_root: Path | str = ".",
+    github_token: str | None = None,
+) -> GetWorkContextTool:
+    settings = make_settings(workspace_root=workspace_root, github_token=github_token)
+    return GetWorkContextTool(
+        settings=settings,
+        git_manager=MagicMock(),
+        project_manager=MagicMock(),
+        state_engine=MagicMock(),
+        github_manager=MagicMock(),
+    )
+
+
+def load_workflow_config() -> WorkflowConfig:
+    return ConfigLoader(Path(".st3/config")).load_workflow_config()
+
+
+def load_git_config() -> GitConfig:
+    return ConfigLoader(Path(".st3/config")).load_git_config()
+
+
+def load_workphases_config() -> WorkphasesConfig:
+    return ConfigLoader(Path(".st3/config")).load_workphases_config()
 
 
 class TestSearchDocumentationTool:
@@ -24,7 +67,7 @@ class TestSearchDocumentationTool:
     @pytest.fixture()
     def tool(self) -> SearchDocumentationTool:
         """Fixture to instantiate SearchDocumentationTool."""
-        return SearchDocumentationTool()
+        return SearchDocumentationTool(settings=make_settings())
 
     def test_tool_name(self, tool: SearchDocumentationTool) -> None:
         """Should have correct tool name."""
@@ -56,8 +99,8 @@ class TestSearchDocumentationTool:
             test_file = docs_dir / "test.md"
             test_file.write_text("# Test Document\nContains worker implementation info.")
 
-            with patch.object(settings.server, "workspace_root", tmpdir):
-                result = await tool.execute(SearchDocumentationInput(query="worker"))
+            tool._settings.server.workspace_root = tmpdir
+            result = await tool.execute(SearchDocumentationInput(query="worker"))
 
             assert not result.is_error
             assert "test.md" in result.content[0]["text"]
@@ -72,10 +115,10 @@ class TestSearchDocumentationTool:
             test_file = docs_dir / "architecture" / "design.md"
             test_file.write_text("# Architecture Design")
 
-            with patch.object(settings.server, "workspace_root", tmpdir):
-                result = await tool.execute(
-                    SearchDocumentationInput(query="design", scope="architecture")
-                )
+            tool._settings.server.workspace_root = tmpdir
+            result = await tool.execute(
+                SearchDocumentationInput(query="design", scope="architecture")
+            )
 
             assert not result.is_error
 
@@ -89,8 +132,8 @@ class TestSearchDocumentationTool:
             test_file = docs_dir / "test.md"
             test_file.write_text("# Test")
 
-            with patch.object(settings.server, "workspace_root", tmpdir):
-                result = await tool.execute(SearchDocumentationInput(query="nonexistent123"))
+            tool._settings.server.workspace_root = tmpdir
+            result = await tool.execute(SearchDocumentationInput(query="nonexistent123"))
 
             assert not result.is_error
             assert "No results" in result.content[0]["text"]
@@ -102,7 +145,7 @@ class TestGetWorkContextTool:
     @pytest.fixture()
     def tool(self) -> GetWorkContextTool:
         """Fixture to instantiate GetWorkContextTool."""
-        return GetWorkContextTool()
+        return make_work_context_tool()
 
     def test_tool_name(self, tool: GetWorkContextTool) -> None:
         """Should have correct tool name."""
@@ -126,11 +169,10 @@ class TestGetWorkContextTool:
             mock_git.get_current_branch.return_value = "main"
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
-
-                result = await tool.execute(GetWorkContextInput())
+            tool._settings.github.token = None
+            result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         assert "main" in result.content[0]["text"]
@@ -143,11 +185,10 @@ class TestGetWorkContextTool:
             mock_git.get_current_branch.return_value = "feature/42-implement-dto"
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
-
-                result = await tool.execute(GetWorkContextInput())
+            tool._settings.github.token = None
+            result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         assert "#42" in result.content[0]["text"]
@@ -162,11 +203,10 @@ class TestGetWorkContextTool:
             mock_git.get_current_branch.return_value = "fix/99-bug"
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
-
-                result = await tool.execute(GetWorkContextInput())
+            tool._settings.github.token = None
+            result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         assert "#99" in result.content[0]["text"]
@@ -179,21 +219,20 @@ class TestGetWorkContextTool:
         with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
-            # Commit with proper commit-scope format (P_TDD_SP_RED)
+            # Commit with proper commit-scope format (P_IMPLEMENTATION_SP_C1_RED)
             mock_git.get_recent_commits.return_value = [
-                "test(P_TDD_SP_RED): add failing test for DTO validation"
+                "test(P_IMPLEMENTATION_SP_C1_RED): add failing test for DTO validation"
             ]
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
-
-                result = await tool.execute(GetWorkContextInput())
+            tool._settings.github.token = None
+            result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         text = result.content[0]["text"].lower()
-        # Should identify tdd phase with red sub-phase from commit-scope
-        assert "tdd" in text
+        # Should identify implementation phase with red sub-phase from commit-scope
+        assert "implementation" in text
         assert "red" in text or "🔴" in result.content[0]["text"]
         assert "commit-scope" in text  # Source should be commit-scope
 
@@ -204,7 +243,7 @@ class TestGetWorkContextTool:
             ("docs(P_RESEARCH): initial research", "research", "🔍"),
             ("chore(P_PLANNING): define tasks", "planning", "📋"),
             ("docs(P_DESIGN): architecture design", "design", "🎨"),
-            ("feat(P_TDD_SP_GREEN): implement feature", "tdd", "🧪"),
+            ("feat(P_IMPLEMENTATION_SP_C1_GREEN): implement feature", "implementation", "🧪"),
             ("test(P_VALIDATION_SP_E2E): e2e tests", "validation", "✅"),
             ("docs(P_DOCUMENTATION): update readme", "documentation", "📝"),
             ("chore(P_COORDINATION): sync with team", "coordination", "🤝"),
@@ -214,30 +253,31 @@ class TestGetWorkContextTool:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "main"
             mock_git_class.return_value = mock_git
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            tool._git_manager = mock_git
+            tool._settings.github.token = None
 
-                for commit, expected_phase, expected_emoji in test_cases:
-                    mock_git.get_recent_commits.return_value = [commit]
-                    result = await tool.execute(GetWorkContextInput())
-                    text = result.content[0]["text"].lower()
-                    # Check phase name or emoji present
-                    assert expected_phase in text or expected_emoji in result.content[0]["text"]
+            for commit, expected_phase, expected_emoji in test_cases:
+                mock_git.get_recent_commits.return_value = [commit]
+                result = await tool.execute(GetWorkContextInput())
+                text = result.content[0]["text"].lower()
+                # Check phase name or emoji present
+                assert expected_phase in text or expected_emoji in result.content[0]["text"]
 
     @pytest.mark.asyncio
     async def test_get_context_with_github_integration(self, tool: GetWorkContextTool) -> None:
         """Should handle GitHub integration gracefully (error case)."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
-            mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = "feature/42-implement-dto"
-            mock_git.get_recent_commits.return_value = []
-            mock_git_class.return_value = mock_git
+        mock_git = MagicMock()
+        mock_git.get_current_branch.return_value = "feature/42-implement-dto"
+        mock_git.get_recent_commits.return_value = []
+        tool._git_manager = mock_git
+        mock_github_manager = tool._github_manager
+        assert mock_github_manager is not None
+        mock_github_manager.get_issue.side_effect = RuntimeError("GitHub unavailable")
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = "test-token"
+        tool._settings.github.token = "test-token"
 
-                # Execute - GitHub code path will fail gracefully
-                result = await tool.execute(GetWorkContextInput())
+        # Execute - GitHub code path will fail gracefully
+        result = await tool.execute(GetWorkContextInput())
 
         # Should not error even if GitHub fetch fails
         assert not result.is_error
@@ -250,6 +290,7 @@ class TestGetWorkContextTool:
             mock_git.get_current_branch.return_value = "feature/42-test"
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
             with patch("mcp_server.tools.discovery_tools.GitHubManager") as mock_gh_class:
                 mock_gh = MagicMock()
@@ -260,11 +301,10 @@ class TestGetWorkContextTool:
                 mock_issue.labels = []
                 mock_gh.get_issue.return_value = mock_issue
                 mock_gh_class.return_value = mock_gh
+                tool._github_manager = mock_gh
 
-                with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                    mock_settings.github.token = "test-token"
-
-                    result = await tool.execute(GetWorkContextInput())
+                tool._settings.github.token = "test-token"
+                result = await tool.execute(GetWorkContextInput())
 
             assert not result.is_error
             assert "Test Issue" in result.content[0]["text"]
@@ -280,28 +320,28 @@ class TestGetWorkContextTool:
             # No commits with valid scope -> will fallback to unknown with error_message
             mock_git.get_recent_commits.return_value = ["chore: random commit"]
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            tool._settings.github.token = None
 
-                # Mock ScopeDecoder to return unknown with error_message
-                with patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class:
-                    mock_decoder = MagicMock()
-                    mock_decoder.detect_phase.return_value = {
-                        "workflow_phase": "unknown",
-                        "sub_phase": None,
-                        "source": "unknown",
-                        "confidence": "unknown",
-                        "raw_scope": None,
-                        "error_message": (
-                            "Phase detection failed. "
-                            "Recovery: Run transition_phase(to_phase='<phase>') "
-                            "or commit with scope 'type(P_PHASE): message'."
-                        ),
-                    }
-                    mock_decoder_class.return_value = mock_decoder
+            # Mock ScopeDecoder to return unknown with error_message
+            with patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class:
+                mock_decoder = MagicMock()
+                mock_decoder.detect_phase.return_value = {
+                    "workflow_phase": "unknown",
+                    "sub_phase": None,
+                    "source": "unknown",
+                    "confidence": "unknown",
+                    "raw_scope": None,
+                    "error_message": (
+                        "Phase detection failed. "
+                        "Recovery: Run transition_phase(to_phase='<phase>') "
+                        "or commit with scope 'type(P_PHASE): message'."
+                    ),
+                }
+                mock_decoder_class.return_value = mock_decoder
 
-                    result = await tool.execute(GetWorkContextInput())
+                result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         text = result.content[0]["text"]
@@ -320,7 +360,7 @@ class TestGetWorkContextTddCycleInfo:
     @pytest.fixture()
     def tool(self) -> GetWorkContextTool:
         """Fixture to instantiate GetWorkContextTool."""
-        return GetWorkContextTool()
+        return make_work_context_tool()
 
     @pytest.mark.asyncio
     async def test_tdd_cycle_info_shown_during_tdd_phase(
@@ -333,10 +373,8 @@ class TestGetWorkContextTddCycleInfo:
         workspace_root = tmp_path
 
         # Create minimal project structure
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Initialize project
         project_manager.initialize_project(
@@ -365,39 +403,43 @@ class TestGetWorkContextTddCycleInfo:
         }
         project_manager.save_planning_deliverables(146, planning_deliverables)
 
-        # Set TDD phase with current_tdd_cycle = 2
+        # Set implementation phase with current cycle = 2
         state_engine.initialize_branch(
-            branch="feature/146-tdd-cycle-tracking", issue_number=146, initial_phase="tdd"
+            branch="feature/146-tdd-cycle-tracking",
+            issue_number=146,
+            initial_phase="implementation",
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_tdd_cycle"] = 2
+        state = state.with_updates(current_cycle=2)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         # Mock Git and settings
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
-            # Provide TDD-scoped commit so ScopeDecoder has context
+            # Provide implementation-scoped commit so ScopeDecoder has context
             mock_git.get_recent_commits.return_value = [
-                "test(P_TDD_SP_GREEN): add cycle info display"
+                "test(P_IMPLEMENTATION_SP_C2_GREEN): add cycle info display"
             ]
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            tool._settings.github.token = None
+            tool._project_manager = project_manager
+            tool._state_engine = state_engine
+            tool._settings.server.workspace_root = str(workspace_root)
 
-            # ScopeDecoder returns TDD phase from commit scope
+            # ScopeDecoder returns implementation phase from commit scope
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {
-                "workflow_phase": "tdd",
+                "workflow_phase": "implementation",
                 "sub_phase": "green",
                 "source": "commit-scope",
                 "confidence": "high",
-                "raw_scope": "P_TDD_SP_GREEN",
+                "raw_scope": "P_IMPLEMENTATION_SP_C2_GREEN",
             }
             mock_decoder_class.return_value = mock_decoder
 
@@ -424,10 +466,8 @@ class TestGetWorkContextTddCycleInfo:
         workspace_root = tmp_path
 
         # Create minimal project structure
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Initialize project
         project_manager.initialize_project(
@@ -459,15 +499,19 @@ class TestGetWorkContextTddCycleInfo:
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
-            mock_git.get_recent_commits.return_value = []
+            mock_git.get_recent_commits.return_value = [
+                "test(P_IMPLEMENTATION_SP_C1_RED): graceful degradation path"
+            ]
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            tool._settings.github.token = None
+            tool._project_manager = project_manager
+            tool._state_engine = state_engine
+            tool._settings.server.workspace_root = str(workspace_root)
 
             # ScopeDecoder returns DESIGN phase (NOT tdd)
             mock_decoder = MagicMock()
@@ -500,10 +544,8 @@ class TestGetWorkContextTddCycleInfo:
         workspace_root = tmp_path
 
         # Create minimal project structure WITHOUT planning deliverables
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Initialize project WITHOUT planning deliverables
         project_manager.initialize_project(
@@ -511,29 +553,35 @@ class TestGetWorkContextTddCycleInfo:
         )
         # NOTE: Deliberately NOT calling save_planning_deliverables
 
-        # Set TDD phase
+        # Set implementation phase
         state_engine.initialize_branch(
-            branch="feature/146-tdd-cycle-tracking", issue_number=146, initial_phase="tdd"
+            branch="feature/146-tdd-cycle-tracking",
+            issue_number=146,
+            initial_phase="implementation",
         )
 
         # Mock Git
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
-            mock_git.get_recent_commits.return_value = []
+            mock_git.get_recent_commits.return_value = [
+                "test(P_IMPLEMENTATION_SP_C1_RED): graceful degradation path"
+            ]
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            tool._settings.github.token = None
+            tool._project_manager = project_manager
+            tool._state_engine = state_engine
+            tool._settings.server.workspace_root = str(workspace_root)
 
-            # ScopeDecoder returns TDD phase
+            # ScopeDecoder returns implementation phase
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {
-                "workflow_phase": "tdd",
+                "workflow_phase": "implementation",
                 "sub_phase": "red",
                 "source": "state.json",
                 "confidence": "high",
@@ -546,8 +594,8 @@ class TestGetWorkContextTddCycleInfo:
         # Assert - tool should NOT crash
         assert not result.is_error, f"Tool crashed: {result.content}"
         text = result.content[0]["text"]
-        # Should show TDD phase
-        assert "tdd" in text.lower() or "🔴" in text or "🟢" in text
+        # Should show implementation phase
+        assert "implementation" in text.lower() or "🔴" in text or "🟢" in text
 
 
 class TestTddCycleInfoStatusField:
@@ -560,7 +608,7 @@ class TestTddCycleInfoStatusField:
     @pytest.fixture()
     def tool(self) -> GetWorkContextTool:
         """Fixture to instantiate GetWorkContextTool."""
-        return GetWorkContextTool()
+        return make_work_context_tool()
 
     @pytest.mark.asyncio
     async def test_tdd_cycle_info_includes_status_field(
@@ -572,10 +620,8 @@ class TestTddCycleInfoStatusField:
         The status field is always 'in_progress' when the cycle is active.
         """
         workspace_root = tmp_path
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         project_manager.initialize_project(
             issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
@@ -597,30 +643,36 @@ class TestTddCycleInfoStatusField:
         project_manager.save_planning_deliverables(146, planning_deliverables)
 
         state_engine.initialize_branch(
-            branch="feature/146-tdd-cycle-tracking", issue_number=146, initial_phase="tdd"
+            branch="feature/146-tdd-cycle-tracking",
+            issue_number=146,
+            initial_phase="implementation",
         )
-        # Set current_tdd_cycle so tdd_cycle_info is populated
+        # Set current cycle so tdd_cycle_info is populated
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_tdd_cycle"] = 1
+        state = state.with_updates(current_cycle=1)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             # Provide a non-empty commits list so ScopeDecoder is invoked (not short-circuited)
-            mock_git.get_recent_commits.return_value = ["test(P_TDD_SP_RED): add status field test"]
+            mock_git.get_recent_commits.return_value = [
+                "test(P_IMPLEMENTATION_SP_C1_RED): add status field test"
+            ]
             mock_git_class.return_value = mock_git
+            tool._git_manager = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            tool._settings.github.token = None
+            tool._project_manager = project_manager
+            tool._state_engine = state_engine
+            tool._settings.server.workspace_root = str(workspace_root)
 
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {
-                "workflow_phase": "tdd",
+                "workflow_phase": "implementation",
                 "sub_phase": "red",
                 "source": "state.json",
                 "confidence": "high",

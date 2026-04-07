@@ -45,7 +45,7 @@ def test_config_error_with_file_path() -> None:
     error = ConfigError(
         "Invalid YAML syntax",
         file_path=".st3/artifacts.yaml",
-        hints=["Check indentation", "Validate YAML online"]
+        hints=["Check indentation", "Validate YAML online"],
     )
 
     assert "Invalid YAML syntax" in str(error)
@@ -66,10 +66,7 @@ def test_config_error_without_file_path() -> None:
 
 def test_validation_error() -> None:
     """ValidationError has ERR_VALIDATION code."""
-    error = ValidationError(
-        "Missing required field: title",
-        hints=["Add title to context"]
-    )
+    error = ValidationError("Missing required field: title", hints=["Add title to context"])
 
     assert error.code == "ERR_VALIDATION"
     assert "Missing required field: title" in str(error)
@@ -79,8 +76,7 @@ def test_validation_error() -> None:
 def test_preflight_error() -> None:
     """PreflightError has blockers."""
     error = PreflightError(
-        "Pre-flight checks failed",
-        blockers=["Workspace not clean", "Tests failing"]
+        "Pre-flight checks failed", blockers=["Workspace not clean", "Tests failing"]
     )
 
     assert error.code == "ERR_PREFLIGHT"
@@ -91,8 +87,7 @@ def test_preflight_error() -> None:
 def test_execution_error() -> None:
     """ExecutionError has recovery hints."""
     error = ExecutionError(
-        "Tool execution failed",
-        recovery=["Retry with valid input", "Check permissions"]
+        "Tool execution failed", recovery=["Retry with valid input", "Check permissions"]
     )
 
     assert error.code == "ERR_EXECUTION"
@@ -102,10 +97,7 @@ def test_execution_error() -> None:
 
 def test_system_error() -> None:
     """MCPSystemError has fallback."""
-    error = MCPSystemError(
-        "Database connection failed",
-        fallback="Use in-memory cache"
-    )
+    error = MCPSystemError("Database connection failed", fallback="Use in-memory cache")
 
     assert error.code == "ERR_SYSTEM"
     assert error.fallback == "Use in-memory cache"

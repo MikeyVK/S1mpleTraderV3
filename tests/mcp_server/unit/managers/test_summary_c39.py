@@ -7,14 +7,18 @@ F-19: Summary line lacks any scope-resolution context (scope name, file count).
       planning: include scope for all inputs (auto, branch, project, files).
 duration_ms: Summary line missing; present in compact JSON root (should be reversed).
 F-18: Gate 4b (Pyright) messages verbatim — contain \\n and \\u00a0 from pyright JSON.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.qa_manager, tests.mcp_server.test_support
 """
 
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import JsonViolationsParsing
+from mcp_server.config.schemas.quality_config import JsonViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -74,7 +78,7 @@ class TestAllSkippedSummarySignal:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager(workspace_root=None)
+        return make_qa_manager()
 
     def test_all_skipped_emits_green_checkmark(self, manager: QAManager) -> None:
         """When every gate is skipped, summary must start with ✅."""
@@ -105,7 +109,7 @@ class TestScopeSummaryContext:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager(workspace_root=None)
+        return make_qa_manager()
 
     def test_summary_with_auto_scope_contains_scope_name(self, manager: QAManager) -> None:
         """scope='auto' → 'auto' appears in summary line."""
@@ -137,7 +141,7 @@ class TestDurationMs:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager(workspace_root=None)
+        return make_qa_manager()
 
     def test_summary_line_contains_duration_ms(self, manager: QAManager) -> None:
         """Summary line must include duration_ms (e.g. '— 1234ms')."""
@@ -191,7 +195,7 @@ class TestPyrightMessageSanitation:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager(workspace_root=None)
+        return make_qa_manager()
 
     def test_newline_not_in_sanitized_message(self, manager: QAManager) -> None:
         """After parsing, ViolationDTO.message must not contain \\n."""

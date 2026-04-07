@@ -1,4 +1,5 @@
 """Generic Scaffolder Component."""
+
 from typing import Any
 
 from mcp_server.scaffolding.base import BaseScaffolder
@@ -30,15 +31,11 @@ class GenericScaffolder(BaseScaffolder):
             if "not found" in str(e).lower():
                 # Determine fallback based on template extension
                 if template_name.endswith(".py.jinja2"):
-                    return str(self.renderer.render(
-                        "components/generic.py.jinja2",
-                        name=name,
-                        **kwargs
-                    ))
+                    return str(
+                        self.renderer.render("components/generic.py.jinja2", name=name, **kwargs)
+                    )
                 if template_name.endswith(".md.jinja2"):
-                    return str(self.renderer.render(
-                        "documents/generic.md.jinja2",
-                        name=name,
-                        **kwargs
-                    ))
+                    return str(
+                        self.renderer.render("documents/generic.md.jinja2", name=name, **kwargs)
+                    )
             raise

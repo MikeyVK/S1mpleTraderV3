@@ -4,6 +4,9 @@ Unit tests for EntryPlan DTO.
 Tests creation, validation, and edge cases for lean entry planning output.
 EntryPlan represents WHAT/WHERE for entry (order specification only).
 Timing/urgency/slippage belong in ExecutionPlan (HOW/WHEN).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, decimal, backend.dtos.strategy.entry_plan]
 """
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives for optional fields

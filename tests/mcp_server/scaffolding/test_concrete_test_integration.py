@@ -23,13 +23,13 @@ def jinja_env():
 class TestConcreteTestIntegration:
     """Test suite for concrete/test_integration.py.jinja2 template."""
 
-    def test_template_exists(self, jinja_env):
+    def test_template_exists(self, jinja_env) -> None:
         """Test that template file exists and can be loaded."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         assert template is not None
         assert template.filename is not None
 
-    def test_template_extends_tier2_base(self):
+    def test_template_extends_tier2_base(self) -> None:
         """Test that template extends tier2_base_python."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -44,7 +44,7 @@ class TestConcreteTestIntegration:
         assert '{% extends "tier2_base_python.jinja2" %}' in content
         assert "tier3_pattern" not in content.split("extends")[0]  # Not in extends statement
 
-    def test_template_imports_tier3_patterns(self):
+    def test_template_imports_tier3_patterns(self) -> None:
         """Test that template imports tier3 pattern templates."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -59,7 +59,7 @@ class TestConcreteTestIntegration:
         assert '{% import "tier3_pattern_python_' in content
         assert "async" in content or "pytest" in content
 
-    def test_template_has_metadata(self):
+    def test_template_has_metadata(self) -> None:
         """Test that template contains TEMPLATE_METADATA."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -73,7 +73,7 @@ class TestConcreteTestIntegration:
         assert "TEMPLATE_METADATA" in content
         assert "enforcement: GUIDELINE" in content
 
-    def test_template_renders_with_minimal_context(self, jinja_env):
+    def test_template_renders_with_minimal_context(self, jinja_env) -> None:
         """Test template renders with minimal required context."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {
@@ -84,7 +84,7 @@ class TestConcreteTestIntegration:
         assert result is not None
         assert len(result) > 100
 
-    def test_rendered_contains_test_class(self, jinja_env):
+    def test_rendered_contains_test_class(self, jinja_env) -> None:
         """Test that rendered output contains test class."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {
@@ -94,7 +94,7 @@ class TestConcreteTestIntegration:
         result = template.render(**context)
         assert "class TestScaffoldingIntegration:" in result
 
-    def test_rendered_contains_module_docstring(self, jinja_env):
+    def test_rendered_contains_module_docstring(self, jinja_env) -> None:
         """Test that rendered output contains module-level docstring."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {
@@ -106,7 +106,7 @@ class TestConcreteTestIntegration:
         assert "@layer: Tests (Integration)" in result
         assert "@dependencies:" in result
 
-    def test_rendered_contains_pytest_imports(self, jinja_env):
+    def test_rendered_contains_pytest_imports(self, jinja_env) -> None:
         """Test that rendered output contains pytest imports."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {
@@ -116,7 +116,7 @@ class TestConcreteTestIntegration:
         result = template.render(**context)
         assert "import pytest" in result
 
-    def test_rendered_with_workspace_fixture(self, jinja_env):
+    def test_rendered_with_workspace_fixture(self, jinja_env) -> None:
         """Test rendering with workspace fixture enabled."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {
@@ -128,7 +128,7 @@ class TestConcreteTestIntegration:
         assert "@pytest.fixture" in result
         assert "temp_workspace" in result or "workspace" in result
 
-    def test_rendered_with_async_test(self, jinja_env):
+    def test_rendered_with_async_test(self, jinja_env) -> None:
         """Test rendering with async test methods."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {
@@ -142,7 +142,7 @@ class TestConcreteTestIntegration:
         assert "async def test_async_integration" in result
         assert "@pytest.mark.asyncio" in result
 
-    def test_rendered_contains_scenario_structure(self, jinja_env):
+    def test_rendered_contains_scenario_structure(self, jinja_env) -> None:
         """Test that rendered output contains scenario-based structure."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
         context = {

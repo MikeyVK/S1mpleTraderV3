@@ -17,10 +17,8 @@ Single source of truth for where artifacts can be scaffolded.
 from dataclasses import dataclass
 from pathlib import Path
 
-from mcp_server.config.project_structure import (
-    DirectoryPolicy,
-    ProjectStructureConfig,
-)
+from mcp_server.config.schemas.project_structure_config import DirectoryPolicy
+from mcp_server.schemas import ProjectStructureConfig
 
 
 @dataclass
@@ -63,9 +61,9 @@ class ResolvedDirectoryPolicy:
 
         # Calculate relative path
         if file_path_normalized.startswith(policy_path_normalized + "/"):
-            relative_path = file_path_normalized[len(policy_path_normalized) + 1:]
+            relative_path = file_path_normalized[len(policy_path_normalized) + 1 :]
         elif file_path_normalized.startswith(policy_path_normalized):
-            relative_path = file_path_normalized[len(policy_path_normalized):]
+            relative_path = file_path_normalized[len(policy_path_normalized) :]
         else:
             relative_path = file_path_normalized
 
@@ -95,13 +93,9 @@ class DirectoryPolicyResolver:
     - Config validation (Pydantic does this)
     """
 
-    def __init__(self, config: ProjectStructureConfig | None = None) -> None:
-        """Initialize resolver.
-
-        Args:
-            config: ProjectStructureConfig instance (loads default if None)
-        """
-        self._config = config or ProjectStructureConfig.from_file()
+    def __init__(self, config: ProjectStructureConfig) -> None:
+        """Initialize resolver with an injected project structure config."""
+        self._config = config
         self._cache: dict[str, ResolvedDirectoryPolicy] = {}  # Q3: No caching for MVP
 
     def resolve(self, path: str) -> ResolvedDirectoryPolicy:
@@ -153,9 +147,7 @@ class DirectoryPolicyResolver:
             require_scaffold_for=[],  # Empty = no requirements
         )
 
-    def _resolve_with_inheritance(
-        self, policy: DirectoryPolicy
-    ) -> ResolvedDirectoryPolicy:
+    def _resolve_with_inheritance(self, policy: DirectoryPolicy) -> ResolvedDirectoryPolicy:
         """Apply inheritance rules to policy.
 
         Inheritance Rules (Q4 decision - implicit):

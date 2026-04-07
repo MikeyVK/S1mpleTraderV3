@@ -1,4 +1,5 @@
 """GitHub milestone tools."""
+
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -11,10 +12,9 @@ from mcp_server.tools.tool_result import ToolResult
 
 class ListMilestonesInput(BaseModel):
     """Input for ListMilestonesTool."""
+
     state: str = Field(
-        default="open",
-        description="Filter milestones by state",
-        pattern="^(open|closed|all)$"
+        default="open", description="Filter milestones by state", pattern="^(open|closed|all)$"
     )
 
 
@@ -45,8 +45,7 @@ class ListMilestonesTool(BaseTool):
         for milestone in milestones:
             due = f" | Due: {milestone.due_on.isoformat()}" if milestone.due_on else ""
             lines.append(
-                f"- #{milestone.number}: {milestone.title}"
-                f" | State: {milestone.state}{due}"
+                f"- #{milestone.number}: {milestone.title} | State: {milestone.state}{due}"
             )
 
         return ToolResult.text("\n".join(lines))
@@ -54,6 +53,7 @@ class ListMilestonesTool(BaseTool):
 
 class CreateMilestoneInput(BaseModel):
     """Input for CreateMilestoneTool."""
+
     title: str = Field(..., description="Milestone title")
     description: str | None = Field(default=None, description="Optional milestone description")
     due_on: str | None = Field(default=None, description="Optional due date (ISO 8601 string)")
@@ -88,6 +88,7 @@ class CreateMilestoneTool(BaseTool):
 
 class CloseMilestoneInput(BaseModel):
     """Input for CloseMilestoneTool."""
+
     milestone_number: int = Field(..., description="Milestone number to close")
 
 
@@ -111,6 +112,4 @@ class CloseMilestoneTool(BaseTool):
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
-        return ToolResult.text(
-            f"Closed milestone #{milestone.number}: {milestone.title}"
-        )
+        return ToolResult.text(f"Closed milestone #{milestone.number}: {milestone.title}")

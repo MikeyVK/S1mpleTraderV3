@@ -4,6 +4,9 @@ GAP-03: Forced transitions bypass all hooks and deliverable checks with no warni
 
 C3 Deliverables:
   D3.1: force_transition logs warning listing skipped_gates when gates exist.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
 import json
@@ -14,6 +17,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -22,10 +26,10 @@ from mcp_server.managers.project_manager import ProjectManager
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
-    """Workspace root with workphases.yaml containing exit_requires + entry_expects."""
-    st3 = tmp_path / ".st3"
-    st3.mkdir()
-    (st3 / "workphases.yaml").write_text(
+    """Workspace root with .st3/config/workphases.yaml containing exit_requires + entry_expects."""
+    config_dir = tmp_path / ".st3" / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "workphases.yaml").write_text(
         """
 phases:
   planning:
@@ -33,8 +37,8 @@ phases:
     exit_requires:
       - key: "planning_deliverables"
         description: "TDD cycle breakdown"
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     entry_expects:
       - key: "planning_deliverables"
         description: "Expected from planning"
@@ -49,10 +53,10 @@ phases:
 
 @pytest.fixture
 def workspace_root_no_gates(tmp_path: Path) -> Path:
-    """Workspace root with workphases.yaml where phases have no gates."""
-    st3 = tmp_path / ".st3"
-    st3.mkdir()
-    (st3 / "workphases.yaml").write_text(
+    """Workspace root with .st3/config/workphases.yaml where phases have no gates."""
+    config_dir = tmp_path / ".st3" / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "workphases.yaml").write_text(
         """
 phases:
   research:
@@ -68,29 +72,27 @@ phases:
 
 @pytest.fixture
 def project_manager_with_gates(workspace_root: Path) -> ProjectManager:
-    return ProjectManager(workspace_root=workspace_root)
+    return make_project_manager(workspace_root)
 
 
 @pytest.fixture
 def engine_with_gates(
     workspace_root: Path, project_manager_with_gates: ProjectManager
 ) -> PhaseStateEngine:
-    return PhaseStateEngine(
-        workspace_root=workspace_root, project_manager=project_manager_with_gates
-    )
+    return make_phase_state_engine(workspace_root, project_manager=project_manager_with_gates)
 
 
 @pytest.fixture
 def project_manager_no_gates(workspace_root_no_gates: Path) -> ProjectManager:
-    return ProjectManager(workspace_root=workspace_root_no_gates)
+    return make_project_manager(workspace_root_no_gates)
 
 
 @pytest.fixture
 def engine_no_gates(
     workspace_root_no_gates: Path, project_manager_no_gates: ProjectManager
 ) -> PhaseStateEngine:
-    return PhaseStateEngine(
-        workspace_root=workspace_root_no_gates, project_manager=project_manager_no_gates
+    return make_phase_state_engine(
+        workspace_root_no_gates, project_manager=project_manager_no_gates
     )
 
 
@@ -142,7 +144,7 @@ class TestForceTransitionSkippedGateWarning:
     ) -> None:
         """force_transition logs warning when to_phase has entry_expects (GAP-03).
 
-        Forcing research → tdd bypasses the tdd entry expects check.
+        Forcing research → implementation bypasses the implementation entry expects check.
         Warning must mention skipped_gates.
         """
         project_manager_with_gates.initialize_project(
@@ -159,7 +161,7 @@ class TestForceTransitionSkippedGateWarning:
         with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine_with_gates.force_transition(
                 branch="feature/229-c3b",
-                to_phase="tdd",
+                to_phase="implementation",
                 skip_reason="test: skip entry expects",
                 human_approval="tester approved",
             )
@@ -200,33 +202,33 @@ class TestForceTransitionSkippedGateWarning:
 
 
 # ---------------------------------------------------------------------------
-# C3 bugfix: warning must be silent when deliverables ARE present in projects.json
+# C3 bugfix: warning must be silent when deliverables ARE present in deliverables.json
 # ---------------------------------------------------------------------------
 
 
 class TestForceTransitionNoWarningWhenDeliverablesPresent:
-    """Warning must NOT fire when the gated deliverable key exists in projects.json (GAP-03 bugfix).
+    """Warning must NOT fire when the gated deliverable key exists in deliverables.json.
 
     The original implementation warned based on config presence alone.
-    The correct behaviour: only warn when the key is actually absent from projects.json.
+    The correct behaviour: only warn when the key is actually absent from deliverables.json.
     """
 
     def _setup(
         self, workspace_root: Path, initial_phase: str
     ) -> tuple[ProjectManager, PhaseStateEngine, str]:
         """Initialize project + branch and inject planning_deliverables directly."""
-        pm = ProjectManager(workspace_root=workspace_root)
+        pm = make_project_manager(workspace_root)
         pm.initialize_project(
             issue_number=229,
             issue_title="Phase deliverables enforcement",
             workflow_name="feature",
         )
         # Inject the key directly (bypasses schema validation — tests engine check logic only)
-        projects = json.loads(pm.projects_file.read_text(encoding="utf-8"))
+        projects = json.loads(pm.deliverables_file.read_text(encoding="utf-8"))
         projects["229"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
-        pm.projects_file.write_text(json.dumps(projects, indent=2))
+        pm.deliverables_file.write_text(json.dumps(projects, indent=2))
 
-        engine = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
+        engine = make_phase_state_engine(workspace_root, project_manager=pm)
         branch = "feature/229-bugfix"
         engine.initialize_branch(branch=branch, issue_number=229, initial_phase=initial_phase)
         return pm, engine, branch
@@ -236,7 +238,7 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         workspace_root: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """No skipped_gates warning when exit_requires key exists in projects.json.
+        """No skipped_gates warning when exit_requires key exists in deliverables.json.
 
         Scenario: planning → design forced, planning_deliverables IS saved.
         Expected: transition succeeds silently (no ⚠️).
@@ -258,9 +260,9 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         workspace_root: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """No skipped_gates warning when entry_expects key exists in projects.json.
+        """No skipped_gates warning when entry_expects key exists in deliverables.json.
 
-        Scenario: planning → tdd forced, planning_deliverables IS saved.
+        Scenario: planning → implementation forced, planning_deliverables IS saved.
         Expected: transition succeeds silently (no ⚠️).
         """
         _, engine, branch = self._setup(workspace_root, initial_phase="planning")
@@ -268,7 +270,7 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine.force_transition(
                 branch=branch,
-                to_phase="tdd",
+                to_phase="implementation",
                 skip_reason="test: deliverables present, entry gate should be silent",
                 human_approval="tester approved",
             )

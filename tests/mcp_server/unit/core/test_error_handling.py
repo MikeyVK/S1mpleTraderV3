@@ -3,6 +3,9 @@ Tests for error_handling decorator.
 
 Tests the @tool_error_handler decorator that prevents VS Code from
 disabling MCP tools when exceptions occur.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.core.error_handling, mcp_server.tools.tool_result
 """
 
 import pytest

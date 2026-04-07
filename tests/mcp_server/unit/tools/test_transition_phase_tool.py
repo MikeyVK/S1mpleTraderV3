@@ -4,6 +4,9 @@ Issue #50 - Step 5: Update TransitionPhaseTool to New API
 
 Tests MCP tool that exposes PhaseStateEngine.transition() to users.
 Enforces strict sequential phase transitions per workflow definition.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.phase_tools]
 """
 
 from pathlib import Path
@@ -16,6 +19,7 @@ from mcp_server.tools.phase_tools import (
     TransitionPhaseInput,
     TransitionPhaseTool,
 )
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestTransitionPhaseTool:
@@ -29,19 +33,25 @@ class TestTransitionPhaseTool:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def phase_engine(
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     @pytest.fixture
     def tool(self, workspace_root: Path) -> TransitionPhaseTool:
         """Create TransitionPhaseTool instance."""
-        return TransitionPhaseTool(workspace_root=workspace_root)
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
+        return TransitionPhaseTool(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_engine=state_engine,
+        )
 
     @pytest.fixture
     def initialized_branch(
@@ -156,7 +166,7 @@ class TestTransitionPhaseTool:
 
         # Verify human approval recorded in state
         state = phase_engine.get_state(initialized_branch)
-        transition = state["transitions"][0]
+        transition = state.transitions[0]
         assert transition["human_approval"] == approval_message
 
     @pytest.mark.asyncio

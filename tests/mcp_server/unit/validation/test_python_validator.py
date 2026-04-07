@@ -30,8 +30,7 @@ class TestPythonValidator:
     def validator(self) -> Generator[PythonValidator, None, None]:
         """Fixture for PythonValidator with mocked QAManager."""
         with patch("mcp_server.validation.python_validator.QAManager") as mock_qa_cls:
-            val = PythonValidator()
-            val.qa_manager = mock_qa_cls.return_value
+            val = PythonValidator(qa_manager=mock_qa_cls.return_value)
             yield val
 
     @pytest.mark.asyncio

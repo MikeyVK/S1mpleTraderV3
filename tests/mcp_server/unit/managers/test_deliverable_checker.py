@@ -1,7 +1,12 @@
-"""Tests for DeliverableChecker and WorkphasesConfig schema extension.
+# tests/mcp_server/unit/managers/test_deliverable_checker.py
+"""
+Tests for DeliverableChecker and WorkphasesConfig schema extension.
 
 Issue #229 Cycle 1: workphases.yaml exit_requires/entry_expects schema +
 structural deliverable checker (file_exists, contains_text, absent_text, key_path).
+
+@layer: Tests (Unit)
+@dependencies: [json, pathlib, pytest, mcp_server.managers.deliverable_checker]
 """
 
 import json
@@ -9,11 +14,17 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.workphases_config import WorkphasesConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.managers.deliverable_checker import (
     DeliverableChecker,
     DeliverableCheckError,
 )
+
+
+def _load_workphases_config(config_path: Path) -> WorkphasesConfig:
+    return ConfigLoader(config_path.parent).load_workphases_config(config_path=config_path)
+
 
 # ---------------------------------------------------------------------------
 # WorkphasesConfig schema tests
@@ -40,7 +51,7 @@ phases:
 """
         )
 
-        config = WorkphasesConfig(workphases_path)
+        config = _load_workphases_config(workphases_path)
         exit_requires = config.get_exit_requires("planning")
 
         assert len(exit_requires) == 1
@@ -63,7 +74,7 @@ phases:
 """
         )
 
-        config = WorkphasesConfig(workphases_path)
+        config = _load_workphases_config(workphases_path)
         entry_expects = config.get_entry_expects("tdd")
 
         assert len(entry_expects) == 1
@@ -89,7 +100,7 @@ phases:
 """
         )
 
-        config = WorkphasesConfig(workphases_path)
+        config = _load_workphases_config(workphases_path)
 
         # research has no exit_requires or entry_expects — must return []
         assert config.get_exit_requires("research") == []
@@ -179,7 +190,7 @@ class TestDeliverableChecker:
 
         Issue #229 C1.
         """
-        json_file = tmp_path / ".st3" / "projects.json"
+        json_file = tmp_path / ".st3" / "deliverables.json"
         json_file.parent.mkdir(parents=True)
         json_file.write_text(
             json.dumps({"229": {"planning_deliverables": {"tdd_cycles": {"total": 2}}}})
@@ -190,7 +201,7 @@ class TestDeliverableChecker:
             "D1.3",
             {
                 "type": "key_path",
-                "file": ".st3/projects.json",
+                "file": ".st3/deliverables.json",
                 "path": "229.planning_deliverables",
             },
         )
@@ -202,7 +213,7 @@ class TestDeliverableChecker:
 
         Issue #229 C1.
         """
-        json_file = tmp_path / ".st3" / "projects.json"
+        json_file = tmp_path / ".st3" / "deliverables.json"
         json_file.parent.mkdir(parents=True)
         json_file.write_text(json.dumps({"229": {}}))
 
@@ -211,7 +222,7 @@ class TestDeliverableChecker:
                 "D1.4",
                 {
                     "type": "key_path",
-                    "file": ".st3/projects.json",
+                    "file": ".st3/deliverables.json",
                     "path": "229.planning_deliverables",
                 },
             )

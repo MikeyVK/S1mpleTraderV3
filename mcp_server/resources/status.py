@@ -1,4 +1,5 @@
 """Status resource."""
+
 import json
 import time
 
@@ -33,7 +34,7 @@ class StatusResource(BaseResource):
                 "current_phase": phase,
                 "active_branch": branch,
                 "is_clean": git_status["is_clean"],
-                "last_updated": time.strftime("%Y-%m-%d %H:%M:%S")
+                "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
             return json.dumps(data, indent=2)
 

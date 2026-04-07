@@ -8,20 +8,24 @@ Tests cover:
 5. Path resolution (symlinks, relative paths)
 
 Coverage goal: 100% of get_template_root() function.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.utils.template_config
 """
 
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.template_config import get_template_root
+from mcp_server.utils.template_config import get_template_root
 
 
 class TestGetTemplateRoot:
     """Comprehensive tests for get_template_root() configuration function."""
 
-    def test_returns_default_template_root_when_no_env_var(self):
+    def test_returns_default_template_root_when_no_env_var(self) -> None:
         """Without TEMPLATE_ROOT env var, returns default mcp_server/scaffolding/templates."""
         # Arrange: Ensure TEMPLATE_ROOT is not set
         with patch.dict(os.environ, {}, clear=False):
@@ -38,7 +42,7 @@ class TestGetTemplateRoot:
             assert "scaffolding" in str(result), f"Expected scaffolding in path, got: {result}"
             assert result.exists(), f"Default template root must exist: {result}"
 
-    def test_returns_absolute_path(self):
+    def test_returns_absolute_path(self) -> None:
         """get_template_root() always returns absolute path (not relative)."""
         # Arrange
         with patch.dict(os.environ, {}, clear=False):
@@ -55,7 +59,7 @@ class TestGetTemplateRoot:
             # Verify no relative path markers
             assert ".." not in str(result), "Absolute path should not contain '..'"
 
-    def test_uses_template_root_env_var_when_set(self, tmp_path):
+    def test_uses_template_root_env_var_when_set(self, tmp_path: Path) -> None:
         """When TEMPLATE_ROOT env var is set, uses that path instead of default."""
         # Arrange: Create temp template directory
         custom_template_root = tmp_path / "custom_templates"
@@ -72,7 +76,9 @@ class TestGetTemplateRoot:
             assert result.is_absolute(), "TEMPLATE_ROOT path must be absolute"
             assert result.exists(), f"TEMPLATE_ROOT path must exist: {result}"
 
-    def test_resolves_relative_env_var_to_absolute(self, tmp_path, monkeypatch):
+    def test_resolves_relative_env_var_to_absolute(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """TEMPLATE_ROOT env var with relative path is resolved to absolute."""
         # Arrange: Create nested temp structure within current directory
         # Change to tmp_path to avoid cross-drive issues on Windows
@@ -92,32 +98,37 @@ class TestGetTemplateRoot:
             assert result.is_absolute(), "Relative env var path must be resolved to absolute"
             assert result == custom_root.resolve()
 
-    def test_raises_filenotfound_when_env_var_path_missing(self):
+    def test_raises_filenotfound_when_env_var_path_missing(self) -> None:
         """Fail-fast: Raises FileNotFoundError if TEMPLATE_ROOT path doesn't exist."""
         # Arrange: Non-existent path
         nonexistent_path = "/this/path/does/not/exist/anywhere"
 
         # Act & Assert
-        with patch.dict(os.environ, {"TEMPLATE_ROOT": nonexistent_path}):
-            with pytest.raises(FileNotFoundError, match="TEMPLATE_ROOT env var does not exist"):
-                get_template_root()
+        with (
+            patch.dict(os.environ, {"TEMPLATE_ROOT": nonexistent_path}),
+            pytest.raises(FileNotFoundError, match="TEMPLATE_ROOT env var does not exist"),
+        ):
+            get_template_root()
 
-    def test_raises_filenotfound_when_default_path_missing(self, tmp_path, monkeypatch):
-        """Fail-fast: Raises FileNotFoundError if default path doesn't exist."""
-        # Arrange: Change working directory to empty temp dir
-        # This simulates default path not existing
+    def test_uses_package_template_root_when_workspace_default_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Without env var or workspace templates, falls back to bundled package templates."""
         monkeypatch.chdir(tmp_path)
 
-        # Ensure TEMPLATE_ROOT is not set
         with patch.dict(os.environ, {}, clear=False):
             if "TEMPLATE_ROOT" in os.environ:
                 del os.environ["TEMPLATE_ROOT"]
 
-            # Act & Assert
-            with pytest.raises(FileNotFoundError, match="Default template root does not exist"):
-                get_template_root()
+            result = get_template_root()
 
-    def test_resolves_symlinks_in_env_var_path(self, tmp_path):
+        assert result.is_absolute(), "Bundled template root must be absolute"
+        assert result.name == "templates"
+        assert result.exists(), f"Bundled template root must exist: {result}"
+        assert "mcp_server" in str(result)
+        assert "scaffolding" in str(result)
+
+    def test_resolves_symlinks_in_env_var_path(self, tmp_path: Path) -> None:
         """TEMPLATE_ROOT env var with symlink is resolved to real path."""
         # Arrange: Create real directory and symlink
         real_dir = tmp_path / "real_templates"
@@ -140,7 +151,7 @@ class TestGetTemplateRoot:
             assert result.is_absolute()
             # Note: resolve() behavior depends on system config
 
-    def test_env_var_takes_priority_over_default(self, tmp_path):
+    def test_env_var_takes_priority_over_default(self, tmp_path: Path) -> None:
         """TEMPLATE_ROOT env var has priority over default path."""
         # Arrange: Create custom template root
         custom_root = tmp_path / "priority_templates"
@@ -156,7 +167,7 @@ class TestGetTemplateRoot:
             # Verify it's NOT the default path
             assert "mcp_server" not in str(result) or "priority_templates" in str(result)
 
-    def test_returns_same_path_on_multiple_calls(self):
+    def test_returns_same_path_on_multiple_calls(self) -> None:
         """get_template_root() is deterministic (same input = same output)."""
         # Arrange
         with patch.dict(os.environ, {}, clear=False):
@@ -170,7 +181,7 @@ class TestGetTemplateRoot:
             # Assert
             assert result1 == result2, "get_template_root() should be deterministic"
 
-    def test_error_message_includes_path_when_missing(self):
+    def test_error_message_includes_path_when_missing(self) -> None:
         """FileNotFoundError includes the problematic path in error message."""
         # Arrange: Use Windows-compatible path (no leading slash on Windows)
         if os.name == "nt":

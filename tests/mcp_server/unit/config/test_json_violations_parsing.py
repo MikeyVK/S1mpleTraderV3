@@ -1,7 +1,10 @@
 """Tests for JsonViolationsParsing Pydantic model (Issue #251 C2).
 
 Validates model acceptance of field_map, violations_path, line_offset,
-and fixable_when — covering both ruff and pyright schema variants.
+and fixable_when - covering both ruff and pyright schema variants.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, mcp_server.config.schemas.quality_config
 """
 
 from __future__ import annotations
@@ -9,7 +12,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.quality_config import JsonViolationsParsing
+from mcp_server.config.schemas.quality_config import JsonViolationsParsing
 
 
 class TestJsonViolationsParsingRequired:

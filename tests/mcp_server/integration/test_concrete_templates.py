@@ -7,20 +7,31 @@ Documents requirement that 5 concrete templates must exist and scaffold successf
 - service_command.py.jinja2
 - generic.py.jinja2
 - design.md.jinja2
+
+@layer: Tests (Integration)
+@dependencies: pytest, pathlib, mcp_server.config.loader, mcp_server.config.schemas, mcp_server.scaffolders.template_scaffolder, mcp_server.scaffolding.renderer
 """
+
+from pathlib import Path
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.config.template_config import get_template_root
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
+from mcp_server.utils.template_config import get_template_root
+
+
+def _load_artifact_registry(config_path: Path | None = None) -> ArtifactRegistryConfig:
+    loader = ConfigLoader(Path(".st3/config") if config_path is None else config_path.parent)
+    return loader.load_artifact_registry_config(config_path=config_path)
 
 
 class TestConcreteTemplateExistence:
     """Test that required concrete templates exist (Task 1.6 RED)."""
 
-    def test_dto_template_exists(self):
+    def test_dto_template_exists(self) -> None:
         """dto.py.jinja2 must exist in templates/concrete/."""
         template_root = get_template_root()
         dto_template = template_root / "concrete" / "dto.py.jinja2"
@@ -29,7 +40,7 @@ class TestConcreteTemplateExistence:
         # Currently FAILS - file does not exist
         assert dto_template.exists(), f"Missing: {dto_template}"
 
-    def test_worker_template_exists(self):
+    def test_worker_template_exists(self) -> None:
         """worker.py.jinja2 must exist in templates/concrete/."""
         template_root = get_template_root()
         worker_template = template_root / "concrete" / "worker.py.jinja2"
@@ -37,7 +48,7 @@ class TestConcreteTemplateExistence:
         # REQUIREMENT: Concrete template for worker artifact type
         assert worker_template.exists(), f"Missing: {worker_template}"
 
-    def test_service_command_template_exists(self):
+    def test_service_command_template_exists(self) -> None:
         """service_command.py.jinja2 must exist in templates/concrete/."""
         template_root = get_template_root()
         service_template = template_root / "concrete" / "service_command.py.jinja2"
@@ -45,7 +56,7 @@ class TestConcreteTemplateExistence:
         # REQUIREMENT: Concrete template for service_command artifact type
         assert service_template.exists(), f"Missing: {service_template}"
 
-    def test_generic_template_exists(self):
+    def test_generic_template_exists(self) -> None:
         """generic.py.jinja2 must exist in templates/concrete/."""
         template_root = get_template_root()
         generic_template = template_root / "concrete" / "generic.py.jinja2"
@@ -53,7 +64,7 @@ class TestConcreteTemplateExistence:
         # REQUIREMENT: Concrete template for generic artifact type (catch-all)
         assert generic_template.exists(), f"Missing: {generic_template}"
 
-    def test_design_template_exists(self):
+    def test_design_template_exists(self) -> None:
         """design.md.jinja2 must exist in templates/concrete/."""
         template_root = get_template_root()
         design_template = template_root / "concrete" / "design.md.jinja2"
@@ -70,13 +81,13 @@ class TestScaffoldedOutputCodingStandards:
     - Import section headers: "# Standard library", "# Third-party", "# Project modules"
     """
 
-    def test_scaffolded_dto_has_module_docstring_with_annotations(self):
+    def test_scaffolded_dto_has_module_docstring_with_annotations(self) -> None:
         """Scaffolded DTO must have module docstring with @layer/@dependencies/@responsibilities.
 
         RED: This test WILL FAIL until tier1_base_code adds module_docstring block.
         """
         # Setup scaffolder
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -146,13 +157,13 @@ class TestScaffoldedOutputCodingStandards:
             "Module docstring must contain @responsibilities annotation"
         )
 
-    def test_scaffolded_worker_has_import_section_headers(self):
+    def test_scaffolded_worker_has_import_section_headers(self) -> None:
         """Scaffolded worker must have import section headers.
 
         RED: This test WILL FAIL until tier1_base_code adds section headers.
         """
         # Setup scaffolder
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -184,13 +195,13 @@ class TestScaffoldedOutputCodingStandards:
             "Import section must have '# Project modules' header"
         )
 
-    def test_scaffolded_generic_has_complete_coding_standards(self):
+    def test_scaffolded_generic_has_complete_coding_standards(self) -> None:
         """Scaffolded generic class must have both module docstring AND import headers.
 
         RED: This test WILL FAIL until both features are implemented.
         """
         # Setup scaffolder
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -234,12 +245,12 @@ class TestWorkerIWorkerLifecyclePattern:
     This ensures V3 two-phase initialization pattern (not V2 constructor injection).
     """
 
-    def test_scaffolded_worker_has_iworker_lifecycle_imports(self):
+    def test_scaffolded_worker_has_iworker_lifecycle_imports(self) -> None:
         """Worker must import IWorker, IWorkerLifecycle, BuildSpec, and related types.
 
         RED: This test WILL FAIL until worker.py.jinja2 exists with IWorkerLifecycle pattern.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -266,12 +277,12 @@ class TestWorkerIWorkerLifecyclePattern:
             "Worker must import IStrategyCache for initialize() signature"
         )
 
-    def test_scaffolded_worker_implements_protocols(self):
+    def test_scaffolded_worker_implements_protocols(self) -> None:
         """Worker class must explicitly implement IWorker and IWorkerLifecycle.
 
         RED: This test WILL FAIL until template generates protocol implementation.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -291,12 +302,12 @@ class TestWorkerIWorkerLifecyclePattern:
             or "class SignalDetector(IWorkerLifecycle):" in content
         ), "Worker class must implement IWorker + IWorkerLifecycle protocols"
 
-    def test_scaffolded_worker_has_build_spec_constructor(self):
+    def test_scaffolded_worker_has_build_spec_constructor(self) -> None:
         """Worker __init__ must accept BuildSpec only (no dependencies).
 
         RED: This test WILL FAIL until template generates V3 construction pattern.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -325,12 +336,12 @@ class TestWorkerIWorkerLifecyclePattern:
             "Worker __init__ must NOT accept Logger in parameters (use initialize() for DI)"
         )
 
-    def test_scaffolded_worker_has_initialize_method(self):
+    def test_scaffolded_worker_has_initialize_method(self) -> None:
         """Worker must have initialize() method for two-phase initialization.
 
         RED: This test WILL FAIL until template generates initialize() method.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -358,12 +369,12 @@ class TestWorkerIWorkerLifecyclePattern:
                 "Platform worker must validate strategy_cache is None"
             )
 
-    def test_scaffolded_worker_has_shutdown_method(self):
+    def test_scaffolded_worker_has_shutdown_method(self) -> None:
         """Worker must have shutdown() method for cleanup.
 
         RED: This test WILL FAIL until template generates shutdown() method.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -390,12 +401,12 @@ class TestWorkerIWorkerLifecyclePattern:
             or "pass" in shutdown_section
         ), "shutdown() must document idempotent behavior"
 
-    def test_scaffolded_worker_has_name_property(self):
+    def test_scaffolded_worker_has_name_property(self) -> None:
         """Worker must have name property (IWorker requirement).
 
         RED: This test WILL FAIL until template generates name property.
         """
-        registry = ArtifactRegistryConfig.from_file()
+        registry = _load_artifact_registry()
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
 
@@ -427,7 +438,7 @@ class TestConcreteTemplateStructure:
         "template_name",
         ["dto.py.jinja2", "worker.py.jinja2", "service_command.py.jinja2", "generic.py.jinja2"],
     )
-    def test_python_templates_have_scaffold_metadata(self, template_name: str):
+    def test_python_templates_have_scaffold_metadata(self, template_name: str) -> None:
         """Python concrete templates must have SCAFFOLD metadata block.
 
         REQUIREMENT (Task 1.6): Templates MUST inherit Tier 0 SCAFFOLD block
@@ -450,7 +461,7 @@ class TestConcreteTemplateStructure:
             f"{template_name} must extend base template for inheritance"
         )
 
-    def test_design_template_has_scaffold_metadata(self):
+    def test_design_template_has_scaffold_metadata(self) -> None:
         """design.md.jinja2 must have SCAFFOLD metadata block."""
         template_root = get_template_root()
         template_path = template_root / "concrete" / "design.md.jinja2"

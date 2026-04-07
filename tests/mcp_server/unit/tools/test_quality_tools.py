@@ -1,5 +1,9 @@
 # tests/unit/mcp_server/tools/test_quality_tools.py
-"""Tests for quality tools."""
+"""Tests for quality tools.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.quality_tools]
+"""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 
 # Standard library
@@ -16,6 +20,7 @@ from pydantic import ValidationError
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _summary_text(result: ToolResult) -> str:
@@ -402,15 +407,11 @@ class TestRunQualityGatesScopeGuardC41:
     @pytest.mark.asyncio
     async def test_scope_files_pass_run_does_not_advance_baseline(self) -> None:
         """RED: scope='files' pass run must not call baseline advance path."""
-        manager = QAManager(workspace_root=Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
 
         with (
             patch.object(manager, "_resolve_scope", return_value=["backend/__init__.py"]),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",
@@ -436,15 +437,11 @@ class TestRunQualityGatesScopeGuardC41:
     @pytest.mark.parametrize("scope", ["branch", "project"])
     async def test_non_auto_pass_runs_do_not_reset_auto_failed_state(self, scope: str) -> None:
         """RED: scope='branch'/'project' pass runs must not hit auto baseline mutation path."""
-        manager = QAManager(workspace_root=Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
 
         with (
             patch.object(manager, "_resolve_scope", return_value=["backend/__init__.py"]),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",
@@ -490,17 +487,13 @@ class TestRunQualityGatesFailedSubsetC42:
     @pytest.mark.asyncio
     async def test_auto_mixed_result_accumulates_only_failing_subset(self) -> None:
         """RED: only failing file(s) should be sent to failed_files accumulator."""
-        manager = QAManager(workspace_root=Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
         resolved_files = ["a.py", "b.py"]
 
         with (
             patch.object(manager, "_resolve_scope", return_value=resolved_files),
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",
@@ -533,17 +526,13 @@ class TestRunQualityGatesFailedSubsetC42:
     @pytest.mark.asyncio
     async def test_auto_mixed_result_must_not_accumulate_full_resolved_set(self) -> None:
         """RED: accumulator input must not equal full evaluated set when only subset fails."""
-        manager = QAManager(workspace_root=Path.cwd())
+        manager = make_qa_manager(Path.cwd(), quality_config=self._stub_quality_config())
         tool = RunQualityGatesTool(manager=manager)
         resolved_files = ["a.py", "b.py"]
 
         with (
             patch.object(manager, "_resolve_scope", return_value=resolved_files),
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "mcp_server.managers.qa_manager.QualityConfig.load",
-                return_value=self._stub_quality_config(),
-            ),
             patch.object(
                 manager,
                 "_execute_gate",

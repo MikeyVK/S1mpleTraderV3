@@ -11,11 +11,15 @@ Tests verify:
 """
 
 import logging
+from pathlib import Path
 
 import pytest
+from _pytest.logging import LogCaptureFixture
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
+from mcp_server.managers.artifact_manager import ArtifactManager
 from tests.mcp_server.fixtures.artifact_test_harness import (
     ArtifactIdentity,
     ArtifactSpec,
@@ -25,10 +29,16 @@ from tests.mcp_server.fixtures.artifact_test_harness import (
 )
 
 
+def _load_artifact_registry(config_path: Path) -> ArtifactRegistryConfig:
+    return ConfigLoader(config_path.parent).load_artifact_registry_config(config_path=config_path)
+
+
 @pytest.mark.asyncio
 async def test_invalid_code_artifact_blocks_no_file(
-    temp_workspace, artifacts_yaml_file, artifact_manager
-):
+    temp_workspace: Path,
+    artifacts_yaml_file: Path,
+    artifact_manager: ArtifactManager,
+) -> None:
     """
     GIVEN: Code artifact with template generating invalid Python
     WHEN: scaffold_artifact() called
@@ -55,8 +65,7 @@ class {{ name }}DTO:
     create_template(temp_workspace, "components/dto_invalid.py.jinja2", invalid_template)
 
     # Reload registry
-    ArtifactRegistryConfig.reset_instance()
-    fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
+    fresh_registry = _load_artifact_registry(artifacts_yaml_file)
 
     # Update manager registry
     artifact_manager.registry = fresh_registry
@@ -84,8 +93,11 @@ class {{ name }}DTO:
 
 @pytest.mark.asyncio
 async def test_invalid_doc_artifact_warns_writes_file(
-    temp_workspace, artifacts_yaml_file, artifact_manager, caplog
-):
+    temp_workspace: Path,
+    artifacts_yaml_file: Path,
+    artifact_manager: ArtifactManager,
+    caplog: LogCaptureFixture,
+) -> None:
     """
     GIVEN: Doc artifact with potentially invalid content
     WHEN: scaffold_artifact() called
@@ -112,8 +124,7 @@ async def test_invalid_doc_artifact_warns_writes_file(
     create_template(temp_workspace, "documents/design_minimal.md.jinja2", minimal_template)
 
     # Reload registry
-    ArtifactRegistryConfig.reset_instance()
-    fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
+    fresh_registry = _load_artifact_registry(artifacts_yaml_file)
 
     artifact_manager.registry = fresh_registry
     artifact_manager.scaffolder.registry = fresh_registry
@@ -157,8 +168,10 @@ async def test_invalid_doc_artifact_warns_writes_file(
 
 @pytest.mark.asyncio
 async def test_valid_code_artifact_writes_successfully(
-    temp_workspace, artifacts_yaml_file, artifact_manager
-):
+    temp_workspace: Path,
+    artifacts_yaml_file: Path,
+    artifact_manager: ArtifactManager,
+) -> None:
     """
     GIVEN: Code artifact with valid Python template
     WHEN: scaffold_artifact() called
@@ -191,8 +204,7 @@ class {{{{ name }}}}DTO(BaseModel):
     create_template(temp_workspace, "components/dto_valid.py.jinja2", valid_template)
 
     # Reload registry
-    ArtifactRegistryConfig.reset_instance()
-    fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
+    fresh_registry = _load_artifact_registry(artifacts_yaml_file)
 
     artifact_manager.registry = fresh_registry
     artifact_manager.scaffolder.registry = fresh_registry

@@ -1,7 +1,7 @@
 """Project management tools for MCP server.
 
 Phase 0.5: Project initialization with workflow selection.
-Issue #39: Atomic initialization of projects.json + state.json.
+Issue #39: Atomic initialization of deliverables.json + state.json.
 Issue #79: Parent branch tracking with auto-detection.
 Issue #229 Cycle 4: SavePlanningDeliverablesTool with Layer 2 validates schema validation.
 """
@@ -19,10 +19,10 @@ from typing import Any
 import anyio
 from pydantic import BaseModel, Field
 
-from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+from mcp_server.schemas import WorkflowConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -59,7 +59,7 @@ class InitializeProjectTool(BaseTool):
     """Tool for initializing projects with atomic state management.
 
     Phase 0.5: Human selects workflow_name → generates project phase plan.
-    Issue #39 Mode 1: Atomic initialization of projects.json + state.json.
+    Issue #39 Mode 1: Atomic initialization of deliverables.json + state.json.
     """
 
     name = "initialize_project"
@@ -70,19 +70,21 @@ class InitializeProjectTool(BaseTool):
     )
     args_model = InitializeProjectInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool with atomic state management.
-
-        Args:
-            workspace_root: Path to workspace root directory
-        """
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        workflow_config: WorkflowConfig,
+        manager: ProjectManager,
+        git_manager: GitManager,
+        state_engine: PhaseStateEngine,
+    ) -> None:
+        """Initialize tool with injected project dependencies."""
         super().__init__()
         self.workspace_root = Path(workspace_root)
-        self.manager = ProjectManager(workspace_root=workspace_root)
-        self.git_manager = GitManager()
-        self.state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=self.manager
-        )
+        self.manager = manager
+        self.workflow_config = workflow_config
+        self.git_manager = git_manager
+        self.state_engine = state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -179,7 +181,7 @@ class InitializeProjectTool(BaseTool):
     async def execute(self, params: InitializeProjectInput) -> ToolResult:
         """Execute project initialization with atomic state creation.
 
-        Issue #39: Creates both projects.json AND state.json atomically.
+        Issue #39: Creates both deliverables.json AND state.json atomically.
         Issue #79: Auto-detects parent_branch if not provided.
 
         Args:
@@ -218,7 +220,7 @@ class InitializeProjectTool(BaseTool):
                 if parent_branch:
                     logger.info("Auto-detected parent_branch: %s for %s", parent_branch, branch)
 
-            # Step 2: Create projects.json (workflow definition)
+            # Step 2: Create deliverables.json (workflow definition)
             options = None
             if params.custom_phases or params.skip_reason or parent_branch:
                 options = ProjectInitOptions(
@@ -272,14 +274,14 @@ class InitializeProjectTool(BaseTool):
                 "required_phases": result["required_phases"],
                 "execution_mode": result["execution_mode"],
                 "files_created": [
-                    ".st3/projects.json (workflow definition)",
+                    ".st3/deliverables.json (workflow definition)",
                     ".st3/state.json (branch state)",
                 ],
             }
 
             # Add template info if not custom
             if params.workflow_name != "custom":
-                workflow = WorkflowConfig.load().get_workflow(params.workflow_name)
+                workflow = self.workflow_config.get_workflow(params.workflow_name)
                 success_message["description"] = workflow.description
 
             return ToolResult.text(json.dumps(success_message, indent=2))
@@ -301,14 +303,10 @@ class GetProjectPlanTool(BaseTool):
     description = "Get project phase plan for issue number"
     args_model = GetProjectPlanInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Path to workspace root directory
-        """
+    def __init__(self, manager: ProjectManager) -> None:
+        """Initialize tool with injected ProjectManager."""
         super().__init__()
-        self.manager = ProjectManager(workspace_root=workspace_root)
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -389,7 +387,7 @@ class SavePlanningDeliverablesInput(BaseModel):
 
 
 class SavePlanningDeliverablesTool(BaseTool):
-    """Tool to persist planning deliverables for an issue to projects.json.
+    """Tool to persist planning deliverables for an issue to deliverables.json.
 
     Issue #229 Cycle 4 — GAP-04 + GAP-06:
     - Layer 1: MCP JSON Schema (Pydantic, automatic)
@@ -398,19 +396,20 @@ class SavePlanningDeliverablesTool(BaseTool):
 
     name = "save_planning_deliverables"
     description = (
-        "Save TDD cycle planning deliverables for an issue to projects.json. "
+        "Save TDD cycle planning deliverables for an issue to deliverables.json. "
         "Validates each 'validates' entry schema before persisting."
     )
     args_model = SavePlanningDeliverablesInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Workspace root used to resolve project data.
-        """
+    def __init__(
+        self,
+        manager: ProjectManager,
+        workspace_root: Path | str | None = None,
+    ) -> None:
+        """Initialize tool with injected ProjectManager."""
         super().__init__()
-        self._manager = ProjectManager(workspace_root=workspace_root)
+        del workspace_root
+        self._manager = manager
 
     async def execute(self, params: SavePlanningDeliverablesInput) -> ToolResult:
         """Persist planning deliverables with Layer 2 schema validation.
@@ -475,7 +474,7 @@ class UpdatePlanningDeliverablesInput(BaseModel):
 
 
 class UpdatePlanningDeliverablesTool(BaseTool):
-    """Tool to merge-update planning deliverables for an issue in projects.json.
+    """Tool to merge-update planning deliverables for an issue in deliverables.json.
 
     Issue #229 Cycle 5 — GAP-09:
     - Requires save_planning_deliverables to have been called first (write-once guard preserved).
@@ -487,20 +486,21 @@ class UpdatePlanningDeliverablesTool(BaseTool):
 
     name = "update_planning_deliverables"
     description = (
-        "Merge-update TDD cycle planning deliverables for an issue in projects.json. "
+        "Merge-update TDD cycle planning deliverables for an issue in deliverables.json. "
         "Must be preceded by save_planning_deliverables. "
         "New cycles are appended; deliverables within existing cycles are merged by id."
     )
     args_model = UpdatePlanningDeliverablesInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Workspace root used to resolve project data.
-        """
+    def __init__(
+        self,
+        manager: ProjectManager,
+        workspace_root: Path | str | None = None,
+    ) -> None:
+        """Initialize tool with injected ProjectManager."""
         super().__init__()
-        self._manager = ProjectManager(workspace_root=workspace_root)
+        del workspace_root
+        self._manager = manager
 
     async def execute(self, params: UpdatePlanningDeliverablesInput) -> ToolResult:
         """Merge planning deliverables with Layer 2 schema validation.

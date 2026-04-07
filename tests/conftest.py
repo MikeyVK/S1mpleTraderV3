@@ -3,7 +3,11 @@
 @layer: Test Infrastructure
 @dependencies: pytest
 @responsibilities:
-  - Root-level conftest with no suite-specific fixtures
-  - MCP server fixtures live in tests/mcp_server/conftest.py
-  - Backend fixtures live in tests/backend/conftest.py
+  - Register root-level pytest plugins for the full test tree
+  - Host only top-level cross-suite pytest configuration
 """
+
+pytest_plugins = [
+    "tests.mcp_server.fixtures.artifact_test_harness",
+    "tests.mcp_server.fixtures.workflow_fixtures",
+]

@@ -144,7 +144,7 @@ class TestSignalTimestampValidation:
 
     def test_naive_datetime_converted_to_utc(self):
         """Test that naive datetime is assumed to be UTC."""
-        naive_dt = datetime(2025, 1, 15, 10, 30, 0)
+        naive_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC).replace(tzinfo=None)
         signal = Signal(timestamp=naive_dt, symbol="BTC_EUR", direction="long", signal_type="TEST")
 
         # Naive datetime gets timezone applied - verify with aware_dt

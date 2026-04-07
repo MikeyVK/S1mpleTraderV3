@@ -47,9 +47,7 @@ def test_addopts_has_no_marker_filter() -> None:
     Verification that C4 cleanup is complete.
     """
     addopts = _load_addopts()
-    assert "-m" not in addopts, (
-        f"addopts must not contain -m marker filter; current: {addopts}"
-    )
+    assert "-m" not in addopts, f"addopts must not contain -m marker filter; current: {addopts}"
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +132,6 @@ def test_addopts_has_n_auto() -> None:
     assert "-n auto" in addopts_str, (
         f"addopts must contain '-n auto' for parallel execution; current: {addopts}"
     )
-
 
 
 # ---------------------------------------------------------------------------

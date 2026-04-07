@@ -24,14 +24,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-# Project modules
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
+from mcp_server.schemas import ArtifactRegistryConfig
+
+# Project modules
+from mcp_server.utils.template_config import get_template_root
 
 if TYPE_CHECKING:
     pass  # TYPE_CHECKING block for future type-only imports
@@ -41,18 +42,13 @@ class TemplateScaffolder(BaseScaffolder):
     """Unified scaffolder using artifact registry templates."""
 
     def __init__(
-        self, registry: ArtifactRegistryConfig | None = None, renderer: JinjaRenderer | None = None
+        self,
+        registry: ArtifactRegistryConfig,
+        renderer: JinjaRenderer | None = None,
     ) -> None:
-        """Initialize with dependency injection.
-
-        Args:
-            registry: Artifact registry configuration.
-                     Defaults to loading from .st3/artifacts.yaml.
-            renderer: Jinja2 template renderer.
-                     Defaults to JinjaRenderer with tier-root (mcp_server/scaffolding/templates).
-        """
+        """Initialize with dependency injection."""
         super().__init__()
-        self.registry = registry or ArtifactRegistryConfig.from_file()
+        self.registry = registry
 
         # Initialize renderer with configurable template root (fail-fast)
         if renderer is None:

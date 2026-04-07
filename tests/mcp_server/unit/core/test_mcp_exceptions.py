@@ -1,4 +1,8 @@
-"""Tests for core exceptions."""
+"""Tests for core exceptions.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.core.exceptions
+"""
 
 from mcp_server.core.exceptions import (
     ExecutionError,

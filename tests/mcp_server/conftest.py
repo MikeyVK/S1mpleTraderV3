@@ -3,45 +3,24 @@
 @layer: Test Infrastructure
 @dependencies: pytest, mcp_server.config.*
 @responsibilities:
-  - Import shared fixtures for MCP server tests
   - Reset config singletons between tests to prevent cross-test contamination
 """
 
+from collections.abc import Generator
+
 import pytest
 
-# Import fixtures from fixture modules
-pytest_plugins = [
-    "tests.mcp_server.fixtures.artifact_test_harness",
-    "tests.mcp_server.fixtures.workflow_fixtures",
-]
+from mcp_server.tools.git_tools import CreateBranchInput
+from mcp_server.tools.pr_tools import CreatePRInput
 
 
 @pytest.fixture(autouse=True)
-def reset_config_singletons() -> object:
-    """Reset all config singletons before/after each test.
-
-    Prevents cross-test contamination when config tests load custom YAML paths
-    and set the module-level singleton, which would otherwise be reused by
-    subsequent tests that call ``from_file()`` without arguments.
-
-    Covers both the *singleton_instance* pattern (IssueConfig, ScopeConfig,
-    WorkflowConfig, MilestoneConfig, ContributorConfig) and the *_instance*
-    pattern used by LabelConfig.
-    """
-    from mcp_server.config.contributor_config import ContributorConfig
-    from mcp_server.config.issue_config import IssueConfig
-    from mcp_server.config.label_config import LabelConfig
-    from mcp_server.config.milestone_config import MilestoneConfig
-    from mcp_server.config.scope_config import ScopeConfig
-    from mcp_server.config.workflow_config import WorkflowConfig
+def reset_config_singletons() -> Generator[None, None, None]:
+    """Reset all config singletons before/after each test."""
 
     def _reset_all() -> None:
-        IssueConfig.singleton_instance = None
-        ScopeConfig.singleton_instance = None
-        WorkflowConfig.singleton_instance = None
-        MilestoneConfig.singleton_instance = None
-        ContributorConfig.singleton_instance = None
-        LabelConfig.reset()
+        CreateBranchInput._git_config = None
+        CreatePRInput._git_config = None
 
     _reset_all()
     yield

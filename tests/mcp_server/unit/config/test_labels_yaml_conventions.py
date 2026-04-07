@@ -1,11 +1,14 @@
 """
 tests/unit/config/test_labels_yaml_conventions.py
 ==================================================
-Cycle 2 — Verify .st3/labels.yaml conventions:
+Cycle 2 — Verify .st3/config/labels.yaml conventions:
 
 - No status:* labels should exist (removed in cycle 2)
 - Parent label pattern must be "^parent:\\d+$" (not "^parent:issue-\\d+$")
 - type:chore label must exist
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, .st3/config/labels.yaml
 """
 
 import re
@@ -14,7 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-LABELS_PATH = Path(".st3/labels.yaml")
+LABELS_PATH = Path(".st3/config/labels.yaml")
 
 
 @pytest.fixture(name="labels_data")

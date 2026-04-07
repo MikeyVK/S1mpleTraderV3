@@ -2,19 +2,21 @@
 
 ## Overview
 
-This directory contains the comprehensive coding standards for S1mpleTrader V3. All development must follow these guidelines to maintain code quality, consistency, and maintainability.
+This directory contains the comprehensive coding standards for the project. All development must follow these guidelines to maintain code quality, consistency, and maintainability.
 
 ## Quick Links
 
-📖 **Start Here:** [TDD_WORKFLOW.md](TDD_WORKFLOW.md) - Understand the development cycle
+**⚖️ Architecture contract — read this FIRST:**
 
-🎯 **Daily Use:** [QUALITY_GATES.md](QUALITY_GATES.md) - Pre-merge checklist
+🏛️ **[ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md)** — Binding architectural principles (SOLID, Config-First, Fail-Fast, CQS, ISP, Law of Demeter). This is the `primary` reference. Code that violates these principles is REJECTED, regardless of whether tooling gates pass.
 
-🌳 **Git Strategy:** [GIT_WORKFLOW.md](GIT_WORKFLOW.md) - Branching and commits
+---
 
-✨ **Style Guide:** [CODE_STYLE.md](CODE_STYLE.md) - Code formatting rules
+📋 **Pre-merge checklist:** [QUALITY_GATES.md](QUALITY_GATES.md) — 8 mandatory gates (incl. Gate 7 architectural review)
 
-🧩 **Type Checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) - Standardized fixes for typing issues
+✨ **Formatting and style:** [CODE_STYLE.md](CODE_STYLE.md) — Code formatting (PEP 8 enforced by tooling)
+
+🧩 **Type checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) — Standardized approach for typing issues
 
 ## Documentation Structure
 

@@ -11,14 +11,14 @@ from the filesystem via JinjaRenderer.
 from unittest.mock import Mock
 
 import pytest
-from jinja2.exceptions import TemplateNotFound
 
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.schemas.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.core.exceptions import ExecutionError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 
 @pytest.fixture(name="registry")
-def mock_registry_fixture():
+def mock_registry_fixture() -> ArtifactRegistryConfig:
     """Provide mock registry with test artifact configuration."""
     registry = Mock(spec=ArtifactRegistryConfig)
     artifact = Mock()
@@ -33,7 +33,7 @@ def mock_registry_fixture():
 
 
 @pytest.fixture(name="scaffolder_fixture")
-def scaffolder_with_registry(registry):
+def scaffolder_with_registry(registry: ArtifactRegistryConfig) -> TemplateScaffolder:
     """Provide TemplateScaffolder with mock registry."""
     return TemplateScaffolder(registry=registry)
 
@@ -41,7 +41,7 @@ def scaffolder_with_registry(registry):
 class TestTemplateReading:
     """Test template loading from filesystem."""
 
-    def test_template_loads_via_open(self, scaffolder_fixture):
+    def test_template_loads_via_open(self, scaffolder_fixture: TemplateScaffolder) -> None:
         """Template should load via JinjaRenderer and return ScaffoldResult."""
         # scaffold() returns ScaffoldResult, not str
         result = scaffolder_fixture.scaffold(
@@ -58,9 +58,10 @@ class TestTemplateReading:
         assert hasattr(result, "content")
         assert len(result.content) > 0
 
-    def test_ioerror_becomes_config_error(self, scaffolder_fixture, registry):
-        """Non-existent template should raise TemplateNotFound during introspection."""
-        # Test with non-existent template
+    def test_ioerror_becomes_config_error(
+        self, scaffolder_fixture: TemplateScaffolder, registry: ArtifactRegistryConfig
+    ) -> None:
+        """Non-existent template should raise ExecutionError during introspection."""
         artifact = Mock()
         artifact.type_id = "test"
         artifact.required_fields = ["name"]
@@ -68,6 +69,5 @@ class TestTemplateReading:
         artifact.fallback_template = None
         registry.get_artifact.return_value = artifact
 
-        # TemplateNotFound raised during introspection
-        with pytest.raises(TemplateNotFound):
+        with pytest.raises(ExecutionError, match="Template not found"):
             scaffolder_fixture.scaffold("test", name="Test")

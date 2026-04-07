@@ -1,7 +1,7 @@
 """Unit tests for artifacts.yaml type field (Issue #72, TDD Cycle 1).
 
 RED Phase Test:
-- Validates ALL artifacts in .st3/artifacts.yaml have type field (code|doc|config)
+- Validates ALL artifacts in .st3/config/artifacts.yaml have type field (code|doc|config)
 - Validates code artifacts (dto, worker, adapter, tool, resource, etc.) have type: code
 - Validates document artifacts (research, planning, design, etc.) have type: doc
 
@@ -9,21 +9,22 @@ Author: AI Agent
 Created: 2026-01-26
 Issue: #72 (Template Library Management)
 TDD Cycle: 1
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.schemas.artifact_registry_config
 """
 
 from pathlib import Path
 
 import pytest
 
-from mcp_server.config.artifact_registry_config import (
-    ArtifactRegistryConfig,
-    ArtifactType,
-)
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig, ArtifactType
 
 
 @pytest.fixture
 def artifacts_config() -> ArtifactRegistryConfig:
-    """Load config from actual .st3/artifacts.yaml."""
+    """Load config from actual .st3/config/artifacts.yaml."""
     # Find project root (.st3 directory exists there)
     current_dir = Path(__file__).resolve()
     project_root = current_dir
@@ -32,8 +33,10 @@ def artifacts_config() -> ArtifactRegistryConfig:
         if project_root == project_root.parent:
             raise FileNotFoundError("Could not find .st3 directory")
 
-    artifacts_yaml = project_root / ".st3" / "artifacts.yaml"
-    return ArtifactRegistryConfig.from_file(artifacts_yaml)
+    artifacts_yaml = project_root / ".st3" / "config" / "artifacts.yaml"
+    return ConfigLoader(artifacts_yaml.parent).load_artifact_registry_config(
+        config_path=artifacts_yaml
+    )
 
 
 class TestArtifactsTypeField:

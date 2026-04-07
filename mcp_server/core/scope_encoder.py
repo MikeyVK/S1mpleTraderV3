@@ -61,7 +61,7 @@ class ScopeEncoder:
         """Generate commit scope with strict validation.
 
         Args:
-            phase: Workflow phase (research, planning, design, tdd, ...)
+            phase: Workflow phase (research, planning, design, implementation, ...)
             sub_phase: Optional subphase (red, green, refactor, c1, ...)
             cycle_number: Optional cycle number (1, 2, 3, ...)
 
@@ -76,11 +76,11 @@ class ScopeEncoder:
             >>> encoder.generate_scope("research")
             "P_RESEARCH"
 
-            >>> encoder.generate_scope("tdd", "red")
-            "P_TDD_SP_RED"
+            >>> encoder.generate_scope("implementation", "red")
+            "P_IMPLEMENTATION_SP_RED"
 
-            >>> encoder.generate_scope("tdd", "red", cycle_number=1)
-            "P_TDD_SP_C1_RED"
+            >>> encoder.generate_scope("implementation", "red", cycle_number=1)
+            "P_IMPLEMENTATION_SP_C1_RED"
         """
         # 1. Load config
         config = self._load_config()

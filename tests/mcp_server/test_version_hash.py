@@ -3,6 +3,9 @@ Tests for compute_version_hash utility (Issue #72 Task 1.2).
 
 RED phase: Tests for version hash computation with collision safety,
 artifact_type prefix, and tier chain hashing.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.scaffolding.version_hash
 """
 
 # Module under test does not exist yet (RED phase)
@@ -12,7 +15,7 @@ from mcp_server.scaffolding.version_hash import compute_version_hash
 class TestComputeVersionHashBasic:
     """Test basic hash computation."""
 
-    def test_compute_hash_returns_8_chars(self):
+    def test_compute_hash_returns_8_chars(self) -> None:
         """Should return 8-character hex string."""
         result = compute_version_hash(
             artifact_type="worker",
@@ -27,7 +30,7 @@ class TestComputeVersionHashBasic:
         assert len(result) == 8
         assert all(c in "0123456789abcdef" for c in result)
 
-    def test_compute_hash_deterministic(self):
+    def test_compute_hash_deterministic(self) -> None:
         """Should return same hash for same inputs."""
         tier_chain = [
             ("tier0_base_artifact", "1.0.0"),
@@ -39,7 +42,7 @@ class TestComputeVersionHashBasic:
 
         assert hash1 == hash2
 
-    def test_compute_hash_different_artifact_types_different_hash(self):
+    def test_compute_hash_different_artifact_types_different_hash(self) -> None:
         """Should produce different hashes for different artifact types."""
         tier_chain = [("tier0_base_artifact", "1.0.0")]
 
@@ -52,7 +55,7 @@ class TestComputeVersionHashBasic:
 class TestComputeVersionHashVersionSensitivity:
     """Test hash changes when versions change."""
 
-    def test_compute_hash_changes_when_tier_version_changes(self):
+    def test_compute_hash_changes_when_tier_version_changes(self) -> None:
         """Should produce different hash when tier version changes."""
         tier_chain_v1 = [
             ("tier0_base_artifact", "1.0.0"),
@@ -68,7 +71,7 @@ class TestComputeVersionHashVersionSensitivity:
 
         assert hash_v1 != hash_v2
 
-    def test_compute_hash_changes_when_tier_added(self):
+    def test_compute_hash_changes_when_tier_added(self) -> None:
         """Should produce different hash when tier added to chain."""
         tier_chain_short = [
             ("tier0_base_artifact", "1.0.0"),
@@ -83,7 +86,7 @@ class TestComputeVersionHashVersionSensitivity:
 
         assert hash_short != hash_long
 
-    def test_compute_hash_changes_when_template_file_changes(self):
+    def test_compute_hash_changes_when_template_file_changes(self) -> None:
         """Should produce different hash when concrete template changes."""
         tier_chain = [("tier0_base_artifact", "1.0.0")]
 
@@ -96,7 +99,7 @@ class TestComputeVersionHashVersionSensitivity:
 class TestComputeVersionHashEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_compute_hash_with_empty_tier_chain(self):
+    def test_compute_hash_with_empty_tier_chain(self) -> None:
         """Should handle empty tier chain (Tier 4 concrete only)."""
         result = compute_version_hash(
             artifact_type="worker", template_file="worker.py.jinja2", tier_chain=[]
@@ -105,7 +108,7 @@ class TestComputeVersionHashEdgeCases:
         assert len(result) == 8
         assert all(c in "0123456789abcdef" for c in result)
 
-    def test_compute_hash_with_long_tier_chain(self):
+    def test_compute_hash_with_long_tier_chain(self) -> None:
         """Should handle full 5-tier chain."""
         tier_chain = [
             ("tier0_base_artifact", "1.0.0"),
@@ -118,7 +121,7 @@ class TestComputeVersionHashEdgeCases:
 
         assert len(result) == 8
 
-    def test_compute_hash_artifact_type_not_derived_from_template(self):
+    def test_compute_hash_artifact_type_not_derived_from_template(self) -> None:
         """Should use explicit artifact_type, not derive from template_file."""
         # Regression test for design bug:
         # Previously: artifact_type = template_file.replace(".jinja2", "").split("/")[-1]
@@ -137,7 +140,7 @@ class TestComputeVersionHashEdgeCases:
 class TestComputeVersionHashNoPlaceholders:
     """Test that version hash uses real template versions, not placeholders."""
 
-    def test_hash_does_not_use_placeholder_concrete_string(self):
+    def test_hash_does_not_use_placeholder_concrete_string(self) -> None:
         """Should use actual template version, not placeholder 'concrete' string.
 
         REQUIREMENT (Task 1.1b): compute_version_hash must extract real template
@@ -170,7 +173,7 @@ class TestComputeVersionHashNoPlaceholders:
         # After Task 1.1b fix, this assertion should change
         assert hash_v1 == hash_v2, "KNOWN BUG: Uses placeholder 'concrete' instead of real version"
 
-    def test_hash_changes_when_concrete_template_version_changes(self):
+    def test_hash_changes_when_concrete_template_version_changes(self) -> None:
         """Should produce different hash when concrete template version changes.
 
         REQUIREMENT: When dto.py.jinja2 v1.0.0 is updated to v2.0.0, the version_hash
@@ -204,7 +207,7 @@ class TestComputeVersionHashNoPlaceholders:
 class TestComputeVersionHashCollisionSafety:
     """Test collision avoidance through artifact_type prefix."""
 
-    def test_different_types_same_tiers_different_hash(self):
+    def test_different_types_same_tiers_different_hash(self) -> None:
         """Should avoid collisions across artifact types."""
         tier_chain = [
             ("tier0_base_artifact", "1.0.0"),
@@ -219,7 +222,7 @@ class TestComputeVersionHashCollisionSafety:
         # All should be unique despite identical tier chains
         assert len({worker_hash, dto_hash, tool_hash}) == 3
 
-    def test_hash_input_format_includes_artifact_type(self):
+    def test_hash_input_format_includes_artifact_type(self) -> None:
         """Should verify artifact_type is included in hash calculation."""
         # This is a white-box test to ensure correct format
         # Expected format: "artifact_type|tier0@v1|tier1@v2|...|concrete@vN"

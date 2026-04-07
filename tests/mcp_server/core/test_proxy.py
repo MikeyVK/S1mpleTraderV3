@@ -6,6 +6,9 @@ Tests:
 - Restart marker detection (stderr)
 - UTF-8 encoding handling
 - Transparent restart flow
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.core.proxy
 """
 
 import os

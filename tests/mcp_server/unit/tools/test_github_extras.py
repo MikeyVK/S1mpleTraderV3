@@ -1,11 +1,17 @@
-"""Tests for PR and Label tools."""
+"""Tests for PR and Label tools.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.pr_tools]
+"""
 
 import asyncio
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
-from mcp_server.config.label_config import LabelConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import LabelConfig
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
 from mcp_server.tools.pr_tools import (
@@ -19,13 +25,20 @@ from mcp_server.tools.pr_tools import (
 
 
 @pytest.fixture
-def mock_adapter():
+def mock_git_config() -> Mock:
+    git_config = Mock()
+    git_config.default_base_branch = "main"
+    return git_config
+
+
+@pytest.fixture
+def mock_adapter() -> Mock:
     """Create a mock GitHub adapter for testing."""
     return Mock()
 
 
 @pytest.fixture
-def test_label_config(tmp_path):
+def test_label_config(tmp_path: Path) -> LabelConfig:
     """Create a temp label config with test labels."""
     yaml_content = """version: "1.0"
 labels:
@@ -37,15 +50,11 @@ labels:
     yaml_file = tmp_path / "labels.yaml"
     yaml_file.write_text(yaml_content)
 
-    LabelConfig.reset()
-    LabelConfig.load(yaml_file)
-    yield
-    LabelConfig.reset()
+    return ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
 
 
-def test_create_pr_tool(mock_adapter) -> None:
+def test_create_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     """Test CreatePRTool creates PR and returns correct response."""
-    # Setup mock
     mock_pr = Mock()
     mock_pr.number = 123
     mock_pr.html_url = "http://github.com/owner/repo/pull/123"
@@ -53,7 +62,7 @@ def test_create_pr_tool(mock_adapter) -> None:
     mock_adapter.create_pr.return_value = mock_pr
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = CreatePRTool(manager=manager)
+    tool = CreatePRTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(
         tool.execute(CreatePRInput(title="New Feature", body="Description", head="feature/branch"))
@@ -65,10 +74,10 @@ def test_create_pr_tool(mock_adapter) -> None:
     )
 
 
-def test_add_labels_tool(mock_adapter, test_label_config) -> None:
+def test_add_labels_tool(mock_adapter: Mock, test_label_config: LabelConfig) -> None:
     """Test AddLabelsTool adds labels and returns confirmation."""
     manager = GitHubManager(adapter=mock_adapter)
-    tool = AddLabelsTool(manager=manager)
+    tool = AddLabelsTool(manager=manager, label_config=test_label_config)
 
     result = asyncio.run(
         tool.execute(AddLabelsInput(issue_number=456, labels=["bug", "high-priority"]))
@@ -78,7 +87,7 @@ def test_add_labels_tool(mock_adapter, test_label_config) -> None:
     mock_adapter.add_labels.assert_called_with(456, ["bug", "high-priority"])
 
 
-def test_list_prs_tool(mock_adapter) -> None:
+def test_list_prs_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     """Test ListPRsTool lists pull requests with formatting."""
     mock_base = Mock()
     mock_base.ref = "main"
@@ -95,7 +104,7 @@ def test_list_prs_tool(mock_adapter) -> None:
     mock_adapter.list_prs.return_value = [mock_pr]
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = ListPRsTool(manager=manager)
+    tool = ListPRsTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(tool.execute(ListPRsInput()))
 
@@ -105,12 +114,12 @@ def test_list_prs_tool(mock_adapter) -> None:
     mock_adapter.list_prs.assert_called_with(state="open", base=None, head=None)
 
 
-def test_merge_pr_tool(mock_adapter) -> None:
+def test_merge_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     """Test MergePRTool merges PRs and returns confirmation."""
     mock_adapter.merge_pr.return_value = {"merged": True, "sha": "abc123", "message": "Merged"}
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = MergePRTool(manager=manager)
+    tool = MergePRTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="squash")))
 

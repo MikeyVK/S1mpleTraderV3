@@ -1,6 +1,9 @@
 """
 Task 3.6.1: Comprehensive rendering test for all 5 DOCUMENT templates
 Tests that all templates render correctly with tier3 patterns after refactoring.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, pathlib, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path
@@ -17,7 +20,7 @@ def jinja_env():
     return Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 
 
-def test_planning_md_renders_with_patterns(jinja_env):
+def test_planning_md_renders_with_patterns(jinja_env) -> None:
     """Test planning.md.jinja2 renders with ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/planning.md.jinja2")
 
@@ -80,7 +83,7 @@ def test_planning_md_renders_with_patterns(jinja_env):
     assert "## TDD Cycles" in output
 
 
-def test_research_md_renders_with_patterns(jinja_env):
+def test_research_md_renders_with_patterns(jinja_env) -> None:
     """Test research.md.jinja2 renders with ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/research.md.jinja2")
 
@@ -141,7 +144,7 @@ def test_research_md_renders_with_patterns(jinja_env):
     assert "Context: Context for Q1" in output or "Question 2" in output
 
 
-def test_design_md_renders_with_extended_header(jinja_env):
+def test_design_md_renders_with_extended_header(jinja_env) -> None:
     """Test design.md.jinja2 renders with extended header + ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/design.md.jinja2")
 
@@ -213,7 +216,7 @@ def test_design_md_renders_with_extended_header(jinja_env):
     assert "## Open Questions" in output or "Question 1" in output
 
 
-def test_architecture_md_renders_with_numbered_sections(jinja_env):
+def test_architecture_md_renders_with_numbered_sections(jinja_env) -> None:
     """Test architecture.md.jinja2 renders with numbering + ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/architecture.md.jinja2")
 
@@ -280,7 +283,7 @@ def test_architecture_md_renders_with_numbered_sections(jinja_env):
     assert "### 1.1. Subsection 1" in output
 
 
-def test_reference_md_renders_with_custom_header(jinja_env):
+def test_reference_md_renders_with_custom_header(jinja_env) -> None:
     """Test reference.md.jinja2 renders with custom header (Source/Tests fields)."""
     template = jinja_env.get_template("concrete/reference.md.jinja2")
 

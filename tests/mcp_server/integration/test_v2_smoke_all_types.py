@@ -1,4 +1,4 @@
-# SCAFFOLD: integration_test:smoke135 | 2026-02-19T00:00:00Z | tests/integration/test_v2_smoke_all_types.py
+# SCAFFOLD: integration_test:smoke135 | 2026-02-19T00:00:00Z
 """Integration Step 1: V2 pipeline smoke test for all 16 artifact types.
 
 Validates that PYDANTIC_SCAFFOLDING_ENABLED=true produces non-empty output
@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 # Project
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 # ---------------------------------------------------------------------------
@@ -29,18 +29,6 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 # ---------------------------------------------------------------------------
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-
-
-@pytest.fixture(autouse=True)
-def _reset_registry_singleton() -> None:  # type: ignore[return]
-    """Reset ArtifactRegistryConfig singleton before/after each test.
-
-    Prevents cross-test contamination when monkeypatch changes CWD
-    and a different artifacts.yaml is loaded.
-    """
-    ArtifactRegistryConfig.reset_instance()
-    yield
-    ArtifactRegistryConfig.reset_instance()
 
 
 @pytest.fixture(name="v2_manager")
@@ -61,15 +49,19 @@ def _v2_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ArtifactMana
     monkeypatch.setenv("TEMPLATE_ROOT", str(template_root))
 
     # Hermetic workspace: copy production artifacts.yaml so registry loads correctly
-    st3_dir = tmp_path / ".st3"
-    st3_dir.mkdir()
-    shutil.copy(_PROJECT_ROOT / ".st3" / "artifacts.yaml", st3_dir / "artifacts.yaml")
+    config_dir = tmp_path / ".st3" / "config"
+    config_dir.mkdir(parents=True)
+    artifacts_path = config_dir / "artifacts.yaml"
+    shutil.copy(_PROJECT_ROOT / ".st3" / "config" / "artifacts.yaml", artifacts_path)
 
-    # CWD → tmp_path: registry loads from tmp_path/.st3/artifacts.yaml,
+    # CWD → tmp_path: registry loads from tmp_path/.st3/config/artifacts.yaml,
     # ephemeral writes go to tmp_path/.st3/temp/ (not project root)
     monkeypatch.chdir(tmp_path)
 
-    return ArtifactManager(workspace_root=str(tmp_path))
+    registry = ConfigLoader(artifacts_path.parent).load_artifact_registry_config(
+        config_path=artifacts_path
+    )
+    return ArtifactManager(workspace_root=str(tmp_path), registry=registry)
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +116,8 @@ _SMOKE_CASES: list[tuple[str, dict, bool, str]] = [
         {
             "module_under_test": "mcp_server.schemas.contexts.dto",
             "test_class_name": "TestSmokeDTOContext",
-            # Explicitly provide imported_classes: default=[] renders `from x import ` (syntax error)
+            # Provide imported_classes explicitly: default=[] would render
+            # `from x import ` and produce invalid syntax.
             "imported_classes": ["DTOContext"],
         },
         False,
@@ -227,7 +220,7 @@ _SMOKE_CASES: list[tuple[str, dict, bool, str]] = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "artifact_type,context_kwargs,is_ephemeral,file_ext",
+    "artifact_type,context_kwargs,_is_ephemeral,file_ext",
     _SMOKE_CASES,
     ids=[case[0] for case in _SMOKE_CASES],
 )
@@ -236,7 +229,7 @@ async def test_v2_smoke_produces_nonempty_output(
     tmp_path: Path,
     artifact_type: str,
     context_kwargs: dict,
-    is_ephemeral: bool,
+    _is_ephemeral: bool,
     file_ext: str,
 ) -> None:
     """V2 pipeline produces a non-empty string for every registered artifact type.

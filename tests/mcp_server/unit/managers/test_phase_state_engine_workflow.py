@@ -6,14 +6,23 @@ Tests workflow-based phase transition validation:
 - Valid sequential transitions (allowed by workflow)
 - Invalid transitions (rejected by workflow validation)
 - Force transitions (bypass validation with skip_reason)
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
 
 
 class TestPhaseStateEngineTransitions:
@@ -27,14 +36,14 @@ class TestPhaseStateEngineTransitions:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def phase_engine(
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     def test_phase_state_engine_transition_valid(
         self,
@@ -152,7 +161,7 @@ class TestPhaseStateEngineTransitions:
 
         # Get state (should include cached workflow_name)
         state = phase_engine.get_state(branch="hotfix/46-test")
-        assert state["workflow_name"] == "hotfix"
+        assert state.workflow_name == "hotfix"
 
     def test_phase_state_engine_transition_history_includes_forced_flag(
         self,
@@ -184,7 +193,7 @@ class TestPhaseStateEngineTransitions:
 
         # Check transition history
         state = phase_engine.get_state(branch="feature/47-test")
-        transitions = state["transitions"]
+        transitions = state.transitions
 
         # First transition (normal)
         assert transitions[0]["forced"] is False
@@ -210,11 +219,8 @@ class TestPhaseStateEngineTransitions:
         self, phase_engine: PhaseStateEngine
     ) -> None:
         """Test get_state fails if state.json doesn't exist."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(FileNotFoundError, match="No such file"):
             phase_engine.get_state(branch="feature/88-test")
-
-        error_msg = str(exc_info.value)
-        assert "Project plan not found" in error_msg
 
     def test_phase_state_engine_get_state_unknown_branch(
         self,
@@ -223,7 +229,6 @@ class TestPhaseStateEngineTransitions:
         feature_phases: list[str],
     ) -> None:
         """Test get_state fails for unknown branch."""
-        # Initialize one branch to create state.json
         project_manager.initialize_project(
             issue_number=50, issue_title="Test", workflow_name="feature"
         )
@@ -231,9 +236,5 @@ class TestPhaseStateEngineTransitions:
             branch="feature/50-test", issue_number=50, initial_phase=feature_phases[0]
         )
 
-        # Try to get state for different branch
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(FileNotFoundError, match="Branch state"):
             phase_engine.get_state(branch="feature/99-unknown")
-
-        error_msg = str(exc_info.value)
-        assert "Project plan not found" in error_msg

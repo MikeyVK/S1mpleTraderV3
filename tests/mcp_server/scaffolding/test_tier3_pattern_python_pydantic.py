@@ -36,12 +36,12 @@ def jinja_env():
 class TestTier3PatternPythonPydantic:
     """Tests for the tier3 pydantic macro library template."""
 
-    def test_template_exists(self, jinja_env):
+    def test_template_exists(self, jinja_env) -> None:
         """Template exists and is loadable."""
         template = jinja_env.get_template("tier3_pattern_python_pydantic.jinja2")
         assert template is not None
 
-    def test_template_has_no_extends_or_blocks(self):
+    def test_template_has_no_extends_or_blocks(self) -> None:
         """Template is a macro library: no extends/blocks (outside comments)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -57,7 +57,7 @@ class TestTier3PatternPythonPydantic:
         no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
-    def test_template_has_metadata_and_macros(self):
+    def test_template_has_metadata_and_macros(self) -> None:
         """Template includes metadata and required macro definitions."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -79,7 +79,7 @@ class TestTier3PatternPythonPydantic:
         assert "{% macro pattern_pydantic_field" in content
         assert "{% macro pattern_pydantic_validator" in content
 
-    def test_macros_render_expected_tokens(self, jinja_env):
+    def test_macros_render_expected_tokens(self, jinja_env) -> None:
         """Rendered macros contain expected pydantic tokens."""
         template = jinja_env.get_template("tier3_pattern_python_pydantic.jinja2")
 

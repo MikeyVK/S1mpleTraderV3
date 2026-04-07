@@ -49,7 +49,7 @@ class DocumentIndexer:
                     "path": str(md_file.relative_to(docs_path)),
                     "content": content,
                     "scope": DocumentIndexer._determine_scope(md_file, docs_path),
-                    "type": DocumentIndexer._determine_scope(md_file, docs_path)  # Alias for scope
+                    "type": DocumentIndexer._determine_scope(md_file, docs_path),  # Alias for scope
                 }
 
                 index.append(doc_entry)
@@ -85,11 +85,7 @@ class DocumentIndexer:
             scope = doc.get("scope", "all")
             scopes[scope] = scopes.get(scope, 0) + 1
 
-        return {
-            "total_documents": len(index),
-            "total_size": total_size,
-            "scopes": scopes
-        }
+        return {"total_documents": len(index), "total_size": total_size, "scopes": scopes}
 
     @staticmethod
     def _extract_title(content: str, filename: str) -> str:

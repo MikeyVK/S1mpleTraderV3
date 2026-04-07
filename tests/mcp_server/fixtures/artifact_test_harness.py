@@ -19,7 +19,8 @@ import yaml
 
 # Project
 from mcp_server.adapters.filesystem import FilesystemAdapter
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
@@ -110,12 +111,12 @@ def _artifacts_yaml_file_st3(
     """
     Write artifacts.yaml to temp workspace.
 
-    Returns path to .st3/artifacts.yaml
+    Returns path to .st3/config/artifacts.yaml
     """
-    st3_dir = temp_workspace / ".st3"
-    st3_dir.mkdir()
+    config_dir = temp_workspace / ".st3" / "config"
+    config_dir.mkdir(parents=True)
 
-    artifacts_file = st3_dir / "artifacts.yaml"
+    artifacts_file = config_dir / "artifacts.yaml"
     artifacts_file.write_text(artifacts_yaml_content, encoding="utf-8")
 
     # Create dummy templates for testing
@@ -156,18 +157,10 @@ def _fs_adapter(temp_workspace: Path) -> FilesystemAdapter:
 @pytest.fixture(name="artifact_registry")
 def _artifact_registry(
     artifacts_yaml_file: Path,
-) -> Generator[ArtifactRegistryConfig, None, None]:
-    """Load ArtifactRegistryConfig from temp artifacts.yaml."""
-    # Reset singleton BEFORE loading
-    ArtifactRegistryConfig.reset_instance()
-
-    # Load from test YAML
-    registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
-
-    yield registry
-
-    # Cleanup: reset singleton after test
-    ArtifactRegistryConfig.reset_instance()
+) -> ArtifactRegistryConfig:
+    """Load ArtifactRegistryConfig from temp artifacts.yaml via ConfigLoader."""
+    loader = ConfigLoader(artifacts_yaml_file.parent)
+    return loader.load_artifact_registry_config(config_path=artifacts_yaml_file)
 
 
 @pytest.fixture(name="template_scaffolder")

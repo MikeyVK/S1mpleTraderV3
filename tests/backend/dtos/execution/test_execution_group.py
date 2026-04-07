@@ -11,6 +11,9 @@ Test Categories:
 - Status Tests (6): lifecycle transitions, consistency validation
 - Mutation Tests (2): order_ids append, filled_quantity update
 - Serialization Tests (1): roundtrip
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pydantic, backend.dtos.execution.execution_group]
 """
 # pylint: disable=unsubscriptable-object,no-member
 

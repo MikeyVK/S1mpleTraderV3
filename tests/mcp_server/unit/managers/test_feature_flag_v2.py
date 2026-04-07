@@ -9,6 +9,9 @@ Tests:
 - V2 pipeline validates via Pydantic
 - Schema-typed enrichment (_enrich_context_v2)
 - Naming Convention lookup (DTOContext → DTORenderContext)
+
+@layer: Tests (Unit)
+@dependencies: pytest, asyncio, pydantic, mcp_server.managers.artifact_manager
 """
 
 # Standard library
@@ -28,6 +31,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.schemas.base import BaseContext
 from mcp_server.schemas.contexts.dto import DTOContext
 from mcp_server.schemas.render_contexts.dto import DTORenderContext
+from tests.mcp_server.test_support import make_artifact_manager
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +42,7 @@ class TestFeatureFlagV2Routing:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create ArtifactManager with test workspace."""
-        return ArtifactManager(workspace_root=str(tmp_path))
+        return make_artifact_manager(tmp_path)
 
     def test_feature_flag_off_uses_v1_pipeline(self, manager: ArtifactManager) -> None:
         """Feature flag OFF (default) should use v1 dict-based pipeline.
@@ -238,7 +242,7 @@ class TestSchemaTypedEnrichment:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create ArtifactManager with test workspace."""
-        return ArtifactManager(workspace_root=str(tmp_path))
+        return make_artifact_manager(tmp_path)
 
     def test_enrich_context_v2_dto_context_to_render_context(
         self, manager: ArtifactManager

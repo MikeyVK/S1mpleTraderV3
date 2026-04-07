@@ -1,23 +1,21 @@
-"""Tests for PolicyEngine (Issue #55 integration)."""
+"""Tests for PolicyEngine (Issue #55 integration).
 
-from mcp_server.config.git_config import GitConfig
-from mcp_server.core.policy_engine import PolicyEngine
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.core.policy_engine
+"""
+
+from tests.mcp_server.test_support import make_policy_engine
 
 
 class TestPolicyEngineConfigIntegration:
     """Test PolicyEngine uses GitConfig for commit prefix validation."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Setup test fixtures."""
-        GitConfig.reset_instance()
-        self.engine: PolicyEngine = PolicyEngine()
-
-    def teardown_method(self):
-        """Cleanup after tests."""
-        GitConfig.reset_instance()
+        self.engine = make_policy_engine()
 
     # Cycle 7: Convention #6 - Commit prefix validation
-    def test_commit_uses_git_config_prefixes(self):
+    def test_commit_uses_git_config_prefixes(self) -> None:
         """Test commit validation uses actual prefixes from GitConfig (BUG FIX).
 
         Bug: policies.yaml has 'red:', 'green:' but GitManager generates 'test:', 'feat:'
@@ -61,7 +59,7 @@ class TestPolicyEngineConfigIntegration:
         assert decision.allowed is False
         assert "TDD prefix" in decision.reason
 
-    def test_commit_rejects_phase_names(self):
+    def test_commit_rejects_phase_names(self) -> None:
         """Test that phase NAMES (red:, green:) are NOT accepted.
 
         This is the bug: policies.yaml had 'red:', 'green:' as prefixes,

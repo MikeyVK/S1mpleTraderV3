@@ -26,13 +26,12 @@ from pathlib import Path
 from typing import Any, cast
 
 from mcp_server.adapters.filesystem import FilesystemAdapter
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.config.settings import settings
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.template_registry import TemplateRegistry
 from mcp_server.scaffolding.version_hash import compute_version_hash
+from mcp_server.schemas import ArtifactRegistryConfig, ProjectStructureConfig
 from mcp_server.schemas.base import BaseContext, BaseRenderContext
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 from mcp_server.validation.validation_service import ValidationService
@@ -66,11 +65,12 @@ _v2_context_registry: dict[str, str] = {
 class ArtifactManagerDependencies:
     """Dependency injection container for ArtifactManager."""
 
-    registry: ArtifactRegistryConfig | None = None
+    registry: ArtifactRegistryConfig
     scaffolder: TemplateScaffolder | None = None
     validation_service: ValidationService | None = None
     fs_adapter: FilesystemAdapter | None = None
     template_registry: Any | None = None
+    project_structure_config: ProjectStructureConfig | None = None
 
 
 class ArtifactManager:
@@ -79,6 +79,10 @@ class ArtifactManager:
     NOT a singleton - each tool instantiates its own manager.
     Provides dependency injection for all collaborators.
     """
+
+    def _require_registry(self) -> ArtifactRegistryConfig:
+        """Return the configured artifact registry."""
+        return self.registry
 
     def __init__(
         self,
@@ -107,6 +111,7 @@ class ArtifactManager:
         validation_service = kwargs.pop("validation_service", None)
         fs_adapter = kwargs.pop("fs_adapter", None)
         template_registry = kwargs.pop("template_registry", None)
+        project_structure_config = kwargs.pop("project_structure_config", None)
 
         if kwargs:
             unexpected = ", ".join(sorted(kwargs.keys()))
@@ -115,23 +120,57 @@ class ArtifactManager:
         self.workspace_root = Path(workspace_root).resolve() if workspace_root else None
 
         # Merge dependencies container with individual kwargs (kwargs take precedence)
-        deps = dependencies or ArtifactManagerDependencies()
-        registry = registry if registry is not None else deps.registry
-        scaffolder = scaffolder if scaffolder is not None else deps.scaffolder
+        deps = dependencies
+        registry = (
+            registry if registry is not None else (deps.registry if deps is not None else None)
+        )
+        scaffolder = (
+            scaffolder
+            if scaffolder is not None
+            else (deps.scaffolder if deps is not None else None)
+        )
         validation_service = (
-            validation_service if validation_service is not None else deps.validation_service
+            validation_service
+            if validation_service is not None
+            else (deps.validation_service if deps is not None else None)
         )
-        fs_adapter = fs_adapter if fs_adapter is not None else deps.fs_adapter
+        fs_adapter = (
+            fs_adapter
+            if fs_adapter is not None
+            else (deps.fs_adapter if deps is not None else None)
+        )
         template_registry = (
-            template_registry if template_registry is not None else deps.template_registry
+            template_registry
+            if template_registry is not None
+            else (deps.template_registry if deps is not None else None)
         )
+        project_structure_config = (
+            project_structure_config
+            if project_structure_config is not None
+            else (deps.project_structure_config if deps is not None else None)
+        )
+
+        fs_root = getattr(fs_adapter, "root_path", None)
+        candidate_roots: list[Path] = []
+        if self.workspace_root is not None:
+            candidate_roots.append(self.workspace_root)
+        if isinstance(fs_root, str | os.PathLike):
+            candidate_roots.append(Path(fs_root).resolve())
+        candidate_roots.append(Path.cwd().resolve())
 
         if registry is None and scaffolder is not None:
-            maybe_registry = getattr(scaffolder, "registry", None)
-            if isinstance(maybe_registry, ArtifactRegistryConfig):
-                registry = maybe_registry
+            registry = getattr(scaffolder, "registry", None)
 
-        self.registry = registry or ArtifactRegistryConfig.from_file()
+        if registry is None:
+            raise ValueError("ArtifactRegistryConfig must be injected into ArtifactManager")
+
+        self.registry: ArtifactRegistryConfig = cast(ArtifactRegistryConfig, registry)
+        self._project_structure_config: ProjectStructureConfig | None = project_structure_config
+        self._directory_resolver: DirectoryPolicyResolver | None = (
+            DirectoryPolicyResolver(project_structure_config)
+            if project_structure_config is not None
+            else None
+        )
         self.scaffolder = scaffolder or TemplateScaffolder(registry=self.registry)
         self.validation_service = validation_service or ValidationService()
 
@@ -142,10 +181,30 @@ class ArtifactManager:
         # Task 1.1c: Template registry for provenance (lazy init if not provided)
         # IMPORTANT: resolve path relative to workspace root (never process CWD).
         if template_registry is None:
-            root = self.workspace_root or Path(settings.server.workspace_root).resolve()
+            fs_root = getattr(self.fs_adapter, "root_path", None)
+            if self.workspace_root is not None:
+                root = self.workspace_root
+            elif isinstance(fs_root, str | os.PathLike):
+                root = Path(fs_root).resolve()
+            else:
+                root = Path.cwd().resolve()
             registry_path = root / ".st3" / "template_registry.json"
             template_registry = TemplateRegistry(registry_path=registry_path)
         self.template_registry = template_registry
+
+    def _get_template_root(self) -> Path:
+        """Resolve template root from the injected scaffolder renderer."""
+        renderer = getattr(self.scaffolder, "_renderer", None)
+        loader = getattr(getattr(renderer, "env", None), "loader", None)
+        searchpath = getattr(loader, "searchpath", None)
+        if (
+            isinstance(searchpath, list | tuple)
+            and searchpath
+            and isinstance(searchpath[0], str | os.PathLike)
+        ):
+            return Path(searchpath[0])
+        logger.warning("Template loader missing usable search path; falling back to cwd")
+        return Path.cwd()
 
     def _enrich_context(self, artifact_type: str, context: dict[str, Any]) -> dict[str, Any]:
         """Enrich template context with scaffold metadata fields.
@@ -333,8 +392,7 @@ class ArtifactManager:
         """
         try:
             # Get templates root
-            parent = Path(__file__).parent.parent
-            template_root = parent / "scaffolding" / "templates"
+            template_root = self._get_template_root()
 
             # Initialize analyzer
             analyzer = TemplateAnalyzer(template_root=template_root)
@@ -391,7 +449,7 @@ class ArtifactManager:
         tier_versions: dict[str, tuple[str, str]] = {}
 
         try:
-            template_root = Path(__file__).parent.parent / "scaffolding" / "templates"
+            template_root = self._get_template_root()
             analyzer = TemplateAnalyzer(template_root=template_root)
 
             template_path = template_root / template_file
@@ -676,7 +734,7 @@ class ArtifactManager:
                 # 4. Check if v2 template exists (e.g., dto_v2.py.jinja2)
                 # If not, use v1 template (backward compatibility)
                 v2_template_file = template_file.replace(".py.jinja2", "_v2.py.jinja2")
-                template_root = Path(__file__).parent.parent / "scaffolding" / "templates"
+                template_root = self._get_template_root()
                 v2_template_path = template_root / v2_template_file
                 v2_template_exists = v2_template_path.exists()
 
@@ -763,14 +821,21 @@ class ArtifactManager:
         # Get artifact definition
         artifact = self.registry.get_artifact(artifact_type)
 
-        # Find directories that allow this artifact type
-        resolver = DirectoryPolicyResolver()
+        # Find directories that allow this artifact type.
+        # When no resolver was injected, construct one lazily so patch-based tests
+        # can intercept DirectoryPolicyResolver() and legacy callers still work.
+        if self._project_structure_config is None:
+            raise ConfigError(
+                "ProjectStructureConfig must be injected to resolve artifact directories",
+                file_path=".st3/config/project_structure.yaml",
+            )
+        resolver = DirectoryPolicyResolver(self._project_structure_config)
         valid_dirs = resolver.find_directories_for_artifact(artifact_type)
 
         if not valid_dirs:
             raise ConfigError(
                 f"No valid directory found for artifact type: {artifact_type}",
-                file_path=".st3/project_structure.yaml",
+                file_path=".st3/config/project_structure.yaml",
             )
 
         # Use first directory

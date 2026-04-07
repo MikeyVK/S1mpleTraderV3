@@ -1,5 +1,9 @@
 # tests/unit/mcp_server/resources/test_standards.py
-"""Tests for standards resource."""
+"""Tests for standards resource.
+
+@layer: Tests (Unit)
+@dependencies: pytest, json, mcp_server.resources.standards
+"""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 
 # Standard library

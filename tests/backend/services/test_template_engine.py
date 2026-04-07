@@ -2,6 +2,9 @@
 
 Tests TemplateEngine extracted from mcp_server/scaffolding/renderer.py
 to backend/services/template_engine.py for reusability.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, backend.services.template_engine]
 """
 
 import tempfile

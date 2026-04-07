@@ -27,8 +27,8 @@ class ValidationTool(BaseTool):
     description = "Validate code against architectural patterns"
     args_model = ValidationInput
 
-    def __init__(self, manager: QAManager | None = None) -> None:
-        self.manager = manager or QAManager()
+    def __init__(self, manager: QAManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:

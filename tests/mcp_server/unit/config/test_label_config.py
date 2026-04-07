@@ -14,10 +14,16 @@ from unittest.mock import Mock
 
 # Third-party
 import pytest
-from pydantic import ValidationError
 
 # Project modules
-from mcp_server.config.label_config import Label, LabelConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import LabelConfig
+from mcp_server.config.schemas.label_config import Label
+from mcp_server.core.exceptions import ConfigError
+
+
+def _load_label_config(config_path: Path) -> LabelConfig:
+    return ConfigLoader(config_path.parent).load_label_config(config_path=config_path)
 
 
 class TestLabelCreation:
@@ -121,9 +127,8 @@ labels:
         yaml_file.write_text(yaml_content)
 
         # Clear singleton before test
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         assert config.version == "1.0"
         assert len(config.labels) == 1
         assert config.labels[0].name == "type:test"
@@ -142,9 +147,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         assert len(config.labels) == 3
 
     def test_load_with_freeform_exceptions(self, tmp_path: Path) -> None:
@@ -159,19 +163,17 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         assert len(config.freeform_exceptions) == 2
         assert "good first issue" in config.freeform_exceptions
 
     def test_load_file_not_found(self, tmp_path: Path) -> None:
         """Raise FileNotFoundError for missing file."""
         yaml_file = tmp_path / "nonexistent.yaml"
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(FileNotFoundError, match="Label configuration not found"):
-            LabelConfig.load(yaml_file)
+        with pytest.raises(ConfigError, match="Config file not found"):
+            _load_label_config(yaml_file)
 
     def test_load_invalid_yaml_syntax(self, tmp_path: Path) -> None:
         """Raise ValueError for invalid YAML syntax."""
@@ -182,10 +184,9 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(ValueError, match="Invalid YAML syntax"):
-            LabelConfig.load(yaml_file)
+        with pytest.raises(ConfigError, match="Invalid YAML"):
+            _load_label_config(yaml_file)
 
     def test_load_missing_version_field(self, tmp_path: Path) -> None:
         """Raise ValidationError for missing version."""
@@ -195,10 +196,9 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(ValidationError):
-            LabelConfig.load(yaml_file)
+        with pytest.raises(ConfigError, match="Config validation failed"):
+            _load_label_config(yaml_file)
 
     def test_load_missing_labels_field(self, tmp_path: Path) -> None:
         """Raise ValueError for missing labels field."""
@@ -206,10 +206,9 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(ValueError, match="Missing required field"):
-            LabelConfig.load(yaml_file)
+        with pytest.raises(ConfigError, match="Config validation failed"):
+            _load_label_config(yaml_file)
 
     def test_load_invalid_color_in_yaml(self, tmp_path: Path) -> None:
         """Raise ValueError for invalid color in YAML."""
@@ -220,10 +219,9 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(ValueError, match="Invalid color format"):
-            LabelConfig.load(yaml_file)
+        with pytest.raises(ConfigError, match="Config validation failed"):
+            _load_label_config(yaml_file)
 
     def test_load_duplicate_label_names(self, tmp_path: Path) -> None:
         """Raise ValidationError for duplicate label names."""
@@ -236,10 +234,9 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(ValidationError, match="Duplicate label names"):
-            LabelConfig.load(yaml_file)
+        with pytest.raises(ConfigError, match="Config validation failed"):
+            _load_label_config(yaml_file)
 
     def test_load_singleton_pattern(self, tmp_path: Path) -> None:
         """Verify singleton pattern returns same instance."""
@@ -250,11 +247,10 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config1 = LabelConfig.load(yaml_file)
-        config2 = LabelConfig.load(yaml_file)
-        assert config1 is config2
+        config1 = _load_label_config(yaml_file)
+        config2 = _load_label_config(yaml_file)
+        assert config1 == config2
 
     def test_load_empty_labels_list(self, tmp_path: Path) -> None:
         """Load YAML with empty labels list."""
@@ -263,9 +259,8 @@ labels: []
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         assert not config.labels
 
     def test_load_builds_caches(self, tmp_path: Path) -> None:
@@ -279,9 +274,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         # pylint: disable=protected-access
         assert "type:feature" in config._labels_by_name
         assert "priority:high" in config._labels_by_name
@@ -299,9 +293,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("type:feature")
         assert valid
         assert not error
@@ -315,9 +308,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("priority:high")
         assert valid
         assert not error
@@ -331,9 +323,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("status:in-progress")
         assert valid
         assert not error
@@ -347,9 +338,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("phase:design")
         assert valid
         assert not error
@@ -363,9 +353,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("scope:backend")
         assert valid
         assert not error
@@ -379,9 +368,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("component:api")
         assert valid
         assert not error
@@ -395,9 +383,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("effort:small")
         assert valid
         assert not error
@@ -411,9 +398,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("parent:epic-42")
         assert valid
         assert not error
@@ -427,9 +413,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("InvalidLabel")
         assert not valid
         assert "does not match required pattern" in error
@@ -445,9 +430,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         valid, error = config.validate_label_name("good first issue")
         assert valid
         assert not error
@@ -461,9 +445,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         assert config.label_exists("type:feature")
 
     def test_label_exists_false(self, tmp_path: Path) -> None:
@@ -475,9 +458,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         assert not config.label_exists("type:bug")
 
 
@@ -494,9 +476,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         label = config.get_label("type:feature")
         assert label is not None
         assert label.name == "type:feature"
@@ -511,9 +492,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         label = config.get_label("type:bug")
         assert label is None
 
@@ -526,9 +506,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         label = config.get_label("Type:feature")
         assert label is None
 
@@ -545,9 +524,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         labels = config.get_labels_by_category("type")
         assert len(labels) == 2
         assert labels[0].name == "type:feature"
@@ -566,9 +544,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         labels = config.get_labels_by_category("priority")
         assert len(labels) == 2
         assert labels[0].name == "priority:high"
@@ -583,9 +560,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         labels = config.get_labels_by_category("nonexistent")
         assert labels == []
 
@@ -602,9 +578,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         type_labels = config.get_labels_by_category("type")
         priority_labels = config.get_labels_by_category("priority")
         assert len(type_labels) == 2
@@ -623,9 +598,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         # pylint: disable=protected-access
         assert len(config._labels_by_name) == 2
         assert "type:feature" in config._labels_by_name
@@ -649,9 +623,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         # Mock GitHub adapter
         github_mock = Mock()
@@ -675,9 +648,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = [
@@ -701,9 +673,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = [
@@ -726,9 +697,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = [
@@ -751,9 +721,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = []
@@ -775,9 +744,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = [
@@ -801,9 +769,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.side_effect = Exception("API error")
@@ -825,9 +792,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = []
@@ -847,9 +813,8 @@ labels: []
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = []
@@ -871,9 +836,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
 
         github_mock = Mock()
         github_mock.list_labels.return_value = []
@@ -896,9 +860,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         label = config.labels[0]
 
         github_label = {"color": "1D76DB", "description": "Test"}
@@ -914,9 +877,8 @@ labels:
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
-        LabelConfig._instance = None  # pylint: disable=protected-access
 
-        config = LabelConfig.load(yaml_file)
+        config = _load_label_config(yaml_file)
         label = config.labels[0]
 
         github_label = {"color": "1D76DB", "description": "Old"}

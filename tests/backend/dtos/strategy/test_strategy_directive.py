@@ -2,6 +2,9 @@
 Unit tests for StrategyDirective DTO.
 
 Tests creation, validation, and edge cases for strategy planning directives.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, datetime, backend.dtos.strategy.strategy_directive]
 """
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false, reportFunctionMemberAccess=false
 # Suppress Pydantic FieldInfo false positives - Pylance can't narrow types after isinstance()/cast()

@@ -7,6 +7,9 @@ Validates that concrete CODE templates:
 - set TEMPLATE_METADATA enforcement to GUIDELINE
 
 These tests intentionally inspect template SOURCE (not rendered output).
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.scaffolding.templates
 """
 
 from __future__ import annotations

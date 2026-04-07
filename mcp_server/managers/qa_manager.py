@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.quality_config import (
+from mcp_server.schemas import (
     JsonViolationsParsing,
     QualityConfig,
     QualityGate,
@@ -51,19 +51,34 @@ def _pyright_script_name() -> str:
 class QAManager:
     """Manager for quality assurance and gates."""
 
+    _quality_config: QualityConfig | None
+
     # Default configuration (UPPERCASE constants for test mocking compatibility)
     QA_LOG_DIR = Path("temp/qa_logs")
     QA_LOG_ENABLED = True
+
+    def _require_quality_config(self) -> QualityConfig:
+        """Return the injected quality configuration."""
+        quality_config = self._quality_config
+        if quality_config is None:
+            raise ValueError("QualityConfig must be injected for quality-gate execution")
+        return quality_config
+
     QA_LOG_MAX_FILES = DEFAULT_ARTIFACT_LOG_MAX_FILES
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
-        """Initialize QA Manager with default runtime configuration."""
+    def __init__(
+        self,
+        workspace_root: Path | None = None,
+        quality_config: QualityConfig | None = None,
+    ) -> None:
+        """Initialize QA Manager with injected quality configuration."""
         # Runtime configuration (lowercase for instance mutability)
         self.qa_log_dir = self.QA_LOG_DIR
         self.qa_log_enabled = self.QA_LOG_ENABLED
         self.qa_log_max_files = self.QA_LOG_MAX_FILES
         # Optional workspace root: used for baseline state persistence in .st3/state.json
         self.workspace_root = workspace_root
+        self._quality_config = quality_config
 
     def run_quality_gates(
         self,
@@ -75,7 +90,7 @@ class QAManager:
         Returns v2.0 JSON schema with version, mode, summary, and gates.
 
         Notes:
-            - Gate catalog and active gates are defined in `.st3/quality.yaml`.
+            - Gate catalog and active gates are defined in `.st3/config/quality.yaml`.
             - Each gate filters files by its configured `capabilities.file_types`.
             - Some gates (e.g., pytest) are repo-scoped and ignore file lists.
         """
@@ -97,9 +112,11 @@ class QAManager:
             "overall_pass": True,  # Backward compatibility
         }
 
-        # Validate file existence
+        # Validate file existence. Mixed explicit file lists can legitimately contain
+        # deleted branch-diff paths; keep validating the remaining existing files.
+        existing_files = [f for f in files if Path(f).exists()]
         missing_files = [f for f in files if not Path(f).exists()]
-        if missing_files:
+        if missing_files and not existing_files:
             self._update_summary_and_append_gate(
                 results,
                 {
@@ -112,9 +129,9 @@ class QAManager:
             )
             return results
 
-        python_files = list(files)
+        python_files = list(existing_files)
 
-        quality_config = QualityConfig.load()
+        quality_config = self._require_quality_config()
         # Apply artifact logging config (config-first with safe defaults)
         self.qa_log_enabled = quality_config.artifact_logging.enabled
         self.qa_log_dir = Path(quality_config.artifact_logging.output_dir)
@@ -130,7 +147,7 @@ class QAManager:
                     "score": "N/A",
                     "issues": [
                         {
-                            "message": "No active_gates configured in .st3/quality.yaml",
+                            "message": "No active_gates configured in .st3/config/quality.yaml",
                         }
                     ],
                 },
@@ -459,7 +476,7 @@ class QAManager:
         if self.workspace_root is None:
             return []
 
-        quality_config = QualityConfig.load()
+        quality_config = self._require_quality_config()
         project_scope = quality_config.project_scope
         if project_scope is None or not project_scope.include_globs:
             return []

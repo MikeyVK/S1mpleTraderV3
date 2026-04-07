@@ -10,6 +10,9 @@ Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
 Issue #229 Cycle 7: Per-phase deliverables schema in save_planning_deliverables (D7.1).
 Issue #229 Cycle 8: update_planning_deliverables per-phase merge + exit_criteria
   (D8.1/D8.2/D8.3/GAP-12/GAP-15).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.project_tools]
 """
 
 import json
@@ -18,7 +21,6 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.project_tools import (
     InitializeProjectInput,
     InitializeProjectTool,
@@ -26,6 +28,12 @@ from mcp_server.tools.project_tools import (
     SavePlanningDeliverablesTool,
     UpdatePlanningDeliverablesInput,
     UpdatePlanningDeliverablesTool,
+)
+from tests.mcp_server.test_support import (
+    make_config_loader,
+    make_git_manager,
+    make_phase_state_engine,
+    make_project_manager,
 )
 
 
@@ -54,7 +62,14 @@ class TestInitializeProjectToolParentBranch:
         Returns:
             InitializeProjectTool instance
         """
-        return InitializeProjectTool(workspace_root=workspace_root)
+        manager = make_project_manager(workspace_root)
+        return InitializeProjectTool(
+            workspace_root=workspace_root,
+            workflow_config=make_config_loader(workspace_root).load_workflow_config(),
+            manager=manager,
+            git_manager=make_git_manager(workspace_root),
+            state_engine=make_phase_state_engine(workspace_root, project_manager=manager),
+        )
 
     @pytest.mark.asyncio
     async def test_initialize_with_explicit_parent_branch(
@@ -211,12 +226,12 @@ class TestSavePlanningDeliverablesTool:
 
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> SavePlanningDeliverablesTool:
-        return SavePlanningDeliverablesTool(workspace_root=tmp_path)
+        return SavePlanningDeliverablesTool(manager=make_project_manager(tmp_path))
 
     @pytest.fixture()
     def initialized(self, tmp_path: Path) -> tuple[Path, int]:
         """Initialize a project so save_planning_deliverables can run."""
-        pm = ProjectManager(workspace_root=tmp_path)
+        pm = make_project_manager(tmp_path)
         pm.initialize_project(
             issue_number=229,
             issue_title="Phase deliverables enforcement",
@@ -232,9 +247,9 @@ class TestSavePlanningDeliverablesTool:
     async def test_save_planning_deliverables_tool_persists_to_projects_json(
         self, initialized: tuple[Path, int]
     ) -> None:
-        """Happy path: valid payload is written to projects.json. (D4.1)"""
+        """Happy path: valid payload is written to deliverables.json. (D4.1)"""
         workspace_root, issue_number = initialized
-        tool_with_root = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool_with_root = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool_with_root.execute(
             SavePlanningDeliverablesInput(
@@ -244,7 +259,7 @@ class TestSavePlanningDeliverablesTool:
         )
 
         assert not result.is_error, f"Expected success, got: {result.content}"
-        pm = ProjectManager(workspace_root=workspace_root)
+        pm = make_project_manager(workspace_root)
         plan = pm.get_project_plan(issue_number)
         assert plan is not None
         assert "planning_deliverables" in plan
@@ -255,7 +270,7 @@ class TestSavePlanningDeliverablesTool:
     ) -> None:
         """Duplicate call is rejected with clear error."""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
         params = SavePlanningDeliverablesInput(
             issue_number=issue_number,
             planning_deliverables=_minimal_deliverables(),
@@ -272,7 +287,7 @@ class TestSavePlanningDeliverablesTool:
     ) -> None:
         """Payload without tdd_cycles key is rejected."""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             SavePlanningDeliverablesInput(
@@ -294,7 +309,7 @@ class TestSavePlanningDeliverablesTool:
     ) -> None:
         """validates entry with unknown type is rejected before persisting. (D4.3)"""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             SavePlanningDeliverablesInput(
@@ -316,7 +331,7 @@ class TestSavePlanningDeliverablesTool:
     ) -> None:
         """validates entry missing required field (text for contains_text) is rejected. (D4.3)"""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             SavePlanningDeliverablesInput(
@@ -337,7 +352,7 @@ class TestSavePlanningDeliverablesTool:
     ) -> None:
         """Error on unknown type lists all valid types and their required fields. (D4.3)"""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             SavePlanningDeliverablesInput(
@@ -366,7 +381,7 @@ class TestUpdatePlanningDeliverablesTool:
     def initialized(self, tmp_path: Path) -> tuple[Path, int]:
         """Create workspace with initial planning deliverables already saved."""
         issue_number = 229
-        manager = ProjectManager(workspace_root=tmp_path)
+        manager = make_project_manager(tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
             issue_title="Phase deliverables enforcement",
@@ -384,7 +399,7 @@ class TestUpdatePlanningDeliverablesTool:
     ) -> None:
         """Sending a new cycle_number appends it to tdd_cycles.cycles. (D5.1)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -405,8 +420,8 @@ class TestUpdatePlanningDeliverablesTool:
         )
 
         assert not result.is_error
-        manager = ProjectManager(workspace_root=workspace_root)
-        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
+        manager = make_project_manager(workspace_root)
+        data = json.loads(manager.deliverables_file.read_text())[str(issue_number)]
         cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]
         assert len(cycles) == 2  # original C1 + new C2
         assert cycles[1]["cycle_number"] == 2
@@ -417,7 +432,7 @@ class TestUpdatePlanningDeliverablesTool:
     ) -> None:
         """New deliverable id in existing cycle is appended. (D5.1)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -440,8 +455,8 @@ class TestUpdatePlanningDeliverablesTool:
         )
 
         assert not result.is_error
-        manager = ProjectManager(workspace_root=workspace_root)
-        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
+        manager = make_project_manager(workspace_root)
+        data = json.loads(manager.deliverables_file.read_text())[str(issue_number)]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
         ids = [d["id"] for d in cycle1["deliverables"]]
         assert "D1.1" in ids  # original preserved
@@ -453,7 +468,7 @@ class TestUpdatePlanningDeliverablesTool:
     ) -> None:
         """Existing deliverable id in existing cycle is overwritten. (D5.1)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -476,8 +491,8 @@ class TestUpdatePlanningDeliverablesTool:
         )
 
         assert not result.is_error
-        manager = ProjectManager(workspace_root=workspace_root)
-        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
+        manager = make_project_manager(workspace_root)
+        data = json.loads(manager.deliverables_file.read_text())[str(issue_number)]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
         d1_1 = next(d for d in cycle1["deliverables"] if d["id"] == "D1.1")
         assert d1_1["description"] == "updated description"
@@ -488,13 +503,13 @@ class TestUpdatePlanningDeliverablesTool:
     ) -> None:
         """Returns error when called before save_planning_deliverables. (D5.1)"""
         issue_number = 229
-        manager = ProjectManager(workspace_root=tmp_path)
+        manager = make_project_manager(tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
             issue_title="Phase deliverables enforcement",
             workflow_name="feature",
         )
-        tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(tmp_path))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -512,7 +527,7 @@ class TestUpdatePlanningDeliverablesTool:
     ) -> None:
         """Invalid validates entry is rejected before persisting. (D5.1)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -538,7 +553,7 @@ class TestPlanningDeliverablesPhaseSchema:
     def initialized(self, tmp_path: Path) -> tuple[Path, int]:
         """Initialize a project (no deliverables yet)."""
         issue_number = 229
-        manager = ProjectManager(workspace_root=tmp_path)
+        manager = make_project_manager(tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
             issue_title="Phase deliverables schema test",
@@ -550,7 +565,7 @@ class TestPlanningDeliverablesPhaseSchema:
     async def test_save_accepts_design_phase_key(self, initialized: tuple[Path, int]) -> None:
         """save_planning_deliverables accepts design phase key alongside tdd_cycles. (D7.1)"""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             SavePlanningDeliverablesInput(
@@ -565,7 +580,7 @@ class TestPlanningDeliverablesPhaseSchema:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         assert "design" in data["planning_deliverables"]
@@ -574,7 +589,7 @@ class TestPlanningDeliverablesPhaseSchema:
     async def test_save_rejects_unknown_phase_key(self, initialized: tuple[Path, int]) -> None:
         """save_planning_deliverables rejects unrecognised phase keys. (D7.1)"""
         workspace_root, issue_number = initialized
-        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = SavePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             SavePlanningDeliverablesInput(
@@ -604,7 +619,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
     def initialized(self, tmp_path: Path) -> tuple[Path, int]:
         """Initialize a project with tdd_cycles + design phase deliverables."""
         issue_number = 229
-        manager = ProjectManager(workspace_root=tmp_path)
+        manager = make_project_manager(tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
             issue_title="Phase deliverables update test",
@@ -625,9 +640,9 @@ class TestUpdatePlanningDeliverablesPerPhase:
     async def test_update_planning_deliverables_merges_design_key(
         self, initialized: tuple[Path, int]
     ) -> None:
-        """update_planning_deliverables with design key updates projects.json. (D8.1/GAP-15)"""
+        """update_planning_deliverables with design key updates deliverables.json. (D8.1/GAP-15)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -641,7 +656,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         design_ids = [d["id"] for d in data["planning_deliverables"]["design"]["deliverables"]]
@@ -650,9 +665,10 @@ class TestUpdatePlanningDeliverablesPerPhase:
 
     @pytest.mark.asyncio()
     async def test_update_planning_deliverables_merges_validation_key(self, tmp_path: Path) -> None:
-        """update_planning_deliverables with validation key updates projects.json. (D8.1/GAP-15)"""
+        """update_planning_deliverables with validation key updates deliverables.json.
+        (D8.1/GAP-15)"""
         issue_number = 229
-        manager = ProjectManager(workspace_root=tmp_path)
+        manager = make_project_manager(tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
             issue_title="Validation phase test",
@@ -669,7 +685,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
                 },
             },
         )
-        tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(tmp_path))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -685,7 +701,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((tmp_path / ".st3" / "projects.json").read_text())[str(issue_number)]
+        data = json.loads((tmp_path / ".st3" / "deliverables.json").read_text())[str(issue_number)]
         val_ids = [d["id"] for d in data["planning_deliverables"]["validation"]["deliverables"]]
         assert "Val1" in val_ids
         assert "Val2" in val_ids
@@ -694,10 +710,10 @@ class TestUpdatePlanningDeliverablesPerPhase:
     async def test_update_planning_deliverables_merges_documentation_key(
         self, tmp_path: Path
     ) -> None:
-        """update_planning_deliverables with documentation key updates projects.json.
+        """update_planning_deliverables with documentation key updates deliverables.json.
         (D8.1/GAP-15)"""
         issue_number = 229
-        manager = ProjectManager(workspace_root=tmp_path)
+        manager = make_project_manager(tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
             issue_title="Documentation phase test",
@@ -712,7 +728,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
                 },
             },
         )
-        tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(tmp_path))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -726,7 +742,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((tmp_path / ".st3" / "projects.json").read_text())[str(issue_number)]
+        data = json.loads((tmp_path / ".st3" / "deliverables.json").read_text())[str(issue_number)]
         doc_ids = [d["id"] for d in data["planning_deliverables"]["documentation"]["deliverables"]]
         assert "Doc1" in doc_ids
         assert "Doc2" in doc_ids
@@ -737,7 +753,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
     ) -> None:
         """Existing per-phase deliverable id updated in place; new id appended. (D8.2)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -754,7 +770,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         deliverables = data["planning_deliverables"]["design"]["deliverables"]
@@ -768,7 +784,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
     ) -> None:
         """exit_criteria on existing cycle overwritten when provided in update. (D8.3/GAP-12)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -788,7 +804,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
@@ -801,7 +817,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         """tdd_cycles merge behaviour unchanged after per-phase support added.
         (D8.1 backward compat)"""
         workspace_root, issue_number = initialized
-        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+        tool = UpdatePlanningDeliverablesTool(manager=make_project_manager(workspace_root))
 
         result = await tool.execute(
             UpdatePlanningDeliverablesInput(
@@ -821,7 +837,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]

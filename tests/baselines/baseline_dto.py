@@ -24,6 +24,7 @@ class BaselineTestDTO(BaseModel):
         id: Identifier
         value: Test value
     """
+
     id: str = Field(
         default=...,
         description="Identifier",
@@ -36,9 +37,5 @@ class BaselineTestDTO(BaseModel):
     model_config = {
         "frozen": True,
         "extra": "forbid",
-        "json_schema_extra": {
-            "examples": [
-                "BaselineTestDTO(id=\u0027test\u0027, value=42)"
-            ]
-        }
+        "json_schema_extra": {"examples": ["BaselineTestDTO(id=\u0027test\u0027, value=42)"]},
     }

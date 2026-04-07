@@ -2,20 +2,15 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional project-specific conventions for consistency and maintainability.
+> **⚠️ Read first:** [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md) — the binding architectural contract. The style rules in this document are *form*; the architectural principles are *law*.
 
-## General Principles
+Code formatting rules are enforced automatically by `ruff` in the quality gates — they are not a cognitive burden for the developer. Architectural correctness (SOLID, DRY, Config-First, Fail-Fast) is the primary quality measure.
 
-- **PEP 8 Compliant** - All Python code follows strict PEP 8
-- **Full Type Hinting** - Mandatory for all functions and methods
-- **English Only** - All comments, docstrings, variable names in English
-- **Google Style Docstrings** - For all public functions and classes
+**PEP 8 compliance** is enforced by `ruff` — no need to memorize it. This document describes the residual manual conventions for file headers, import organization, docstrings, and patterns not covered by tooling.
 
 ## File Headers
 
-**AUTOMATED VIA SCAFFOLDING:** All Python modules scaffolded via `scaffold_artifact` automatically include standardized headers. Manual addition only required for non-scaffolded files.
-
-**Scaffolding Templates:** `mcp_server/templates/base/base_component.py.jinja2` and `base_test.py.jinja2` enforce headers.
+All Python modules should include a standardized header. If your project uses code generation tooling, headers are generated automatically — manual addition is only required for non-generated files.
 
 ### Header Template
 
@@ -35,51 +30,49 @@ All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional 
 ```
 
 **Implementation:**
-- ✅ **Scaffolded files**: Headers auto-generated via templates (including @responsibilities)
-- ⚠️ **Non-scaffolded files**: Must manually add header (rare cases only)
+- ✅ **Generated files**: Headers auto-generated via code generation tooling
+- ⚠️ **Non-generated files**: Must manually add header (rare cases only)
 
 ### Examples
 
-**Component Module (Auto-generated via scaffolding):**
+**Component Module (Auto-generated):**
 ```python
-# backend/dtos/shared/disposition_envelope.py
+# backend/services/order_processor.py
 """
-Disposition Envelope - Worker Output Flow Control Contract.
+Order Processor - Order lifecycle management.
 
-This module defines the DispositionEnvelope, the standardized return
-type for all workers to communicate their execution outcome and
-next-step intentions to the EventAdapter.
+Handles order creation, validation, and state transitions.
 
-@layer: Backend (DTOs)
-@dependencies: [pydantic, typing, re]
+@layer: Backend (Services)
+@dependencies: [pydantic, typing]
 @responsibilities:
-    - Define worker output contract (CONTINUE, PUBLISH, STOP)
-    - Enable event-driven flow control without coupling workers to EventBus
-    - Validate event publication payloads at type level
+    - Validate order input
+    - Persist order state
+    - Emit order lifecycle events
 ```
 
-**Test Module (Auto-generated via scaffolding):**
+**Test Module (Auto-generated):**
 ```python
-# tests/unit/dtos/shared/test_disposition_envelope.py
+# tests/unit/services/test_order_processor.py
 """
-Unit tests for DispositionEnvelope DTO.
+Unit tests for OrderProcessor.
 
-Tests the worker output flow control contract according to TDD principles.
+Tests order lifecycle management according to TDD principles.
 
 @layer: Tests (Unit)
-@dependencies: [pytest, pydantic, backend.dtos.shared.disposition_envelope]
+@dependencies: [pytest, pydantic, backend.services.order_processor]
 ```
 
 **Note:** Test modules typically don't include @responsibilities as their purpose is self-evident (test the module under test).
 
-**Non-Scaffolded Utility (Manual header required):**
+**Utility Module (Manual header required):**
 ```python
 # backend/utils/id_generators.py
 """
 Typed ID generation utilities.
 
 Provides standardized ID generation with type prefixes for causal
-traceability across the trading system.
+traceability across the system.
 
 @layer: Backend (Utils)
 @dependencies: [uuid]
@@ -91,17 +84,13 @@ traceability across the trading system.
 ```
 
 **Why This Convention:**
-- **Scaffolding enforcement** - Automatic for all scaffolded files
-- **Quick navigation** - Immediately see where you are in architecture
+- **Tooling enforcement** - Automatic for all generated files
+- **Quick navigation** - Immediately see where you are in the architecture
 - **Documentation** - Explicit dependencies and responsibilities visible
-- **Consistency** - All modules follow same pattern
+- **Consistency** - All modules follow the same pattern
 - **IDE-friendly** - File path as first line helps with context
 
 ## Import Organization
-
-**AUTOMATED VIA SCAFFOLDING:** All scaffolded Python files include properly organized imports with comment headers via base templates.
-
-**Scaffolding Templates:** `mcp_server/templates/base/base_component.py.jinja2` and `base_test.py.jinja2` enforce import structure.
 
 Imports must be grouped into **3 sections** with comment headers:
 

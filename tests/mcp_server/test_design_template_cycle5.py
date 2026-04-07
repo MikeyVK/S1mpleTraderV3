@@ -2,6 +2,9 @@
 
 Tests for full DESIGN_TEMPLATE structure with numbered sections,
 options comparison, and key decisions table.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path
@@ -12,7 +15,7 @@ from jinja2 import Environment, FileSystemLoader
 class TestDesignTemplateStructure:
     """Test design.md.jinja2 full structure (Cycle 5)."""
 
-    def test_renders_context_and_requirements_section(self):
+    def test_renders_context_and_requirements_section(self) -> None:
         """Design documents must have numbered '1. Context & Requirements' section."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -44,7 +47,7 @@ class TestDesignTemplateStructure:
         assert "### 1.3. Constraints" in result
         assert "Test problem" in result
 
-    def test_renders_design_options_section(self):
+    def test_renders_design_options_section(self) -> None:
         """Design documents must have numbered '2. Design Options' section."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -90,7 +93,7 @@ class TestDesignTemplateStructure:
         assert "**Pros:**" in result
         assert "**Cons:**" in result
 
-    def test_renders_chosen_design_section(self):
+    def test_renders_chosen_design_section(self) -> None:
         """Design documents must have numbered '3. Chosen Design' section."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -128,7 +131,7 @@ class TestDesignTemplateStructure:
         assert "Provides separation of concerns and reusability" in result
         assert "### 3.1. Key Design Decisions" in result
 
-    def test_renders_key_decisions_table(self):
+    def test_renders_key_decisions_table(self) -> None:
         """Design documents must have Key Decisions table with Decision/Rationale/Trade-offs."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -168,7 +171,7 @@ class TestDesignTemplateStructure:
         assert "| Use Jinja2 | Industry standard |" in result
         assert "| Enforce metadata | Quality assurance |" in result
 
-    def test_renders_open_questions_section_when_provided(self):
+    def test_renders_open_questions_section_when_provided(self) -> None:
         """Design documents can have optional '4. Open Questions' section."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -198,7 +201,7 @@ class TestDesignTemplateStructure:
         assert "How to handle edge case X?" in result
         assert "Performance impact?" in result
 
-    def test_omits_open_questions_when_not_provided(self):
+    def test_omits_open_questions_when_not_provided(self) -> None:
         """Open Questions section should not appear if not provided."""
         template_dir = Path("mcp_server/scaffolding/templates")
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -225,7 +228,7 @@ class TestDesignTemplateStructure:
         # No open questions section
         assert "## 4. Open Questions" not in result
 
-    def test_uses_guideline_enforcement_level(self):
+    def test_uses_guideline_enforcement_level(self) -> None:
         """Design template should use GUIDELINE enforcement (not STRICT)."""
         template_path = Path("mcp_server/scaffolding/templates/concrete/design.md.jinja2")
         content = template_path.read_text(encoding="utf-8")

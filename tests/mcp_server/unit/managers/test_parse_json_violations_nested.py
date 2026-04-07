@@ -1,9 +1,16 @@
+"""Tests for JSON violations parsing with nested field paths.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.qa_manager
+"""
+
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import JsonViolationsParsing, ViolationDTO
+from mcp_server.config.schemas.quality_config import JsonViolationsParsing, ViolationDTO
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 class TestParseJsonViolationsNestedPaths:
@@ -25,7 +32,7 @@ class TestParseJsonViolationsNestedPaths:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.fixture
     def nested_parsing(self) -> JsonViolationsParsing:

@@ -1,11 +1,12 @@
 """Code manipulation tools."""
+
 import warnings
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -13,6 +14,7 @@ from mcp_server.tools.tool_result import ToolResult
 
 class CreateFileInput(BaseModel):
     """Input for CreateFileTool."""
+
     path: str = Field(..., description="Relative path to file")
     content: str = Field(..., description="File content")
 
@@ -32,6 +34,17 @@ class CreateFileTool(BaseTool):
     )
     args_model = CreateFileInput
 
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        workspace_root: str | Path | None = None,
+    ) -> None:
+        super().__init__()
+        base_workspace = workspace_root or (
+            settings.server.workspace_root if settings else Path.cwd()
+        )
+        self._workspace_root = Path(base_workspace).resolve()
+
     @property
     def input_schema(self) -> dict[str, Any]:
         if self.args_model is None:
@@ -40,27 +53,20 @@ class CreateFileTool(BaseTool):
 
     async def execute(self, params: CreateFileInput) -> ToolResult:
         """Execute the tool."""
-        # Emit deprecation warning
         warnings.warn(
             "create_file is deprecated. Use scaffold_artifact instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
         path = params.path
         content = params.content
-
-        # Security check: ensure path is within workspace
-        # pylint: disable=no-member
-        full_path = Path(settings.server.workspace_root) / path
+        full_path = self._workspace_root / path
         try:
             full_path = full_path.resolve()
-            workspace = Path(settings.server.workspace_root).resolve()
-
-            if not str(full_path).startswith(str(workspace)):
+            if not str(full_path).startswith(str(self._workspace_root)):
                 raise ValidationError(f"Access denied: {path} is outside workspace")
 
-            # Create directories if needed
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(full_path, "w", encoding="utf-8") as f:

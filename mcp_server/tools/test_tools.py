@@ -5,11 +5,12 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -161,6 +162,17 @@ class RunTestsTool(BaseTool):
     # Default timeout in seconds (5 minutes for large test suites)
     DEFAULT_TIMEOUT = 300
 
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        workspace_root: str | os.PathLike[str] | None = None,
+    ) -> None:
+        super().__init__()
+        base_workspace = workspace_root or (
+            settings.server.workspace_root if settings else Path.cwd()
+        )
+        self._workspace_root = str(base_workspace)
+
     def _build_cmd(self, params: RunTestsInput) -> list[str]:
         """Build the pytest command from input parameters."""
         cmd = [sys.executable, "-m", "pytest"]
@@ -181,14 +193,11 @@ class RunTestsTool(BaseTool):
         effective_timeout = params.timeout or self.DEFAULT_TIMEOUT
 
         try:
-            # pylint: disable=no-member
-            workspace_root = settings.server.workspace_root
-
             # Run subprocess in thread pool to avoid blocking event loop
             stdout, stderr, _ = await asyncio.to_thread(
                 _run_pytest_sync,
                 cmd,
-                workspace_root,
+                self._workspace_root,
                 effective_timeout,
             )
 

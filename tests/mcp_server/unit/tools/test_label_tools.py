@@ -1,10 +1,17 @@
-"""Unit tests for label_tools.py."""
+"""Unit tests for label_tools.py.
 
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.tools.label_tools, mcp_server.config.schemas
+"""
+
+from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from mcp_server.config.label_config import LabelConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import LabelConfig
 from mcp_server.tools.label_tools import (
     AddLabelsInput,
     AddLabelsTool,
@@ -20,12 +27,12 @@ from mcp_server.tools.label_tools import (
 
 
 @pytest.fixture
-def mock_github_manager():
+def mock_github_manager() -> MagicMock:
     return MagicMock()
 
 
 @pytest.fixture
-def test_label_config(tmp_path):
+def test_label_config(tmp_path: Path) -> Generator[LabelConfig, None, None]:
     """Create a temp label config with test labels."""
     yaml_content = """version: "1.0"
 labels:
@@ -39,15 +46,14 @@ labels:
     yaml_file = tmp_path / "labels.yaml"
     yaml_file.write_text(yaml_content)
 
-    LabelConfig.reset()
-    LabelConfig.load(yaml_file)
-    yield
-    LabelConfig.reset()
+    yield ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
 
 
 @pytest.mark.asyncio
-async def test_list_labels_tool(mock_github_manager):
-    tool = ListLabelsTool(manager=mock_github_manager)
+async def test_list_labels_tool(
+    mock_github_manager: MagicMock, test_label_config: LabelConfig
+) -> None:
+    tool = ListLabelsTool(manager=mock_github_manager, label_config=test_label_config)
     mock_github_manager.list_labels.return_value = [
         MagicMock(name="bug", color="red", description="Its a feature"),
         MagicMock(name="feat", color="green", description=""),
@@ -61,10 +67,12 @@ async def test_list_labels_tool(mock_github_manager):
 
 
 @pytest.mark.asyncio
-async def test_create_label_tool(mock_github_manager, test_label_config):
-    tool = CreateLabelTool(manager=mock_github_manager)
+async def test_create_label_tool(
+    mock_github_manager: MagicMock, test_label_config: LabelConfig
+) -> None:
+    tool = CreateLabelTool(manager=mock_github_manager, label_config=test_label_config)
     label_mock = MagicMock()
-    label_mock.name = "type:hotfix"  # Must match pattern, not exist in config
+    label_mock.name = "type:hotfix"
     mock_github_manager.create_label.return_value = label_mock
 
     params = CreateLabelInput(name="type:hotfix", color="ff0000", description="Hotfix")
@@ -77,8 +85,10 @@ async def test_create_label_tool(mock_github_manager, test_label_config):
 
 
 @pytest.mark.asyncio
-async def test_delete_label_tool(mock_github_manager):
-    tool = DeleteLabelTool(manager=mock_github_manager)
+async def test_delete_label_tool(
+    mock_github_manager: MagicMock, test_label_config: LabelConfig
+) -> None:
+    tool = DeleteLabelTool(manager=mock_github_manager, label_config=test_label_config)
 
     params = DeleteLabelInput(name="old-label")
     result = await tool.execute(params)
@@ -88,8 +98,10 @@ async def test_delete_label_tool(mock_github_manager):
 
 
 @pytest.mark.asyncio
-async def test_add_labels_tool(mock_github_manager, test_label_config):
-    tool = AddLabelsTool(manager=mock_github_manager)
+async def test_add_labels_tool(
+    mock_github_manager: MagicMock, test_label_config: LabelConfig
+) -> None:
+    tool = AddLabelsTool(manager=mock_github_manager, label_config=test_label_config)
 
     result = await tool.execute(AddLabelsInput(issue_number=10, labels=["bug", "p1"]))
 
@@ -98,8 +110,10 @@ async def test_add_labels_tool(mock_github_manager, test_label_config):
 
 
 @pytest.mark.asyncio
-async def test_remove_labels_tool(mock_github_manager):
-    tool = RemoveLabelsTool(manager=mock_github_manager)
+async def test_remove_labels_tool(
+    mock_github_manager: MagicMock, test_label_config: LabelConfig
+) -> None:
+    tool = RemoveLabelsTool(manager=mock_github_manager, label_config=test_label_config)
 
     result = await tool.execute(RemoveLabelsInput(issue_number=10, labels=["bug"]))
 

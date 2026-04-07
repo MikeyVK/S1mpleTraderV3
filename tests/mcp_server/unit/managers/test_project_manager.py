@@ -4,7 +4,10 @@ Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Workflow selection from workflows.yaml
 - Execution mode handling (interactive/autonomous)
 - Custom phases with skip_reason
-- Project plan storage in .st3/projects.json
+- Project plan storage in .st3/deliverables.json
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.project_manager
 """
 
 import json
@@ -12,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.workflows import workflow_config
 from mcp_server.managers import git_manager
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+from tests.mcp_server.test_support import load_workflow_config, make_project_manager
 
 
 class TestProjectManagerWorkflows:
@@ -34,18 +37,12 @@ class TestProjectManagerWorkflows:
 
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
-        """Create ProjectManager instance.
-
-        Args:
-            workspace_root: Path to workspace root
-
-        Returns:
-            ProjectManager instance
-        """
-        return ProjectManager(workspace_root=workspace_root)
+        """Create ProjectManager instance."""
+        return make_project_manager(workspace_root)
 
     def test_workflows_loaded_from_yaml(self) -> None:
         """Test that workflows are loaded from workflows.yaml."""
+        workflow_config = load_workflow_config()
         assert "feature" in workflow_config.workflows
         assert "bug" in workflow_config.workflows
         assert "hotfix" in workflow_config.workflows
@@ -54,17 +51,24 @@ class TestProjectManagerWorkflows:
 
     def test_feature_workflow_has_6_phases(self) -> None:
         """Test feature workflow from workflows.yaml."""
-        workflow = workflow_config.get_workflow("feature")
+        workflow = load_workflow_config().get_workflow("feature")
         assert len(workflow.phases) == 6
-        expected = ["research", "planning", "design", "tdd", "validation", "documentation"]
+        expected = [
+            "research",
+            "planning",
+            "design",
+            "implementation",
+            "validation",
+            "documentation",
+        ]
         assert workflow.phases == expected
         assert workflow.default_execution_mode == "interactive"
 
     def test_hotfix_workflow_has_3_phases_autonomous(self) -> None:
         """Test hotfix workflow from workflows.yaml."""
-        workflow = workflow_config.get_workflow("hotfix")
+        workflow = load_workflow_config().get_workflow("hotfix")
         assert len(workflow.phases) == 3
-        assert workflow.phases == ["tdd", "validation", "documentation"]
+        assert workflow.phases == ["implementation", "validation", "documentation"]
         assert workflow.default_execution_mode == "autonomous"
 
     def test_initialize_project_with_feature_workflow(
@@ -80,8 +84,8 @@ class TestProjectManagerWorkflows:
         assert result["execution_mode"] == "interactive"
         assert len(result["required_phases"]) == 6
 
-        # Check projects.json structure
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json structure
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         assert projects_file.exists()
 
         projects = json.loads(projects_file.read_text())
@@ -104,8 +108,8 @@ class TestProjectManagerWorkflows:
         assert result["execution_mode"] == "autonomous"
         assert len(result["required_phases"]) == 3
 
-        # Check projects.json
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         projects = json.loads(projects_file.read_text())
         assert projects["99"]["execution_mode"] == "autonomous"
 
@@ -122,8 +126,8 @@ class TestProjectManagerWorkflows:
 
         assert result["execution_mode"] == "autonomous"
 
-        # Check projects.json
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         projects = json.loads(projects_file.read_text())
         assert projects["77"]["execution_mode"] == "autonomous"
 
@@ -131,7 +135,14 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test initialize_project with custom phases."""
-        custom_phases = ("research", "planning", "design", "tdd", "validation", "documentation")
+        custom_phases = (
+            "research",
+            "planning",
+            "design",
+            "implementation",
+            "validation",
+            "documentation",
+        )
 
         result = manager.initialize_project(
             issue_number=50,
@@ -147,8 +158,8 @@ class TestProjectManagerWorkflows:
         assert result["required_phases"] == custom_phases
         assert result["skip_reason"] == "Adding design phase for complex refactor"
 
-        # Check projects.json
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         projects = json.loads(projects_file.read_text())
         project = projects["50"]
         assert tuple(project["required_phases"]) == custom_phases
@@ -188,7 +199,7 @@ class TestProjectManagerWorkflows:
                 issue_number=777,
                 issue_title="Test",
                 workflow_name="feature",
-                options=ProjectInitOptions(custom_phases=("research", "tdd")),
+                options=ProjectInitOptions(custom_phases=("research", "implementation")),
             )
 
         error_msg = str(exc_info.value)
@@ -226,7 +237,7 @@ class TestProjectManagerWorkflows:
         # Verify parent_branch in returned result
         assert result["parent_branch"] == "epic/76-quality-gates-tooling"
 
-        # Verify persisted to projects.json
+        # Verify persisted to deliverables.json
         plan = manager.get_project_plan(issue_number=79)
         assert plan is not None
         assert plan["parent_branch"] == "epic/76-quality-gates-tooling"
@@ -271,8 +282,8 @@ phases:
     display_name: "Research"
     commit_type_hint: "docs"
     subphases: []
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     commit_type_hint: null
     subphases: ["red", "green", "refactor"]
   documentation:
@@ -287,7 +298,7 @@ phases:
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root, workflow_config=load_workflow_config())
 
     def test_get_project_plan_includes_current_phase_from_commit_scope(
         self, manager: ProjectManager
@@ -349,10 +360,10 @@ class TestPlanningDeliverablesSchema:
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root, workflow_config=load_workflow_config())
 
     def test_planning_deliverables_stored_in_projects_json(self, manager: ProjectManager) -> None:
-        """Test that planning_deliverables are persisted to projects.json.
+        """Test that planning_deliverables are persisted to deliverables.json.
 
         RED: This test WILL FAIL - planning_deliverables schema not implemented yet.
         """
@@ -680,3 +691,19 @@ class TestPlanningDeliverablesSchema:
                     }
                 },
             )
+
+
+class TestIssue257Cycle7Contracts:
+    """Contract tests for Issue #257 Cycle 7 deliverables."""
+
+    def test_project_manager_source_uses_atomic_json_writer(self) -> None:
+        """D7.3: project_manager.py should use AtomicJsonWriter for deliverables writes."""
+        source = Path("mcp_server/managers/project_manager.py").read_text(encoding="utf-8")
+
+        assert "AtomicJsonWriter" in source
+
+    def test_gitignore_does_not_ignore_state_json(self) -> None:
+        """D7.4: .st3/state.json must not remain ignored."""
+        gitignore = Path(".gitignore").read_text(encoding="utf-8")
+
+        assert ".st3/state.json" not in gitignore

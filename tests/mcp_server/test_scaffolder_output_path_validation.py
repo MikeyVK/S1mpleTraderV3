@@ -28,12 +28,13 @@ import pytest
 # Project modules
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
+from tests.mcp_server.test_support import make_artifact_manager
 
 
 @pytest.fixture
 def manager(tmp_path: Path) -> ArtifactManager:
     """ArtifactManager with mocked write_file to avoid real I/O."""
-    mgr = ArtifactManager(workspace_root=str(tmp_path))
+    mgr = make_artifact_manager(tmp_path)
     mgr.fs_adapter.write_file = Mock()
     return mgr
 

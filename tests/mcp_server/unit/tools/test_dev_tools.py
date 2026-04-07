@@ -1,4 +1,8 @@
-"""Tests for Test and Code tools."""
+"""Tests for Test and Code tools.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.test_tools]
+"""
 
 from __future__ import annotations
 
@@ -6,17 +10,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pytest import MonkeyPatch
 
+from mcp_server.config.settings import Settings
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
 
 @pytest.mark.asyncio
-async def test_run_tests_tool() -> None:
+async def test_run_tests_tool(tmp_path: Path) -> None:
     """Test RunTestsTool executes pytest and returns JSON output."""
 
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
     with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock_run:
         mock_run.return_value = ("2 passed in 0.10s\n", "", 0)
@@ -34,12 +38,9 @@ async def test_run_tests_tool() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_file_tool(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+async def test_create_file_tool(tmp_path: Path) -> None:
     """Test CreateFileTool creates file with correct content in subdirectory."""
-
-    monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
-
-    tool = CreateFileTool()
+    tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
     await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"))
 
@@ -49,12 +50,9 @@ async def test_create_file_tool(tmp_path: Path, monkeypatch: MonkeyPatch) -> Non
 
 
 @pytest.mark.asyncio
-async def test_create_file_security_check(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+async def test_create_file_security_check(tmp_path: Path) -> None:
     """Test CreateFileTool rejects path traversal attempts."""
-
-    monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
-
-    tool = CreateFileTool()
+    tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
     result = await tool.execute(CreateFileInput(path="../outside.txt", content="bad"))
 

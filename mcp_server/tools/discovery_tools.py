@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
 from mcp_server.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
@@ -43,10 +43,14 @@ class SearchDocumentationTool(BaseTool):
     )
     args_model = SearchDocumentationInput
 
+    def __init__(self, settings: Settings) -> None:
+        super().__init__()
+        self._settings = settings
+
     async def execute(self, params: SearchDocumentationInput) -> ToolResult:
         """Execute documentation search using DocumentIndexer + SearchService."""
         # Build index from docs directory
-        docs_dir = Path(settings.server.workspace_root) / "docs"
+        docs_dir = Path(self._settings.server.workspace_root) / "docs"
 
         if not docs_dir.exists():
             raise ExecutionError(
@@ -105,13 +109,27 @@ class GetWorkContextTool(BaseTool):
     )
     args_model = GetWorkContextInput
 
+    def __init__(
+        self,
+        settings: Settings,
+        git_manager: GitManager,
+        project_manager: ProjectManager,
+        state_engine: PhaseStateEngine,
+        github_manager: GitHubManager | None = None,
+    ) -> None:
+        super().__init__()
+        self._settings = settings
+        self._git_manager = git_manager
+        self._project_manager = project_manager
+        self._state_engine = state_engine
+        self._github_manager = github_manager
+
     async def execute(self, params: GetWorkContextInput) -> ToolResult:
         """Execute work context aggregation."""
         context: dict[str, Any] = {}
 
         # Get Git context
-        git_manager = GitManager()
-        branch = git_manager.get_current_branch()
+        branch = self._git_manager.get_current_branch()
         context["current_branch"] = branch
 
         # Extract issue number from branch
@@ -120,7 +138,7 @@ class GetWorkContextTool(BaseTool):
 
         # Detect workflow phase deterministically from commit-scope + state.json
         try:
-            recent_commits = git_manager.get_recent_commits(limit=5)
+            recent_commits = self._git_manager.get_recent_commits(limit=5)
             phase_result = self._detect_workflow_phase(recent_commits)
             context["workflow_phase"] = phase_result["workflow_phase"]
             context["sub_phase"] = phase_result.get("sub_phase")
@@ -137,20 +155,13 @@ class GetWorkContextTool(BaseTool):
             context["recent_commits"] = []
 
         # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility)
-        if context.get("workflow_phase") == "tdd" and issue_number:
+        if context.get("workflow_phase") == "implementation" and issue_number:
             try:
-                workspace_root = Path(settings.server.workspace_root)
-                project_manager = ProjectManager(workspace_root=workspace_root)
-                state_engine = PhaseStateEngine(
-                    workspace_root=workspace_root, project_manager=project_manager
-                )
-
-                # Get current TDD cycle from state
-                state = state_engine.get_state(branch)
-                current_cycle = state.get("current_tdd_cycle")
+                state = self._state_engine.get_state(branch)
+                current_cycle = state.current_cycle
 
                 # Get planning deliverables
-                project_plan = project_manager.get_project_plan(issue_number)
+                project_plan = self._project_manager.get_project_plan(issue_number)
                 if project_plan is None:
                     raise ValueError("Project plan not found")
                 planning_deliverables = project_plan.get("planning_deliverables")
@@ -178,13 +189,16 @@ class GetWorkContextTool(BaseTool):
                 pass  # Graceful degradation if cycle info unavailable
 
         # Get GitHub issue details if configured
-        if settings.github.token:
+        if self._settings.github.token:
             try:
-                gh_manager = GitHubManager()
+                if self._github_manager is None:
+                    raise RuntimeError(
+                        "GitHubManager must be injected when GitHub access is enabled"
+                    )
 
                 # Active Issue
                 if issue_number:
-                    issue = gh_manager.get_issue(issue_number)
+                    issue = self._github_manager.get_issue(issue_number)
                     if issue:
                         # GitHubManager.get_issue() returns PyGithub Issue object
                         context["active_issue"] = {
@@ -198,7 +212,7 @@ class GetWorkContextTool(BaseTool):
                 # Recently Closed Issues (Implemented to satisfy param)
                 if params.include_closed_recent:
                     # This effectively implements the logic for the formerly unused argument
-                    closed_issues = gh_manager.list_issues(state="closed")
+                    closed_issues = self._github_manager.list_issues(state="closed")
                     # Naively taking top 3 for brevity, assuming list_issues sorts by recent
                     context["recently_closed"] = [
                         f"#{i.number} {i.title}" for i in closed_issues[:3]
@@ -284,7 +298,7 @@ class GetWorkContextTool(BaseTool):
             "research": "🔍",
             "planning": "📋",
             "design": "🎨",
-            "tdd": "🧪",
+            "implementation": "🧪",
             "validation": "✅",
             "documentation": "📝",
             "coordination": "🤝",

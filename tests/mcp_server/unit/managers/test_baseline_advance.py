@@ -2,6 +2,9 @@
 """
 C19: When all gates pass, persist HEAD as baseline_sha and reset failed_files.
 C20: Union newly failed files with persisted failed_files set.
+
+@layer: Tests (Unit)
+@dependencies: pytest, json, pathlib, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 
@@ -12,6 +15,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _state_with_quality_gates(
@@ -38,7 +42,7 @@ def _state_with_quality_gates(
     return state_file
 
 
-def _stub_single_gate_config(mock_cfg: MagicMock) -> None:
+def _stub_single_gate_config() -> MagicMock:
     """Configure one active generic gate for run_quality_gates tests."""
     cfg = MagicMock()
     cfg.active_gates = ["gate1_stub"]
@@ -50,7 +54,7 @@ def _stub_single_gate_config(mock_cfg: MagicMock) -> None:
     cfg.artifact_logging.enabled = False
     cfg.artifact_logging.output_dir = "temp/qa_logs"
     cfg.artifact_logging.max_files = 10
-    mock_cfg.return_value = cfg
+    return cfg
 
 
 class TestBaselineAdvanceOnAllPass:
@@ -58,12 +62,12 @@ class TestBaselineAdvanceOnAllPass:
 
     def test_workspace_root_accepted_by_constructor(self, tmp_path: Path) -> None:
         """QAManager(workspace_root=path) must be constructable (no TypeError)."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         assert manager is not None
 
     def test_workspace_root_stored_on_instance(self, tmp_path: Path) -> None:
         """Constructor stores workspace_root on the instance."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         assert manager.workspace_root == tmp_path
 
     def test_advance_baseline_writes_new_sha(self, tmp_path: Path) -> None:
@@ -74,7 +78,7 @@ class TestBaselineAdvanceOnAllPass:
             failed_files=["mcp_server/old_failure.py"],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         fake_sha = "newsha1234567890"
 
         with patch.object(manager, "_get_head_sha", return_value=fake_sha):
@@ -91,7 +95,7 @@ class TestBaselineAdvanceOnAllPass:
             failed_files=["mcp_server/foo.py", "mcp_server/bar.py"],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch.object(manager, "_get_head_sha", return_value="cleansha000"):
             manager._advance_baseline_on_all_pass()
@@ -103,7 +107,7 @@ class TestBaselineAdvanceOnAllPass:
         """State update must not overwrite branch/issue_number or other top-level keys."""
         state_file = _state_with_quality_gates(tmp_path)
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch.object(manager, "_get_head_sha", return_value="preserve_sha"):
             manager._advance_baseline_on_all_pass()
@@ -119,7 +123,7 @@ class TestBaselineAdvanceOnAllPass:
         state_file = st3_dir / "state.json"
         assert not state_file.exists()  # precondition
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         fake_sha = "fresh_sha_999"
 
         with patch.object(manager, "_get_head_sha", return_value=fake_sha):
@@ -132,15 +136,15 @@ class TestBaselineAdvanceOnAllPass:
 
     def test_run_quality_gates_calls_advance_on_all_pass(self, tmp_path: Path) -> None:
         """run_quality_gates invokes _advance_baseline_on_all_pass when overall_pass=True."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         test_file = tmp_path / "ok.py"
         test_file.write_text("print('ok')\n", encoding="utf-8")
 
+        manager._quality_config = _stub_single_gate_config()
         with (
             patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
             patch.object(
                 manager,
                 "_execute_gate",
@@ -155,18 +159,6 @@ class TestBaselineAdvanceOnAllPass:
                 },
             ),
         ):
-            cfg = MagicMock()
-            cfg.active_gates = ["gate1_stub"]
-            gate = MagicMock()
-            gate.name = "Gate 1: Stub"
-            gate.scope = None
-            gate.capabilities.file_types = [".py"]
-            cfg.gates = {"gate1_stub": gate}
-            cfg.artifact_logging.enabled = False
-            cfg.artifact_logging.output_dir = "temp/qa_logs"
-            cfg.artifact_logging.max_files = 10
-            mock_cfg.return_value = cfg
-
             result = manager.run_quality_gates(files=[str(test_file)])
 
         assert result["overall_pass"] is True
@@ -185,7 +177,7 @@ class TestFailureAccumulation:
             failed_files=["mcp_server/old_fail.py"],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         # RED: _accumulate_failed_files_on_failure does not exist yet → AttributeError
         manager._accumulate_failed_files_on_failure(["mcp_server/new_fail.py"])
 
@@ -203,7 +195,7 @@ class TestFailureAccumulation:
             failed_files=["mcp_server/z_last.py", "mcp_server/a_first.py"],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         manager._accumulate_failed_files_on_failure(["mcp_server/m_middle.py"])
 
         state = json.loads(state_file.read_text())
@@ -218,7 +210,7 @@ class TestFailureAccumulation:
             failed_files=["mcp_server/common.py"],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         manager._accumulate_failed_files_on_failure(["mcp_server/common.py"])
 
         state = json.loads(state_file.read_text())
@@ -233,7 +225,7 @@ class TestFailureAccumulation:
             failed_files=[],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         manager._accumulate_failed_files_on_failure(["mcp_server/failing.py"])
 
         state = json.loads(state_file.read_text())
@@ -241,22 +233,19 @@ class TestFailureAccumulation:
 
     def test_run_quality_gates_calls_accumulate_on_failure(self, tmp_path: Path) -> None:
         """run_quality_gates calls _accumulate_failed_files_on_failure when overall_pass=False."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
-        with (
-            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
-        ):
-            cfg = MagicMock()
-            # Use an unknown gate (not in catalog) → overall_pass=False via normal code path.
-            # active_gates=[] would trigger early-return before the state-update block.
-            cfg.active_gates = ["unknown_gate_not_in_catalog"]
-            cfg.gates = {}  # empty catalog → gate not found → passed=False → overall_pass=False
-            cfg.artifact_logging.enabled = False
-            cfg.artifact_logging.output_dir = "temp/qa_logs"
-            cfg.artifact_logging.max_files = 10
-            mock_cfg.return_value = cfg
+        cfg = MagicMock()
+        # Use an unknown gate (not in catalog) → overall_pass=False via normal code path.
+        # active_gates=[] would trigger early-return before the state-update block.
+        cfg.active_gates = ["unknown_gate_not_in_catalog"]
+        cfg.gates = {}  # empty catalog → gate not found → passed=False → overall_pass=False
+        cfg.artifact_logging.enabled = False
+        cfg.artifact_logging.output_dir = "temp/qa_logs"
+        cfg.artifact_logging.max_files = 10
+        manager._quality_config = cfg
 
+        with patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc:
             result = manager.run_quality_gates(files=["mcp_server/managers/qa_manager.py"])
 
         # unknown gate sets overall_pass=False → accumulate should be called
@@ -269,15 +258,15 @@ class TestScopeLifecycleGuard:
 
     def test_files_scope_failure_does_not_accumulate_failed_files(self, tmp_path: Path) -> None:
         """Failing scope='files' run must not mutate auto failed_files lifecycle state."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         test_file = tmp_path / "failing.py"
         test_file.write_text("print('x')\n", encoding="utf-8")
 
+        manager._quality_config = _stub_single_gate_config()
         with (
             patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
             patch.object(
                 manager,
                 "_execute_gate",
@@ -292,18 +281,6 @@ class TestScopeLifecycleGuard:
                 },
             ),
         ):
-            cfg = MagicMock()
-            cfg.active_gates = ["gate1_stub"]
-            gate = MagicMock()
-            gate.name = "Gate 1: Stub"
-            gate.scope = None
-            gate.capabilities.file_types = [".py"]
-            cfg.gates = {"gate1_stub": gate}
-            cfg.artifact_logging.enabled = False
-            cfg.artifact_logging.output_dir = "temp/qa_logs"
-            cfg.artifact_logging.max_files = 10
-            mock_cfg.return_value = cfg
-
             result = manager.run_quality_gates(
                 files=[str(test_file)],
                 effective_scope="files",
@@ -408,10 +385,10 @@ class TestScopeSwitchInvariantsC44:
             baseline_sha="baseline_old",
             failed_files=["seed.py"],
         )
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
+        manager._quality_config = _stub_single_gate_config()
 
         with (
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
             patch.object(manager, "_get_head_sha", return_value="baseline_new"),
             patch.object(
                 manager,
@@ -447,8 +424,6 @@ class TestScopeSwitchInvariantsC44:
                 ],
             ),
         ):
-            _stub_single_gate_config(mock_cfg)
-
             fail_result = manager.run_quality_gates([str(auto_fail)], effective_scope="auto")
             mid_state = json.loads(state_file.read_text())
 
@@ -488,10 +463,10 @@ class TestScopeSwitchInvariantsC44:
             baseline_sha="keep_baseline",
             failed_files=["seed.py"],
         )
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
+        manager._quality_config = _stub_single_gate_config()
 
         with (
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
             patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
             patch.object(
@@ -528,8 +503,6 @@ class TestScopeSwitchInvariantsC44:
                 ],
             ),
         ):
-            _stub_single_gate_config(mock_cfg)
-
             manager.run_quality_gates([str(branch_fail)], effective_scope="branch")
             manager.run_quality_gates([str(files_pass)], effective_scope="files")
             manager.run_quality_gates([str(branch_pass)], effective_scope="branch")
@@ -555,10 +528,10 @@ class TestScopeSwitchInvariantsC44:
             baseline_sha="baseline_old",
             failed_files=["seed.py"],
         )
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
+        manager._quality_config = _stub_single_gate_config()
 
         with (
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
             patch.object(
                 manager,
                 "_execute_gate",
@@ -584,8 +557,6 @@ class TestScopeSwitchInvariantsC44:
                 ],
             ),
         ):
-            _stub_single_gate_config(mock_cfg)
-
             manager.run_quality_gates([str(project_pass)], effective_scope="project")
             state_after_project = json.loads(state_file.read_text())
 
@@ -603,7 +574,7 @@ class TestGateStatusStamping:
     """Refactor hardening: resolved gate status is stamped back into gate result."""
 
     def test_update_summary_stamps_resolved_status(self) -> None:
-        manager = QAManager()
+        manager = make_qa_manager()
         results = {
             "summary": {
                 "passed": 0,

@@ -3,6 +3,9 @@ Tests for Tier 2 language base templates (Issue #72 Task 1.4).
 
 RED phase: Tests for tier2_base_{python,markdown,yaml}.jinja2 inheritance
 from Tier 1, language-specific patterns, and SCAFFOLD metadata propagation.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path
@@ -21,7 +24,7 @@ class TestTier2PythonTemplate:
         )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
-    def test_inherits_from_tier1_code(self):
+    def test_inherits_from_tier1_code(self) -> None:
         """Tier 2 Python template should inherit from Tier 1 CODE template."""
         templates_dir = (
             Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
@@ -30,7 +33,7 @@ class TestTier2PythonTemplate:
         content = template_path.read_text(encoding="utf-8")
         assert 'extends "tier1_base_code.jinja2"' in content
 
-    def test_renders_with_tier0_scaffold_metadata(self):
+    def test_renders_with_tier0_scaffold_metadata(self) -> None:
         """Tier 2 Python should propagate Tier 0 SCAFFOLD metadata via inheritance chain."""
         env = self.get_env()
         template = env.get_template("tier2_base_python.jinja2")
@@ -51,7 +54,7 @@ class TestTier2PythonTemplate:
         assert "version=abc12345" in lines[1]
         assert "2026-01-23T10:00:00Z" in lines[1]
 
-    def test_renders_python_typing_imports(self):
+    def test_renders_python_typing_imports(self) -> None:
         """Tier 2 Python should render typing imports."""
         env = self.get_env()
         template = env.get_template("tier2_base_python.jinja2")
@@ -64,7 +67,7 @@ class TestTier2PythonTemplate:
         result = template.render(context)
         assert "from typing import Optional, List, Dict" in result
 
-    def test_renders_class_with_docstring(self):
+    def test_renders_class_with_docstring(self) -> None:
         """Tier 2 Python should render class with docstring."""
         env = self.get_env()
         template = env.get_template("tier2_base_python.jinja2")
@@ -78,7 +81,7 @@ class TestTier2PythonTemplate:
         assert "class TestDTO:" in result
         assert '"""Test data transfer object."""' in result
 
-    def test_renders_init_with_typed_params(self):
+    def test_renders_init_with_typed_params(self) -> None:
         """Tier 2 Python should render __init__ with typed parameters."""
         env = self.get_env()
         template = env.get_template("tier2_base_python.jinja2")
@@ -96,7 +99,7 @@ class TestTier2PythonTemplate:
         assert "self.id = id" in result
         assert "self.value = value" in result
 
-    def test_renders_dunder_methods(self):
+    def test_renders_dunder_methods(self) -> None:
         """Tier 2 Python should render dunder methods with docstrings."""
         env = self.get_env()
         template = env.get_template("tier2_base_python.jinja2")
@@ -124,7 +127,7 @@ class TestTier2MarkdownTemplate:
         )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
-    def test_inherits_from_tier1_document(self):
+    def test_inherits_from_tier1_document(self) -> None:
         """Tier 2 Markdown template should inherit from Tier 1 DOCUMENT template."""
         templates_dir = (
             Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
@@ -133,7 +136,7 @@ class TestTier2MarkdownTemplate:
         content = template_path.read_text(encoding="utf-8")
         assert 'extends "tier1_base_document.jinja2"' in content
 
-    def test_renders_with_tier0_scaffold_metadata(self):
+    def test_renders_with_tier0_scaffold_metadata(self) -> None:
         """Tier 2 Markdown should propagate Tier 0 SCAFFOLD metadata via inheritance chain."""
         env = self.get_env()
         template = env.get_template("tier2_base_markdown.jinja2")
@@ -155,7 +158,7 @@ class TestTier2MarkdownTemplate:
         assert "2026-01-23T11:00:00Z" in lines[1]
         assert "-->" in lines[1]
 
-    def test_renders_yaml_frontmatter(self):
+    def test_renders_yaml_frontmatter(self) -> None:
         """Tier 2 Markdown frontmatter removed per BASE_TEMPLATE (no frontmatter in docs/)."""
         env = self.get_env()
         template = env.get_template("tier2_base_markdown.jinja2")
@@ -176,7 +179,7 @@ class TestTier2MarkdownTemplate:
         lines = result.strip().split("\n")
         assert lines[0].startswith("<!--"), "Should start with HTML comment (SCAFFOLD)"
 
-    def test_renders_code_blocks(self):
+    def test_renders_code_blocks(self) -> None:
         """Tier 2 Markdown provides structure, code blocks handled by concrete templates."""
         env = self.get_env()
         template = env.get_template("tier2_base_markdown.jinja2")
@@ -210,7 +213,7 @@ class TestTier2YAMLTemplate:
         )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
-    def test_inherits_from_tier1_config(self):
+    def test_inherits_from_tier1_config(self) -> None:
         """Tier 2 YAML template should inherit from Tier 1 CONFIG template."""
         templates_dir = (
             Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
@@ -219,7 +222,7 @@ class TestTier2YAMLTemplate:
         content = template_path.read_text(encoding="utf-8")
         assert 'extends "tier1_base_config.jinja2"' in content
 
-    def test_renders_with_tier0_scaffold_metadata(self):
+    def test_renders_with_tier0_scaffold_metadata(self) -> None:
         """Tier 2 YAML should propagate Tier 0 SCAFFOLD metadata via inheritance chain."""
         env = self.get_env()
         template = env.get_template("tier2_base_yaml.jinja2")
@@ -240,7 +243,7 @@ class TestTier2YAMLTemplate:
         assert "version=ghi24680" in lines[1]
         assert "2026-01-23T12:00:00Z" in lines[1]
 
-    def test_renders_header_comment(self):
+    def test_renders_header_comment(self) -> None:
         """Tier 2 YAML should render header comment."""
         env = self.get_env()
         template = env.get_template("tier2_base_yaml.jinja2")
@@ -253,7 +256,7 @@ class TestTier2YAMLTemplate:
         result = template.render(context)
         assert "# Configuration file for testing" in result
 
-    def test_renders_nested_structures(self):
+    def test_renders_nested_structures(self) -> None:
         """Tier 2 YAML should render nested structures with indentation."""
         env = self.get_env()
         template = env.get_template("tier2_base_yaml.jinja2")
@@ -288,7 +291,7 @@ class TestTier2MetadataStructure:
         )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
-    def test_python_template_has_metadata(self):
+    def test_python_template_has_metadata(self) -> None:
         """Tier 2 Python template should have TEMPLATE_METADATA."""
         templates_dir = (
             Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
@@ -300,7 +303,7 @@ class TestTier2MetadataStructure:
         assert "tier: 2" in content
         assert "parent: tier1_base_code" in content
 
-    def test_markdown_template_has_metadata(self):
+    def test_markdown_template_has_metadata(self) -> None:
         """Tier 2 Markdown template should have TEMPLATE_METADATA."""
         templates_dir = (
             Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
@@ -312,7 +315,7 @@ class TestTier2MetadataStructure:
         assert "tier: 2" in content
         assert "parent: tier1_base_document" in content
 
-    def test_yaml_template_has_metadata(self):
+    def test_yaml_template_has_metadata(self) -> None:
         """Tier 2 YAML template should have TEMPLATE_METADATA."""
         templates_dir = (
             Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"

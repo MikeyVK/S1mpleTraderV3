@@ -18,10 +18,13 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 # (no standard library imports needed)
 
 # Third-party
+# Project modules
+from pathlib import Path
+
 import pytest
 
-# Project modules
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
@@ -29,7 +32,7 @@ from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 @pytest.fixture(name="registry")
 def fixture_registry() -> ArtifactRegistryConfig:
     """Provides artifact registry configuration"""
-    return ArtifactRegistryConfig.from_file()
+    return ConfigLoader(Path(".st3/config")).load_artifact_registry_config()
 
 
 @pytest.fixture(name="scaffolder")

@@ -1,11 +1,14 @@
 """
 End-to-end tests for scaffold metadata system.
 
-Tests the full workflow: scaffold → file write → parse → validate.
+Tests the full workflow: scaffold -> file write -> parse -> validate.
 Following TDD: Tests metadata enrichment with EXISTING templates.
 
 NOTE: Phase 0.4 scope is metadata enrichment, not new templates.
 Using existing DTO template to verify metadata injection works.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pathlib, mcp_server.managers.artifact_manager]
 """
 
 # pyright: basic
@@ -18,6 +21,7 @@ from mcp_server.core.exceptions import MetadataParseError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
 from mcp_server.scaffolding.template_registry import TemplateRegistry
+from tests.mcp_server.test_support import make_artifact_manager, make_metadata_parser
 
 
 class TestMetadataEndToEnd:
@@ -31,12 +35,12 @@ class TestMetadataEndToEnd:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create manager with workspace_root set."""
-        return ArtifactManager(workspace_root=str(tmp_path))
+        return make_artifact_manager(tmp_path)
 
     @pytest.fixture
     def parser(self) -> ScaffoldMetadataParser:
         """Create metadata parser."""
-        return ScaffoldMetadataParser()
+        return make_metadata_parser()
 
     @pytest.mark.asyncio
     async def test_scaffold_file_artifact_has_metadata(
@@ -140,7 +144,7 @@ class TestMetadataEndToEnd:
     async def test_workspace_root_not_set_gives_helpful_error(self) -> None:
         """E2E: workspace_root not set + no output_path → ValidationError (C2 gate)."""
         # Create manager WITHOUT workspace_root
-        manager = ArtifactManager()
+        manager = make_artifact_manager(Path.cwd())
 
         # Scaffold without output_path should fail with C2 gate error
         with pytest.raises(ValidationError) as exc_info:
@@ -183,7 +187,7 @@ class TestMetadataEndToEnd:
         assert "Add new feature" in content
 
         # Ephemeral artifacts now have path in metadata (temp path)
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".txt")
         assert metadata is not None
         assert metadata["template"] == "commit_message"
@@ -206,7 +210,8 @@ class TestMetadataEndToEnd:
         template_registry = TemplateRegistry(registry_path=registry_path)
 
         # Create manager WITH registry DI
-        manager = ArtifactManager(workspace_root=str(tmp_path), template_registry=template_registry)
+        manager = make_artifact_manager(tmp_path)
+        manager.template_registry = template_registry
 
         # 1. Scaffold artifact
         result = await manager.scaffold_artifact(

@@ -5,6 +5,9 @@ C23: Resolve scope=auto happy path — baseline present.
 Union of git diff --name-only baseline_sha..HEAD and persisted failed_files.
 
 C24: Resolve scope=auto edge cases — no baseline fallback and empty union.
+
+@layer: Tests (Unit)
+@dependencies: pytest, subprocess, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 # pyright: reportPrivateUsage=false
 
@@ -15,7 +18,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _write_state(tmp_path: Path, baseline_sha: str, failed_files: list[str]) -> None:
@@ -46,7 +49,7 @@ class TestAutoScopeHappyPath:
     def test_auto_scope_returns_failed_files_when_diff_empty(self, tmp_path: Path) -> None:
         """Test A: failed_files present, diff empty → auto-scope returns failed_files."""
         _write_state(tmp_path, baseline_sha="abc123", failed_files=["old_fail.py"])
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch("subprocess.run", return_value=_fake_diff([])):
             result = manager._resolve_scope("auto")
@@ -59,7 +62,7 @@ class TestAutoScopeHappyPath:
     def test_auto_scope_returns_diff_files_when_no_failed_files(self, tmp_path: Path) -> None:
         """Test B: diff has files, failed_files empty → auto-scope returns diff files."""
         _write_state(tmp_path, baseline_sha="abc123", failed_files=[])
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch("subprocess.run", return_value=_fake_diff(["changed.py"])):
             result = manager._resolve_scope("auto")
@@ -76,7 +79,7 @@ class TestAutoScopeHappyPath:
             baseline_sha="abc123",
             failed_files=["old_fail.py", "another_fail.py"],
         )
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch("subprocess.run", return_value=_fake_diff(["changed.py", "old_fail.py"])):
             result = manager._resolve_scope("auto")
@@ -92,7 +95,7 @@ class TestAutoScopeHappyPath:
             baseline_sha="abc123",
             failed_files=["z_fail.py"],
         )
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch("subprocess.run", return_value=_fake_diff(["a_changed.py", "m_changed.py"])):
             result = manager._resolve_scope("auto")
@@ -106,7 +109,7 @@ class TestAutoScopeHappyPath:
             baseline_sha="abc123",
             failed_files=["shared.py"],
         )
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch("subprocess.run", return_value=_fake_diff(["shared.py"])):
             result = manager._resolve_scope("auto")
@@ -122,7 +125,7 @@ class TestAutoScopeHappyPath:
         state["workflow"] = {"parent_branch": "main"}
         state_path.write_text(json.dumps(state), encoding="utf-8")
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         captured: list[list[str]] = []
 
         def fake_git(cmd: list[str], **_kw: object) -> MagicMock:
@@ -144,7 +147,7 @@ class TestAutoScopeHappyPath:
     def test_auto_scope_excludes_non_py_files_from_diff(self, tmp_path: Path) -> None:
         """Non-.py files in git diff output are excluded from the result."""
         _write_state(tmp_path, baseline_sha="abc123", failed_files=[])
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         raw_result = MagicMock(spec=subprocess.CompletedProcess)
         raw_result.returncode = 0
@@ -174,8 +177,6 @@ class TestAutoScopeEdgeCases:
         project_file.parent.mkdir(parents=True, exist_ok=True)
         project_file.write_text("# stub\n")
 
-        manager = QAManager(workspace_root=tmp_path)
-
         mock_cfg = MagicMock()
         mock_cfg.active_gates = []
         mock_cfg.artifact_logging.enabled = False
@@ -184,9 +185,9 @@ class TestAutoScopeEdgeCases:
         project_scope = MagicMock()
         project_scope.include_globs = ["mcp_server/*.py"]
         mock_cfg.project_scope = project_scope
+        manager = make_qa_manager(tmp_path, quality_config=mock_cfg)
 
-        with patch("mcp_server.managers.qa_manager.QualityConfig.load", return_value=mock_cfg):
-            result = manager._resolve_scope("auto")
+        result = manager._resolve_scope("auto")
 
         assert result != [], (
             "scope=auto with no baseline must fallback to project scope, not return []."
@@ -211,8 +212,6 @@ class TestAutoScopeEdgeCases:
         project_file.parent.mkdir(parents=True, exist_ok=True)
         project_file.write_text("# stub\n")
 
-        manager = QAManager(workspace_root=tmp_path)
-
         mock_cfg = MagicMock()
         mock_cfg.active_gates = []
         mock_cfg.artifact_logging.enabled = False
@@ -221,9 +220,9 @@ class TestAutoScopeEdgeCases:
         project_scope = MagicMock()
         project_scope.include_globs = ["mcp_server/*.py"]
         mock_cfg.project_scope = project_scope
+        manager = make_qa_manager(tmp_path, quality_config=mock_cfg)
 
-        with patch("mcp_server.managers.qa_manager.QualityConfig.load", return_value=mock_cfg):
-            result = manager._resolve_scope("auto")
+        result = manager._resolve_scope("auto")
 
         assert result != [], (
             "scope=auto with empty baseline_sha must fallback to project scope, not return []."
@@ -235,7 +234,7 @@ class TestAutoScopeEdgeCases:
     def test_auto_scope_empty_union_returns_empty_list(self, tmp_path: Path) -> None:
         """Baseline present, diff empty, failed_files empty → scope=auto returns []."""
         _write_state(tmp_path, baseline_sha="abc123", failed_files=[])
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         with patch("subprocess.run", return_value=_fake_diff([])):
             result = manager._resolve_scope("auto")
@@ -246,6 +245,6 @@ class TestAutoScopeEdgeCases:
 
     def test_auto_scope_no_workspace_root_returns_empty(self) -> None:
         """When workspace_root is None, scope=auto returns [] gracefully."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         result = manager._resolve_scope("auto")
         assert result == [], f"Expected [] when workspace_root is None, got: {result!r}"

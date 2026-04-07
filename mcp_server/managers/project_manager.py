@@ -11,7 +11,7 @@ Replaces hardcoded PHASE_TEMPLATES with dynamic workflow configuration.
     - Initialize projects with workflow selection
     - Validate workflow existence and execution mode
     - Support custom phase overrides with skip_reason
-    - Persist project plans to .st3/projects.json
+    - Persist project plans to .st3/deliverables.json
     - Retrieve stored project plans
 """
 
@@ -22,11 +22,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.workflows import workflow_config
-
 # Project modules
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.schemas import WorkflowConfig
+from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
 
 # Per-phase keys recognised in planning_deliverables (C8/GAP-15)
 _known_phase_keys: frozenset[str] = frozenset(
@@ -84,14 +84,18 @@ class ProjectManager:
     Uses workflows.yaml for workflow definitions and phase sequences.
     """
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize ProjectManager.
-
-        Args:
-            workspace_root: Path to workspace root directory
-        """
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        workflow_config: WorkflowConfig,
+        git_manager: GitManager | None = None,
+    ) -> None:
+        """Initialize ProjectManager."""
         self.workspace_root = Path(workspace_root)
-        self.projects_file = self.workspace_root / ".st3" / "projects.json"
+        self.workflow_config = workflow_config
+        self._git_manager = git_manager
+        self.deliverables_file = self.workspace_root / ".st3" / "deliverables.json"
+        self.atomic_json_writer = AtomicJsonWriter()
 
     def initialize_project(
         self,
@@ -123,9 +127,9 @@ class ProjectManager:
 
         # Validate workflow exists
         try:
-            workflow = workflow_config.get_workflow(workflow_name)
+            workflow = self.workflow_config.get_workflow(workflow_name)
         except ValueError as e:
-            # Re-raise with workflow_config error (includes available workflows)
+            # Re-raise with workflow config error (includes available workflows)
             raise ValueError(str(e)) from e
 
         # Determine execution mode (override or workflow default)
@@ -159,7 +163,7 @@ class ProjectManager:
             created_at=datetime.now(UTC).isoformat(),
         )
 
-        # Save to projects.json
+        # Save to deliverables.json
         self._save_project_plan(plan)
 
         # Return result
@@ -175,7 +179,7 @@ class ProjectManager:
     def save_planning_deliverables(
         self, issue_number: int, planning_deliverables: dict[str, Any]
     ) -> None:
-        """Save planning deliverables to projects.json.
+        """Save planning deliverables to deliverables.json.
 
         Args:
             issue_number: GitHub issue number
@@ -188,12 +192,12 @@ class ProjectManager:
                 - Empty deliverables arrays
                 - Empty exit_criteria strings
         """
-        if not self.projects_file.exists():
+        if not self.deliverables_file.exists():
             msg = f"Project {issue_number} not found - initialize_project must be called first"
             raise ValueError(msg)
 
         # Load existing projects
-        projects = json.loads(self.projects_file.read_text(encoding="utf-8-sig"))
+        projects = json.loads(self.deliverables_file.read_text(encoding="utf-8-sig"))
 
         # Check project exists
         if str(issue_number) not in projects:
@@ -296,7 +300,7 @@ class ProjectManager:
         projects[str(issue_number)]["planning_deliverables"] = planning_deliverables
 
         # Write to file
-        self.projects_file.write_text(json.dumps(projects, indent=2))
+        self._write_deliverables(projects)
 
     def update_planning_deliverables(
         self, issue_number: int, planning_deliverables: dict[str, Any]
@@ -323,11 +327,11 @@ class ProjectManager:
             ValueError: If project not found or planning_deliverables not yet initialised
                 (call save_planning_deliverables first).
         """
-        if not self.projects_file.exists():
+        if not self.deliverables_file.exists():
             msg = f"Project {issue_number} not found - initialize_project must be called first"
             raise ValueError(msg)
 
-        projects = json.loads(self.projects_file.read_text(encoding="utf-8-sig"))
+        projects = json.loads(self.deliverables_file.read_text(encoding="utf-8-sig"))
 
         if str(issue_number) not in projects:
             msg = f"Project {issue_number} not found - initialize_project must be called first"
@@ -411,7 +415,7 @@ class ProjectManager:
                         existing_phase_delivs.append(incoming_deliv)
                         existing_phase_deliv_index[d_id] = len(existing_phase_delivs) - 1
 
-        self.projects_file.write_text(json.dumps(projects, indent=2))
+        self._write_deliverables(projects)
 
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
         """Get stored project plan with current phase detection.
@@ -425,11 +429,11 @@ class ProjectManager:
         Returns:
             Project plan dict with phase detection fields, or None if not found
         """
-        if not self.projects_file.exists():
+        if not self.deliverables_file.exists():
             return None
 
         projects: dict[str, Any] = json.loads(
-            self.projects_file.read_text(encoding="utf-8-sig")  # Handle BOM if present
+            self.deliverables_file.read_text(encoding="utf-8-sig")  # Handle BOM if present
         )
         plan: dict[str, Any] | None = projects.get(str(issue_number))
 
@@ -437,12 +441,14 @@ class ProjectManager:
             return None
 
         # Detect current phase via ScopeDecoder (Issue #139)
-        git_manager = GitManager()
-        try:
-            recent_commits = git_manager.get_recent_commits(limit=1)
-        except Exception:
-            # If git fails (e.g., no repo), return unknown
+        if self._git_manager is None:
             recent_commits = []
+        else:
+            try:
+                recent_commits = self._git_manager.get_recent_commits(limit=1)
+            except Exception:
+                # If git fails (e.g., no repo), return unknown
+                recent_commits = []
 
         if not recent_commits:
             # No commits → unknown phase
@@ -469,17 +475,25 @@ class ProjectManager:
 
         return plan
 
+    def _write_deliverables(self, projects: dict[str, Any]) -> None:
+        """Persist deliverables.json via atomic replacement."""
+        self.atomic_json_writer.write_json(self.deliverables_file, projects)
+
     def _save_project_plan(self, plan: ProjectPlan) -> None:
-        """Save project plan to projects.json.
+        """Save project plan to deliverables.json.
 
         Args:
             plan: ProjectPlan to save
         """
         # Ensure .st3 directory exists
-        self.projects_file.parent.mkdir(parents=True, exist_ok=True)
+        self.deliverables_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Load existing projects
-        projects = json.loads(self.projects_file.read_text()) if self.projects_file.exists() else {}
+        projects = (
+            json.loads(self.deliverables_file.read_text())
+            if self.deliverables_file.exists()
+            else {}
+        )
 
         # Store plan (convert tuple to list for JSON)
         projects[str(plan.issue_number)] = {
@@ -493,4 +507,4 @@ class ProjectManager:
         }
 
         # Write to file
-        self.projects_file.write_text(json.dumps(projects, indent=2))
+        self._write_deliverables(projects)

@@ -2,15 +2,31 @@
 
 Issue #79: Tests for parent_branch in state management.
 - initialize_branch with parent_branch
-- Auto-recovery includes parent_branch from projects.json
+- Auto-recovery includes parent_branch from deliverables.json
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+from mcp_server.managers.project_manager import ProjectInitOptions
+from mcp_server.managers.state_repository import InMemoryStateRepository
+from tests.mcp_server.test_support import (
+    make_phase_state_engine,
+    make_project_manager,
+    make_state_reconstructor,
+)
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
 
 
 class TestPhaseStateEngineParentBranch:
@@ -38,7 +54,7 @@ class TestPhaseStateEngineParentBranch:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
@@ -51,7 +67,11 @@ class TestPhaseStateEngineParentBranch:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
     def test_initialize_branch_with_explicit_parent_branch(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -82,14 +102,14 @@ class TestPhaseStateEngineParentBranch:
 
         # Verify persisted to state.json
         state = engine.get_state("feature/79-test")
-        assert state["parent_branch"] == "epic/76-qa"
+        assert state.parent_branch == "epic/76-qa"
 
     def test_initialize_branch_inherits_parent_from_project(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
     ) -> None:
         """Test initializing branch inherits parent_branch from project.
 
-        Issue #79: If parent_branch not provided, inherit from projects.json.
+        Issue #79: If parent_branch not provided, inherit from deliverables.json.
         """
         # Setup - create project with parent
         project_manager.initialize_project(
@@ -103,7 +123,7 @@ class TestPhaseStateEngineParentBranch:
         result = engine.initialize_branch(
             branch="bug/80-test",
             issue_number=80,
-            initial_phase="tdd",
+            initial_phase="implementation",
             # No parent_branch - should inherit from project
         )
 
@@ -113,7 +133,7 @@ class TestPhaseStateEngineParentBranch:
 
         # Verify persisted to state.json
         state = engine.get_state("bug/80-test")
-        assert state["parent_branch"] == "epic/76-qa"
+        assert state.parent_branch == "epic/76-qa"
 
     def test_initialize_branch_with_none_parent_branch(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -138,12 +158,12 @@ class TestPhaseStateEngineParentBranch:
 
         # Verify persisted to state.json
         state = engine.get_state("docs/81-test")
-        assert state["parent_branch"] is None
+        assert state.parent_branch is None
 
     def test_reconstruct_branch_state_includes_parent_branch(
-        self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
+        self, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
-        """Test auto-recovery reconstructs parent_branch from projects.json.
+        """Test auto-recovery reconstructs parent_branch from deliverables.json.
 
         Issue #79: Cross-machine scenario - state.json missing after git pull.
         """
@@ -155,21 +175,25 @@ class TestPhaseStateEngineParentBranch:
             options=ProjectInitOptions(parent_branch="epic/76-qa"),
         )
 
-        # Simulate cross-machine: delete state.json but keep projects.json
-        state_file = workspace_root / ".st3" / "state.json"
-        if state_file.exists():
-            state_file.unlink()
+        reconstructor = make_state_reconstructor(
+            workspace_root,
+            project_manager=project_manager,
+        )
 
-        # Execute - get_state triggers auto-recovery
-        state = engine.get_state("feature/82-test-reconstruction")
+        with patch.object(
+            reconstructor,
+            "_get_git_commits",
+            return_value=["docs(P_RESEARCH): Start"],
+        ):
+            state = reconstructor.reconstruct("feature/82-test-reconstruction")
 
-        # Verify - parent_branch reconstructed from projects.json
-        assert state["parent_branch"] == "epic/76-qa"
-        assert state["reconstructed"] is True
-        assert state["workflow_name"] == "feature"
+        # Verify - parent_branch reconstructed from deliverables.json
+        assert state.parent_branch == "epic/76-qa"
+        assert state.reconstructed is True
+        assert state.workflow_name == "feature"
 
     def test_reconstruct_branch_state_with_none_parent_branch(
-        self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
+        self, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test auto-recovery handles missing parent_branch gracefully.
 
@@ -180,18 +204,44 @@ class TestPhaseStateEngineParentBranch:
             issue_number=83, issue_title="Old Project", workflow_name="bug"
         )
 
-        # Simulate cross-machine: delete state.json
-        state_file = workspace_root / ".st3" / "state.json"
-        if state_file.exists():
-            state_file.unlink()
+        reconstructor = make_state_reconstructor(
+            workspace_root,
+            project_manager=project_manager,
+        )
 
-        # Execute - get_state triggers auto-recovery
-        state = engine.get_state("bug/83-old-project")
+        with patch.object(
+            reconstructor,
+            "_get_git_commits",
+            return_value=["docs(P_RESEARCH): Start"],
+        ):
+            state = reconstructor.reconstruct("bug/83-old-project")
 
         # Verify - parent_branch is None (backward compat)
-        assert state["parent_branch"] is None
-        assert state["reconstructed"] is True
-        assert state["workflow_name"] == "bug"
+        assert state.parent_branch is None
+        assert state.reconstructed is True
+        assert state.workflow_name == "bug"
+
+    def test_initialize_branch_returns_warning_for_uncommitted_state_changes(
+        self,
+        engine: PhaseStateEngine,
+        project_manager: ProjectManager,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """initialize_branch warns explicitly when tracked state.json has local changes."""
+        project_manager.initialize_project(
+            issue_number=84,
+            issue_title="Warn on dirty state",
+            workflow_name="feature",
+        )
+        monkeypatch.setattr(engine, "_has_uncommitted_state_changes", lambda: True)
+
+        result = engine.initialize_branch(
+            branch="feature/84-dirty-state",
+            issue_number=84,
+            initial_phase="research",
+        )
+
+        assert result["warnings"] == ["state.json has uncommitted local changes"]
 
 
 class TestTddCycleTrackingFields:
@@ -222,7 +272,7 @@ class TestTddCycleTrackingFields:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
@@ -235,14 +285,18 @@ class TestTddCycleTrackingFields:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
     def test_initialize_branch_creates_tdd_cycle_fields(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
     ) -> None:
         """Test initialize_branch creates tdd_cycle_* fields.
 
-        Issue #146: current_tdd_cycle, last_tdd_cycle, tdd_cycle_history must be initialized.
+        Issue #146: current_cycle, last_cycle, cycle_history must be initialized.
         """
         # Setup - create project
         project_manager.initialize_project(
@@ -259,17 +313,17 @@ class TestTddCycleTrackingFields:
 
         # Verify - state.json contains tdd_cycle_* fields
         state = engine.get_state("feature/146-tdd-cycle-tracking")
-        assert "current_tdd_cycle" in state
-        assert "last_tdd_cycle" in state
-        assert "tdd_cycle_history" in state
+        assert hasattr(state, "current_cycle")
+        assert hasattr(state, "last_cycle")
+        assert hasattr(state, "cycle_history")
 
         # Verify - initial values
-        assert state["current_tdd_cycle"] is None
-        assert state["last_tdd_cycle"] is None
-        assert state["tdd_cycle_history"] == []
+        assert state.current_cycle is None
+        assert state.last_cycle is None
+        assert state.cycle_history == []
 
     def test_reconstruct_state_includes_tdd_cycle_fields(
-        self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
+        self, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test auto-recovery includes tdd_cycle_* fields.
 
@@ -280,26 +334,30 @@ class TestTddCycleTrackingFields:
             issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
         )
 
-        # Simulate cross-machine: delete state.json
-        state_file = workspace_root / ".st3" / "state.json"
-        if state_file.exists():
-            state_file.unlink()
+        reconstructor = make_state_reconstructor(
+            workspace_root,
+            project_manager=project_manager,
+        )
 
-        # Execute - get_state triggers auto-recovery
-        state = engine.get_state("feature/146-tdd-cycle-tracking")
+        with patch.object(
+            reconstructor,
+            "_get_git_commits",
+            return_value=["docs(P_RESEARCH): Start"],
+        ):
+            state = reconstructor.reconstruct("feature/146-tdd-cycle-tracking")
 
         # Verify - reconstructed flag
-        assert state["reconstructed"] is True
+        assert state.reconstructed is True
 
         # Verify - tdd_cycle_* fields present
-        assert "current_tdd_cycle" in state
-        assert "last_tdd_cycle" in state
-        assert "tdd_cycle_history" in state
+        assert hasattr(state, "current_cycle")
+        assert hasattr(state, "last_cycle")
+        assert hasattr(state, "cycle_history")
 
         # Verify - initial values (None/[])
-        assert state["current_tdd_cycle"] is None
-        assert state["last_tdd_cycle"] is None
-        assert state["tdd_cycle_history"] == []
+        assert state.current_cycle is None
+        assert state.last_cycle is None
+        assert state.cycle_history == []
 
 
 class TestCycleValidationLogic:
@@ -330,7 +388,7 @@ class TestCycleValidationLogic:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
@@ -343,7 +401,11 @@ class TestCycleValidationLogic:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(
+            workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
     def test_validate_cycle_number_range_rejects_zero(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -373,7 +435,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - cycle_number 0 should raise
         with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
-            engine._validate_cycle_number_range(cycle_number=0, issue_number=146)
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=0,
+                issue_number=146,
+            )
 
     def test_validate_cycle_number_range_rejects_negative(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -403,7 +468,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - negative cycle_number should raise
         with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
-            engine._validate_cycle_number_range(cycle_number=-1, issue_number=146)
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=-1,
+                issue_number=146,
+            )
 
     def test_validate_cycle_number_range_rejects_exceeds_total(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -433,7 +501,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - cycle_number 5 (> 4) should raise
         with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
-            engine._validate_cycle_number_range(cycle_number=5, issue_number=146)
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=5,
+                issue_number=146,
+            )
 
     def test_validate_cycle_number_range_accepts_valid_range(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -463,9 +534,10 @@ class TestCycleValidationLogic:
 
         # Act & Assert - all valid cycle numbers should pass
         for cycle_num in [1, 2, 3, 4]:
-            engine._validate_cycle_number_range(
-                cycle_number=cycle_num, issue_number=146
-            )  # Should not raise
+            engine._validate_cycle_number_range(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                cycle_number=cycle_num,
+                issue_number=146,
+            )
 
     def test_validate_planning_deliverables_exist_raises_if_missing(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -481,7 +553,9 @@ class TestCycleValidationLogic:
 
         # Act & Assert - should raise descriptive error
         with pytest.raises(ValueError, match="Planning deliverables not found for issue 147"):
-            engine._validate_planning_deliverables_exist(issue_number=147)
+            engine._validate_planning_deliverables_exist(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+                issue_number=147,
+            )
 
     def test_validate_planning_deliverables_exist_passes_if_present(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -510,4 +584,6 @@ class TestCycleValidationLogic:
         project_manager.save_planning_deliverables(146, planning_deliverables)
 
         # Act & Assert - should not raise
-        engine._validate_planning_deliverables_exist(issue_number=146)
+        engine._validate_planning_deliverables_exist(  # pyright: ignore[reportPrivateUsage]  # Legacy helper-contract coverage.
+            issue_number=146,
+        )

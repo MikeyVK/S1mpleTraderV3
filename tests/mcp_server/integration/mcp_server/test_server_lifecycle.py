@@ -1,87 +1,82 @@
-"""Test server lifecycle audit logging."""
+"""Test server lifecycle audit logging.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pathlib, mcp_server.server]
+"""
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.config.settings import GitHubSettings, LogSettings, ServerSettings, Settings
+from mcp_server.server import MCPServer
+
+
+def _make_test_settings(audit_log: Path) -> Settings:
+    """Build real settings with repo config and test-local audit log."""
+    workspace_root = Path(__file__).resolve().parents[4]
+    return Settings(
+        server=ServerSettings(
+            name="test-server",
+            workspace_root=str(workspace_root),
+            config_root=str(workspace_root / ".st3" / "config"),
+        ),
+        logging=LogSettings(level="INFO", audit_log=str(audit_log)),
+        github=GitHubSettings(owner="test", repo="repo", token=None),
+    )
+
 
 @pytest.mark.asyncio
-async def test_server_startup_logged_to_audit(tmp_path):
+async def test_server_startup_logged_to_audit(tmp_path: Path) -> None:
     """Test that server startup is logged to audit log."""
-    # Set up temporary audit log
     audit_log = tmp_path / "test_audit.log"
 
-    with patch("mcp_server.config.settings.settings.logging.audit_log", str(audit_log)):
-        with patch("mcp_server.managers.github_manager.GitHubAdapter") as mock_adapter_class:
-            mock_adapter = MagicMock()
-            mock_adapter.list_issues.return_value = []
-            mock_adapter_class.return_value = mock_adapter
+    with patch("mcp_server.managers.github_manager.GitHubAdapter") as mock_adapter_class:
+        mock_adapter = MagicMock()
+        mock_adapter.list_issues.return_value = []
+        mock_adapter_class.return_value = mock_adapter
 
-            # Import after patching
-            # pylint: disable=import-outside-toplevel
-            from mcp_server.core.logging import setup_logging
-            from mcp_server.server import MCPServer
+        _server = MCPServer(settings=_make_test_settings(audit_log))
 
-            # Setup logging with our temp path
-            setup_logging()
+    assert audit_log.exists(), "Audit log should be created"
 
-            # Create server (triggers __init__)
-            _server = MCPServer()
+    log_lines = audit_log.read_text().strip().split("\n")
+    log_entries = [json.loads(line) for line in log_lines if line]
 
-            # Check that audit log was created and contains startup entry
-            assert audit_log.exists(), "Audit log should be created"
+    startup_entries = [
+        entry
+        for entry in log_entries
+        if "server_lifecycle" in entry.get("logger", "")
+        and entry.get("message") == "MCP server starting"
+    ]
 
-            # Read and parse audit log
-            log_lines = audit_log.read_text().strip().split("\n")
-            log_entries = [json.loads(line) for line in log_lines if line]
-
-            # Should have at least one startup message
-            startup_entries = [
-                entry
-                for entry in log_entries
-                if "server_lifecycle" in entry.get("logger", "")
-                and entry.get("message") == "MCP server starting"
-            ]
-
-            assert len(startup_entries) >= 1, "Should log server startup"
-            assert startup_entries[0]["level"] == "INFO"
+    assert len(startup_entries) >= 1, "Should log server startup"
+    assert startup_entries[0]["level"] == "INFO"
 
 
 @pytest.mark.asyncio
-async def test_server_shutdown_logged_to_audit(tmp_path):
+async def test_server_shutdown_logged_to_audit(tmp_path: Path) -> None:
     """Test that server shutdown is logged to audit log."""
-    # Set up temporary audit log
     audit_log = tmp_path / "test_audit.log"
 
-    with patch("mcp_server.config.settings.settings.logging.audit_log", str(audit_log)):
-        with patch("mcp_server.managers.github_manager.GitHubAdapter") as mock_adapter_class:
-            mock_adapter = MagicMock()
-            mock_adapter.list_issues.return_value = []
-            mock_adapter_class.return_value = mock_adapter
+    with patch("mcp_server.managers.github_manager.GitHubAdapter") as mock_adapter_class:
+        mock_adapter = MagicMock()
+        mock_adapter.list_issues.return_value = []
+        mock_adapter_class.return_value = mock_adapter
 
-            # pylint: disable=import-outside-toplevel
-            from mcp_server.core.logging import setup_logging
-            from mcp_server.server import MCPServer
+        server = MCPServer(settings=_make_test_settings(audit_log))
+        await server.shutdown()
 
-            setup_logging()
-            server = MCPServer()
+    log_lines = audit_log.read_text().strip().split("\n")
+    log_entries = [json.loads(line) for line in log_lines if line]
 
-            # Simulate shutdown by explicitly calling a cleanup method
-            # (we'll implement this in the GREEN phase)
-            if hasattr(server, "shutdown"):
-                await server.shutdown()
+    shutdown_entries = [
+        entry
+        for entry in log_entries
+        if "server_lifecycle" in entry.get("logger", "")
+        and entry.get("message") == "MCP server shutting down"
+    ]
 
-            # Read audit log
-            log_lines = audit_log.read_text().strip().split("\n")
-            log_entries = [json.loads(line) for line in log_lines if line]
-
-            # Should have shutdown message
-            shutdown_entries = [
-                entry
-                for entry in log_entries
-                if "server_lifecycle" in entry.get("logger", "")
-                and entry.get("message") == "MCP server shutting down"
-            ]
-
-            assert len(shutdown_entries) >= 1, "Should log server shutdown"
+    assert len(shutdown_entries) >= 1, "Should log server shutdown"

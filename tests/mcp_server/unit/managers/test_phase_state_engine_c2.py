@@ -1,226 +1,260 @@
-"""Tests for PhaseStateEngine gate relocation (Issue #229 Cycle 2).
+# tests/mcp_server/unit/managers/test_phase_state_engine_c2.py
+"""Tests for C_GATE_WIRING runtime gate ownership (Issue #257 Cycle 2).
 
-GAP-01: Planning exit is silent — add on_exit_planning_phase hard gate.
-GAP-02: planning_deliverables check in on_enter_tdd_phase is wrong layer —
-        remove it there; gate belongs at planning exit, not TDD entry.
+Cycle 2 goals covered here:
+- transition() blocks through WorkflowGateRunner.enforce().
+- force_transition() reports blocked and passing gates through WorkflowGateRunner.inspect().
+- PhaseContractResolver.resolve() is live on the transition path through phase_contracts.yaml.
 
-C2 Deliverables:
-  D2.1: on_exit_planning_phase wired to WorkphasesConfig + DeliverableChecker (Option B).
-  D2.2: on_enter_tdd_phase no longer raises when planning_deliverables absent.
+These tests intentionally replace the old planning-hook assertions with behavioural
+coverage on the real transition API. That carries the cycle-1 lesson forward:
+prove runtime ownership through observable outcomes, not private seam inspection.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine]
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.core.interfaces import GateReport, GateViolation
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.state_repository import InMemoryStateRepository
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
-# ---------------------------------------------------------------------------
-# Shared fixtures
-# ---------------------------------------------------------------------------
+
+class BlockingGateRunner:
+    """Behavioral fake that always blocks strict transitions."""
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        del workflow_name
+        return phase == "implementation"
+
+    def enforce(
+        self,
+        workflow_name: str,
+        phase: str,
+        cycle_number: int | None = None,
+        checks: list[object] | None = None,
+    ) -> GateReport:
+        del workflow_name, phase, cycle_number, checks
+        report = GateReport(
+            passing=(),
+            blocking=("research-doc",),
+            details={"research-doc": "missing research document"},
+        )
+        raise GateViolation("missing research document", report)
+
+    def inspect(
+        self,
+        workflow_name: str,
+        phase: str,
+        cycle_number: int | None = None,
+        checks: list[object] | None = None,
+    ) -> GateReport:
+        del workflow_name, phase, cycle_number, checks
+        return GateReport()
+
+
+class InspectingGateRunner:
+    """Behavioral fake that reports, but does not block, forced transitions."""
+
+    def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
+        del workflow_name
+        return phase == "implementation"
+
+    def enforce(
+        self,
+        workflow_name: str,
+        phase: str,
+        cycle_number: int | None = None,
+        checks: list[object] | None = None,
+    ) -> GateReport:
+        del workflow_name, phase, cycle_number, checks
+        return GateReport()
+
+    def inspect(
+        self,
+        workflow_name: str,
+        phase: str,
+        cycle_number: int | None = None,
+        checks: list[object] | None = None,
+    ) -> GateReport:
+        del workflow_name, phase, cycle_number, checks
+        return GateReport(
+            passing=("design-doc",),
+            blocking=("planning-doc",),
+            details={"planning-doc": "missing planning document"},
+        )
 
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
-    """Temporary workspace root with .st3/workphases.yaml providing exit_requires."""
-    st3 = tmp_path / ".st3"
-    st3.mkdir()
-    (st3 / "workphases.yaml").write_text(
+    """Temporary workspace with hermetic workflow and phase-contract config."""
+    config_dir = tmp_path / ".st3" / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "workflows.yaml").write_text(
         """
+version: "1.0"
+workflows:
+  feature:
+    name: feature
+    description: "Feature workflow"
+    default_execution_mode: interactive
+    phases:
+      - research
+      - planning
+      - design
+      - implementation
+      - validation
+      - documentation
+""".strip(),
+        encoding="utf-8",
+    )
+    (config_dir / "workphases.yaml").write_text(
+        """
+version: "1.0"
 phases:
+  research:
+    display_name: "Research"
+    subphases: []
   planning:
     display_name: "Planning"
-    exit_requires:
-      - key: "planning_deliverables"
-        description: "TDD cycle breakdown"
-  tdd:
-    display_name: "TDD"
-    entry_expects:
-      - key: "planning_deliverables"
-        description: "Expected from planning"
+    subphases: []
   design:
     display_name: "Design"
-"""
+    subphases: []
+  implementation:
+    display_name: "Implementation"
+    subphases: [red, green, refactor]
+  validation:
+    display_name: "Validation"
+    subphases: []
+  documentation:
+    display_name: "Documentation"
+    subphases: []
+""".strip(),
+        encoding="utf-8",
+    )
+    (config_dir / "phase_contracts.yaml").write_text(
+        """
+workflows:
+  feature:
+    research:
+      exit_requires:
+        - id: research-doc
+          type: file_glob
+          dir: docs/development
+          pattern: issue*/research*.md
+""".strip(),
+        encoding="utf-8",
     )
     return tmp_path
 
 
 @pytest.fixture
 def project_manager(workspace_root: Path) -> ProjectManager:
-    """ProjectManager bound to tmp workspace."""
-    return ProjectManager(workspace_root=workspace_root)
+    """ProjectManager bound to the temp workspace."""
+    return make_project_manager(workspace_root)
 
 
-@pytest.fixture
-def engine(workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
-    """PhaseStateEngine bound to tmp workspace."""
-    return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+def test_transition_phase_raises_when_gate_blocks(
+    workspace_root: Path,
+    project_manager: ProjectManager,
+) -> None:
+    """transition() must fail when WorkflowGateRunner.enforce() blocks the boundary."""
+    project_manager.initialize_project(
+        issue_number=257,
+        issue_title="Cycle 2 strict gate test",
+        workflow_name="feature",
+    )
+    engine = make_phase_state_engine(
+        workspace_root,
+        project_manager=project_manager,
+        state_repository=InMemoryStateRepository(),
+        workflow_gate_runner=BlockingGateRunner(),
+    )
+    engine.initialize_branch(
+        branch="feature/257-c2-blocking",
+        issue_number=257,
+        initial_phase="research",
+    )
+
+    with pytest.raises(GateViolation, match="missing research document"):
+        engine.transition(branch="feature/257-c2-blocking", to_phase="planning")
+
+    assert engine.get_current_phase("feature/257-c2-blocking") == "research"
 
 
-# ---------------------------------------------------------------------------
-# C2 — on_exit_planning_phase (GAP-01)
-# ---------------------------------------------------------------------------
+def test_force_phase_transition_returns_gate_report_with_blocked_checks(
+    workspace_root: Path,
+    project_manager: ProjectManager,
+) -> None:
+    """force_transition() must surface inspect-mode gate results in its return payload."""
+    project_manager.initialize_project(
+        issue_number=257,
+        issue_title="Cycle 2 force inspection test",
+        workflow_name="feature",
+    )
+    engine = make_phase_state_engine(
+        workspace_root,
+        project_manager=project_manager,
+        state_repository=InMemoryStateRepository(),
+        workflow_gate_runner=InspectingGateRunner(),
+    )
+    engine.initialize_branch(
+        branch="feature/257-c2-force",
+        issue_number=257,
+        initial_phase="planning",
+    )
+
+    result = engine.force_transition(
+        branch="feature/257-c2-force",
+        to_phase="design",
+        skip_reason="audited bypass for test",
+        human_approval="Verifier approved on 2026-04-04",
+    )
+
+    assert result["success"] is True
+    assert result["skipped_gates"] == ["planning-doc"]
+    assert result["passing_gates"] == ["design-doc"]
+    assert result["gate_report"] == {
+        "passing": ["design-doc"],
+        "blocking": ["planning-doc"],
+        "details": {"planning-doc": "missing planning document"},
+    }
 
 
-class TestOnExitPlanningPhase:
-    """on_exit_planning_phase uses WorkphasesConfig + DeliverableChecker (Option B)."""
+def test_transition_phase_enforces_contracts_from_phase_contracts_yaml(
+    workspace_root: Path,
+    project_manager: ProjectManager,
+) -> None:
+    """transition() must use phase_contracts.yaml through the live resolver path."""
+    project_manager.initialize_project(
+        issue_number=257,
+        issue_title="Cycle 2 live resolver test",
+        workflow_name="feature",
+    )
+    engine = make_phase_state_engine(
+        workspace_root,
+        project_manager=project_manager,
+        state_repository=InMemoryStateRepository(),
+    )
+    branch = "feature/257-c2-live-resolver"
+    engine.initialize_branch(branch=branch, issue_number=257, initial_phase="research")
 
-    def test_on_exit_planning_phase_raises_when_planning_deliverables_absent(
-        self,
-        engine: PhaseStateEngine,
-        project_manager: ProjectManager,
-    ) -> None:
-        """on_exit_planning_phase raises ValueError when planning_deliverables absent.
+    with pytest.raises(GateViolation) as exc_info:
+        engine.transition(branch=branch, to_phase="planning")
 
-        Issue #229 C2 — GAP-01: gate must fire at planning exit, not silently pass.
-        """
-        project_manager.initialize_project(
-            issue_number=229,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-        # No planning_deliverables saved → exit_requires key missing → should raise
-        with pytest.raises(ValueError, match="planning_deliverables"):
-            engine.on_exit_planning_phase(branch="feature/229-test", issue_number=229)
+    assert exc_info.value.report.blocking == ("research-doc",)
 
-    def test_on_exit_planning_phase_passes_when_planning_deliverables_present(
-        self,
-        engine: PhaseStateEngine,
-        project_manager: ProjectManager,
-    ) -> None:
-        """on_exit_planning_phase passes silently when planning_deliverables present.
+    research_dir = workspace_root / "docs" / "development" / "issue257"
+    research_dir.mkdir(parents=True)
+    (research_dir / "research_cycle2.md").write_text("# Research", encoding="utf-8")
 
-        Issue #229 C2: gate must not block valid transitions.
-        """
-        project_manager.initialize_project(
-            issue_number=229,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-        project_manager.save_planning_deliverables(
-            229,
-            {
-                "tdd_cycles": {
-                    "total": 1,
-                    "cycles": [{"cycle_number": 1, "deliverables": ["D1"], "exit_criteria": "x"}],
-                }
-            },
-        )
-        # Should not raise
-        engine.on_exit_planning_phase(branch="feature/229-test", issue_number=229)
+    result = engine.transition(branch=branch, to_phase="planning")
 
-    def test_on_exit_planning_phase_uses_workphases_config_for_required_keys(
-        self,
-        engine: PhaseStateEngine,
-        project_manager: ProjectManager,
-        workspace_root: Path,
-    ) -> None:
-        """on_exit_planning_phase reads exit_requires from workphases.yaml, not hardcoded.
-
-        Issue #229 C2 — D2.1: gate is WorkphasesConfig-driven (Option B).
-        A phase with no exit_requires in workphases.yaml must pass unconditionally.
-        """
-        # Write workphases.yaml WITHOUT exit_requires on planning
-        (workspace_root / ".st3" / "workphases.yaml").write_text(
-            "phases:\n  planning:\n    display_name: Planning\n"
-        )
-        project_manager.initialize_project(
-            issue_number=230,
-            issue_title="No planning gate",
-            workflow_name="feature",
-        )
-        # No planning_deliverables AND no exit_requires → must NOT raise
-        engine.on_exit_planning_phase(branch="feature/230-test", issue_number=230)
-
-    def test_on_exit_planning_phase_runs_deliverable_checker_on_validates_entries(
-        self,
-        engine: PhaseStateEngine,
-        project_manager: ProjectManager,
-    ) -> None:
-        """on_exit_planning_phase runs DeliverableChecker on planning_deliverables.validates.
-
-        Issue #229 C2 — D2.1: wired to structural checker (Option B full flow).
-        A validates entry that fails must propagate as DeliverableCheckError (ValueError).
-        """
-        project_manager.initialize_project(
-            issue_number=229,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-        # planning_deliverables exists but has a failing validates entry
-        project_manager.save_planning_deliverables(
-            229,
-            {
-                "tdd_cycles": {
-                    "total": 1,
-                    "cycles": [{"cycle_number": 1, "deliverables": ["D1"], "exit_criteria": "x"}],
-                },
-                "validates": [
-                    {
-                        "id": "gate-check",
-                        "type": "file_exists",
-                        "file": "nonexistent/missing.py",
-                    }
-                ],
-            },
-        )
-        # DeliverableChecker must raise on the failing file_exists
-        with pytest.raises(ValueError, match="gate-check"):
-            engine.on_exit_planning_phase(branch="feature/229-test", issue_number=229)
-
-
-# ---------------------------------------------------------------------------
-# C2 — on_enter_tdd_phase no longer checks planning_deliverables (GAP-02)
-# ---------------------------------------------------------------------------
-
-
-class TestOnEnterTddPhaseGateRemoved:
-    """on_enter_tdd_phase must not check planning_deliverables (gate moved to exit)."""
-
-    def test_on_enter_tdd_phase_does_not_raise_when_planning_deliverables_absent(
-        self,
-        engine: PhaseStateEngine,
-        project_manager: ProjectManager,
-    ) -> None:
-        """on_enter_tdd_phase no longer raises when planning_deliverables absent.
-
-        Issue #229 C2 — GAP-02: planning gate moved to on_exit_planning_phase.
-        TDD entry only initializes cycle state; it must not re-validate planning.
-        """
-        project_manager.initialize_project(
-            issue_number=229,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-        engine.initialize_branch(
-            branch="feature/229-test",
-            issue_number=229,
-            initial_phase="tdd",
-        )
-        # No planning_deliverables → must NOT raise after GAP-02 fix
-        engine.on_enter_tdd_phase(branch="feature/229-test", issue_number=229)
-
-    def test_transition_from_planning_calls_exit_planning_gate(
-        self,
-        engine: PhaseStateEngine,
-        project_manager: ProjectManager,
-    ) -> None:
-        """transition() from planning calls on_exit_planning_phase gate.
-
-        Issue #229 C2: gate is wired into transition() dispatch so it cannot be
-        bypassed by callers who call transition() directly.
-        """
-        project_manager.initialize_project(
-            issue_number=229,
-            issue_title="Phase deliverables enforcement",
-            workflow_name="feature",
-        )
-        engine.initialize_branch(
-            branch="feature/229-test",
-            issue_number=229,
-            initial_phase="planning",
-        )
-        # No planning_deliverables → transition from planning must raise via gate
-        with pytest.raises(ValueError, match="planning_deliverables"):
-            engine.transition(branch="feature/229-test", to_phase="design")
+    assert result == {"success": True, "from_phase": "research", "to_phase": "planning"}

@@ -1,6 +1,10 @@
-"""Unit tests for GateScope model and scope filtering (QA Alignment)."""
+"""Unit tests for GateScope model and scope filtering (QA Alignment).
 
-from mcp_server.config.quality_config import GateScope
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.config.schemas.quality_config
+"""
+
+from mcp_server.config.schemas.quality_config import GateScope
 
 
 class TestGateScopeModel:

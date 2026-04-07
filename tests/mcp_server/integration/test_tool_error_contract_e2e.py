@@ -8,12 +8,17 @@ This test proves that the unified exception hierarchy works end-to-end:
 5. Client can access structured error information
 
 This addresses Gap A from slice1_gaps.md.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.scaffold_artifact]
 """
 
 from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
     ScaffoldArtifactTool,
@@ -21,9 +26,9 @@ from mcp_server.tools.scaffold_artifact import (
 
 
 @pytest.mark.asyncio
-async def test_config_error_preserves_contract() -> None:
+async def test_config_error_preserves_contract(artifact_manager: ArtifactManager) -> None:
     """Test ConfigError contract preserved through tool layer."""
-    tool = ScaffoldArtifactTool()
+    tool = ScaffoldArtifactTool(manager=artifact_manager)
 
     # Invalid artifact type triggers ConfigError
     params = ScaffoldArtifactInput(
@@ -36,19 +41,16 @@ async def test_config_error_preserves_contract() -> None:
     # Verify error structure
     assert result.is_error, "Expected error result"
     assert result.error_code == "ERR_CONFIG", "Expected config error code"
-    # This ConfigError happens to have empty hints list (not None)
-    # The important thing is error_code and file_path are preserved
-    assert result.file_path == ".st3\\artifacts.yaml", "Expected file path"
+    # Pure schema lookup no longer carries source-path knowledge.
+    assert result.file_path is None, "Unexpected file path on pure schema lookup error"
     # Check message contains helpful information
     assert "nonexistent_type" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
-async def test_validation_error_preserves_contract() -> None:
+async def test_validation_error_preserves_contract(artifact_manager: ArtifactManager) -> None:
     """Test ValidationError contract preserved through tool layer."""
-    from mcp_server.core.exceptions import ValidationError
-
-    tool = ScaffoldArtifactTool()
+    tool = ScaffoldArtifactTool(manager=artifact_manager)
 
     # Mock manager to raise ValidationError
     tool.manager.scaffold_artifact = Mock(
@@ -76,11 +78,9 @@ async def test_validation_error_preserves_contract() -> None:
 
 
 @pytest.mark.asyncio
-async def test_execution_error_preserves_contract() -> None:
+async def test_execution_error_preserves_contract(artifact_manager: ArtifactManager) -> None:
     """Test ExecutionError contract preserved through tool layer."""
-    from mcp_server.core.exceptions import ExecutionError
-
-    tool = ScaffoldArtifactTool()
+    tool = ScaffoldArtifactTool(manager=artifact_manager)
 
     # Mock manager to raise ExecutionError
     tool.manager.scaffold_artifact = Mock(

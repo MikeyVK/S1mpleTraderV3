@@ -18,6 +18,9 @@ Test cases per type (5):
   1. Minimal valid context (required fields only)
   2. Full context (all optional fields populated)
   3. Schema validation rejection (invalid input → ValidationError)
+
+@layer: Tests (Unit)
+@dependencies: pytest, pydantic, schema parity fixtures, mcp_server schema artifacts
   4. V2 pipeline was routed (not fallen back to v1)
   5. Output contains class definition
 
@@ -38,6 +41,7 @@ import pytest
 
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
+from tests.mcp_server.test_support import make_artifact_manager
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +51,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 
 def _make_manager(tmp_path: Path) -> ArtifactManager:
     """Create ArtifactManager with test workspace."""
-    return ArtifactManager(workspace_root=str(tmp_path))
+    return make_artifact_manager(tmp_path)
 
 
 def _run_v1(manager: ArtifactManager, artifact_type: str, context: dict) -> str:

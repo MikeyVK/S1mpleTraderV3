@@ -7,14 +7,18 @@ on every violation.
 
 Root cause: ``_parse_json_violations`` unconditionally sets ``severity=None``
 instead of reading ``fmap["severity"]`` via ``_resolve_field_path``.
+
+@layer: Tests (Unit)
+@dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.qa_manager
 """
 
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import JsonViolationsParsing
+from mcp_server.config.schemas.quality_config import JsonViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # ---------------------------------------------------------------------------
 # Fixtures / constants
@@ -71,7 +75,7 @@ class TestPyrightSeverityMapping:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     # --- error ---
 

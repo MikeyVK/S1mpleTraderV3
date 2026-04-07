@@ -1,6 +1,9 @@
 """
 Task 3.7: Integration tests for tracking templates
 Tests tier1_base_tracking + tier2 text/markdown + concrete tracking templates.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, pathlib, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path
@@ -25,19 +28,19 @@ def jinja_env():
 # ===== TIER1/TIER2 EXISTENCE TESTS =====
 
 
-def test_tier1_base_tracking_exists():
+def test_tier1_base_tracking_exists() -> None:
     """tier1_base_tracking.jinja2 must exist."""
     template_path = TEMPLATES_DIR / "tier1_base_tracking.jinja2"
     assert template_path.exists(), "tier1_base_tracking.jinja2 not found"
 
 
-def test_tier2_tracking_text_exists():
+def test_tier2_tracking_text_exists() -> None:
     """tier2_tracking_text.jinja2 must exist."""
     template_path = TEMPLATES_DIR / "tier2_tracking_text.jinja2"
     assert template_path.exists(), "tier2_tracking_text.jinja2 not found"
 
 
-def test_tier2_tracking_markdown_exists():
+def test_tier2_tracking_markdown_exists() -> None:
     """tier2_tracking_markdown.jinja2 must exist."""
     template_path = TEMPLATES_DIR / "tier2_tracking_markdown.jinja2"
     assert template_path.exists(), "tier2_tracking_markdown.jinja2 not found"
@@ -46,19 +49,19 @@ def test_tier2_tracking_markdown_exists():
 # ===== CONCRETE TEMPLATE EXISTENCE TESTS =====
 
 
-def test_concrete_commit_txt_exists():
+def test_concrete_commit_txt_exists() -> None:
     """concrete/commit.txt.jinja2 must exist."""
     template_path = TEMPLATES_DIR / "concrete" / "commit.txt.jinja2"
     assert template_path.exists(), "concrete/commit.txt.jinja2 not found"
 
 
-def test_concrete_pr_md_exists():
+def test_concrete_pr_md_exists() -> None:
     """concrete/pr.md.jinja2 must exist."""
     template_path = TEMPLATES_DIR / "concrete" / "pr.md.jinja2"
     assert template_path.exists(), "concrete/pr.md.jinja2 not found"
 
 
-def test_concrete_issue_md_exists():
+def test_concrete_issue_md_exists() -> None:
     """concrete/issue.md.jinja2 must exist."""
     template_path = TEMPLATES_DIR / "concrete" / "issue.md.jinja2"
     assert template_path.exists(), "concrete/issue.md.jinja2 not found"
@@ -67,7 +70,7 @@ def test_concrete_issue_md_exists():
 # ===== COMMIT MESSAGE RENDERING TESTS =====
 
 
-def test_commit_txt_renders_conventional_commits_format(jinja_env):
+def test_commit_txt_renders_conventional_commits_format(jinja_env) -> None:
     """Test commit.txt renders Conventional Commits format."""
     template = jinja_env.get_template("concrete/commit.txt.jinja2")
 
@@ -88,7 +91,7 @@ def test_commit_txt_renders_conventional_commits_format(jinja_env):
     assert "Refs: #72" in output
 
 
-def test_commit_txt_renders_breaking_change(jinja_env):
+def test_commit_txt_renders_breaking_change(jinja_env) -> None:
     """Test commit.txt renders BREAKING CHANGE footer."""
     template = jinja_env.get_template("concrete/commit.txt.jinja2")
 
@@ -107,7 +110,7 @@ def test_commit_txt_renders_breaking_change(jinja_env):
     assert "BREAKING CHANGE: Removed deprecated parameter" in output
 
 
-def test_commit_txt_minimal_context(jinja_env):
+def test_commit_txt_minimal_context(jinja_env) -> None:
     """Test commit.txt renders with minimal required fields."""
     template = jinja_env.get_template("concrete/commit.txt.jinja2")
 
@@ -128,7 +131,7 @@ def test_commit_txt_minimal_context(jinja_env):
 # ===== PR DESCRIPTION RENDERING TESTS =====
 
 
-def test_pr_md_renders_standard_sections(jinja_env):
+def test_pr_md_renders_standard_sections(jinja_env) -> None:
     """Test pr.md renders with standard PR sections."""
     template = jinja_env.get_template("concrete/pr.md.jinja2")
 
@@ -136,7 +139,11 @@ def test_pr_md_renders_standard_sections(jinja_env):
         "tracking_type": "pr",
         "title": "Add tracking templates",
         "summary": "Implements Task 3.7 tracking templates",
-        "changes": "- Created tier1_base_tracking.jinja2\\n- Created tier2_tracking_text.jinja2\\n- Created 3 concrete templates",
+        "changes": (
+            "- Created tier1_base_tracking.jinja2\\n"
+            "- Created tier2_tracking_text.jinja2\\n"
+            "- Created 3 concrete templates"
+        ),
         "testing": "Unit tests for all templates, integration tests passing",
         "closes_issues": [72],
     }
@@ -161,7 +168,7 @@ def test_pr_md_renders_standard_sections(jinja_env):
     assert "Closes: #72" in output
 
 
-def test_pr_md_renders_cross_branch_related_docs(jinja_env):
+def test_pr_md_renders_cross_branch_related_docs(jinja_env) -> None:
     """Test pr.md uses CROSS-BRANCH tier3_pattern_markdown_related_docs."""
     template = jinja_env.get_template("concrete/pr.md.jinja2")
 
@@ -183,7 +190,7 @@ def test_pr_md_renders_cross_branch_related_docs(jinja_env):
     assert "[docs/development/issue72/tracking-type-architecture.md][related-2]" in output
 
 
-def test_pr_md_renders_breaking_changes_section(jinja_env):
+def test_pr_md_renders_breaking_changes_section(jinja_env) -> None:
     """Test pr.md renders breaking changes section."""
     template = jinja_env.get_template("concrete/pr.md.jinja2")
 
@@ -200,7 +207,7 @@ def test_pr_md_renders_breaking_changes_section(jinja_env):
     assert "Removed deprecated `old_method()`" in output
 
 
-def test_pr_md_custom_checklist(jinja_env):
+def test_pr_md_custom_checklist(jinja_env) -> None:
     """Test pr.md renders custom checklist items."""
     template = jinja_env.get_template("concrete/pr.md.jinja2")
 
@@ -225,7 +232,7 @@ def test_pr_md_custom_checklist(jinja_env):
 # ===== ISSUE DESCRIPTION RENDERING TESTS =====
 
 
-def test_issue_md_renders_problem_sections(jinja_env):
+def test_issue_md_renders_problem_sections(jinja_env) -> None:
     """Test issue.md renders problem/expected/actual sections."""
     template = jinja_env.get_template("concrete/issue.md.jinja2")
 
@@ -259,7 +266,7 @@ def test_issue_md_renders_problem_sections(jinja_env):
     assert "Part of Issue #72 Task 3.7" in output
 
 
-def test_issue_md_renders_cross_branch_related_docs(jinja_env):
+def test_issue_md_renders_cross_branch_related_docs(jinja_env) -> None:
     """Test issue.md uses CROSS-BRANCH tier3_pattern_markdown_related_docs."""
     template = jinja_env.get_template("concrete/issue.md.jinja2")
 
@@ -277,7 +284,7 @@ def test_issue_md_renders_cross_branch_related_docs(jinja_env):
     assert "[docs/development/issue72/planning.md][related-1]" in output
 
 
-def test_issue_md_renders_metadata_section(jinja_env):
+def test_issue_md_renders_metadata_section(jinja_env) -> None:
     """Test issue.md renders metadata (labels/milestone/assignees)."""
     template = jinja_env.get_template("concrete/issue.md.jinja2")
 
@@ -298,7 +305,7 @@ def test_issue_md_renders_metadata_section(jinja_env):
     assert "Assignees: agent, developer" in output
 
 
-def test_issue_md_minimal_context(jinja_env):
+def test_issue_md_minimal_context(jinja_env) -> None:
     """Test issue.md renders with minimal required fields."""
     template = jinja_env.get_template("concrete/issue.md.jinja2")
 
@@ -323,43 +330,43 @@ def test_issue_md_minimal_context(jinja_env):
 # ===== TIER CHAIN VALIDATION =====
 
 
-def test_tier1_extends_tier0(jinja_env):
+def test_tier1_extends_tier0(jinja_env) -> None:
     """Verify tier1_base_tracking extends tier0_base_artifact."""
     template_source = (TEMPLATES_DIR / "tier1_base_tracking.jinja2").read_text(encoding="utf-8")
     assert '{%- extends "tier0_base_artifact.jinja2" -%}' in template_source
 
 
-def test_tier2_text_extends_tier1(jinja_env):
+def test_tier2_text_extends_tier1(jinja_env) -> None:
     """Verify tier2_tracking_text extends tier1_base_tracking."""
     template_source = (TEMPLATES_DIR / "tier2_tracking_text.jinja2").read_text(encoding="utf-8")
     assert '{%- extends "tier1_base_tracking.jinja2" -%}' in template_source
 
 
-def test_tier2_markdown_extends_tier1(jinja_env):
+def test_tier2_markdown_extends_tier1(jinja_env) -> None:
     """Verify tier2_tracking_markdown extends tier1_base_tracking."""
     template_source = (TEMPLATES_DIR / "tier2_tracking_markdown.jinja2").read_text(encoding="utf-8")
     assert '{%- extends "tier1_base_tracking.jinja2" -%}' in template_source
 
 
-def test_commit_extends_tier2_text(jinja_env):
+def test_commit_extends_tier2_text(jinja_env) -> None:
     """Verify concrete/commit.txt extends tier2_tracking_text."""
     template_source = (TEMPLATES_DIR / "concrete" / "commit.txt.jinja2").read_text(encoding="utf-8")
     assert '{%- extends "tier2_tracking_text.jinja2" -%}' in template_source
 
 
-def test_pr_extends_tier2_markdown(jinja_env):
+def test_pr_extends_tier2_markdown(jinja_env) -> None:
     """Verify concrete/pr.md extends tier2_tracking_markdown."""
     template_source = (TEMPLATES_DIR / "concrete" / "pr.md.jinja2").read_text(encoding="utf-8")
     assert '{%- extends "tier2_tracking_markdown.jinja2" -%}' in template_source
 
 
-def test_issue_extends_tier2_markdown(jinja_env):
+def test_issue_extends_tier2_markdown(jinja_env) -> None:
     """Verify concrete/issue.md extends tier2_tracking_markdown."""
     template_source = (TEMPLATES_DIR / "concrete" / "issue.md.jinja2").read_text(encoding="utf-8")
     assert '{%- extends "tier2_tracking_markdown.jinja2" -%}' in template_source
 
 
-def test_pr_imports_cross_branch_pattern(jinja_env):
+def test_pr_imports_cross_branch_pattern(jinja_env) -> None:
     """Verify pr.md imports tier3_pattern_markdown_related_docs (cross-branch)."""
     template_source = (TEMPLATES_DIR / "concrete" / "pr.md.jinja2").read_text(encoding="utf-8")
     assert (
@@ -368,7 +375,7 @@ def test_pr_imports_cross_branch_pattern(jinja_env):
     assert "CROSS-BRANCH PATTERN IMPORT" in template_source
 
 
-def test_issue_imports_cross_branch_pattern(jinja_env):
+def test_issue_imports_cross_branch_pattern(jinja_env) -> None:
     """Verify issue.md imports tier3_pattern_markdown_related_docs (cross-branch)."""
     template_source = (TEMPLATES_DIR / "concrete" / "issue.md.jinja2").read_text(encoding="utf-8")
     assert (

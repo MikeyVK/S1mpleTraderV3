@@ -12,14 +12,9 @@ Line 2: # template=dto version=abc12345 created=2026-01-27T10:00Z updated=
 """
 
 import re
-from pathlib import Path
 
-from mcp_server.config.scaffold_metadata_config import (
-    CommentPattern,
-    MetadataField,
-    ScaffoldMetadataConfig,
-)
 from mcp_server.core.exceptions import MetadataParseError
+from mcp_server.schemas import CommentPattern, MetadataField, ScaffoldMetadataConfig
 
 
 class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
@@ -40,14 +35,9 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         'dto'
     """
 
-    def __init__(self, config_path: Path | None = None) -> None:
-        """
-        Initialize parser with configuration.
-
-        Args:
-            config_path: Path to config file (defaults to .st3/scaffold_metadata.yaml)
-        """
-        self.config = ScaffoldMetadataConfig.from_file(config_path)
+    def __init__(self, config: ScaffoldMetadataConfig) -> None:
+        """Initialize parser with injected metadata configuration."""
+        self.config = config
 
     def _filter_patterns(self, extension: str) -> list[CommentPattern]:
         """
@@ -60,9 +50,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
             List of CommentPattern objects matching the extension
         """
         return [
-            pattern
-            for pattern in self.config.comment_patterns
-            if extension in pattern.extensions
+            pattern for pattern in self.config.comment_patterns if extension in pattern.extensions
         ]
 
     def parse(self, content: str, extension: str) -> dict[str, str] | None:
@@ -140,7 +128,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         # Use regex to split on whitespace but keep values together
         # Pattern: key=value pairs separated by spaces
         # Updated: Allow empty values (e.g., updated=)
-        pattern = r'(\w+)=([^\s]*)'
+        pattern = r"(\w+)=([^\s]*)"
         matches = re.findall(pattern, metadata_str)
 
         if not matches:

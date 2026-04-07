@@ -1,12 +1,19 @@
-"""Unit tests for git_tools.py."""
+"""Unit tests for git_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.git_tools]
+"""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.git_tools import (
+    CommitPhaseMismatchError,
     CreateBranchInput,
     CreateBranchTool,
     GetParentBranchInput,
@@ -32,20 +39,31 @@ from mcp_server.tools.tool_result import ToolResult
 
 
 @pytest.fixture
-def mock_git_manager():
+def mock_git_manager() -> MagicMock:
     """Fixture for mocked GitManager."""
-    return MagicMock()
+    manager = MagicMock()
+    git_config = MagicMock()
+    git_config.branch_types = ["feature", "bug", "fix", "docs", "refactor", "epic"]
+    git_config.commit_types = ["feat", "fix", "docs", "chore", "test", "refactor"]
+    git_config.has_branch_type.side_effect = lambda value: value in git_config.branch_types
+    git_config.has_commit_type.side_effect = lambda value: value.lower() in git_config.commit_types
+    git_config.extract_issue_number.side_effect = lambda branch: 79 if "79" in branch else 999
+    manager.git_config = git_config
+    manager.adapter.get_current_branch.return_value = "feature/257-reorder-workflow-phases"
+    return manager
 
 
 @pytest.mark.asyncio
-async def test_create_branch_tool_requires_base_branch(mock_git_manager):
+async def test_create_branch_tool_requires_base_branch() -> None:
     """Test that base_branch parameter is required."""
     with pytest.raises(Exception):  # noqa: B017 — Pydantic validation error; exact type varies by version
         CreateBranchInput(name="test-branch", branch_type="feature")
 
 
 @pytest.mark.asyncio
-async def test_create_branch_tool_calls_manager_with_explicit_base(mock_git_manager):
+async def test_create_branch_tool_calls_manager_with_explicit_base(
+    mock_git_manager: MagicMock,
+) -> None:
     """Test that tool passes all parameters including base_branch to manager."""
     tool = CreateBranchTool(manager=mock_git_manager)
     mock_git_manager.create_branch.return_value = "feature/test-branch"
@@ -59,7 +77,7 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(mock_git_mana
 
 
 @pytest.mark.asyncio
-async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager):
+async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager: MagicMock) -> None:
     """Test creating branch from another branch name."""
     tool = CreateBranchTool(manager=mock_git_manager)
     mock_git_manager.create_branch.return_value = "fix/new-fix"
@@ -76,14 +94,14 @@ async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_create_branch_tool_name_changed(mock_git_manager):
+async def test_create_branch_tool_name_changed(mock_git_manager: MagicMock) -> None:
     """Test that tool name is 'create_branch' (not 'create_feature_branch')."""
     tool = CreateBranchTool(manager=mock_git_manager)
     assert tool.name == "create_branch", "Tool should be renamed to create_branch"
 
 
 @pytest.mark.asyncio
-async def test_git_status_tool(mock_git_manager):
+async def test_git_status_tool(mock_git_manager: MagicMock) -> None:
     """Test git status tool."""
     tool = GitStatusTool(manager=mock_git_manager)
     mock_git_manager.get_status.return_value = {
@@ -102,78 +120,19 @@ async def test_git_status_tool(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_tdd(mock_git_manager):
-    """Test git commit tool with TDD phase (legacy path, with cycle_number)."""
-    tool = GitCommitTool(manager=mock_git_manager)
-    mock_git_manager.commit_with_scope.return_value = "abc1234"
-
-    # Legacy phase="red" must include cycle_number (Issue #146 Cycle 7)
-    params = GitCommitInput(phase="red", message="failing test", cycle_number=1)
-    result = await tool.execute(params)
-
-    mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
-        message="failing test",
-        sub_phase="red",
-        cycle_number=1,
-        commit_type=None,
-        files=None,
-    )
-    assert "Committed: abc1234" in result.content[0]["text"]
+async def test_git_commit_tool_rejects_legacy_phase_kwarg() -> None:
+    """Legacy phase= must be removed from GitCommitInput in cycle 4."""
+    with pytest.raises(ValidationError):
+        GitCommitInput(phase="red", message="failing test", cycle_number=1)
 
 
 @pytest.mark.asyncio
-async def test_git_commit_legacy_phase_tdd_requires_cycle_number(mock_git_manager):
-    """Legacy phase='red' maps to TDD and must enforce cycle_number.
-
-    Issue #146 Cycle 7: Bypass via legacy path must be closed.
-    git_tools.py:251-256 only checks workflow_phase but legacy path maps
-    phase='red' -> tdd AFTER the check, allowing None cycle_number to slip through.
-    """
-    tool = GitCommitTool(manager=mock_git_manager)
-
-    result = await tool.execute(GitCommitInput(phase="red", message="failing test"))
-
-    assert result.is_error, "Expected error when phase='red' used without cycle_number"
-    assert "cycle_number is required" in result.content[0]["text"]
-
-
-@pytest.mark.asyncio
-async def test_git_commit_legacy_phase_green_requires_cycle_number(mock_git_manager):
-    """Legacy phase='green' maps to TDD and must enforce cycle_number.
-
-    Issue #146 Cycle 7: All non-docs legacy phases map to TDD scope.
-    """
-    tool = GitCommitTool(manager=mock_git_manager)
-
-    result = await tool.execute(GitCommitInput(phase="green", message="implement feature"))
-
-    assert result.is_error, "Expected error when phase='green' used without cycle_number"
-    assert "cycle_number is required" in result.content[0]["text"]
-
-
-@pytest.mark.asyncio
-async def test_git_commit_legacy_phase_docs_does_not_require_cycle_number(mock_git_manager):
-    """Legacy phase='docs' maps to documentation (not TDD), so no cycle_number needed.
-
-    Issue #146 Cycle 7: Only TDD-mapped phases require cycle_number.
-    phase='docs' -> documentation phase -> no enforcement.
-    """
-    tool = GitCommitTool(manager=mock_git_manager)
-    mock_git_manager.commit_with_scope.return_value = "doc5678"
-
-    result = await tool.execute(GitCommitInput(phase="docs", message="update readme"))
-
-    assert "Committed: doc5678" in result.content[0]["text"]
-
-
-@pytest.mark.asyncio
-async def test_git_commit_tool_docs(mock_git_manager):
-    """Test git commit tool with docs phase."""
+async def test_git_commit_tool_docs(mock_git_manager: MagicMock) -> None:
+    """Test git commit tool with documentation workflow_phase."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "doc1234"
 
-    params = GitCommitInput(phase="docs", message="update readme")
+    params = GitCommitInput(workflow_phase="documentation", message="update readme")
     result = await tool.execute(params)
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
@@ -188,7 +147,41 @@ async def test_git_commit_tool_docs(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_workflow_phase(mock_git_manager):
+async def test_git_commit_tool_resolves_commit_type_from_phase_contracts(
+    mock_git_manager: MagicMock,
+) -> None:
+    """Implementation commits should pass a resolved commit_type into GitManager."""
+    resolver = MagicMock(return_value="refactor")
+    tool = GitCommitTool(manager=mock_git_manager, commit_type_resolver=resolver)
+    mock_git_manager.commit_with_scope.return_value = "abc1234"
+    mock_git_manager.adapter.get_current_branch.return_value = "feature/257-reorder-workflow-phases"
+
+    params = GitCommitInput(
+        message="refactor code",
+        workflow_phase="implementation",
+        sub_phase="refactor",
+        cycle_number=4,
+    )
+    result = await tool.execute(params)
+
+    resolver.assert_called_once_with(
+        "feature/257-reorder-workflow-phases",
+        "implementation",
+        "refactor",
+    )
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="implementation",
+        message="refactor code",
+        sub_phase="refactor",
+        cycle_number=4,
+        commit_type="refactor",
+        files=None,
+    )
+    assert "Committed: abc1234" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_with_workflow_phase(mock_git_manager: MagicMock) -> None:
     """Test git commit tool with workflow_phase parameter (NEW)."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "wf1234"
@@ -211,21 +204,23 @@ async def test_git_commit_tool_with_workflow_phase(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager):
+async def test_git_commit_tool_with_workflow_phase_and_subphase(
+    mock_git_manager: MagicMock,
+) -> None:
     """Test git commit tool with workflow_phase and sub_phase."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "wf5678"
 
     params = GitCommitInput(
         message="add failing test",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="red",
         cycle_number=1,
     )
     result = await tool.execute(params)
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         message="add failing test",
         sub_phase="red",
         cycle_number=1,
@@ -236,21 +231,21 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_cycle_number(mock_git_manager):
+async def test_git_commit_tool_with_cycle_number(mock_git_manager: MagicMock) -> None:
     """Test git commit tool with cycle_number."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "wf9012"
 
     params = GitCommitInput(
         message="implement feature",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="green",
         cycle_number=1,
     )
     result = await tool.execute(params)
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         message="implement feature",
         sub_phase="green",
         cycle_number=1,
@@ -261,14 +256,14 @@ async def test_git_commit_tool_with_cycle_number(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
+async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager: MagicMock) -> None:
     """Test git commit tool with workflow_phase and files."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "wf3456"
 
     params = GitCommitInput(
         message="refactor code",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="refactor",
         cycle_number=1,
         files=["src/app.py", "tests/test_app.py"],
@@ -276,7 +271,7 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
     result = await tool.execute(params)
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         message="refactor code",
         sub_phase="refactor",
         cycle_number=1,
@@ -287,35 +282,21 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
-    """Test backward compatibility: old 'phase' parameter still works with cycle_number."""
-    tool = GitCommitTool(manager=mock_git_manager)
-    mock_git_manager.commit_with_scope.return_value = "old1234"
-
-    # Legacy phase="red" requires cycle_number (Issue #146 Cycle 7)
-    params = GitCommitInput(phase="red", message="old style commit", cycle_number=2)
-    result = await tool.execute(params)
-
-    # Should map legacy phase to workflow scope path
-    mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
-        message="old style commit",
-        sub_phase="red",
-        cycle_number=2,
-        commit_type=None,
-        files=None,
-    )
-    assert "Committed: old1234" in result.content[0]["text"]
+async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager: MagicMock) -> None:
+    """Legacy phase input is rejected instead of being mapped implicitly."""
+    del mock_git_manager
+    with pytest.raises(ValidationError):
+        GitCommitInput(phase="red", message="old style commit", cycle_number=2)
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
+async def test_git_commit_tool_with_commit_type_override(mock_git_manager: MagicMock) -> None:
     """Test commit_type override parameter."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "override123"
 
     params = GitCommitInput(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="red",
         commit_type="fix",  # Override default 'test'
         message="fix failing test",
@@ -325,7 +306,7 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
 
     # Should pass commit_type to commit_with_scope
     mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         message="fix failing test",
         sub_phase="red",
         cycle_number=1,
@@ -336,11 +317,12 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_invalid_commit_type():
+async def test_git_commit_tool_with_invalid_commit_type(mock_git_manager: MagicMock) -> None:
     """Test that invalid commit_type raises ValueError."""
+    GitCommitInput.configure(mock_git_manager.git_config)
     with pytest.raises(ValueError, match="Invalid commit_type 'invalid_type'"):
         GitCommitInput(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="red",
             commit_type="invalid_type",  # Invalid type
             message="test commit",
@@ -348,13 +330,13 @@ async def test_git_commit_tool_with_invalid_commit_type():
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
+async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager: MagicMock) -> None:
     """Test that commit_type is normalized to lowercase."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "case123"
 
     params = GitCommitInput(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="red",
         commit_type="FEAT",  # Uppercase should be normalized
         message="add feature",
@@ -368,7 +350,7 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
 
     # Should pass normalized commit_type
     mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         message="add feature",
         sub_phase="red",
         cycle_number=1,
@@ -379,7 +361,7 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_integration_workflow_phases():
+async def test_git_commit_integration_workflow_phases() -> None:
     """Integration test: Full commit workflow with real workphases.yaml."""
     # Create a real GitManager with mocked adapter but real workphases.yaml
     mock_adapter = MagicMock()
@@ -390,8 +372,21 @@ async def test_git_commit_integration_workflow_phases():
     if not workphases_path.exists():
         pytest.skip("workphases.yaml not found - skipping integration test")
 
-    manager = GitManager(adapter=mock_adapter, workphases_path=workphases_path)
-    tool = GitCommitTool(manager=manager)
+    git_config = ConfigLoader(config_root=Path(".st3")).load_git_config()
+    manager = GitManager(
+        git_config=git_config,
+        adapter=mock_adapter,
+        workphases_path=workphases_path,
+    )
+    resolver = MagicMock(
+        side_effect=lambda _branch, workflow_phase, sub_phase: {
+            ("implementation", "red"): "test",
+            ("implementation", "green"): "feat",
+            ("implementation", "refactor"): "refactor",
+        }.get((workflow_phase, sub_phase))
+    )
+    tool = GitCommitTool(manager=manager, commit_type_resolver=resolver)
+    manager.adapter.get_current_branch.return_value = "feature/999-e2e-test"
 
     # Test 1: Research phase (no subphase)
     params1 = GitCommitInput(message="investigate alternatives", workflow_phase="research")
@@ -403,14 +398,16 @@ async def test_git_commit_integration_workflow_phases():
     # Test 2: TDD with subphase
     params2 = GitCommitInput(
         message="add failing test",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="red",
         cycle_number=1,
     )
     result2 = await tool.execute(params2)
 
     assert "Committed: integration123" in result2.content[0]["text"]
-    mock_adapter.commit.assert_called_with("test(P_TDD_SP_C1_RED): add failing test", files=None)
+    mock_adapter.commit.assert_called_with(
+        "test(P_IMPLEMENTATION_SP_C1_RED): add failing test", files=None
+    )
 
     # Test 3: Coordination phase (NEW)
     params3 = GitCommitInput(
@@ -427,31 +424,27 @@ async def test_git_commit_integration_workflow_phases():
 
 
 @pytest.mark.asyncio
-async def test_git_checkout_tool(mock_git_manager):
+async def test_git_checkout_tool(mock_git_manager: MagicMock) -> None:
     """Test git checkout tool with PhaseStateEngine state sync."""
-    tool = GitCheckoutTool(manager=mock_git_manager)
-
     # Mock PhaseStateEngine to return state with phase info
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {"current_phase": "tdd", "branch": "main"}
+    mock_state = MagicMock()
+    mock_state.current_phase = "implementation"
+    mock_state.parent_branch = None
+    mock_engine.get_state.return_value = mock_state
 
+    tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="main")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_git_manager.checkout.assert_called_once_with("main")
-        mock_engine.get_state.assert_called_once_with("main")
-        assert "Switched to branch: main" in result.content[0]["text"]
-        assert "tdd" in result.content[0]["text"]
+    mock_git_manager.checkout.assert_called_once_with("main")
+    mock_engine.get_state.assert_called_once_with("main")
+    assert "Switched to branch: main" in result.content[0]["text"]
+    assert "implementation" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
-async def test_git_checkout_tool_displays_parent_branch(mock_git_manager):
+async def test_git_checkout_tool_displays_parent_branch(mock_git_manager: MagicMock) -> None:
     """Test git checkout displays parent_branch when present.
 
     Issue #79: Show parent_branch in checkout output for context.
@@ -460,29 +453,23 @@ async def test_git_checkout_tool_displays_parent_branch(mock_git_manager):
 
     # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {
-        "current_phase": "design",
-        "branch": "feature/79-test",
-        "parent_branch": "epic/76-quality-gates",
-    }
+    mock_state = MagicMock()
+    mock_state.current_phase = "design"
+    mock_state.parent_branch = "epic/76-quality-gates"
+    mock_engine.get_state.return_value = mock_state
 
+    tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="feature/79-test")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_git_manager.checkout.assert_called_once_with("feature/79-test")
-        assert "Switched to branch: feature/79-test" in result.content[0]["text"]
-        assert "Current phase: design" in result.content[0]["text"]
-        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+    mock_git_manager.checkout.assert_called_once_with("feature/79-test")
+    assert "Switched to branch: feature/79-test" in result.content[0]["text"]
+    assert "Current phase: design" in result.content[0]["text"]
+    assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
-async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
+async def test_git_checkout_tool_no_parent_branch(mock_git_manager: MagicMock) -> None:
     """Test git checkout without parent_branch doesn't show it.
 
     Issue #79: Backward compatibility - don't show parent if None.
@@ -491,30 +478,24 @@ async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
 
     # Mock PhaseStateEngine to return state WITHOUT parent_branch
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {
-        "current_phase": "tdd",
-        "branch": "main",
-        "parent_branch": None,
-    }
+    mock_state = MagicMock()
+    mock_state.current_phase = "implementation"
+    mock_state.parent_branch = None
+    mock_engine.get_state.return_value = mock_state
 
+    tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="main")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_git_manager.checkout.assert_called_once_with("main")
-        output = result.content[0]["text"]
-        assert "Switched to branch: main" in output
-        assert "Current phase: tdd" in output
-        assert "Parent branch:" not in output  # Should NOT appear
+    mock_git_manager.checkout.assert_called_once_with("main")
+    output = result.content[0]["text"]
+    assert "Switched to branch: main" in output
+    assert "Current phase: implementation" in output
+    assert "Parent branch:" not in output  # Should NOT appear
 
 
 @pytest.mark.asyncio
-async def test_git_push_tool(mock_git_manager):
+async def test_git_push_tool(mock_git_manager: MagicMock) -> None:
     """Test git push tool."""
     tool = GitPushTool(manager=mock_git_manager)
     mock_git_manager.get_status.return_value = {"branch": "feature/foo"}
@@ -527,7 +508,7 @@ async def test_git_push_tool(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_merge_tool(mock_git_manager):
+async def test_git_merge_tool(mock_git_manager: MagicMock) -> None:
     """Test git merge tool."""
     tool = GitMergeTool(manager=mock_git_manager)
     mock_git_manager.get_status.return_value = {"branch": "main"}
@@ -540,7 +521,7 @@ async def test_git_merge_tool(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_delete_branch_tool(mock_git_manager):
+async def test_git_delete_branch_tool(mock_git_manager: MagicMock) -> None:
     """Test git delete branch tool."""
     tool = GitDeleteBranchTool(manager=mock_git_manager)
 
@@ -552,7 +533,7 @@ async def test_git_delete_branch_tool(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_stash_tool(mock_git_manager):
+async def test_git_stash_tool(mock_git_manager: MagicMock) -> None:
     """Test git stash tool with different actions."""
     tool = GitStashTool(manager=mock_git_manager)
 
@@ -573,7 +554,7 @@ async def test_git_stash_tool(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_restore_tool(mock_git_manager):
+async def test_git_restore_tool(mock_git_manager: MagicMock) -> None:
     """Test git restore tool."""
     tool = GitRestoreTool(manager=mock_git_manager)
 
@@ -585,110 +566,83 @@ async def test_git_restore_tool(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_get_parent_branch_current_branch():
+async def test_get_parent_branch_current_branch() -> None:
     """Test get parent branch for current branch.
 
     Issue #79: Query parent_branch from PhaseStateEngine state.
     """
-    tool = GetParentBranchTool()
+    mock_git_manager = MagicMock()
+    mock_git_manager.get_current_branch.return_value = "feature/79-parent-branch-tracking"
 
-    # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {
-        "current_phase": "tdd",
-        "branch": "feature/79-parent-branch-tracking",
-        "parent_branch": "epic/76-quality-gates",
-    }
+    mock_state = MagicMock()
+    mock_state.current_phase = "implementation"
+    mock_state.parent_branch = "epic/76-quality-gates"
+    mock_engine.get_state.return_value = mock_state
 
-    params = GetParentBranchInput()  # No branch specified = current branch
+    tool = GetParentBranchTool(manager=mock_git_manager, state_engine=mock_engine)
+    params = GetParentBranchInput()
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-        patch("mcp_server.tools.git_tools.GitManager") as mock_git,
-    ):
-        mock_git.return_value.get_current_branch.return_value = "feature/79-parent-branch-tracking"
-
-        result = await tool.execute(params)
-
-        mock_engine.get_state.assert_called_once_with("feature/79-parent-branch-tracking")
-        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+    mock_engine.get_state.assert_called_once_with("feature/79-parent-branch-tracking")
+    assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
-async def test_get_parent_branch_specified_branch():
+async def test_get_parent_branch_specified_branch() -> None:
     """Test get parent branch for specified branch.
 
     Issue #79: Query parent_branch for any branch, not just current.
     """
-    tool = GetParentBranchTool()
-
-    # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {
-        "current_phase": "design",
-        "branch": "feature/77-error-handling",
-        "parent_branch": "epic/76-quality-gates",
-    }
+    mock_state = MagicMock()
+    mock_state.current_phase = "design"
+    mock_state.parent_branch = "epic/76-quality-gates"
+    mock_engine.get_state.return_value = mock_state
 
+    tool = GetParentBranchTool(manager=MagicMock(), state_engine=mock_engine)
     params = GetParentBranchInput(branch="feature/77-error-handling")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_engine.get_state.assert_called_once_with("feature/77-error-handling")
-        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
-        assert "feature/77-error-handling" in result.content[0]["text"]
+    mock_engine.get_state.assert_called_once_with("feature/77-error-handling")
+    assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+    assert "feature/77-error-handling" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
-async def test_get_parent_branch_not_set():
+async def test_get_parent_branch_not_set() -> None:
     """Test get parent branch when not set.
 
     Issue #79: Graceful handling when parent_branch is None.
     """
-    tool = GetParentBranchTool()
-
-    # Mock PhaseStateEngine to return state WITHOUT parent_branch
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {
-        "current_phase": "tdd",
-        "branch": "main",
-        "parent_branch": None,
-    }
+    mock_state = MagicMock()
+    mock_state.current_phase = "implementation"
+    mock_state.parent_branch = None
+    mock_engine.get_state.return_value = mock_state
 
+    tool = GetParentBranchTool(manager=MagicMock(), state_engine=mock_engine)
     params = GetParentBranchInput(branch="main")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_engine.get_state.assert_called_once_with("main")
-        output = result.content[0]["text"]
-        assert "Parent branch: (not set)" in output
-        assert "main" in output
+    mock_engine.get_state.assert_called_once_with("main")
+    output = result.content[0]["text"]
+    assert "Parent branch: (not set)" in output
+    assert "main" in output
 
 
 # ===== Cycle Number Enforcement Tests (Issue #146 Cycle 5) =====
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tdd_requires_cycle_number(mock_git_manager):
+async def test_git_commit_tdd_requires_cycle_number(mock_git_manager: MagicMock) -> None:
     """Test that TDD phase commits REQUIRE cycle_number (Issue #146)."""
     tool = GitCommitTool(manager=mock_git_manager)
 
     # Attempt to commit in TDD phase without cycle_number
     params = GitCommitInput(
         message="update documentation",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         # cycle_number is MISSING - should return error result
     )
 
@@ -701,14 +655,14 @@ async def test_git_commit_tdd_requires_cycle_number(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager):
+async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager: MagicMock) -> None:
     """Test that TDD sub-phase commits REQUIRE cycle_number (Issue #146)."""
     tool = GitCommitTool(manager=mock_git_manager)
 
     # Attempt to commit in TDD sub-phase without cycle_number
     params = GitCommitInput(
         message="implement feature",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="green",
         # cycle_number is MISSING - should return error result
     )
@@ -721,7 +675,7 @@ async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_non_tdd_allows_no_cycle_number(mock_git_manager):
+async def test_git_commit_non_tdd_allows_no_cycle_number(mock_git_manager: MagicMock) -> None:
     """Test that non-TDD phases do NOT require cycle_number (Issue #146)."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "abc1234"
@@ -748,7 +702,7 @@ async def test_git_commit_non_tdd_allows_no_cycle_number(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager):
+async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager: MagicMock) -> None:
     """Test that TDD commits WITH cycle_number succeed (Issue #146)."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "def5678"
@@ -756,7 +710,7 @@ async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager):
     # Commit in TDD phase WITH cycle_number - should succeed
     params = GitCommitInput(
         message="add schema validation",
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="green",
         cycle_number=3,
     )
@@ -766,7 +720,7 @@ async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager):
     # Should succeed
     assert "Committed: def5678" in result.content[0]["text"]
     mock_git_manager.commit_with_scope.assert_called_once_with(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         message="add schema validation",
         sub_phase="green",
         cycle_number=3,
@@ -779,9 +733,8 @@ async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager):
+async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager: MagicMock) -> None:
     """CommitPhaseMismatchError when workflow_phase doesn't match state.json (GAP-07)."""
-    from mcp_server.tools.git_tools import CommitPhaseMismatchError
 
     def phase_guard(_branch: str, workflow_phase: str, _cycle_number: int | None) -> None:
         raise CommitPhaseMismatchError(
@@ -793,7 +746,11 @@ async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager):
         "feature/229-phase-deliverables-enforcement"
     )
 
-    params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="add red test")
+    params = GitCommitInput(
+        workflow_phase="implementation",
+        cycle_number=2,
+        message="add red test",
+    )
     result = await tool.execute(params)
 
     assert result.is_error
@@ -801,9 +758,8 @@ async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager):
-    """CommitPhaseMismatchError when cycle_number doesn't match state.json current_tdd_cycle (GAP-07)."""
-    from mcp_server.tools.git_tools import CommitPhaseMismatchError
+async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager: MagicMock) -> None:
+    """CommitPhaseMismatchError when cycle_number mismatches state.json (GAP-07)."""
 
     def phase_guard(_branch: str, _workflow_phase: str, cycle_number: int | None) -> None:
         raise CommitPhaseMismatchError(
@@ -815,7 +771,11 @@ async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager):
         "feature/229-phase-deliverables-enforcement"
     )
 
-    params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="add green impl")
+    params = GitCommitInput(
+        workflow_phase="implementation",
+        cycle_number=2,
+        message="add green impl",
+    )
     result = await tool.execute(params)
 
     assert result.is_error
@@ -823,9 +783,10 @@ async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_add_or_commit_passes_when_phase_and_cycle_match(mock_git_manager):
+async def test_git_add_or_commit_passes_when_phase_and_cycle_match(
+    mock_git_manager: MagicMock,
+) -> None:
     """No error when workflow_phase and cycle_number match state.json (GAP-07)."""
-    from mcp_server.tools.git_tools import CommitPhaseMismatchError  # noqa: F401
 
     def phase_guard(_branch: str, _workflow_phase: str, _cycle_number: int | None) -> None:
         pass  # phase=tdd, cycle=2 matches state.json
@@ -836,7 +797,11 @@ async def test_git_add_or_commit_passes_when_phase_and_cycle_match(mock_git_mana
     )
     mock_git_manager.commit_with_scope.return_value = "abc1234"
 
-    params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="implement guard")
+    params = GitCommitInput(
+        workflow_phase="implementation",
+        cycle_number=2,
+        message="implement guard",
+    )
     result = await tool.execute(params)
 
     assert "Committed: abc1234" in result.content[0]["text"]

@@ -1,10 +1,40 @@
-"""Configuration settings for the MCP server."""
+# mcp_server/config/settings.py
+"""
+Configuration settings for the MCP server.
+
+Defines runtime settings loaded from environment variables and optional YAML
+overrides for server, logging, and GitHub integration.
+
+@layer: Backend (Config)
+@dependencies: [importlib.metadata, os, pathlib, pydantic, yaml]
+@responsibilities:
+    - Define typed settings models for MCP server runtime configuration
+    - Load settings from environment variables with YAML overlay support
+    - Resolve server version metadata from installed package information
+"""
+
+# Standard library
 import os
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
+# Third-party
 import yaml
 from pydantic import BaseModel, Field
+
+
+def _default_server_version() -> str:
+    """Resolve server version from installed package metadata."""
+    for package_name in ("mcp_server", "simpletraderv3"):
+        try:
+            return metadata.version(package_name)
+        except metadata.PackageNotFoundError:
+            continue
+
+    raise metadata.PackageNotFoundError(
+        "Unable to resolve installed package metadata for 'mcp_server' or 'simpletraderv3'."
+    )
 
 
 class LogSettings(BaseModel):
@@ -18,8 +48,9 @@ class ServerSettings(BaseModel):
     """Server configuration settings."""
 
     name: str = "st3-workflow"
-    version: str = "1.0.0"
+    version: str = Field(default_factory=_default_server_version)
     workspace_root: str = Field(default_factory=os.getcwd)
+    config_root: str | None = None
 
 
 class GitHubSettings(BaseModel):
@@ -39,33 +70,38 @@ class Settings(BaseModel):
     github: GitHubSettings = GitHubSettings()
 
     @classmethod
-    def load(cls, config_path: str | None = None) -> "Settings":
-        """Load settings from a YAML file and environment variables."""
+    def from_env(cls) -> "Settings":
+        """Load settings from env vars with optional MCP_CONFIG_PATH overlay."""
         config_data: dict[str, Any] = {}
 
-        # Determine config path
-        if config_path:
-            path = Path(config_path)
-        else:
-            path = Path(os.environ.get("MCP_CONFIG_PATH", "mcp_config.yaml"))
+        path_value = os.environ.get("MCP_CONFIG_PATH")
+        if path_value:
+            path = Path(path_value)
+            if path.exists():
+                with path.open(encoding="utf-8") as file_handle:
+                    config_data = yaml.safe_load(file_handle) or {}
 
-        if path.exists():
-            with open(path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f) or {}
+        server_data = config_data.setdefault("server", {})
+        github_data = config_data.setdefault("github", {})
+        logging_data = config_data.setdefault("logging", {})
 
-        # Override with environment variables
+        if env_name := os.environ.get("MCP_SERVER_NAME"):
+            server_data["name"] = env_name
+        if env_workspace_root := os.environ.get("MCP_WORKSPACE_ROOT"):
+            server_data["workspace_root"] = env_workspace_root
+        if env_config_root := os.environ.get("MCP_CONFIG_ROOT"):
+            server_data["config_root"] = env_config_root
+
+        if env_owner := os.environ.get("GITHUB_OWNER"):
+            github_data["owner"] = env_owner
+        if env_repo := os.environ.get("GITHUB_REPO"):
+            github_data["repo"] = env_repo
+        if env_project_number := os.environ.get("GITHUB_PROJECT_NUMBER"):
+            github_data["project_number"] = int(env_project_number)
         if env_token := os.environ.get("GITHUB_TOKEN"):
-            if "github" not in config_data:
-                config_data["github"] = {}
-            config_data["github"]["token"] = env_token
+            github_data["token"] = env_token
 
-        if env_log_level := os.environ.get("MCP_LOG_LEVEL"):
-            if "logging" not in config_data:
-                config_data["logging"] = {}
-            config_data["logging"]["level"] = env_log_level
+        if env_log_level := os.environ.get("LOG_LEVEL"):
+            logging_data["level"] = env_log_level
 
         return cls(**config_data)
-
-
-# Global settings instance
-settings = Settings.load()

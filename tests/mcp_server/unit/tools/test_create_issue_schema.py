@@ -7,6 +7,9 @@ Claude cannot build the nested object and returns "no response".
 
 Fix: override input_schema in CreateIssueTool to inline all $ref references
 so that the schema is fully self-contained (no $defs, no $ref).
+
+@layer: Tests (Unit)
+@dependencies: [pytest, json, mcp_server.tools.issue_tools]
 """
 
 import json

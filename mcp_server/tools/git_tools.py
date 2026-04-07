@@ -4,16 +4,17 @@ import json
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import anyio
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
-from mcp_server.managers import phase_state_engine, project_manager
+from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.phase_contract_resolver import PhaseContractResolver
+from mcp_server.schemas import GitConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -22,6 +23,19 @@ logger = get_logger("tools.git")
 
 class CommitPhaseMismatchError(MCPError):
     """Raised when the provided workflow_phase/cycle_number doesn't match state.json."""
+
+
+def build_commit_type_resolver(
+    state_engine: phase_state_engine.PhaseStateEngine,
+    resolver: PhaseContractResolver,
+) -> Callable[[str, str, str | None], str | None]:
+    """Build a resolver that derives commit types from injected phase contracts."""
+
+    def resolve_commit_type(branch: str, workflow_phase: str, sub_phase: str | None) -> str | None:
+        state = state_engine.get_state(branch)
+        return resolver.resolve_commit_type(state.workflow_name, workflow_phase, sub_phase)
+
+    return resolve_commit_type
 
 
 def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], None]:
@@ -44,12 +58,12 @@ def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], 
             )
             raise CommitPhaseMismatchError(msg)
 
-        if workflow_phase == "tdd" and cycle_number is not None:
-            current_cycle = data.get("current_tdd_cycle")
+        if workflow_phase == "implementation" and cycle_number is not None:
+            current_cycle = data.get("current_cycle")
             if current_cycle is not None and cycle_number != current_cycle:
                 msg = (
                     f"Cycle mismatch: committing as cycle {cycle_number} "
-                    f"but state.json shows current_tdd_cycle={current_cycle}.\n"
+                    f"but state.json shows current_cycle={current_cycle}.\n"
                     f"Run first: transition_cycle(to_cycle={cycle_number})"
                 )
                 raise CommitPhaseMismatchError(msg)
@@ -68,6 +82,18 @@ class CreateBranchInput(BaseModel):
 
     name: str = Field(..., description="Branch name (kebab-case)")
     branch_type: str = Field(default="feature", description="Branch type")
+    _git_config: ClassVar[GitConfig | None] = None
+
+    @classmethod
+    def configure(cls, git_config: GitConfig) -> None:
+        cls._git_config = git_config
+
+    @classmethod
+    def _require_git_config(cls) -> GitConfig:
+        if cls._git_config is None:
+            raise ValueError("GitConfig must be injected before branch input validation")
+        return cls._git_config
+
     base_branch: str = Field(
         ...,
         description="Base branch to create from (e.g., 'HEAD', 'main', 'refactor/51-labels-yaml')",
@@ -77,7 +103,7 @@ class CreateBranchInput(BaseModel):
     @classmethod
     def validate_branch_type(cls, value: str) -> str:
         """Validate branch_type against GitConfig (Convention #7)."""
-        git_config = GitConfig.from_file()
+        git_config = cls._require_git_config()
         if not git_config.has_branch_type(value):
             valid_types = ", ".join(git_config.branch_types)
             raise ValueError(
@@ -92,9 +118,23 @@ class CreateBranchTool(BaseTool):
     name = "create_branch"
     description = "Create a new branch from specified base branch"
     args_model = CreateBranchInput
+    enforcement_event = "create_branch"
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+        CreateBranchInput.configure(self.manager.git_config)
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -135,8 +175,20 @@ class GitStatusTool(BaseTool):
     description = "Check current git status"
     args_model = GitStatusInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -157,6 +209,14 @@ class GitStatusTool(BaseTool):
 
 class GitCommitInput(BaseModel):
     """Input for GitCommitTool."""
+
+    _git_config: ClassVar[GitConfig | None] = None
+
+    @classmethod
+    def configure(cls, git_config: GitConfig) -> None:
+        cls._git_config = git_config
+
+    model_config = ConfigDict(extra="forbid")
 
     message: str = Field(..., description="Commit message (without type/scope prefix)")
     files: list[str] | None = Field(
@@ -193,27 +253,6 @@ class GitCommitInput(BaseModel):
         ),
     )
 
-    # DEPRECATED: Backward compatibility
-    phase: str | None = Field(
-        default=None,
-        description=(
-            "DEPRECATED: TDD phase (red=test, green=feat, refactor, docs). "
-            "Use workflow_phase + sub_phase instead."
-        ),
-    )
-
-    @field_validator("phase")
-    @classmethod
-    def validate_phase(cls, value: str | None) -> str | None:
-        """Validate phase against GitConfig (Convention #8). Only if provided."""
-        if value is None:
-            return None
-        git_config = GitConfig.from_file()
-        if not git_config.has_phase(value):
-            valid_phases = ", ".join(git_config.tdd_phases)
-            raise ValueError(f"Invalid phase '{value}'. Valid phases from git.yaml: {valid_phases}")
-        return value
-
     @field_validator("commit_type")
     @classmethod
     def validate_commit_type(cls, value: str | None) -> str | None:
@@ -221,7 +260,9 @@ class GitCommitInput(BaseModel):
         if value is None:
             return None
 
-        git_config = GitConfig.from_file()
+        git_config = cls._git_config
+        if git_config is None:
+            raise ValueError("GitConfig must be injected before validation")
         if not git_config.has_commit_type(value):
             valid_types = ", ".join(git_config.commit_types)
             raise ValueError(
@@ -231,24 +272,6 @@ class GitCommitInput(BaseModel):
             )
 
         return value.lower()  # Normalize to lowercase
-
-    @model_validator(mode="after")
-    def validate_phase_or_workflow_phase(self) -> "GitCommitInput":
-        """Ensure phase and workflow_phase are not both specified.
-
-        Auto-detection: If neither is provided, workflow_phase will be auto-detected
-        from state.json in execute() method.
-        """
-        has_phase = self.phase is not None
-        has_workflow = self.workflow_phase is not None
-
-        if has_phase and has_workflow:
-            raise ValueError(
-                "Cannot specify both 'phase' (deprecated) and 'workflow_phase'. "
-                "Use workflow_phase only."
-            )
-
-        return self
 
 
 class GitCommitTool(BaseTool):
@@ -262,82 +285,65 @@ class GitCommitTool(BaseTool):
         self,
         manager: GitManager | None = None,
         phase_guard: Callable[[str, str, int | None], None] | None = None,
+        commit_type_resolver: Callable[[str, str, str | None], str | None] | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
     ) -> None:
-        self.manager = manager or GitManager()
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        GitCommitInput.configure(self.manager.git_config)
         self._phase_guard = phase_guard
+        self._commit_type_resolver = commit_type_resolver
+        self._state_engine = state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
-        # Auto-detect workflow_phase from state.json if not provided
-        workflow_phase = params.workflow_phase
-        if workflow_phase is None and params.phase is None:
-            # Get current branch
+        try:
+            workflow_phase = params.workflow_phase
             current_branch = self.manager.adapter.get_current_branch()
 
-            # Read workflow_phase from state.json
-            workspace_root = Path.cwd()
-            pm = project_manager.ProjectManager(workspace_root=workspace_root)
-            state_engine = phase_state_engine.PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=pm,
-            )
-            workflow_phase = state_engine.get_current_phase(branch=current_branch)
+            if workflow_phase is None:
+                if self._state_engine is None:
+                    raise ValueError("PhaseStateEngine must be injected for auto-detection")
+                workflow_phase = self._state_engine.get_current_phase(branch=current_branch)
 
-            logger.info(
-                "Auto-detected workflow_phase from state.json",
-                extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
-            )
+                logger.info(
+                    "Auto-detected workflow_phase from state.json",
+                    extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
+                )
 
-        # Enforce cycle_number for TDD phase (Issue #146, planning.md Q3)
-        # Must check BEFORE the legacy path maps phase -> tdd to avoid bypass (Cycle 7)
-        effective_phase = workflow_phase
-        if effective_phase is None and params.phase is not None and params.phase != "docs":
-            effective_phase = "tdd"  # legacy phases "red"/"green"/"refactor" all map to tdd
+            if workflow_phase == "implementation" and params.cycle_number is None:
+                raise ValueError(
+                    "cycle_number is required for TDD phase commits. "
+                    "All TDD work belongs to a specific cycle. "
+                    "Use: git_add_or_commit(workflow_phase='implementation', cycle_number=N, ...)"
+                )
 
-        if effective_phase == "tdd" and params.cycle_number is None:
-            raise ValueError(
-                "cycle_number is required for TDD phase commits. "
-                "All TDD work belongs to a specific cycle. "
-                "Use: git_add_or_commit(workflow_phase='tdd', cycle_number=N, ...)"
-            )
+            if self._phase_guard is not None:
+                self._phase_guard(current_branch, workflow_phase, params.cycle_number)
 
-        # Phase guard: validate workflow_phase + cycle_number against state.json (GAP-07)
-        if self._phase_guard is not None and workflow_phase is not None:
-            current_branch = self.manager.adapter.get_current_branch()
-            self._phase_guard(current_branch, workflow_phase, params.cycle_number)
+            commit_type = params.commit_type
+            if commit_type is None and self._commit_type_resolver is not None:
+                commit_type = self._commit_type_resolver(
+                    current_branch,
+                    workflow_phase,
+                    params.sub_phase,
+                )
 
-        # NEW workflow-first path
-        if workflow_phase is not None:
             commit_hash = self.manager.commit_with_scope(
                 workflow_phase=workflow_phase,
                 message=params.message,
                 sub_phase=params.sub_phase,
                 cycle_number=params.cycle_number,
-                commit_type=params.commit_type,
+                commit_type=commit_type,
                 files=params.files,
             )
-        # LEGACY backward-compatible path (phase -> workflow mapping)
-        else:
-            legacy_phase = params.phase
-            if legacy_phase == "docs":
-                mapped_workflow_phase = "documentation"
-                mapped_sub_phase = None
-            else:
-                mapped_workflow_phase = "tdd"
-                mapped_sub_phase = legacy_phase
-
-            commit_hash = self.manager.commit_with_scope(
-                workflow_phase=mapped_workflow_phase,
-                message=params.message,
-                sub_phase=mapped_sub_phase,
-                cycle_number=params.cycle_number,
-                commit_type=params.commit_type,
-                files=params.files,
-            )
-        return ToolResult.text(f"Committed: {commit_hash}")
+            return ToolResult.text(f"Committed: {commit_hash}")
+        except Exception as exc:
+            return ToolResult.error(str(exc))
 
 
 class GitRestoreInput(BaseModel):
@@ -356,8 +362,20 @@ class GitRestoreTool(BaseTool):
     description = "Restore files to a git ref (discard local changes)"
     args_model = GitRestoreInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -385,16 +403,26 @@ class GitCheckoutTool(BaseTool):
     description = "Switch to an existing branch"
     args_model = GitCheckoutInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
-        workspace_root = Path.cwd()
-
         try:
             # GitPython operations can block; run them in a worker thread.
             await anyio.to_thread.run_sync(self.manager.checkout, params.branch)
@@ -406,22 +434,17 @@ class GitCheckoutTool(BaseTool):
             return ToolResult.error(str(exc))
 
         current_phase = "unknown"
-        state: dict[str, Any] = {}
+        parent_branch: str | None = None
         try:
-            pm = project_manager.ProjectManager(workspace_root=workspace_root)
-            engine = phase_state_engine.PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=pm,
-            )
-            state = await anyio.to_thread.run_sync(engine.get_state, params.branch)
-            current_phase = state.get("current_phase") or "unknown"
+            state_engine = self._get_state_engine()
+            state = await anyio.to_thread.run_sync(state_engine.get_state, params.branch)
+            current_phase = state.current_phase or "unknown"
+            parent_branch = state.parent_branch
         except (MCPError, ValueError, OSError) as exc:
             logger.warning(
                 "Phase state sync failed after checkout",
                 extra={"props": {"branch": params.branch, "error": str(exc)}},
             )
-
-        parent_branch = state.get("parent_branch") if "state" in locals() else None
 
         output = f"Switched to branch: {params.branch}\nCurrent phase: {current_phase}"
         if parent_branch:
@@ -445,8 +468,20 @@ class GitPushTool(BaseTool):
     description = "Push current branch to origin remote"
     args_model = GitPushInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -471,8 +506,20 @@ class GitMergeTool(BaseTool):
     description = "Merge a branch into the current branch"
     args_model = GitMergeInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -498,8 +545,20 @@ class GitDeleteBranchTool(BaseTool):
     description = "Delete a git branch (cannot delete protected branches)"
     args_model = GitDeleteBranchInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -533,8 +592,20 @@ class GitStashTool(BaseTool):
     description = "Stash the changes in a dirty working directory (git stash)"
     args_model = GitStashInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that sync state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -575,25 +646,33 @@ class GetParentBranchTool(BaseTool):
     description = "Detect parent branch for a branch (via PhaseStateEngine state)"
     args_model = GetParentBranchInput
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
-        self.workspace_root = workspace_root or Path.cwd()
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        if manager is None:
+            raise ValueError("GitManager must be injected")
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git tools that inspect state")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
     async def execute(self, params: GetParentBranchInput) -> ToolResult:
-        try:
-            git = GitManager()
-            branch = params.branch or git.get_current_branch()
+        if self._state_engine is None:
+            return ToolResult.error("PhaseStateEngine must be injected")
 
-            pm = project_manager.ProjectManager(workspace_root=self.workspace_root)
-            engine = phase_state_engine.PhaseStateEngine(
-                workspace_root=self.workspace_root,
-                project_manager=pm,
-            )
-            state = await anyio.to_thread.run_sync(engine.get_state, branch)
-            parent = state.get("parent_branch")
+        try:
+            branch = params.branch or self.manager.get_current_branch()
+            state = await anyio.to_thread.run_sync(self._state_engine.get_state, branch)
+            parent = state.parent_branch
 
             if parent:
                 return ToolResult.text(f"Branch: {branch}\nParent branch: {parent}")

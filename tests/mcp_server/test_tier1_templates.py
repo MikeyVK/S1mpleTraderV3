@@ -3,6 +3,9 @@ Tests for Tier 1 base templates (Issue #72 Task 1.3).
 
 RED phase: Tests for tier1_base_{code,document,config}.jinja2 inheritance
 from Tier 0, block structure, and format-specific patterns.
+
+@layer: Tests (Unit)
+@dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
 from pathlib import Path
@@ -16,14 +19,14 @@ TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding
 class TestTier1CodeTemplate:
     """Test tier1_base_code.jinja2 template."""
 
-    def test_inherits_from_tier0(self):
+    def test_inherits_from_tier0(self) -> None:
         """Should extend tier0_base_artifact.jinja2."""
         template_path = TEMPLATE_DIR / "tier1_base_code.jinja2"
         content = template_path.read_text(encoding="utf-8")
 
         assert 'extends "tier0_base_artifact.jinja2"' in content
 
-    def test_renders_with_scaffold_metadata(self):
+    def test_renders_with_scaffold_metadata(self) -> None:
         """Should include SCAFFOLD metadata from Tier 0 in 2-line format."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_code.jinja2")
@@ -46,7 +49,7 @@ class TestTier1CodeTemplate:
         assert "version=12345678" in lines[1]
         assert "2026-01-23T10:00:00Z" in lines[1]
 
-    def test_renders_class_structure(self):
+    def test_renders_class_structure(self) -> None:
         """Should render class structure block."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_code.jinja2")
@@ -65,7 +68,7 @@ class TestTier1CodeTemplate:
         assert '"""Worker for processing tasks"""' in result
         assert "pass" in result
 
-    def test_renders_imports_sections(self):
+    def test_renders_imports_sections(self) -> None:
         """Should render imports in organized sections."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_code.jinja2")
@@ -94,14 +97,14 @@ class TestTier1CodeTemplate:
 class TestTier1DocumentTemplate:
     """Test tier1_base_document.jinja2 template."""
 
-    def test_inherits_from_tier0(self):
+    def test_inherits_from_tier0(self) -> None:
         """Should extend tier0_base_artifact.jinja2."""
         template_path = TEMPLATE_DIR / "tier1_base_document.jinja2"
         content = template_path.read_text(encoding="utf-8")
 
         assert 'extends "tier0_base_artifact.jinja2"' in content
 
-    def test_renders_with_scaffold_metadata(self):
+    def test_renders_with_scaffold_metadata(self) -> None:
         """Should include SCAFFOLD metadata from Tier 0 in 2-line format."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -123,7 +126,7 @@ class TestTier1DocumentTemplate:
         assert "version=abcd1234" in lines[1]
         assert "-->" in lines[1]
 
-    def test_renders_document_title(self):
+    def test_renders_document_title(self) -> None:
         """Should render document title as H1."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
@@ -139,7 +142,7 @@ class TestTier1DocumentTemplate:
 
         assert "# Template Library Design" in result
 
-    def test_renders_sections(self):
+    def test_renders_sections(self) -> None:
         """tier1_base_document renders BASE_TEMPLATE structure.
 
         Sections: Purpose, Scope, Related Docs, Version History.
@@ -172,14 +175,14 @@ class TestTier1DocumentTemplate:
 class TestTier1ConfigTemplate:
     """Test tier1_base_config.jinja2 template."""
 
-    def test_inherits_from_tier0(self):
+    def test_inherits_from_tier0(self) -> None:
         """Should extend tier0_base_artifact.jinja2."""
         template_path = TEMPLATE_DIR / "tier1_base_config.jinja2"
         content = template_path.read_text(encoding="utf-8")
 
         assert 'extends "tier0_base_artifact.jinja2"' in content
 
-    def test_renders_with_scaffold_metadata(self):
+    def test_renders_with_scaffold_metadata(self) -> None:
         """Should include SCAFFOLD metadata from Tier 0 in 2-line format."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_config.jinja2")
@@ -200,7 +203,7 @@ class TestTier1ConfigTemplate:
         assert "template=workflow" in lines[1]
         assert "version=ef123456" in lines[1]
 
-    def test_renders_config_name(self):
+    def test_renders_config_name(self) -> None:
         """Should render config name field."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_config.jinja2")
@@ -216,7 +219,7 @@ class TestTier1ConfigTemplate:
 
         assert "name: CI Workflow" in result
 
-    def test_renders_config_entries(self):
+    def test_renders_config_entries(self) -> None:
         """Should render key-value config entries."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_config.jinja2")
@@ -239,7 +242,7 @@ class TestTier1ConfigTemplate:
 class TestTier1MetadataStructure:
     """Test TEMPLATE_METADATA structure in Tier 1 templates."""
 
-    def test_code_template_has_metadata(self):
+    def test_code_template_has_metadata(self) -> None:
         """Should have TEMPLATE_METADATA with tier=1."""
         template_path = TEMPLATE_DIR / "tier1_base_code.jinja2"
         content = template_path.read_text(encoding="utf-8")
@@ -249,7 +252,7 @@ class TestTier1MetadataStructure:
         assert "tier: 1" in content
         assert "parent: tier0_base_artifact" in content
 
-    def test_document_template_has_metadata(self):
+    def test_document_template_has_metadata(self) -> None:
         """tier1_base_document should have template_id: base_document (not tier1_base_document)."""
         template_path = TEMPLATE_DIR / "tier1_base_document.jinja2"
         content = template_path.read_text(encoding="utf-8")
@@ -258,7 +261,7 @@ class TestTier1MetadataStructure:
         assert "template_id: base_document" in content
         assert "tier: tier1" in content
 
-    def test_config_template_has_metadata(self):
+    def test_config_template_has_metadata(self) -> None:
         """Should have TEMPLATE_METADATA with tier=1."""
         template_path = TEMPLATE_DIR / "tier1_base_config.jinja2"
         content = template_path.read_text(encoding="utf-8")

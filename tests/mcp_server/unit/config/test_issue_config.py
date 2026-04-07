@@ -1,23 +1,20 @@
-"""Unit tests for IssueConfig singleton (Issue #149, Cycle 1).
+"""Unit tests for IssueConfig loader-based access (Issue #149, Cycle 1).
 
 @layer: tests
-@dependencies: mcp_server.config.issue_config
+@dependencies: mcp_server.config.loader
 @responsibilities: Verify IssueConfig loads issues.yaml, get_workflow, get_label (incl. hotfix
-                   → type:bug mapping), singleton behaviour, optional_label_inputs.
+                   -> type:bug mapping), and optional_label_inputs.
 """
 
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mcp_server.config.issue_config import IssueConfig
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import IssueConfig
+from mcp_server.core.exceptions import ConfigError
 
 _MINIMAL_ISSUES_YAML = {
     "version": "1.0",
@@ -36,6 +33,10 @@ _MINIMAL_ISSUES_YAML = {
 }
 
 
+def _load_issue_config(config_path: Path) -> IssueConfig:
+    return ConfigLoader(config_path.parent).load_issue_config(config_path=config_path)
+
+
 @pytest.fixture(name="issues_yaml_path")
 def _issues_yaml_path() -> Path:
     """Write a temporary issues.yaml and return its Path."""
@@ -47,21 +48,13 @@ def _issues_yaml_path() -> Path:
 
 
 @pytest.fixture(name="issue_config")
-def _issue_config(issues_yaml_path: Path) -> Generator[IssueConfig, None, None]:
+def _issue_config(issues_yaml_path: Path) -> IssueConfig:
     """Return a fresh IssueConfig loaded from temporary yaml."""
-    IssueConfig.reset_instance()
-    cfg = IssueConfig.from_file(str(issues_yaml_path))
-    yield cfg
-    IssueConfig.reset_instance()
-
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+    return _load_issue_config(issues_yaml_path)
 
 
 class TestIssueConfigFromFile:
-    """Loading and singleton behaviour."""
+    """Loading behaviour through ConfigLoader."""
 
     def test_from_file_loads_issue_types(self, issue_config: IssueConfig) -> None:
         names = [entry.name for entry in issue_config.issue_types]
@@ -70,15 +63,13 @@ class TestIssueConfigFromFile:
         assert "chore" in names
 
     def test_from_file_raises_on_missing_file(self) -> None:
-        IssueConfig.reset_instance()
-        with pytest.raises(FileNotFoundError, match="Issue config not found"):
-            IssueConfig.from_file(".st3/nonexistent_issues.yaml")
+        with pytest.raises(ConfigError, match="Config file not found"):
+            _load_issue_config(Path(".st3/nonexistent_issues.yaml"))
 
-    def test_singleton_returns_same_instance(self, issues_yaml_path: Path) -> None:
-        IssueConfig.reset_instance()
-        cfg1 = IssueConfig.from_file(str(issues_yaml_path))
-        cfg2 = IssueConfig.from_file(str(issues_yaml_path))
-        assert cfg1 is cfg2
+    def test_repeated_loads_are_equivalent(self, issues_yaml_path: Path) -> None:
+        cfg1 = _load_issue_config(issues_yaml_path)
+        cfg2 = _load_issue_config(issues_yaml_path)
+        assert cfg1 == cfg2
 
     def test_loads_optional_label_inputs(self, issue_config: IssueConfig) -> None:
         assert "is_epic" in issue_config.optional_label_inputs
@@ -103,7 +94,7 @@ class TestIssueConfigGetWorkflow:
 
 
 class TestIssueConfigGetLabel:
-    """get_label() correctness, including hotfix → type:bug non-obvious mapping."""
+    """get_label() correctness, including hotfix -> type:bug non-obvious mapping."""
 
     def test_get_label_feature(self, issue_config: IssueConfig) -> None:
         assert issue_config.get_label("feature") == "type:feature"

@@ -1,4 +1,5 @@
 """Base class for MCP resources."""
+
 from abc import ABC, abstractmethod
 
 

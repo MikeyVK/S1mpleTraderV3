@@ -131,7 +131,7 @@ class TestRiskTimestampValidation:
 
     def test_naive_datetime_converted_to_utc(self):
         """Test that naive datetime is converted to UTC."""
-        naive_dt = datetime(2025, 1, 15, 10, 30, 0)
+        naive_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC).replace(tzinfo=None)
         risk = Risk(timestamp=naive_dt, risk_type="TEST", severity=Decimal("0.5"))
 
         expected_utc = naive_dt.replace(tzinfo=UTC)

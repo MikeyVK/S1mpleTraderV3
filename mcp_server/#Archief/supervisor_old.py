@@ -10,6 +10,7 @@ Exit Codes:
 - 42: Restart request (supervisor spawns new child)
 - >0: Crash (supervisor spawns new child with crash recovery)
 """
+
 import os
 import subprocess
 import sys
@@ -61,7 +62,7 @@ def run_server() -> int:
         # pylint: disable=consider-using-with
         child = subprocess.Popen(
             [sys.executable, "-m", "mcp_server"],
-            stdin=sys.stdin,    # Inherit VS Code stdin
+            stdin=sys.stdin,  # Inherit VS Code stdin
             stdout=sys.stdout,  # Inherit VS Code stdout
             stderr=sys.stderr,  # Inherit stderr for logging
         )

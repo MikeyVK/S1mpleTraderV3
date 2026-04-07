@@ -1,23 +1,20 @@
-"""Unit tests for ContributorConfig singleton (Issue #149, Cycle 1).
+"""Unit tests for ContributorConfig loader-based access (Issue #149, Cycle 1).
 
 @layer: tests
-@dependencies: mcp_server.config.contributor_config
+@dependencies: mcp_server.config.loader
 @responsibilities: Verify ContributorConfig loads contributors.yaml (including empty list),
-                   validate_assignee() permissive when list empty, singleton behaviour.
+                   validate_assignee() permissive when list empty, strict when populated.
 """
 
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mcp_server.config.contributor_config import ContributorConfig
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import ContributorConfig
+from mcp_server.core.exceptions import ConfigError
 
 _EMPTY_CONTRIBUTORS_YAML = {"version": "1.0", "contributors": []}
 
@@ -28,6 +25,10 @@ _POPULATED_CONTRIBUTORS_YAML = {
         {"login": "bob"},
     ],
 }
+
+
+def _load_contributor_config(config_path: Path) -> ContributorConfig:
+    return ConfigLoader(config_path.parent).load_contributor_config(config_path=config_path)
 
 
 @pytest.fixture(name="empty_contributors_path")
@@ -49,32 +50,17 @@ def _populated_contributors_path() -> Path:
 
 
 @pytest.fixture(name="empty_contributor_config")
-def _empty_contributor_config(
-    empty_contributors_path: Path,
-) -> Generator[ContributorConfig, None, None]:
-    ContributorConfig.reset_instance()
-    cfg = ContributorConfig.from_file(str(empty_contributors_path))
-    yield cfg
-    ContributorConfig.reset_instance()
+def _empty_contributor_config(empty_contributors_path: Path) -> ContributorConfig:
+    return _load_contributor_config(empty_contributors_path)
 
 
 @pytest.fixture(name="populated_contributor_config")
-def _populated_contributor_config(
-    populated_contributors_path: Path,
-) -> Generator[ContributorConfig, None, None]:
-    ContributorConfig.reset_instance()
-    cfg = ContributorConfig.from_file(str(populated_contributors_path))
-    yield cfg
-    ContributorConfig.reset_instance()
-
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+def _populated_contributor_config(populated_contributors_path: Path) -> ContributorConfig:
+    return _load_contributor_config(populated_contributors_path)
 
 
 class TestContributorConfigFromFile:
-    """Loading and singleton behaviour."""
+    """Loading behaviour through ConfigLoader."""
 
     def test_from_file_loads_empty_list(self, empty_contributor_config: ContributorConfig) -> None:
         assert empty_contributor_config.contributors == []
@@ -89,20 +75,18 @@ class TestContributorConfigFromFile:
     def test_from_file_contributor_name_is_optional(
         self, populated_contributor_config: ContributorConfig
     ) -> None:
-        """name field is optional — bob has no name."""
+        """name field is optional; bob has no name."""
         bob = next(c for c in populated_contributor_config.contributors if c.login == "bob")
         assert bob.name is None
 
     def test_from_file_raises_on_missing_file(self) -> None:
-        ContributorConfig.reset_instance()
-        with pytest.raises(FileNotFoundError, match="Contributor config not found"):
-            ContributorConfig.from_file(".st3/nonexistent_contributors.yaml")
+        with pytest.raises(ConfigError, match="Config file not found"):
+            _load_contributor_config(Path(".st3/nonexistent_contributors.yaml"))
 
-    def test_singleton_returns_same_instance(self, empty_contributors_path: Path) -> None:
-        ContributorConfig.reset_instance()
-        cfg1 = ContributorConfig.from_file(str(empty_contributors_path))
-        cfg2 = ContributorConfig.from_file(str(empty_contributors_path))
-        assert cfg1 is cfg2
+    def test_repeated_loads_are_equivalent(self, empty_contributors_path: Path) -> None:
+        cfg1 = _load_contributor_config(empty_contributors_path)
+        cfg2 = _load_contributor_config(empty_contributors_path)
+        assert cfg1 == cfg2
 
 
 class TestContributorConfigValidateAssignee:
@@ -111,7 +95,6 @@ class TestContributorConfigValidateAssignee:
     def test_validate_assignee_always_true_when_list_empty(
         self, empty_contributor_config: ContributorConfig
     ) -> None:
-        """Permissive: any login passes when contributors list is empty."""
         assert empty_contributor_config.validate_assignee("anyone") is True
         assert empty_contributor_config.validate_assignee("unknown-user") is True
 

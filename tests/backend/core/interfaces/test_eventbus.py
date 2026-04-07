@@ -54,7 +54,7 @@ class TestSubscriptionScopeCreation:
         """Test that SubscriptionScope is immutable."""
         scope = SubscriptionScope(level=ScopeLevel.STRATEGY, strategy_instance_id="STR_A")
 
-        with pytest.raises(Exception):  # FrozenInstanceError or AttributeError
+        with pytest.raises((AttributeError, TypeError)):
             scope.level = ScopeLevel.PLATFORM
 
 

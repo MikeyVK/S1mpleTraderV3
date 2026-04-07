@@ -1,6 +1,6 @@
 """Tests for InitializeProjectTool with atomic state initialization.
 
-Issue #39: Mode 1 - Atomic initialization of projects.json + state.json.
+Issue #39: Mode 1 - Atomic initialization of deliverables.json + state.json.
 
 Tests verify:
 1. Both files created atomically
@@ -8,6 +8,9 @@ Tests verify:
 3. First phase determined from workflow
 4. state.json properly initialized with correct structure
 5. Error handling when git or state creation fails
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.project_tools]
 """
 
 import json
@@ -16,8 +19,18 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.workflows import workflow_config
+from mcp_server.schemas import WorkflowConfig
 from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
+from tests.mcp_server.test_support import (
+    make_config_loader,
+    make_git_manager,
+    make_phase_state_engine,
+    make_project_manager,
+)
+
+
+def _load_workflow_config() -> WorkflowConfig:
+    return make_config_loader().load_workflow_config()
 
 
 class TestInitializeProjectToolMode1:
@@ -31,15 +44,22 @@ class TestInitializeProjectToolMode1:
     @pytest.fixture
     def tool(self, workspace_root: Path) -> InitializeProjectTool:
         """Create InitializeProjectTool instance."""
-        return InitializeProjectTool(workspace_root=workspace_root)
+        manager = make_project_manager(workspace_root)
+        return InitializeProjectTool(
+            workspace_root=workspace_root,
+            workflow_config=make_config_loader(workspace_root).load_workflow_config(),
+            manager=manager,
+            git_manager=make_git_manager(workspace_root),
+            state_engine=make_phase_state_engine(workspace_root, project_manager=manager),
+        )
 
     @pytest.mark.asyncio
     async def test_atomic_creation_both_files(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test that both projects.json AND state.json are created atomically.
+        """Test that both deliverables.json AND state.json are created atomically.
 
-        Issue #39 Gap 1: InitializeProjectTool only created projects.json.
+        Issue #39 Gap 1: InitializeProjectTool only created deliverables.json.
         After fix: Must create both files in single operation.
         """
         # Mock git to return branch name on tool's git_manager instance
@@ -55,15 +75,15 @@ class TestInitializeProjectToolMode1:
             # Verify success
             assert not result.is_error
 
-            # Verify projects.json created
-            projects_file = workspace_root / ".st3" / "projects.json"
-            assert projects_file.exists(), "projects.json must be created"
+            # Verify deliverables.json created
+            projects_file = workspace_root / ".st3" / "deliverables.json"
+            assert projects_file.exists(), "deliverables.json must be created"
 
             # Verify state.json created
             state_file = workspace_root / ".st3" / "state.json"
             assert state_file.exists(), "state.json must be created (Issue #39 fix)"
 
-            # Verify projects.json structure
+            # Verify deliverables.json structure
             projects = json.loads(projects_file.read_text())
             assert "39" in projects
             assert projects["39"]["workflow_name"] == "bug"
@@ -75,13 +95,13 @@ class TestInitializeProjectToolMode1:
             assert state["issue_number"] == 39
             assert state["workflow_name"] == "bug"
             # First phase from workflows.yaml (SSOT)
-            bug_workflow = workflow_config.get_workflow("bug")
+            bug_workflow = _load_workflow_config().get_workflow("bug")
             expected_first_phase = bug_workflow.phases[0]
             assert state["current_phase"] == expected_first_phase
             assert state["transitions"] == []
             assert "created_at" in state
             # Not reconstructed, freshly created
-            assert "reconstructed" not in state
+            assert not state.get("reconstructed", False)
 
     @pytest.mark.asyncio
     async def test_branch_name_auto_detected(
@@ -125,7 +145,7 @@ class TestInitializeProjectToolMode1:
             state = json.loads(state_file.read_text())
 
             # First phase from workflows.yaml (SSOT)
-            hotfix_workflow = workflow_config.get_workflow("hotfix")
+            hotfix_workflow = _load_workflow_config().get_workflow("hotfix")
             expected_first_phase = hotfix_workflow.phases[0]
             assert state["current_phase"] == expected_first_phase
 
@@ -141,7 +161,7 @@ class TestInitializeProjectToolMode1:
 
         for workflow_name in workflows_to_test:
             # Get expected first phase from workflows.yaml (SSOT)
-            workflow = workflow_config.get_workflow(workflow_name)
+            workflow = _load_workflow_config().get_workflow(workflow_name)
             expected_first_phase = workflow.phases[0]
 
             # Determine branch prefix from workflow name
@@ -218,7 +238,7 @@ class TestInitializeProjectToolMode1:
     async def test_no_breaking_changes_to_projects_json(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test that projects.json format has core expected fields."""
+        """Test that deliverables.json format has core expected fields."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
             mock_git.return_value = "fix/39-test"
 
@@ -229,8 +249,8 @@ class TestInitializeProjectToolMode1:
 
             assert not result.is_error
 
-            # Verify projects.json has core required fields
-            projects_file = workspace_root / ".st3" / "projects.json"
+            # Verify deliverables.json has core required fields
+            projects_file = workspace_root / ".st3" / "deliverables.json"
             projects = json.loads(projects_file.read_text())
             project = projects["39"]
 
@@ -244,7 +264,7 @@ class TestInitializeProjectToolMode1:
     async def test_state_json_not_in_projects_json(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test that state.json is separate file, not embedded in projects.json."""
+        """Test that state.json is separate file, not embedded in deliverables.json."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
             mock_git.return_value = "fix/39-test"
 
@@ -256,13 +276,13 @@ class TestInitializeProjectToolMode1:
             assert not result.is_error
 
             # Verify separation
-            projects_file = workspace_root / ".st3" / "projects.json"
+            projects_file = workspace_root / ".st3" / "deliverables.json"
             state_file = workspace_root / ".st3" / "state.json"
 
             assert projects_file.exists()
             assert state_file.exists()
 
-            # state.json should NOT be mentioned in projects.json
+            # state.json should NOT be mentioned in deliverables.json
             projects_content = projects_file.read_text()
             assert "state.json" not in projects_content
             # State field, not policy field

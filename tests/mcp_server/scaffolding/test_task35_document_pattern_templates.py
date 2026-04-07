@@ -7,6 +7,9 @@ Validates that tier3 markdown pattern templates:
 - provide expected macro exports
 
 All 8 patterns for markdown DOCUMENT templates.
+
+@layer: Tests (Unit)
+@dependencies: pytest, pathlib, mcp_server.scaffolding.templates
 """
 
 from __future__ import annotations

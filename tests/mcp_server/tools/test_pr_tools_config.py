@@ -4,6 +4,9 @@ TDD Cycle 10: Verify PR tools use GitConfig for default base branch.
 
 Convention tested:
 - #9-11: Default base branch for PR creation
+
+@layer: Tests (Unit)
+@dependencies: pytest, yaml, mcp_server.tools.pr_tools
 """
 
 import tempfile
@@ -11,20 +14,12 @@ from pathlib import Path
 
 import yaml  # type: ignore[import-untyped]
 
-from mcp_server.config.git_config import GitConfig
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.tools.pr_tools import CreatePRInput
 
 
 class TestPRToolsConfigIntegration:
     """Test pr_tools use GitConfig (Conventions #9-11)."""
-
-    def setup_method(self) -> None:
-        """Reset GitConfig singleton before each test."""
-        GitConfig.reset_instance()
-
-    def teardown_method(self) -> None:
-        """Reset GitConfig singleton after each test."""
-        GitConfig.reset_instance()
 
     def test_create_pr_uses_git_config_default_base(self) -> None:
         """Convention #9-11: CreatePRInput.base default from GitConfig.
@@ -39,7 +34,9 @@ class TestPRToolsConfigIntegration:
             "commit_prefix_map": {"red": "test", "green": "feat"},
             "protected_branches": ["main", "develop"],
             "branch_name_pattern": "^[a-z0-9-]+$",
+            "commit_types": ["feat", "fix", "docs", "test", "refactor", "chore"],
             "default_base_branch": "develop",  # Custom default
+            "issue_title_max_length": 72,
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
@@ -47,8 +44,10 @@ class TestPRToolsConfigIntegration:
             temp_path = temp_file.name
 
         try:
-            # Load custom config (needed to populate singleton)
-            _ = GitConfig.from_file(temp_path)
+            git_config = ConfigLoader(Path(temp_path).parent).load_git_config(
+                config_path=Path(temp_path)
+            )
+            CreatePRInput.configure(git_config)
 
             # Create PR input without explicit base
             pr_input = CreatePRInput(

@@ -1,4 +1,5 @@
 """Jinja2 template renderer."""
+
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +55,7 @@ class JinjaRenderer:
         except TemplateNotFound as e:
             raise ExecutionError(
                 f"Template not found: {template_name}",
-                recovery=["Check template directory structure"]
+                recovery=["Check template directory structure"],
             ) from e
 
     def render(self, template_name: str, **kwargs: Any) -> str:  # noqa: ANN401

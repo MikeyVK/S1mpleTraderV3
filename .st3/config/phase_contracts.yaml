@@ -1,0 +1,209 @@
+workflows:
+  feature:
+    research:
+      exit_requires:
+        - id: research-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/research*.md
+    planning:
+      exit_requires:
+        - id: planning-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/planning*.md
+    design:
+      exit_requires:
+        - id: design-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/design*.md
+    implementation:
+      cycle_based: true
+      subphases: [red, green, refactor]
+      commit_type_map:
+        red: test
+        green: feat
+        refactor: refactor
+      exit_requires:
+        - id: implementation-test-suite
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/*test_suite*.md
+    validation:
+      exit_requires:
+        - id: validation-report
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/validation*.md
+    documentation:
+      exit_requires:
+        - id: documentation-handover
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/SESSIE_OVERDRACHT*.md
+  bug:
+    research:
+      exit_requires:
+        - id: research-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/research*.md
+    planning:
+      exit_requires:
+        - id: planning-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/planning*.md
+    design:
+      exit_requires:
+        - id: design-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/design*.md
+    implementation:
+      cycle_based: true
+      subphases: [red, green, refactor]
+      commit_type_map:
+        red: test
+        green: feat
+        refactor: refactor
+      exit_requires:
+        - id: implementation-test-suite
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/*test_suite*.md
+    validation:
+      exit_requires:
+        - id: validation-report
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/validation*.md
+    documentation:
+      exit_requires:
+        - id: documentation-handover
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/SESSIE_OVERDRACHT*.md
+  hotfix:
+    implementation:
+      exit_requires:
+        - id: implementation-test-suite
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/*test_suite*.md
+    validation:
+      exit_requires:
+        - id: validation-report
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/validation*.md
+    documentation:
+      exit_requires:
+        - id: documentation-handover
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/SESSIE_OVERDRACHT*.md
+  refactor:
+    research:
+      exit_requires:
+        - id: research-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/research*.md
+    planning:
+      exit_requires:
+        - id: planning-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/planning*.md
+    implementation:
+      cycle_based: true
+      subphases: [red, green, refactor]
+      commit_type_map:
+        red: test
+        green: feat
+        refactor: refactor
+      exit_requires:
+        - id: implementation-test-suite
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/*test_suite*.md
+    validation:
+      exit_requires:
+        - id: validation-report
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/validation*.md
+    documentation:
+      exit_requires:
+        - id: documentation-handover
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/SESSIE_OVERDRACHT*.md
+  docs:
+    planning:
+      exit_requires:
+        - id: planning-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/planning*.md
+    documentation:
+      exit_requires:
+        - id: docs-readme
+          type: file_glob
+          required: true
+          dir: docs/mcp_server
+          pattern: README*.md
+  epic:
+    research:
+      exit_requires:
+        - id: research-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/research*.md
+    planning:
+      exit_requires:
+        - id: planning-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/planning*.md
+    design:
+      exit_requires:
+        - id: design-doc
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/design*.md
+    coordination:
+      exit_requires: []
+    documentation:
+      exit_requires:
+        - id: documentation-handover
+          type: file_glob
+          required: true
+          dir: docs/development
+          pattern: issue*/SESSIE_OVERDRACHT*.md

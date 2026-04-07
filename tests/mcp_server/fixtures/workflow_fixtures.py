@@ -1,21 +1,28 @@
 """
 @module: tests.fixtures.workflow_fixtures
 @layer: Test Infrastructure
-@dependencies: pytest, mcp_server.config.workflows
+@dependencies: pytest, mcp_server.config.loader
 @responsibilities:
   - Provide workflow-phase fixtures for tests
-  - Load phase lists from .st3/workflows.yaml
+  - Load phase lists from .st3/config/workflows.yaml via ConfigLoader
 """
+
+from pathlib import Path
 
 import pytest
 
-from mcp_server.config.workflows import WorkflowConfig
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import WorkflowConfig
+
+
+def _make_loader() -> ConfigLoader:
+    return ConfigLoader(Path(".st3/config"))
 
 
 @pytest.fixture
-def workflow_config():
-    """Load workflow configuration from .st3/workflows.yaml."""
-    return WorkflowConfig.load()
+def workflow_config() -> WorkflowConfig:
+    """Load workflow configuration from .st3/config/workflows.yaml."""
+    return _make_loader().load_workflow_config()
 
 
 @pytest.fixture
@@ -23,7 +30,8 @@ def workflow_phases(workflow_config: WorkflowConfig) -> list[str]:
     """
     All unique phases across all workflows.
 
-    Returns list like: ["research", "planning", "design", "tdd", "integration", "documentation", "coordination"]
+    Returns list like:
+    ["research", "planning", "design", "tdd", "integration", "documentation", "coordination"]
     """
     all_phases = set()
     for workflow in workflow_config.workflows.values():

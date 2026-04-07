@@ -6,21 +6,29 @@ from typing import Any
 import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
-from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.logging import get_logger
 from mcp_server.core.scope_encoder import ScopeEncoder
+from mcp_server.schemas import GitConfig
 
 
 class GitManager:
     """Manager for Git operations and conventions."""
 
     def __init__(
-        self, adapter: GitAdapter | None = None, workphases_path: Path | None = None
+        self,
+        git_config: GitConfig,
+        adapter: GitAdapter | None = None,
+        workphases_path: Path | None = None,
     ) -> None:
         self.adapter = adapter or GitAdapter()
-        self._git_config = GitConfig.from_file()
-        self._workphases_path = workphases_path or Path(".st3/workphases.yaml")
+        self._git_config = git_config
+        self._workphases_path = workphases_path or Path(".st3/config/workphases.yaml")
+
+    @property
+    def git_config(self) -> GitConfig:
+        """Expose injected git conventions config to consumers."""
+        return self._git_config
 
     def get_status(self) -> dict[str, Any]:
         """Get git status."""
@@ -88,6 +96,7 @@ class GitManager:
         )
 
         return full_name
+
     def commit_with_scope(
         self,
         workflow_phase: str,
@@ -100,7 +109,7 @@ class GitManager:
         """Commit changes with workflow phase scope.
 
         Args:
-            workflow_phase: Workflow phase (research, planning, design, tdd, ...).
+            workflow_phase: Workflow phase (research, planning, design, implementation, ...).
             message: Commit message (without type/scope prefix).
             sub_phase: Optional subphase (red, green, refactor, c1, ...).
             cycle_number: Optional cycle number (1, 2, 3, ...).
@@ -116,10 +125,15 @@ class GitManager:
             ValidationError: Empty files list.
 
         Example:
-            >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red")
+            >>> manager.commit_with_scope("implementation", "add tests", sub_phase="red")
             # Generates: "test(P_TDD_SP_RED): add tests"
 
-            >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red", commit_type="fix")
+            >>> manager.commit_with_scope(
+            ...     "implementation",
+            ...     "add tests",
+            ...     sub_phase="red",
+            ...     commit_type="fix",
+            ... )
             # Generates: "fix(P_TDD_SP_RED): add tests" (override)
         """
         if files is not None and not files:
@@ -131,7 +145,7 @@ class GitManager:
         # If commit_type override provided, use it
         if commit_type is None:
             # Load workphases config to get commit_type
-            with open(self._workphases_path) as f:
+            with open(self._workphases_path, encoding="utf-8") as f:
                 workphases_config = yaml.safe_load(f)
 
             phases = workphases_config.get("phases", {})
@@ -144,21 +158,7 @@ class GitManager:
                 # Should never reach here due to ValueError above
                 raise RuntimeError("Unexpected: phase validation failed silently")
 
-            commit_type = phase_config.get("commit_type_hint", "chore")
-
-            # Handle TDD phase (commit_type_hint is null, varies by subphase)
-            if commit_type is None:
-                if workflow_phase.lower() == "tdd":
-                    if sub_phase == "red":
-                        commit_type = "test"
-                    elif sub_phase == "green":
-                        commit_type = "feat"
-                    elif sub_phase == "refactor":
-                        commit_type = "refactor"
-                    else:
-                        commit_type = "chore"  # fallback if no subphase
-                else:
-                    commit_type = "chore"  # fallback for other null cases
+            commit_type = phase_config.get("commit_type_hint", "chore") or "chore"
 
         # Generate scope using ScopeEncoder (validates phase + subphase)
         encoder = ScopeEncoder(self._workphases_path)

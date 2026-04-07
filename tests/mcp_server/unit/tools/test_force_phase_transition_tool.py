@@ -4,7 +4,10 @@ Issue #50 - Step 4: Force Transition Tool
 
 Tests MCP tool that exposes PhaseStateEngine.force_transition() to users.
 Allows non-sequential phase transitions with skip_reason and approval.
-Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE ✅ in response.
+Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE OK in response.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pathlib, mcp_server.tools.phase_tools]
 """
 
 import json
@@ -18,6 +21,7 @@ from mcp_server.tools.phase_tools import (
     ForcePhaseTransitionInput,
     ForcePhaseTransitionTool,
 )
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestForcePhaseTransitionTool:
@@ -31,19 +35,25 @@ class TestForcePhaseTransitionTool:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def phase_engine(
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     @pytest.fixture
     def tool(self, workspace_root: Path) -> ForcePhaseTransitionTool:
         """Create ForcePhaseTransitionTool instance."""
-        return ForcePhaseTransitionTool(workspace_root=workspace_root)
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
+        return ForcePhaseTransitionTool(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_engine=state_engine,
+        )
 
     @pytest.fixture
     def initialized_branch(
@@ -95,10 +105,10 @@ class TestForcePhaseTransitionTool:
 
         # Verify state updated
         state = phase_engine.get_state(initialized_branch)
-        assert state["current_phase"] == feature_phases[2]  # design
+        assert state.current_phase == feature_phases[2]  # design
 
         # Verify transition marked as forced
-        transition = state["transitions"][0]
+        transition = state.transitions[0]
         assert transition["forced"] is True
         assert transition["skip_reason"] == "Planning already done in previous project"
 
@@ -204,9 +214,9 @@ class TestForcePhaseTransitionToolSkippedGatesResponse:
     @pytest.fixture
     def workspace_with_gates(self, tmp_path: Path) -> Path:
         """Workspace with workphases.yaml that has exit_requires on planning."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -223,9 +233,9 @@ phases:
     @pytest.fixture
     def workspace_no_gates(self, tmp_path: Path) -> Path:
         """Workspace with workphases.yaml that has no gates defined."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -238,9 +248,9 @@ phases:
 
     def _init_branch(self, workspace: Path, branch: str, phase: str) -> None:
         """Helper: initialize project + branch state."""
-        pm = ProjectManager(workspace_root=workspace)
+        pm = make_project_manager(workspace)
         pm.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
-        engine = PhaseStateEngine(workspace_root=workspace, project_manager=pm)
+        engine = make_phase_state_engine(workspace, project_manager=pm)
         engine.initialize_branch(branch=branch, issue_number=42, initial_phase=phase)
 
     @pytest.mark.asyncio
@@ -251,7 +261,14 @@ phases:
         branch = "feature/42-test"
         self._init_branch(workspace_with_gates, branch, "planning")
 
-        tool = ForcePhaseTransitionTool(workspace_root=workspace_with_gates)
+        tool = ForcePhaseTransitionTool(
+            workspace_root=workspace_with_gates,
+            project_manager=make_project_manager(workspace_with_gates),
+            state_engine=make_phase_state_engine(
+                workspace_with_gates,
+                project_manager=make_project_manager(workspace_with_gates),
+            ),
+        )
         params = ForcePhaseTransitionInput(
             branch=branch,
             to_phase="design",
@@ -275,7 +292,14 @@ phases:
         branch = "feature/42-test"
         self._init_branch(workspace_no_gates, branch, "planning")
 
-        tool = ForcePhaseTransitionTool(workspace_root=workspace_no_gates)
+        tool = ForcePhaseTransitionTool(
+            workspace_root=workspace_no_gates,
+            project_manager=make_project_manager(workspace_no_gates),
+            state_engine=make_phase_state_engine(
+                workspace_no_gates,
+                project_manager=make_project_manager(workspace_no_gates),
+            ),
+        )
         params = ForcePhaseTransitionInput(
             branch=branch,
             to_phase="design",
@@ -305,9 +329,9 @@ class TestForceTransitionResponseFormat:
 
     def _setup_workspace(self, tmp_path: Path, *, with_gate_key: bool = True) -> tuple[Path, str]:
         """Build workspace with workphases.yaml gate + optional planning_deliverables key."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -320,14 +344,14 @@ phases:
 """
         )
         branch = "feature/42-test"
-        pm = ProjectManager(workspace_root=tmp_path)
+        pm = make_project_manager(tmp_path)
         pm.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=pm)
+        engine = make_phase_state_engine(tmp_path, project_manager=pm)
         engine.initialize_branch(branch=branch, issue_number=42, initial_phase="planning")
 
         if with_gate_key:
             # Inject planning_deliverables so gate would have PASSED
-            projects_path = tmp_path / ".st3" / "projects.json"
+            projects_path = tmp_path / ".st3" / "deliverables.json"
             data = json.loads(projects_path.read_text())
             data["42"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
             projects_path.write_text(json.dumps(data, indent=2))
@@ -342,7 +366,14 @@ phases:
         workspace, branch = self._setup_workspace(
             tmp_path, with_gate_key=False
         )  # key absent → BLOCKS
-        tool = ForcePhaseTransitionTool(workspace_root=workspace)
+        tool = ForcePhaseTransitionTool(
+            workspace_root=workspace,
+            project_manager=make_project_manager(workspace),
+            state_engine=make_phase_state_engine(
+                workspace,
+                project_manager=make_project_manager(workspace),
+            ),
+        )
         params = ForcePhaseTransitionInput(
             branch=branch,
             to_phase="design",
@@ -368,7 +399,14 @@ phases:
         workspace, branch = self._setup_workspace(
             tmp_path, with_gate_key=True
         )  # key present → passes
-        tool = ForcePhaseTransitionTool(workspace_root=workspace)
+        tool = ForcePhaseTransitionTool(
+            workspace_root=workspace,
+            project_manager=make_project_manager(workspace),
+            state_engine=make_phase_state_engine(
+                workspace,
+                project_manager=make_project_manager(workspace),
+            ),
+        )
         params = ForcePhaseTransitionInput(
             branch=branch,
             to_phase="design",
@@ -393,9 +431,9 @@ phases:
         self, tmp_path: Path
     ) -> None:
         """No gates defined → only ✅ in response, no ⚠️ or ACTION REQUIRED (GAP-17/D10.3)."""
-        st3 = tmp_path / ".st3"
-        st3.mkdir()
-        (st3 / "workphases.yaml").write_text(
+        st3_config = tmp_path / ".st3" / "config"
+        st3_config.mkdir(parents=True)
+        (st3_config / "workphases.yaml").write_text(
             """
 phases:
   planning:
@@ -405,12 +443,19 @@ phases:
 """
         )
         branch = "feature/42-test"
-        pm = ProjectManager(workspace_root=tmp_path)
+        pm = make_project_manager(tmp_path)
         pm.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=pm)
+        engine = make_phase_state_engine(tmp_path, project_manager=pm)
         engine.initialize_branch(branch=branch, issue_number=42, initial_phase="planning")
 
-        tool = ForcePhaseTransitionTool(workspace_root=tmp_path)
+        tool = ForcePhaseTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=make_project_manager(tmp_path),
+            state_engine=make_phase_state_engine(
+                tmp_path,
+                project_manager=make_project_manager(tmp_path),
+            ),
+        )
         params = ForcePhaseTransitionInput(
             branch=branch,
             to_phase="design",

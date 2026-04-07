@@ -1,10 +1,15 @@
-"""Unit tests for test_tools.py."""
+"""Unit tests for test_tools.py.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, mcp_server.tools.test_tools]
+"""
 
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.config.settings import Settings
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
 # ---------------------------------------------------------------------------
@@ -38,18 +43,16 @@ def mock_run_pytest_sync() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def _mock_settings() -> Generator[MagicMock, None, None]:
-    """Patch the settings module."""
-    with patch("mcp_server.tools.test_tools.settings") as mock:
-        mock.server.workspace_root = "/workspace"
-        yield mock
+def injected_settings() -> Settings:
+    """Provide explicit settings injection for RunTestsTool."""
+    return Settings(server={"workspace_root": "/workspace"})
 
 
 @pytest.mark.asyncio
 async def test_run_tests_success(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
 
     # Mock return: stdout, stderr, returncode
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
@@ -69,9 +72,9 @@ async def test_run_tests_success(
 
 @pytest.mark.asyncio
 async def test_run_tests_failure(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (
         "FAILED tests/foo.py::test_x - AssertionError: nope\n1 failed in 0.10s\n",
         "Error info",
@@ -86,9 +89,9 @@ async def test_run_tests_failure(
 
 @pytest.mark.asyncio
 async def test_run_tests_markers(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("", "", 0)
 
     await tool.execute(RunTestsInput(path="tests/", markers="integration"))
@@ -100,9 +103,9 @@ async def test_run_tests_markers(
 
 @pytest.mark.asyncio
 async def test_run_tests_exception(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.side_effect = OSError("Boom")
 
     result = await tool.execute(RunTestsInput(path="tests/"))
@@ -150,10 +153,10 @@ def test_parse_pytest_output_red() -> None:
 
 @pytest.mark.asyncio
 async def test_run_tests_json_response_on_success(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """Successful run: content[0] is text summary, content[1] is JSON with summary.failed==0."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
@@ -166,10 +169,10 @@ async def test_run_tests_json_response_on_success(
 
 @pytest.mark.asyncio
 async def test_run_tests_json_response_on_failure(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """Failed run: content[0] is text summary, content[1] is JSON with failures list."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
@@ -209,10 +212,10 @@ def test_build_cmd_method_exists_on_tool() -> None:
 
 @pytest.mark.asyncio
 async def test_last_failed_only_adds_lf_flag(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """last_failed_only=True must add --lf to the subprocess command."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
     await tool.execute(RunTestsInput(path="tests/", last_failed_only=True))
@@ -223,10 +226,10 @@ async def test_last_failed_only_adds_lf_flag(
 
 @pytest.mark.asyncio
 async def test_last_failed_only_default_no_lf_flag(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """Default (last_failed_only=False) must NOT add --lf."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
     await tool.execute(RunTestsInput(path="tests/"))
@@ -237,10 +240,10 @@ async def test_last_failed_only_default_no_lf_flag(
 
 @pytest.mark.asyncio
 async def test_last_failed_only_combined_with_path(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """last_failed_only=True combined with path: both --lf and path present in cmd."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
     await tool.execute(RunTestsInput(path="tests/unit", last_failed_only=True))
@@ -295,10 +298,10 @@ def test_path_and_scope_mutual_exclusion_raises_validation_error() -> None:
 
 @pytest.mark.asyncio
 async def test_space_separated_paths_produce_multiple_args_in_cmd(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """path='a.py b.py' must result in both paths as separate cmd args."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("2 passed in 0.20s\n", "", 0)
 
     await tool.execute(RunTestsInput(path="tests/test_a.py tests/test_b.py"))
@@ -310,10 +313,10 @@ async def test_space_separated_paths_produce_multiple_args_in_cmd(
 
 @pytest.mark.asyncio
 async def test_scope_full_produces_no_path_args_in_cmd(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """scope='full' must run pytest without any explicit path arguments."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("10 passed in 1.00s\n", "", 0)
 
     await tool.execute(RunTestsInput(scope="full"))
@@ -380,10 +383,10 @@ def test_parse_pytest_output_summary_line_on_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_run_tests_text_content_is_summary_line(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """content[0]['text'] must be the summary_line, not json.dumps of the full response."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
@@ -396,10 +399,10 @@ async def test_run_tests_text_content_is_summary_line(
 
 @pytest.mark.asyncio
 async def test_run_tests_text_content_is_summary_line_on_failure(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """content[0]['text'] must be the summary_line even when tests fail."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
@@ -444,10 +447,10 @@ def test_parse_pytest_output_traceback_contains_assertion_error() -> None:
 
 @pytest.mark.asyncio
 async def test_run_tests_content0_is_text_summary(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """C29 contract: content[0] must be the text summary line (not json)."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
@@ -459,10 +462,10 @@ async def test_run_tests_content0_is_text_summary(
 
 @pytest.mark.asyncio
 async def test_run_tests_content1_is_json_payload(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """C29 contract: content[1] must be the json payload (not text)."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
@@ -475,10 +478,10 @@ async def test_run_tests_content1_is_json_payload(
 
 @pytest.mark.asyncio
 async def test_run_tests_content0_text_contains_summary_line(
-    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+    mock_run_pytest_sync: MagicMock, injected_settings: Settings
 ) -> None:
     """C29 contract: content[0].text is the human-readable summary line."""
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))

@@ -36,12 +36,12 @@ def jinja_env():
 class TestTier3PatternPythonTestFixtures:
     """Test suite for tier3_pattern_python_test_fixtures macro library."""
 
-    def test_template_exists(self, jinja_env):
+    def test_template_exists(self, jinja_env) -> None:
         """Test that template exists and loads."""
         template = jinja_env.get_template("tier3_pattern_python_test_fixtures.jinja2")
         assert template is not None
 
-    def test_template_has_no_extends(self):
+    def test_template_has_no_extends(self) -> None:
         """Test that template follows macro library pattern (no extends, no blocks)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -57,7 +57,7 @@ class TestTier3PatternPythonTestFixtures:
         no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
-    def test_template_has_metadata(self):
+    def test_template_has_metadata(self) -> None:
         """Test that template contains TEMPLATE_METADATA."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -71,7 +71,7 @@ class TestTier3PatternPythonTestFixtures:
         assert "enforcement: ARCHITECTURAL" in content
         assert "provides_macros: [pattern_fixture_decorator]" in content
 
-    def test_macro_pattern_fixture_decorator_exists(self):
+    def test_macro_pattern_fixture_decorator_exists(self) -> None:
         """Test that pattern_fixture_decorator macro is defined."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -83,7 +83,7 @@ class TestTier3PatternPythonTestFixtures:
         content = template_path.read_text(encoding="utf-8")
         assert "{% macro pattern_fixture_decorator(" in content
 
-    def test_macro_generates_simple_fixture_decorator(self, jinja_env):
+    def test_macro_generates_simple_fixture_decorator(self, jinja_env) -> None:
         """Test that macro generates simple @pytest.fixture decorator."""
         template_str = """
 {% import "tier3_pattern_python_test_fixtures.jinja2" as fixtures_p %}
@@ -97,7 +97,7 @@ def my_fixture():
         assert "@pytest.fixture" in result
         assert "def my_fixture():" in result
 
-    def test_macro_generates_fixture_with_scope(self, jinja_env):
+    def test_macro_generates_fixture_with_scope(self, jinja_env) -> None:
         """Test that macro generates fixture with scope parameter."""
         template_str = """
 {% import "tier3_pattern_python_test_fixtures.jinja2" as fixtures_p %}
@@ -108,7 +108,7 @@ def my_fixture():
 
         assert '@pytest.fixture(scope="session")' in result
 
-    def test_macro_generates_fixture_with_autouse(self, jinja_env):
+    def test_macro_generates_fixture_with_autouse(self, jinja_env) -> None:
         """Test that macro generates fixture with autouse parameter."""
         template_str = """
 {% import "tier3_pattern_python_test_fixtures.jinja2" as fixtures_p %}
@@ -119,7 +119,7 @@ def my_fixture():
 
         assert "@pytest.fixture(autouse=True)" in result
 
-    def test_macro_generates_fixture_with_params(self, jinja_env):
+    def test_macro_generates_fixture_with_params(self, jinja_env) -> None:
         """Test that macro generates fixture with params parameter."""
         template_str = """
 {% import "tier3_pattern_python_test_fixtures.jinja2" as fixtures_p %}
@@ -130,7 +130,7 @@ def my_fixture():
 
         assert "@pytest.fixture(params=[1, 2, 3])" in result
 
-    def test_macro_can_be_imported(self, jinja_env):
+    def test_macro_can_be_imported(self, jinja_env) -> None:
         """Test that template can be imported and macro is accessible."""
         template_str = """
 {% import "tier3_pattern_python_test_fixtures.jinja2" as fixtures_p %}
@@ -141,7 +141,7 @@ def my_fixture():
         assert result is not None
         assert "@pytest.fixture" in result
 
-    def test_template_has_changelog(self):
+    def test_template_has_changelog(self) -> None:
         """Test that template documents refactor from blocks to macros."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
@@ -155,7 +155,7 @@ def my_fixture():
         assert "2.0.0" in content
         assert "Refactor from" in content
 
-    def test_template_minimal_content(self):
+    def test_template_minimal_content(self) -> None:
         """Test that template has minimal content (1 macro, no example fixtures)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent

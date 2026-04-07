@@ -13,11 +13,14 @@ Fix: Use write_text() instead of open()+flush().
 
 import ast
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from mcp_server.managers.state_repository import BranchState
+from tests.mcp_server.test_support import make_phase_state_engine
 
 
 class TestSaveStateNonBlocking:
@@ -34,9 +37,6 @@ class TestSaveStateNonBlocking:
         The new implementation should use:
             self.state_file.write_text(json.dumps(state, indent=2))
         """
-        from mcp_server.managers.phase_state_engine import (  # noqa: PLC0415
-            PhaseStateEngine,
-        )
         from mcp_server.managers.project_manager import (  # noqa: PLC0415
             ProjectManager,
         )
@@ -47,9 +47,15 @@ class TestSaveStateNonBlocking:
         state_file = st3_dir / "state.json"
 
         project_manager = MagicMock(spec=ProjectManager)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=project_manager)
+        engine = make_phase_state_engine(tmp_path, project_manager=project_manager)
 
-        test_state = {"branch": "test/123-test", "current_phase": "tdd", "issue_number": 123}
+        test_state = BranchState(
+            branch="test/123-test",
+            issue_number=123,
+            workflow_name="feature",
+            current_phase="implementation",
+            transitions=[],
+        )
 
         # Act - call _save_state (protected access needed for testing)
         engine._save_state("test/123-test", test_state)  # noqa: SLF001
@@ -57,7 +63,7 @@ class TestSaveStateNonBlocking:
         # Assert - file should exist with correct content
         assert state_file.exists()
         saved_content = json.loads(state_file.read_text())
-        assert saved_content == test_state
+        assert saved_content == test_state.model_dump(mode="json")
 
     def test_save_state_does_not_call_flush(self, tmp_path: Path) -> None:
         """Verify _save_state() does NOT call f.flush() which blocks.
@@ -65,9 +71,6 @@ class TestSaveStateNonBlocking:
         We patch the builtin open() to detect if flush() is called.
         The new implementation should NOT use open() at all.
         """
-        from mcp_server.managers.phase_state_engine import (  # noqa: PLC0415
-            PhaseStateEngine,
-        )
         from mcp_server.managers.project_manager import (  # noqa: PLC0415
             ProjectManager,
         )
@@ -77,15 +80,21 @@ class TestSaveStateNonBlocking:
         st3_dir.mkdir()
 
         project_manager = MagicMock(spec=ProjectManager)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=project_manager)
+        engine = make_phase_state_engine(tmp_path, project_manager=project_manager)
 
-        test_state = {"branch": "test/123-test", "current_phase": "tdd"}
+        test_state = BranchState(
+            branch="test/123-test",
+            issue_number=None,
+            workflow_name="feature",
+            current_phase="implementation",
+            transitions=[],
+        )
 
         # Track if open() builtin is called
         original_open = open
         open_was_called = False
 
-        def tracking_open(*args: Any, **kwargs: Any) -> Any:
+        def tracking_open(*args: object, **kwargs: object) -> object:
             nonlocal open_was_called
             open_was_called = True
             return original_open(*args, **kwargs)
@@ -136,20 +145,24 @@ class TestPhaseToolsAsyncSafe:
         run_sync_was_called = False
         original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
+        async def tracking_run_sync(
+            func: Callable[..., object], *args: object, **kwargs: object
+        ) -> object:
             nonlocal run_sync_was_called
             run_sync_was_called = True
             return await original_run_sync(func, *args, **kwargs)
 
-        with patch.object(tool, "_create_engine", return_value=mock_engine):
-            with patch("anyio.to_thread.run_sync", tracking_run_sync):
-                params = ForcePhaseTransitionInput(
-                    branch="test/123-test",
-                    to_phase="design",
-                    skip_reason="test reason",
-                    human_approval="test approval",
-                )
-                await tool.execute(params)
+        with (
+            patch.object(tool, "_create_engine", return_value=mock_engine),
+            patch("anyio.to_thread.run_sync", tracking_run_sync),
+        ):
+            params = ForcePhaseTransitionInput(
+                branch="test/123-test",
+                to_phase="design",
+                skip_reason="test reason",
+                human_approval="test approval",
+            )
+            await tool.execute(params)
 
         # Assert
         assert run_sync_was_called, (
@@ -175,23 +188,29 @@ class TestPhaseToolsAsyncSafe:
         mock_engine.transition.return_value = {
             "success": True,
             "from_phase": "design",
-            "to_phase": "tdd",
+            "to_phase": "implementation",
         }
 
         run_sync_was_called = False
         original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
+        async def tracking_run_sync(
+            func: Callable[..., object], *args: object, **kwargs: object
+        ) -> object:
             nonlocal run_sync_was_called
             run_sync_was_called = True
             return await original_run_sync(func, *args, **kwargs)
 
-        with patch.object(tool, "_create_engine", return_value=mock_engine):
-            with patch("anyio.to_thread.run_sync", tracking_run_sync):
-                params = TransitionPhaseInput(
-                    branch="test/123-test", to_phase="tdd", human_approval="test approval"
-                )
-                await tool.execute(params)
+        with (
+            patch.object(tool, "_create_engine", return_value=mock_engine),
+            patch("anyio.to_thread.run_sync", tracking_run_sync),
+        ):
+            params = TransitionPhaseInput(
+                branch="test/123-test",
+                to_phase="implementation",
+                human_approval="test approval",
+            )
+            await tool.execute(params)
 
         # Assert
         assert run_sync_was_called, (

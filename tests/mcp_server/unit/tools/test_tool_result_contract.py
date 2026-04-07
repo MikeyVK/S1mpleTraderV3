@@ -6,6 +6,9 @@ Contract (planning.md Cycle 27):
   content[0] = {"type": "text", "text": <summary_line>}   — human-readable one-liner
   content[1] = {"type": "json", "json": <compact_payload>} — structured gate results
   len(content) == 2 — exactly two items, no more
+
+@layer: Tests (Unit)
+@dependencies: [pytest, typing, mcp_server.tools.quality_tools]
 """
 
 from __future__ import annotations

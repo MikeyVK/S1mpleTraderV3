@@ -1,4 +1,8 @@
-"""Unit tests for GitManager."""
+"""Unit tests for GitManager.
+
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.managers.git_manager, mcp_server.config.schemas
+"""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives
 
@@ -9,10 +13,18 @@ from unittest.mock import MagicMock
 # Third-party
 import pytest
 
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 
 # Module under test
 from mcp_server.managers.git_manager import GitManager
+
+
+@pytest.fixture
+def git_config() -> GitConfig:
+    """Fixture for project git config."""
+    return ConfigLoader(Path(".st3/config")).load_git_config()
 
 
 class TestGitManagerValidation:
@@ -26,13 +38,13 @@ class TestGitManagerValidation:
         return adapter
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        return GitManager(adapter=mock_adapter)
+        return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_init_default(self) -> None:
         """Test initialization with default adapter."""
-        mgr = GitManager()
+        mgr = GitManager(git_config=ConfigLoader(Path(".st3/config")).load_git_config())
         assert mgr.adapter is not None
 
     def test_get_status(self, manager: GitManager, mock_adapter: MagicMock) -> None:
@@ -94,9 +106,9 @@ class TestGitManagerOperations:
         return adapter
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        return GitManager(adapter=mock_adapter)
+        return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_restore_success(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test restore operation."""
@@ -184,9 +196,9 @@ class TestGitManagerCreateBranch:
         return adapter
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        return GitManager(adapter=mock_adapter)
+        return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_create_branch_requires_base_branch_parameter(self, manager: GitManager) -> None:
         """RED: create_branch should require base_branch parameter (no default)."""
@@ -221,8 +233,8 @@ phases:
     display_name: "Research"
     commit_type_hint: "docs"
     subphases: []
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     commit_type_hint: null
     subphases: ["red", "green", "refactor"]
   coordination:
@@ -231,7 +243,7 @@ phases:
     subphases: ["delegation", "sync", "review"]
 version: "1.0"
 """)
-        mgr = GitManager(adapter=mock_adapter)
+        mgr = GitManager(git_config=git_config, adapter=mock_adapter)
         mgr._workphases_path = workphases_path
         return mgr
 
@@ -258,14 +270,15 @@ version: "1.0"
         mock_adapter.commit.return_value = "def456"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="red",
             message="add failing test",
+            commit_type="test",
         )
 
         assert result == "def456"
         mock_adapter.commit.assert_called_once_with(
-            "test(P_TDD_SP_RED): add failing test", files=None
+            "test(P_IMPLEMENTATION_SP_RED): add failing test", files=None
         )
 
     def test_commit_with_scope_with_cycle_number(
@@ -275,15 +288,16 @@ version: "1.0"
         mock_adapter.commit.return_value = "ghi789"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="green",
             cycle_number=1,
             message="implement feature",
+            commit_type="feat",
         )
 
         assert result == "ghi789"
         mock_adapter.commit.assert_called_once_with(
-            "feat(P_TDD_SP_C1_GREEN): implement feature", files=None
+            "feat(P_IMPLEMENTATION_SP_C1_GREEN): implement feature", files=None
         )
 
     def test_commit_with_scope_coordination_phase(
@@ -310,15 +324,16 @@ version: "1.0"
         mock_adapter.commit.return_value = "mno345"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="refactor",
             message="clean up code",
             files=["src/app.py", "tests/test_app.py"],
+            commit_type="refactor",
         )
 
         assert result == "mno345"
         mock_adapter.commit.assert_called_once_with(
-            "refactor(P_TDD_SP_REFACTOR): clean up code",
+            "refactor(P_IMPLEMENTATION_SP_REFACTOR): clean up code",
             files=["src/app.py", "tests/test_app.py"],
         )
 
@@ -329,7 +344,7 @@ version: "1.0"
         mock_adapter.commit.return_value = "pqr678"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="red",
             message="fix failing test",
             commit_type="fix",  # Override default 'test'
@@ -337,7 +352,7 @@ version: "1.0"
 
         assert result == "pqr678"
         mock_adapter.commit.assert_called_once_with(
-            "fix(P_TDD_SP_RED): fix failing test",
+            "fix(P_IMPLEMENTATION_SP_RED): fix failing test",
             files=None,
         )
 
@@ -353,7 +368,7 @@ version: "1.0"
         """Test that invalid subphase raises ValueError with actionable message."""
         with pytest.raises(ValueError, match="Invalid sub_phase"):
             manager.commit_with_scope(
-                workflow_phase="tdd",
+                workflow_phase="implementation",
                 sub_phase="invalid_subphase",
                 message="test",
             )

@@ -1,5 +1,10 @@
-"""Tests for administrative tools (server restart functionality)."""
+"""Tests for administrative tools (server restart functionality).
 
+@layer: Tests (Unit)
+@dependencies: pytest, mcp_server.tools.admin_tools
+"""
+
+import asyncio
 import json
 import os
 import time
@@ -7,9 +12,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pytest import MonkeyPatch
+
+from mcp_server.tools.admin_tools import (
+    RestartServerInput,
+    RestartServerTool,
+    verify_server_restarted,
+)
 
 
-def test_restart_marker_written_with_correct_schema(monkeypatch):
+def test_restart_marker_written_with_correct_schema(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """RED: Test that restart_server writes marker file with correct schema.
 
     Verifies:
@@ -17,73 +32,62 @@ def test_restart_marker_written_with_correct_schema(monkeypatch):
     - Contains timestamp (float), pid (int), reason (str), iso_time (str)
     - Server exits with code 42
     """
-    import asyncio
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr(
+        "mcp_server.tools.admin_tools._get_restart_marker_path",
+        lambda: marker_path,
+    )
 
-    from mcp_server.tools.admin_tools import RestartServerInput, RestartServerTool
+    exit_calls: list[int] = []
 
-    # Mock sys.exit to capture exit code
-    exit_calls = []
-
-    def mock_exit(code):
+    def mock_exit(code: int) -> None:
         exit_calls.append(code)
         raise SystemExit(code)
 
-    async def mock_sleep(_seconds):
-        pass
+    async def mock_sleep(_seconds: float) -> None:
+        return None
 
     monkeypatch.setattr("sys.exit", mock_exit)
     monkeypatch.setattr("asyncio.sleep", mock_sleep)
 
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Clean state
-
-    # Execute via async wrapper to let background task run
     tool = RestartServerTool()
     params = RestartServerInput(reason="Test marker schema")
 
-    async def run_test():
+    async def run_test() -> None:
         await tool.execute(params)
-        await asyncio.sleep(0.01)  # Let background task start
-        await asyncio.sleep(0)  # Process pending tasks
+        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
-    # Capture exit from background task
     with pytest.raises(SystemExit) as exc_info:
         asyncio.run(run_test())
 
-    # Verify exit code 42
     assert exc_info.value.code == 42
     assert len(exit_calls) == 1
     assert exit_calls[0] == 42
-
-    # Verify marker file exists
     assert marker_path.exists(), "Restart marker file not created"
 
-    # Verify marker content schema
-    with marker_path.open(encoding="utf-8") as f:
-        marker_data = json.load(f)
+    with marker_path.open(encoding="utf-8") as file_handle:
+        marker_data = json.load(file_handle)
 
-    # Schema validation
     assert "timestamp" in marker_data, "Missing timestamp field"
     assert "pid" in marker_data, "Missing pid field"
     assert "reason" in marker_data, "Missing reason field"
     assert "iso_time" in marker_data, "Missing iso_time field"
 
-    # Type validation
     assert isinstance(marker_data["timestamp"], float), "timestamp must be float"
     assert isinstance(marker_data["pid"], int), "pid must be int"
     assert isinstance(marker_data["reason"], str), "reason must be str"
     assert isinstance(marker_data["iso_time"], str), "iso_time must be str"
 
-    # Value validation
     assert marker_data["reason"] == "Test marker schema"
     assert marker_data["pid"] == os.getpid()
     assert marker_data["timestamp"] > 0
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
 
-
-def test_restart_events_logged_to_audit_trail(monkeypatch):
+def test_restart_events_logged_to_audit_trail(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """RED: Test that restart functionality works and exits with code 42.
 
     Verifies:
@@ -91,55 +95,47 @@ def test_restart_events_logged_to_audit_trail(monkeypatch):
     - Marker file is written (proves tool executed)
     - Exit happens after tool execution (proves async background task)
     """
-    import asyncio
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr(
+        "mcp_server.tools.admin_tools._get_restart_marker_path",
+        lambda: marker_path,
+    )
 
-    from mcp_server.tools.admin_tools import RestartServerInput, RestartServerTool
+    exit_calls: list[int] = []
 
-    # Mock sys.exit to capture exit code
-    exit_calls = []
-
-    def mock_exit(code):
+    def mock_exit(code: int) -> None:
         exit_calls.append(code)
         raise SystemExit(code)
 
-    async def mock_sleep(_seconds):
-        pass
+    async def mock_sleep(_seconds: float) -> None:
+        return None
 
     monkeypatch.setattr("sys.exit", mock_exit)
     monkeypatch.setattr("asyncio.sleep", mock_sleep)
 
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Clean state
-
-    # Execute via async wrapper to let background task run
     tool = RestartServerTool()
     params = RestartServerInput(reason="Test restart execution")
 
-    async def run_test():
+    async def run_test() -> None:
         result = await tool.execute(params)
-        # Verify tool returns success before exit
         assert result.isError is False
         assert "exit with code 42" in result.content[0].text
-        await asyncio.sleep(0.01)  # Let background task start
-        await asyncio.sleep(0)  # Process pending tasks
+        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
-    # Capture exit from background task
     with pytest.raises(SystemExit) as exc_info:
         asyncio.run(run_test())
 
-    # Verify exit code 42 (supervisor restart protocol)
     assert exc_info.value.code == 42
     assert len(exit_calls) == 1
     assert exit_calls[0] == 42
-
-    # Verify marker file was written
     assert marker_path.exists(), "Restart marker file not created"
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
 
-
-def test_verify_server_restarted_with_valid_marker():
+def test_verify_server_restarted_with_valid_marker(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """RED: Test verify_server_restarted with valid marker.
 
     Verifies:
@@ -147,21 +143,21 @@ def test_verify_server_restarted_with_valid_marker():
     - Returns restart details (timestamp, PID, reason)
     - Returns current vs previous PID
     """
-    from mcp_server.tools.admin_tools import verify_server_restarted
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr(
+        "mcp_server.tools.admin_tools._get_restart_marker_path",
+        lambda: marker_path,
+    )
 
-    # Create marker from "past"
-    past_time = time.time() - 10  # 10 seconds ago
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.parent.mkdir(exist_ok=True)
+    past_time = time.time() - 10
     marker_data = {
-        "timestamp": past_time + 5,  # 5 seconds ago (after past_time)
-        "pid": 99999,  # Different PID
+        "timestamp": past_time + 5,
+        "pid": 99999,
         "reason": "Test restart verification",
         "iso_time": datetime.now(UTC).isoformat(),
     }
     marker_path.write_text(json.dumps(marker_data), encoding="utf-8")
 
-    # Verify restart happened after past_time
     result = verify_server_restarted(since_timestamp=past_time)
 
     assert result["restarted"] is True
@@ -171,21 +167,22 @@ def test_verify_server_restarted_with_valid_marker():
     assert "current_pid" in result
     assert "time_since_restart" in result
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
 
-
-def test_verify_server_restarted_no_marker():
+def test_verify_server_restarted_no_marker(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """RED: Test verify_server_restarted with missing marker.
 
     Verifies:
     - Returns restarted=False when marker doesn't exist
     - Returns error message
     """
-    from mcp_server.tools.admin_tools import verify_server_restarted
-
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Ensure no marker
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr(
+        "mcp_server.tools.admin_tools._get_restart_marker_path",
+        lambda: marker_path,
+    )
 
     result = verify_server_restarted(since_timestamp=time.time())
 
@@ -194,18 +191,22 @@ def test_verify_server_restarted_no_marker():
     assert "not found" in result["error"].lower()
 
 
-def test_verify_server_restarted_old_marker():
+def test_verify_server_restarted_old_marker(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """RED: Test verify_server_restarted with outdated marker.
 
     Verifies:
     - Returns restarted=False when marker timestamp < since_timestamp
     """
-    from mcp_server.tools.admin_tools import verify_server_restarted
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr(
+        "mcp_server.tools.admin_tools._get_restart_marker_path",
+        lambda: marker_path,
+    )
 
-    # Create marker from way in the past
-    old_time = time.time() - 100  # 100 seconds ago
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.parent.mkdir(exist_ok=True)
+    old_time = time.time() - 100
     marker_data = {
         "timestamp": old_time,
         "pid": 99999,
@@ -214,17 +215,16 @@ def test_verify_server_restarted_old_marker():
     }
     marker_path.write_text(json.dumps(marker_data), encoding="utf-8")
 
-    # Check against recent time (should fail)
-    recent_time = time.time() - 10  # 10 seconds ago
+    recent_time = time.time() - 10
     result = verify_server_restarted(since_timestamp=recent_time)
 
     assert result["restarted"] is False
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
 
-
-def test_restart_uses_sys_exit_42_not_os_execv(tmp_path, monkeypatch):
+def test_restart_uses_sys_exit_42_not_os_execv(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     """RED: Test that restart tool uses sys.exit(42) for supervisor restart.
 
     Verifies:
@@ -233,63 +233,42 @@ def test_restart_uses_sys_exit_42_not_os_execv(tmp_path, monkeypatch):
     - Response returned before exit (no hung tool calls)
     - Proper supervisor-based restart with exit code protocol
     """
-    import asyncio
+    execv_calls: list[dict[str, object]] = []
+    exit_calls: list[int] = []
 
-    from mcp_server.tools.admin_tools import RestartServerInput, RestartServerTool
-
-    # Track what was called
-    execv_calls = []
-    exit_calls = []
-
-    def mock_execv(path, args):
+    def mock_execv(path: str, args: list[str]) -> None:
         execv_calls.append({"path": path, "args": args})
-        # This should NOT be called with new supervisor approach
         raise SystemExit(0)
 
-    def mock_exit(code):
+    def mock_exit(code: int) -> None:
         exit_calls.append(code)
-        # Simulate exit (don't actually exit test)
         raise SystemExit(code)
 
-    async def mock_sleep(_seconds):
-        # Fast-forward sleep for testing
-        pass
+    async def mock_sleep(_seconds: float) -> None:
+        return None
 
-    # Apply mocks
     monkeypatch.setattr("os.execv", mock_execv)
     monkeypatch.setattr("sys.exit", mock_exit)
     monkeypatch.setattr("asyncio.sleep", mock_sleep)
-
-    # Change to tmp directory (for marker file)
     monkeypatch.chdir(tmp_path)
 
-    # Execute tool (async) - should schedule sys.exit(42), not os.execv
     tool = RestartServerTool()
     params = RestartServerInput(reason="test sys.exit(42) restart")
 
-    # Run the tool and wait for background task
-    async def run_test():
+    async def run_test() -> None:
         result = await tool.execute(params)
-        # Wait a bit for background task to start
+        assert result.isError is False
         await asyncio.sleep(0.01)
-        # Process any pending tasks
         await asyncio.sleep(0)
-        return result
 
-    # Execute and expect SystemExit(42) from mock_exit
     with pytest.raises(SystemExit) as exc_info:
         asyncio.run(run_test())
 
-    # Should exit with code 42 (restart request for supervisor)
     assert exc_info.value.code == 42, (
         f"Expected exit code 42 (supervisor restart), got {exc_info.value.code}"
     )
-
-    # Verify sys.exit(42) was called
     assert len(exit_calls) == 1, "sys.exit should be called once"
     assert exit_calls[0] == 42, (
         f"Expected sys.exit(42) for supervisor restart, got sys.exit({exit_calls[0]})"
     )
-
-    # Verify os.execv was NOT called (old approach, breaks MCP protocol)
     assert not execv_calls, "os.execv should NOT be called (use sys.exit(42) + supervisor instead)"

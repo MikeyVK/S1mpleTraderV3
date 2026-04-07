@@ -36,7 +36,7 @@ class PhaseDetectionResult(TypedDict):
     Result of phase detection with source tracking.
 
     Fields:
-        workflow_phase: Phase name (e.g., "tdd", "research", "unknown")
+        workflow_phase: Phase name (e.g., "implementation", "research", "unknown")
         sub_phase: Optional subphase identifier (e.g., "red", "c1", None)
         source: Where the phase was detected from
         confidence: Confidence level of detection
@@ -79,10 +79,10 @@ class ScopeDecoder:
 
         Args:
             state_path: Path to state.json file (defaults to .st3/state.json)
-            workphases_path: Path to workphases.yaml file (defaults to .st3/workphases.yaml)
+            workphases_path: Path to workphases.yaml file (defaults to .st3/config/workphases.yaml)
         """
         self.state_path = state_path or Path(".st3/state.json")
-        self.workphases_path = workphases_path or Path(".st3/workphases.yaml")
+        self.workphases_path = workphases_path or Path(".st3/config/workphases.yaml")
         self._valid_phases: set[str] | None = None
 
     def detect_phase(
@@ -289,7 +289,7 @@ class ScopeDecoder:
                 "Phase detection failed. "
                 "Recovery: Run transition_phase(to_phase='<phase>') "
                 "or commit with scope 'type(P_PHASE): message'. "
-                "Valid phases: research, planning, design, tdd, integration, "
+                "Valid phases: research, planning, design, implementation, integration, "
                 "documentation, coordination"
             ),
         }

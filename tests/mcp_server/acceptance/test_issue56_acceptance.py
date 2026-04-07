@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from mcp_server.config.settings import Settings
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
@@ -137,7 +138,7 @@ async def test_search_finds_scaffolded_artifacts() -> None:
     searches production docs/, not temp test workspace.
     """
     # Act: Search for existing design doc (production)
-    search_tool = SearchDocumentationTool()
+    search_tool = SearchDocumentationTool(settings=Settings(server={"workspace_root": "."}))
     search_params = SearchDocumentationInput(
         query="unified artifact system",
         scope="all",

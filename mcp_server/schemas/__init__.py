@@ -11,6 +11,35 @@ Infrastructure:
 - BaseRenderContext: Abstract base for all RenderContext schemas
 """
 
+from mcp_server.config.schemas.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.schemas.contributor_config import ContributorConfig, ContributorEntry
+from mcp_server.config.schemas.enforcement_config import (
+    EnforcementAction,
+    EnforcementConfig,
+    EnforcementRule,
+)
+from mcp_server.config.schemas.git_config import GitConfig
+from mcp_server.config.schemas.issue_config import IssueConfig
+from mcp_server.config.schemas.label_config import LabelConfig
+from mcp_server.config.schemas.milestone_config import MilestoneConfig
+from mcp_server.config.schemas.operation_policies_config import OperationPoliciesConfig
+from mcp_server.config.schemas.phase_contracts_config import CheckSpec, PhaseContractsConfig
+from mcp_server.config.schemas.project_structure_config import ProjectStructureConfig
+from mcp_server.config.schemas.quality_config import (
+    JsonViolationsParsing,
+    QualityConfig,
+    QualityGate,
+    TextViolationsParsing,
+    ViolationDTO,
+)
+from mcp_server.config.schemas.scaffold_metadata_config import (
+    CommentPattern,
+    MetadataField,
+    ScaffoldMetadataConfig,
+)
+from mcp_server.config.schemas.scope_config import ScopeConfig
+from mcp_server.config.schemas.workflows import WorkflowConfig
+from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.schemas.base import BaseContext, BaseRenderContext
 from mcp_server.schemas.contexts.architecture import ArchitectureContext
 from mcp_server.schemas.contexts.commit import CommitContext
@@ -89,4 +118,30 @@ __all__ = [
     "ToolRenderContext",
     "UnitTestRenderContext",
     "WorkerRenderContext",
+    # Config schemas and value objects
+    "ArtifactRegistryConfig",
+    "CheckSpec",
+    "CommentPattern",
+    "ContributorConfig",
+    "ContributorEntry",
+    "EnforcementAction",
+    "EnforcementConfig",
+    "EnforcementRule",
+    "GitConfig",
+    "IssueConfig",
+    "JsonViolationsParsing",
+    "LabelConfig",
+    "MetadataField",
+    "MilestoneConfig",
+    "OperationPoliciesConfig",
+    "PhaseContractsConfig",
+    "ProjectStructureConfig",
+    "QualityConfig",
+    "QualityGate",
+    "ScaffoldMetadataConfig",
+    "ScopeConfig",
+    "TextViolationsParsing",
+    "ViolationDTO",
+    "WorkflowConfig",
+    "WorkphasesConfig",
 ]
