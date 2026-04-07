@@ -586,5 +586,44 @@
         ]
       }
     }
+  },
+  "270": {
+    "issue_title": "Remove legacy dead fields from workphases.yaml and policies.yaml",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "implementation",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": null,
+    "created_at": "2026-04-06T14:42:41.692888+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              "workphases.yaml without exit_requires/entry_expects",
+              "policies.yaml without allowed_prefixes on commit operation",
+              "test_operation_policies.py with corrected assertions"
+            ],
+            "description": "Remove exit_requires/entry_expects from workphases.yaml, remove allowed_prefixes from policies.yaml, fix test_operation_policies.py lines 50-51",
+            "exit_criteria": "run_quality_gates(scope=branch) passes; test_operation_policies.py passes; no regression in policy_engine tests",
+            "scope_note": "NOT touched: subphase whitelists (live ScopeEncoder), require_tdd_prefix (live PolicyEngine), Python schema fields (issue #271 scope)",
+            "steps": [
+              "RED: update test_operation_policies.py lines 50-51 - assert commit.allowed_prefixes == []",
+              "GREEN: remove exit_requires+entry_expects from workphases.yaml (research, planning, implementation phases)",
+              "GREEN: remove allowed_prefixes from policies.yaml commit operation",
+              "REFACTOR: run_quality_gates(scope=branch)"
+            ]
+          }
+        ],
+        "total": 1
+      }
+    }
   }
 }
