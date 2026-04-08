@@ -66,9 +66,7 @@ class GitConfig(BaseModel):
         try:
             GitConfig._compiled_pattern = re.compile(pattern)
         except re.error as exc:
-            raise ValueError(
-                f"Invalid branch_name_pattern regex: {pattern}. Error: {exc}"
-            ) from exc
+            raise ValueError(f"Invalid branch_name_pattern regex: {pattern}. Error: {exc}") from exc
         return self
 
     def has_branch_type(self, branch_type: str) -> bool:
