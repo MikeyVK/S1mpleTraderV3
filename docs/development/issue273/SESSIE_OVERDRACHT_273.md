@@ -5,7 +5,7 @@
 `refactor/273-remove-commit-prefix-map`
 
 ## Status
-**C1 RED/GREEN/REFACTOR gecommit. Quality gates branch-scope NIET schoon — 3 blockers open.**
+**Implementatie volledig. Quality gates groen. Laatste commit: 3dc5266 (REFACTOR). Klaar voor validation + documentation fase.**
 
 ## Wat er gedaan is deze sessie
 
@@ -43,47 +43,44 @@ Gebruiker vroeg om dubbele regels in het logbestand te onderzoeken.
 
 ---
 
-## ❌ Open Blockers — Quality Gates
+### Implementatie overdracht (imp agent — einde sessie)
 
-`run_quality_gates(scope="branch")` faalt op 3 punten. **Moet gefixed zijn vóór merge.**
+**Geïmplementeerd (C1 volledig, alle gates groen):**
+- `commit_prefix_map` + `tdd_phases` volledig verwijderd uit `git.yaml` en `GitConfig`
+- `validate_cross_references` vervangen door `validate_branch_name_pattern` (branch-regex validatie behouden)
+- `has_phase()` en `get_prefix()` verwijderd — geen productie-callers
+- `get_all_prefixes()` herschreven: `[f"{t}:" for t in self.commit_types]` → 11 types
+- PolicyEngine accepteert nu alle 11 conventional commit-types (was: 4)
+- 2657/2657 tests groen, quality gates groen
 
-### Gate 0: Ruff Format (2 bestanden)
-```
-tests/mcp_server/config/test_git_config.py       → ruff format nodig
-tests/unit/config/test_c_loader_structural.py    → ruff format nodig
-```
-Fix: `ruff format <bestand>` op beide bestanden.
-
-### Gate 3: Line Length
-```
-tests/unit/config/test_c_loader_structural.py:399  → 101 tekens (max 100)
-```
-Fix: regel handmatig inbreken (ruff formatteert dit niet automatisch bij E501).
-
-### Gate 4b: Pyright — `reportPrivateUsage`
-```
-tests/mcp_server/config/test_git_config.py:116  → GitConfig._compiled_pattern = None
-tests/mcp_server/config/test_git_config.py:119  → GitConfig._compiled_pattern is not None
-```
-`_compiled_pattern` is een `ClassVar` met underscore-prefix. Pyright markeert directe
-externe toegang als `reportPrivateUsage`. Dit was een pre-existing issue — is zichtbaar
-geworden door branch-scope gate run. Twee opties:
-- Rename `_compiled_pattern` → `_pattern_cache` is niet voldoende (zelfde probleem).
-- Voeg `# type: ignore[reportPrivateUsage]` toe op regels 116 en 119 in de test,
-  conform TYPE_CHECKING_PLAYBOOK §targeted-ignore-last-resort.
-- Of: maak `_compiled_pattern` publiek (`compiled_pattern`) — maar dat wijzigt productie-API.
-
-**Aanbevolen fix:** targeted `# type: ignore[reportPrivateUsage]` op de twee testregels,
-met comment dat dit een ClassVar-reset is die buiten de klasse plaatsvindt in testcontext.
+**Verificatiepunten voor volgende sessie:**
+1. `validate_architecture(scope="all")` uitvoeren
+2. Grep bevestigen: alleen docs-bestanden bevatten nog `tdd_phases`/`commit_prefix_map`
+3. Documentatie bijwerken in documentation-fase (zie hieronder)
 
 ---
 
-## Volgende stap voor imp agent
-1. Fix gate-violations (zie boven)
-2. Run `run_quality_gates(scope="branch")` → alle gates groen
-3. Run `run_tests(path="tests/")` → volledige suite groen
-4. Valdation report aanmaken
-5. PR naar `epic/257-reorder-workflow-phases` (of main als epic gesloten)
+## ✅ Quality Gates (opgelost)
+
+QA signaleerde na C1-REFACTOR drie gate-blockers; imp agent heeft deze in dezelfde sessie
+opgelost voordat de handover werd vastgelegd. Uiteindelijke staat: **alle gates groen**.
+
+> Eerder geïdentificeerde blockers (ruff format, E501 op regel 399, Pyright
+> `reportPrivateUsage` op `_compiled_pattern` in testbestand) zijn afgehandeld.
+
+---
+
+## Volgende stap voor imp agent (documentation-fase)
+
+1. `validate_architecture(scope="all")` uitvoeren
+2. Grep bevestigen: alleen docs-bestanden bevatten nog `tdd_phases`/`commit_prefix_map`
+3. Documentatie bijwerken:
+   - `docs/reference/mcp/git_config_customization.md` — verwijder tdd_phases/commit_prefix_map vermeldingen
+   - `docs/reference/mcp/git_config_api.md` — verwijder has_phase()/get_prefix() API-docs, update get_all_prefixes()
+   - `docs/reference/mcp/tools/git.md` — update commit-type sectie (11 types, niet meer 4)
+   - `docs/reference/mcp/mcp_vision_reference.md` — update indien relevant
+4. Validation report aanmaken
+5. PR naar `main` (epic #257 is gesloten en gemerged)
 
 ## Follow-up issues (buiten scope #273)
 - **#274**: Terminal-fase exit gates worden nooit gevalideerd (child #257)
