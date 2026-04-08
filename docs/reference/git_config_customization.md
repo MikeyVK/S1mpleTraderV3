@@ -1,28 +1,42 @@
-# GitConfig Customization Guide
+﻿# GitConfig Customization Guide
 
-**Status**: APPROVED  
-**Date**: 2026-01-15  
-**Related**: Issue #55
+**Status**: APPROVED
+**Date**: 2026-04-08
+**Related**: Issue #55, Issue #273
 
 ## Overview
 
-The `.st3/git.yaml` file controls 11 git-related conventions used by the MCP server workflow tools. This guide shows you how to customize these conventions for your team's workflow.
+The `.st3/config/git.yaml` file controls 6 git-related conventions used by the MCP server
+workflow tools. The server loads this file once at startup via `ConfigLoader` and injects
+the resulting `GitConfig` value object into all tools and managers that need it.
 
 ## Configuration File Location
 
-- **Path**: `.st3/git.yaml`
+- **Path**: `.st3/config/git.yaml`
 - **Format**: YAML
-- **Loaded**: On server startup (singleton pattern)
-- **Backup**: Automatically created as `.st3/git.yaml.backup` on first modification
+- **Loaded**: On server startup via `ConfigLoader.load_git_config()`
+- **Reload**: Restart the MCP server to apply changes
 
-## Available Conventions
+## Available Fields
 
 ### 1. Branch Types (`branch_types`)
-List of allowed branch type prefixes for branch names.
+List of allowed branch type prefixes used by `create_branch`.
 
-**Default**: `[feature, fix, refactor, docs, epic]`
+**Type**: `list[str]` — required, non-empty
 
-**Example**:
+**Default (project)**:
+```yaml
+branch_types:
+  - feature
+  - bug
+  - fix
+  - refactor
+  - docs
+  - hotfix
+  - epic
+```
+
+**Example** (team-specific):
 ```yaml
 branch_types:
   - feature
@@ -31,45 +45,20 @@ branch_types:
   - experiment
 ```
 
-### 2. TDD Phases (`tdd_phases`)
-Sequential phases for Test-Driven Development workflow.
+### 2. Protected Branches (`protected_branches`)
+Branch names that cannot be deleted via `git_delete_branch`.
 
-**Default**: `[red, green, refactor, docs]`
+**Type**: `list[str]` — required, non-empty
 
-**Example**:
+**Default (project)**:
 ```yaml
-tdd_phases:
-  - test
-  - impl
-  - refactor
+protected_branches:
+  - main
+  - master
+  - develop
 ```
 
-### 3. Commit Prefix Map (`commit_prefix_map`)
-Maps TDD phases to conventional commit prefixes.
-
-**Default**:
-```yaml
-commit_prefix_map:
-  red: test
-  green: feat
-  refactor: refactor
-  docs: docs
-```
-
-**Example** (custom phases):
-```yaml
-commit_prefix_map:
-  test: test
-  impl: feat
-  refactor: refactor
-```
-
-### 4. Protected Branches (`protected_branches`)
-Branches that cannot be deleted via `git_delete_branch` tool.
-
-**Default**: `[main, master, develop]`
-
-**Example**:
+**Example** (stricter):
 ```yaml
 protected_branches:
   - main
@@ -77,159 +66,179 @@ protected_branches:
   - production
 ```
 
-### 5. Branch Name Pattern (`branch_name_pattern`)
-Regex pattern for valid branch name suffixes (after type/number).
+### 3. Branch Name Pattern (`branch_name_pattern`)
+Regex pattern applied to the name suffix of a branch (the part after `type/number-`).
 
-**Default**: `^[a-z0-9-]+$` (lowercase, digits, hyphens)
+**Type**: `str` — required, must be a valid regex, cannot be blank
+
+**Default (project)**: `^[a-z0-9-]+$` (lowercase letters, digits, hyphens)
 
 **Example** (allow underscores):
 ```yaml
-branch_name_pattern: ^[a-z0-9_-]+$
+branch_name_pattern: "^[a-z0-9_-]+$"
 ```
 
-### 6. Default Base Branch (`default_base_branch`)
-Default branch to create new branches from when not specified.
+### 4. Commit Types (`commit_types`)
+List of allowed [Conventional Commit](https://www.conventionalcommits.org/) type prefixes.
+Used by `git_add_or_commit` input validation and by `PolicyEngine.decide()` when
+`require_tdd_prefix: true` is set in `policies.yaml`.
 
-**Default**: `main`
+**Type**: `list[str]` — required, non-empty
+
+**Default (project)**:
+```yaml
+commit_types:
+  - feat
+  - fix
+  - docs
+  - style
+  - refactor
+  - test
+  - chore
+  - perf
+  - ci
+  - build
+  - revert
+```
+
+**Example** (minimal set):
+```yaml
+commit_types:
+  - feat
+  - fix
+  - test
+  - refactor
+  - docs
+```
+
+### 5. Default Base Branch (`default_base_branch`)
+Default branch used as the base when `create_branch` is called without an explicit base.
+
+**Type**: `str` — required
+
+**Default (project)**: `main`
 
 **Example**:
 ```yaml
 default_base_branch: develop
 ```
 
-### 7. Issue Number Pattern (`issue_number_pattern`)
-Regex pattern for extracting issue numbers from branch names.
+### 6. Issue Title Max Length (`issue_title_max_length`)
+Maximum character length enforced when creating issues via `create_issue`.
 
-**Default**: `(?:^|/)(\\d+)-`
+**Type**: `int` — required, must be ≥ 1
 
-**Example** (support JIRA keys):
+**Default (project)**: `72`
+
+**Example**:
 ```yaml
-issue_number_pattern: (?:^|/)([A-Z]+-\\d+)-
+issue_title_max_length: 80
 ```
 
-### 8. Epic Naming Conventions (`epic_branch_format`, `epic_issue_pattern`)
-Patterns specific to epic branches.
+## Complete Example
 
-**Defaults**:
+Current project configuration (`.st3/config/git.yaml`):
+
 ```yaml
-epic_branch_format: epic/{issue_number}-{name}
-epic_issue_pattern: (?:^|/)epic-(\\d+)
-```
+# Git Conventions Configuration
+branch_types:
+  - feature
+  - bug
+  - fix
+  - refactor
+  - docs
+  - hotfix
+  - epic
 
-### 9. Phase Transition Map (`phase_transition_map`)
-Defines allowed sequential phase transitions (internal use).
+protected_branches:
+  - main
+  - master
+  - develop
 
-**Default**: Sequential red → green → refactor → docs
+branch_name_pattern: "^[a-z0-9-]+$"
 
-### 10. Branch Format String (`branch_format`)
-Template for creating branch names: `{type}/{issue_number}-{name}`
+commit_types:
+  - feat
+  - fix
+  - docs
+  - style
+  - refactor
+  - test
+  - chore
+  - perf
+  - ci
+  - build
+  - revert
 
-### 11. Protected Branch Patterns (`protected_branch_patterns`)
-Regex patterns for additional protected branches (e.g., `release/*`).
+default_base_branch: main
 
-**Default**: `[^release/.*$]`
-
-## Customization Examples
-
-### Example 1: Trunk-Based Development
-```yaml
-branch_types: [feature, hotfix]
-tdd_phases: [test, impl]
-commit_prefix_map:
-  test: test
-  impl: feat
-default_base_branch: trunk
-protected_branches: [trunk, main]
-```
-
-### Example 2: GitFlow with JIRA
-```yaml
-branch_types: [feature, bugfix, release, hotfix]
-tdd_phases: [red, green, refactor, docs]
-default_base_branch: develop
-protected_branches: [main, develop]
-issue_number_pattern: (?:^|/)([A-Z]+-\\d+)-
-branch_name_pattern: ^[a-z0-9_-]+$
-```
-
-### Example 3: Minimal TDD Workflow
-```yaml
-branch_types: [feature, fix]
-tdd_phases: [test, impl]
-commit_prefix_map:
-  test: test
-  impl: feat
+issue_title_max_length: 72
 ```
 
 ## Applying Configuration Changes
 
-### Important: MCP Client Restart Required
+After editing `.st3/config/git.yaml`, restart the MCP server for changes to take effect:
 
-⚠️ **JSON Schema Caching Limitation**: The VS Code MCP client caches JSON schemas at initialization. After modifying `.st3/git.yaml`, you must **restart the VS Code MCP extension connection** (not just the server) for changes to take effect in MCP tools.
+1. Edit `.st3/config/git.yaml`
+2. Restart the MCP server via VS Code Command Palette:
+   `MCP: Restart Server`
+3. Verify with `get_work_context` or any tool call
 
-**Steps**:
-1. Edit `.st3/git.yaml`
-2. Restart VS Code MCP extension:
-   - Open VS Code Command Palette (`Ctrl+Shift+P`)
-   - Run: `MCP: Restart Server` (or disconnect/reconnect)
-3. Verify changes: Use `get_work_context` or test a tool call
+**Note**: The VS Code MCP client caches tool input schemas at startup. If you add or
+remove `branch_types` or `commit_types`, a full VS Code window reload
+(`Developer: Reload Window`) may be needed to update autocomplete.
 
-**Alternative**: Reload VS Code window (`Developer: Reload Window`)
+## Validation
 
-### Validation
+`ConfigLoader.load_git_config()` runs Pydantic validation on load. Any error raises
+`ConfigError` and stops server startup with a clear message.
 
-The `GitConfig` class validates all settings on load:
-- Branch types must be non-empty lowercase strings
-- TDD phases must match commit_prefix_map keys
-- Patterns must be valid regex
-- Protected branches must not overlap with branch types
+**Rules enforced**:
+- All fields must be present (no optional fields with defaults)
+- `branch_types` and `protected_branches` must be non-empty lists
+- `branch_name_pattern` must be a non-blank, valid regex
+- `commit_types` must be a non-empty list
+- `issue_title_max_length` must be ≥ 1
 
-**Test your config**:
+**Test your config** (unit test style):
 ```python
-from mcp_server.config.git_config import GitConfig
+from pathlib import Path
+from mcp_server.config.loader import ConfigLoader
 
-GitConfig.reset_instance()
-gc = GitConfig.from_file()
-print(gc.branch_types)  # Verify your changes loaded
+config = ConfigLoader(Path(".st3/config")).load_git_config()
+print(config.branch_types)        # verify branch types
+print(config.commit_types)        # verify commit types
+print(config.default_base_branch) # verify default base
 ```
 
 ## Troubleshooting
 
 ### Issue: Tool rejects custom branch type
-**Symptom**: `create_branch` with custom type fails with pattern validation error
+**Symptom**: `create_branch` fails with "Invalid branch_type" error
 
-**Cause**: VS Code MCP client uses cached JSON schema from initialization
+**Cause**: VS Code MCP client uses cached JSON schema enum from startup
 
-**Solution**: Restart VS Code MCP extension connection (see "Applying Configuration Changes")
-
-### Issue: Config changes not reflected
-**Symptom**: Python tests show new config but tools use old values
-
-**Cause**: Server loaded config at startup, singleton pattern caches instance
-
-**Solution**: 
-1. For Python tests: Call `GitConfig.reset_instance()` before `from_file()`
-2. For MCP tools: Restart VS Code MCP extension
+**Solution**: Restart VS Code window (`Developer: Reload Window`) after adding branch types
 
 ### Issue: Validation error on load
-**Symptom**: Server logs Pydantic validation error on startup
+**Symptom**: Server fails to start; logs show `ConfigError: Config file not found` or
+Pydantic validation error
 
-**Cause**: Invalid configuration (typo, wrong type, regex syntax error)
+**Cause**: Invalid configuration (missing field, wrong type, invalid regex syntax)
 
-**Solution**: 
-1. Check `.st3/git.yaml` syntax
-2. Restore from `.st3/git.yaml.backup` if available
-3. Review validation error message for specific issue
+**Solution**:
+1. Check `.st3/config/git.yaml` syntax — all 6 fields must be present
+2. Verify `branch_name_pattern` is a valid regex
+3. Fix the reported field and restart the server
 
-### Issue: Commit prefixes mismatch
-**Symptom**: `git_add_or_commit` creates wrong conventional commit prefix
+### Issue: Commit type rejected
+**Symptom**: `git_add_or_commit` fails with "Invalid commit_type" error
 
-**Cause**: `commit_prefix_map` doesn't match custom `tdd_phases`
+**Cause**: The `commit_type` provided is not in `commit_types`
 
-**Solution**: Ensure every phase in `tdd_phases` has an entry in `commit_prefix_map`
+**Solution**: Either add the type to `commit_types` in `git.yaml` and restart, or use a
+type that is already in the list
 
 ## See Also
 
-- [GitConfig API Reference](./git_config_api.md) - Complete class documentation
-- [MCP Schema Caching Limitation](../development/issue55/mcp_schema_caching_limitation.md) - Technical details
-- [Integration Testing](../development/issue55/integration_test_plan.md) - How we validated the system
+- [GitConfig API Reference](./git_config_api.md) — `GitConfig` class, fields and methods
