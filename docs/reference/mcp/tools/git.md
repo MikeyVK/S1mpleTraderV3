@@ -819,33 +819,47 @@ Get diff statistics between two branches.
 
 ### .st3/git.yaml
 
-Git conventions and TDD phases:
+Git conventions loaded on server startup:
 
 ```yaml
-git:
-  protected_branches:
-    - main
-    - develop
-    - master
-  
-  branch_patterns:
-    feature: "^feature/\\d+-[a-z0-9-]+$"
-    bug: "^bugfix/\\d+-[a-z0-9-]+$"
-    docs: "^docs/[a-z0-9-]+$"
-  
-  tdd_phases:
-    red:
-      prefix: "test"
-      description: "Add failing test"
-    green:
-      prefix: "feat"
-      description: "Implement feature"
-    refactor:
-      prefix: "refactor"
-      description: "Refactor code"
-    docs:
-      prefix: "docs"
-      description: "Update documentation"
+# Branch types allowed by create_branch
+branch_types:
+  - feature
+  - bug
+  - fix
+  - refactor
+  - docs
+  - hotfix
+  - epic
+
+# Branches that cannot be deleted
+protected_branches:
+  - main
+  - master
+  - develop
+
+# Regex pattern for branch name suffix (kebab-case)
+branch_name_pattern: "^[a-z0-9-]+$"
+
+# Conventional Commit types (https://www.conventionalcommits.org/)
+commit_types:
+  - feat
+  - fix
+  - docs
+  - style
+  - refactor
+  - test
+  - chore
+  - perf
+  - ci
+  - build
+  - revert
+
+# Default base branch for PR creation
+default_base_branch: main
+
+# Maximum length for issue titles
+issue_title_max_length: 72
 ```
 
 ---

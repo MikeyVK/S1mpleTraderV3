@@ -56,12 +56,6 @@ def config_root(tmp_path: Path) -> Path:
         "git.yaml",
         {
             "branch_types": ["feature", "bug"],
-            "tdd_phases": ["red", "green", "refactor"],
-            "commit_prefix_map": {
-                "red": "test",
-                "green": "feat",
-                "refactor": "refactor",
-            },
             "protected_branches": ["main"],
             "branch_name_pattern": "^[a-z0-9-]+$",
             "commit_types": ["feat", "fix", "test"],
@@ -402,7 +396,9 @@ def test_config_package_contains_no_legacy_wrapper_modules() -> None:
         "workphases_config.py",
     }
     present_wrappers = sorted(
-        path.name for path in config_dir.iterdir() if path.is_file() and path.name in legacy_wrappers
+        path.name
+        for path in config_dir.iterdir()
+        if path.is_file() and path.name in legacy_wrappers
     )
     assert present_wrappers == []
 

@@ -1,6 +1,6 @@
 {
-  "branch": "refactor/270-remove-dead-config-fields",
-  "issue_number": 270,
+  "branch": "refactor/273-remove-commit-prefix-map",
+  "issue_number": 273,
   "workflow_name": "refactor",
   "current_phase": "documentation",
   "current_cycle": null,
@@ -14,31 +14,39 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
-  "issue_title": "Remove legacy dead fields from workphases.yaml and policies.yaml",
+  "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie.",
+  "issue_title": "Remove commit_prefix_map from git.yaml, fix PolicyEngine prefix SSOT",
   "parent_branch": null,
-  "created_at": "2026-04-06T14:42:42.126647+00:00",
+  "created_at": "2026-04-07T12:37:43.536395+00:00",
   "transitions": [
     {
       "from_phase": "research",
       "to_phase": "planning",
-      "timestamp": "2026-04-06T14:59:24.287563+00:00",
+      "timestamp": "2026-04-07T13:08:38.072069+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null
     },
     {
       "from_phase": "planning",
+      "to_phase": "tdd",
+      "timestamp": "2026-04-07T13:10:21.419347+00:00",
+      "human_approval": "Gebruiker akkoord: 7 april 2026 \u2014 geen ontwerp nodig, wijzigingen zijn duidelijk",
+      "forced": true,
+      "skip_reason": "Design fase overgeslagen: wijzigingen zijn exact gedefinieerd in research.md, geen architectuurkeuzes open, breaking flag-day change met 1 TDD-cyclus."
+    },
+    {
+      "from_phase": "tdd",
       "to_phase": "implementation",
-      "timestamp": "2026-04-06T17:36:45.870495+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
+      "timestamp": "2026-04-08T06:17:26.212918+00:00",
+      "human_approval": "Gebruiker akkoord: 8 april 2026 \u2014 correctie van verkeerde fase tdd naar implementation (refactor workflow heeft geen tdd fase)",
+      "forced": true,
+      "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie."
     },
     {
       "from_phase": "implementation",
       "to_phase": "validation",
-      "timestamp": "2026-04-06T17:42:32.262937+00:00",
+      "timestamp": "2026-04-08T06:36:48.682756+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null
@@ -46,7 +54,7 @@
     {
       "from_phase": "validation",
       "to_phase": "documentation",
-      "timestamp": "2026-04-06T17:44:05.339403+00:00",
+      "timestamp": "2026-04-08T14:43:30.585102+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null

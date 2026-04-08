@@ -1,326 +1,249 @@
-# GitConfig API Reference
+﻿# GitConfig API Reference
 
-**Module**: `mcp_server.config.git_config`  
-**Date**: 2026-01-15  
-**Related**: Issue #55
+**Module**: `mcp_server.config.schemas.git_config`
+**Date**: 2026-04-08
+**Related**: Issue #55, Issue #273
 
 ## Overview
 
-`GitConfig` is a Pydantic BaseModel singleton that loads and validates git workflow conventions from `.st3/git.yaml`. It provides 11 externalized conventions with type-safe access and validation.
+`GitConfig` is a Pydantic `BaseModel` value object that holds the typed git conventions
+loaded from `.st3/config/git.yaml`. It is instantiated via `ConfigLoader.load_git_config()`
+on server startup and injected into all tools and managers that need git convention access.
+
+There is no singleton or class-level caching. Each `ConfigLoader.load_git_config()` call
+returns a fresh instance validated against the current file contents.
+
+## Loading Pattern
+
+```python
+from pathlib import Path
+from mcp_server.config.loader import ConfigLoader
+
+# Standard usage (server startup)
+loader = ConfigLoader(config_root=Path(".st3/config"))
+git_config = loader.load_git_config()
+
+# Load from explicit path (tests)
+git_config = ConfigLoader(custom_path.parent).load_git_config(config_path=custom_path)
+```
+
+**Raises**:
+- `ConfigError`: File not found, or YAML is invalid / missing required fields
 
 ## Class: GitConfig
 
 **Base Class**: `pydantic.BaseModel`
 
-**Pattern**: Singleton (via `_instance` class variable)
+**File Location**: `mcp_server/config/schemas/git_config.py`
 
-**File Location**: `mcp_server/config/git_config.py`
+### Fields
 
-### Class Variables
+All fields are required — there are no optional fields or Python-level defaults.
+
+#### `branch_types: list[str]`
+Allowed branch type prefixes for `create_branch` validation.
+
+**Constraints**: non-empty list
+
+**Example value**: `["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"]`
+
+---
+
+#### `protected_branches: list[str]`
+Branch names that `git_delete_branch` will refuse to delete.
+
+**Constraints**: non-empty list
+
+**Example value**: `["main", "master", "develop"]`
+
+---
+
+#### `branch_name_pattern: str`
+Regex applied to the name-suffix portion of a branch (`type/number-{name}` → `{name}`).
+
+**Constraints**: non-blank string, must compile as valid regex
+
+**Validation**: `validate_branch_name_pattern()` model validator compiles and caches the
+pattern at load time; raises `ValueError` on blank or invalid regex.
+
+**Example value**: `"^[a-z0-9-]+$"`
+
+---
+
+#### `commit_types: list[str]`
+Allowed [Conventional Commit](https://www.conventionalcommits.org/) type identifiers.
+
+Used by:
+- `GitCommitInput.validate_commit_type()` — rejects unknown overrides
+- `PolicyEngine.decide()` (when `require_tdd_prefix: true`) — validates message prefix
+
+**Constraints**: non-empty list
+
+**Example value**: `["feat", "fix", "docs", "style", "refactor", "test", "chore", "perf", "ci", "build", "revert"]`
+
+---
+
+#### `default_base_branch: str`
+Default base branch for `create_branch` when no explicit base is provided.
+
+**Example value**: `"main"`
+
+---
+
+#### `issue_title_max_length: int`
+Maximum character length for issue titles created via `create_issue`.
+
+**Constraints**: `>= 1`
+
+**Example value**: `72`
+
+---
+
+### Model Validator
+
+#### `validate_branch_name_pattern() -> GitConfig`
+Runs after model construction (`mode="after"`). Validates `branch_name_pattern` is
+non-blank and compiles it as a regex. Stores the compiled result in `_compiled_pattern`
+(class variable) for reuse by `validate_branch_name()`.
+
+**Raises**: `ValueError` with actionable message when pattern is blank or invalid.
+
+---
+
+## Instance Methods
+
+### `has_branch_type(branch_type: str) -> bool`
+Returns `True` if `branch_type` is in `branch_types` (case-sensitive).
 
 ```python
-_instance: Optional["GitConfig"] = None  # Singleton instance
+gc.has_branch_type("feature")  # True
+gc.has_branch_type("FEATURE")  # False
 ```
 
-### Configuration Fields
+---
 
-#### 1. `branch_types: list[str]`
-List of allowed branch type prefixes.
+### `validate_branch_name(name: str) -> bool`
+Returns `True` if `name` matches `branch_name_pattern`.
 
-**Default**: `["feature", "fix", "refactor", "docs", "epic"]`
-
-**Validation**: Non-empty, lowercase-only strings
-
-**Example**:
 ```python
-gc = GitConfig.from_file()
-assert "feature" in gc.branch_types
+gc.validate_branch_name("my-feature-123")  # True
+gc.validate_branch_name("My_Feature")       # False (uppercase + underscore)
 ```
 
-#### 2. `tdd_phases: list[str]`
-Sequential TDD workflow phases.
+---
 
-**Default**: `["red", "green", "refactor", "docs"]`
+### `has_commit_type(commit_type: str) -> bool`
+Returns `True` if `commit_type` is in `commit_types` (case-insensitive).
 
-**Validation**: Must have matching keys in `commit_prefix_map`
-
-#### 3. `commit_prefix_map: dict[str, str]`
-Maps TDD phases to conventional commit prefixes.
-
-**Default**: `{"red": "test", "green": "feat", "refactor": "refactor", "docs": "docs"}`
-
-**Validation**: Keys must match all `tdd_phases`
-
-#### 4. `protected_branches: list[str]`
-Branches that cannot be deleted.
-
-**Default**: `["main", "master", "develop"]`
-
-#### 5. `branch_name_pattern: str`
-Regex pattern for valid branch name suffixes.
-
-**Default**: `"^[a-z0-9-]+$"`
-
-**Usage**: Validates the `{name}` part of `{type}/{issue_number}-{name}`
-
-#### 6. `default_base_branch: str`
-Default branch for creating new branches.
-
-**Default**: `"main"`
-
-#### 7. `issue_number_pattern: str`
-Regex pattern for extracting issue numbers from branch names.
-
-**Default**: `"(?:^|/)(\\d+)-"`
-
-**Usage**: Extracts `123` from `feature/123-my-branch`
-
-#### 8. `epic_branch_format: str`
-Format template for epic branches.
-
-**Default**: `"epic/{issue_number}-{name}"`
-
-#### 9. `epic_issue_pattern: str`
-Regex pattern for extracting issue numbers from epic branches.
-
-**Default**: `"(?:^|/)epic-(\\d+)"`
-
-#### 10. `phase_transition_map: dict[str, str]`
-Maps each phase to its allowed next phase.
-
-**Default**: Sequential transitions based on `tdd_phases`
-
-**Generated**: Automatically from `tdd_phases` list
-
-#### 11. `protected_branch_patterns: list[str]`
-Regex patterns for additional protected branches.
-
-**Default**: `["^release/.*$"]`
-
-**Usage**: Pattern-based protection (e.g., all `release/*` branches)
-
-#### 12. `branch_format: str`
-Template for creating branch names.
-
-**Default**: `"{type}/{issue_number}-{name}"`
-
-**Usage**: Used by `create_branch` tool
-
-## Class Methods
-
-### `from_file(cls, path: Optional[str] = None) -> GitConfig`
-Load configuration from YAML file (singleton pattern).
-
-**Parameters**:
-- `path` (optional): Path to yaml file. Defaults to `.st3/git.yaml`
-
-**Returns**: `GitConfig` instance (singleton)
-
-**Example**:
 ```python
-from mcp_server.config.git_config import GitConfig
-
-gc = GitConfig.from_file()
-print(gc.branch_types)  # ['feature', 'fix', 'refactor', 'docs', 'epic']
-
-# Load from custom path
-gc = GitConfig.from_file("custom/config.yaml")
+gc.has_commit_type("feat")  # True
+gc.has_commit_type("FEAT")  # True
+gc.has_commit_type("yolo")  # False
 ```
 
-**Behavior**:
-- Creates singleton instance on first call
-- Returns cached instance on subsequent calls
-- Validates all fields via Pydantic
+---
 
-**Raises**:
-- `FileNotFoundError`: If config file doesn't exist
-- `ValidationError`: If config is invalid (wrong types, missing keys, regex errors)
+### `is_protected(branch_name: str) -> bool`
+Returns `True` if `branch_name` is in `protected_branches` (case-sensitive exact match).
 
-### `reset_instance(cls) -> None`
-Reset the singleton instance (force reload on next `from_file()`).
-
-**Usage**: Testing and config hot-reload scenarios
-
-**Example**:
 ```python
-from mcp_server.config.git_config import GitConfig
-
-# Load original config
-gc1 = GitConfig.from_file()
-
-# Modify .st3/git.yaml externally
-# ...
-
-# Force reload
-GitConfig.reset_instance()
-gc2 = GitConfig.from_file()  # Loads new config
-
-assert gc1 is not gc2  # Different instances
+gc.is_protected("main")        # True
+gc.is_protected("Main")        # False
+gc.is_protected("feature/123") # False
 ```
 
-**Important**: In production, config is loaded once at server startup. Use `reset_instance()` only in tests or when explicitly reloading config.
+---
 
-## Validators
+### `get_all_prefixes() -> list[str]`
+Returns each commit type formatted as a conventional commit prefix (`"type:"`).
 
-### `@field_validator("branch_types")`
-Validates branch types are non-empty lowercase strings.
+Used by `PolicyEngine.decide()` for the `require_tdd_prefix` check.
 
-**Rules**:
-- Each type must be non-empty
-- Each type must contain only lowercase letters
-
-**Raises**: `ValueError` with descriptive message
-
-### `@field_validator("commit_prefix_map")`
-Validates commit prefix map keys match TDD phases.
-
-**Rules**:
-- All `tdd_phases` must have a mapping
-- No extra keys allowed
-- Values are conventional commit types (e.g., "feat", "test")
-
-**Raises**: `ValueError` if keys mismatch
-
-### `@model_validator(mode="after")`
-Post-initialization validator for complex rules.
-
-**Checks**:
-- `phase_transition_map` generated from `tdd_phases`
-- Regex patterns are valid
-- No circular dependencies
-
-## Usage Examples
-
-### Basic Usage
 ```python
-from mcp_server.config.git_config import GitConfig
-
-gc = GitConfig.from_file()
-
-# Check branch type allowed
-if "hotfix" in gc.branch_types:
-    print("Hotfix branches supported")
-
-# Get commit prefix for phase
-prefix = gc.commit_prefix_map.get("green")  # "feat"
-
-# Check if branch protected
-if "main" in gc.protected_branches:
-    print("Main branch is protected")
+gc.get_all_prefixes()
+# ["feat:", "fix:", "docs:", "style:", "refactor:", "test:", "chore:", "perf:", "ci:", "build:", "revert:"]
 ```
 
-### Integration with PolicyEngine
+---
+
+### `build_branch_type_regex() -> str`
+Returns a non-capturing regex alternation group of all branch types.
+
+Used internally by `extract_issue_number()`.
+
 ```python
-from mcp_server.config.git_config import GitConfig
-from mcp_server.managers.policy_engine import PolicyEngine
-
-gc = GitConfig.from_file()
-pe = PolicyEngine(gc)
-
-# Validate branch name
-is_valid = pe.is_valid_branch_name("feature/123-my-branch")
-
-# Get commit prefix for phase
-prefix = pe.get_commit_prefix_for_phase("red")  # "test"
+gc.build_branch_type_regex()
+# "(?:feature|bug|fix|refactor|docs|hotfix|epic)"
 ```
 
-### Testing Custom Configurations
+---
+
+### `extract_issue_number(branch: str) -> int | None`
+Parses the issue number from a branch name formatted as `type/number-name`.
+Returns `None` when no issue number is present.
+
 ```python
-from mcp_server.config.git_config import GitConfig
-
-# Load custom test config
-GitConfig.reset_instance()
-gc = GitConfig.from_file(".st3/test_git.yaml")
-
-# Verify custom values
-assert gc.branch_types == ["epic", "hotfix", "experiment"]
-assert gc.tdd_phases == ["test", "impl", "refactor"]
-assert gc.default_base_branch == "develop"
-
-# Cleanup
-GitConfig.reset_instance()
+gc.extract_issue_number("feature/42-my-feature")  # 42
+gc.extract_issue_number("fix/7-hotpatch")          # 7
+gc.extract_issue_number("main")                    # None
+gc.extract_issue_number("feature/no-number")       # None
 ```
 
-### Validation Error Handling
-```python
-from mcp_server.config.git_config import GitConfig
-from pydantic import ValidationError
-
-try:
-    gc = GitConfig.from_file("invalid_config.yaml")
-except ValidationError as e:
-    print("Config validation failed:")
-    for error in e.errors():
-        print(f"  {error['loc']}: {error['msg']}")
-except FileNotFoundError:
-    print("Config file not found, using defaults")
-```
+---
 
 ## Integration Points
 
-### 1. PolicyEngine
-Uses `GitConfig` for all validation logic:
-- Branch name validation
-- Branch type checking
-- Protected branch checks
-- Commit prefix generation
+### GitManager
+Receives `git_config` at construction. Uses it for:
+- `has_branch_type()` — branch type validation in `create_branch`
+- `build_branch_type_regex()` / `extract_issue_number()` — internal branch parsing
+- `is_protected()` — protected branch enforcement
 
-### 2. GitManager
-Uses `GitConfig` for:
-- Default base branch detection
-- Branch format string
-- Protected branch enforcement
+### PolicyEngine
+Loads its own `GitConfig` via `ConfigLoader.load_git_config()` (independent load).
+Uses `get_all_prefixes()` for the `require_tdd_prefix` commit-message check.
 
-### 3. PhaseStateEngine
-Uses `GitConfig` for:
-- Phase transition validation
-- TDD phase sequencing
-- Commit prefix mapping
+### GitCommitInput / CreateBranchInput (tools)
+Receive `GitConfig` via `configure(git_config)` class method at tool construction.
+Use `has_commit_type()` and `has_branch_type()` for Pydantic field validators.
 
-### 4. MCP Tools
-Tools use `GitConfig` indirectly via PolicyEngine and GitManager:
-- `create_branch`: Validates branch type, generates name
-- `git_delete_branch`: Checks protected branches
-- `git_add_or_commit`: Maps phase to commit prefix
-- `transition_phase`: Validates phase transitions
+---
 
 ## Testing
 
-### Unit Tests
-Location: `tests/unit/test_git_config.py`
-
-**Coverage**:
-- Default value loading
-- Custom config loading
-- Singleton pattern behavior
-- Validation error cases
-- Reset instance functionality
-
-**Example**:
+### Loading in tests
 ```python
-def test_singleton_pattern():
-    gc1 = GitConfig.from_file()
-    gc2 = GitConfig.from_file()
-    assert gc1 is gc2  # Same instance
+from pathlib import Path
+from mcp_server.config.loader import ConfigLoader
 
-def test_reset_instance():
-    gc1 = GitConfig.from_file()
-    GitConfig.reset_instance()
-    gc2 = GitConfig.from_file()
-    assert gc1 is not gc2  # Different instances
+def _load_git_config(config_path=None):
+    if config_path is None:
+        return ConfigLoader(Path(".st3/config")).load_git_config()
+    return ConfigLoader(config_path.parent).load_git_config(config_path=config_path)
 ```
 
-### Integration Tests
-Location: `tests/integration/test_git_config_integration.py`
+### Custom config in tests
+```python
+import yaml, tempfile
+from pathlib import Path
+from mcp_server.config.loader import ConfigLoader
 
-**Scenarios**:
-- Custom config with PolicyEngine
-- Custom config with GitManager
-- Config reload during server runtime
-- MCP tool compatibility
+payload = {
+    "branch_types": ["feature", "fix"],
+    "protected_branches": ["main"],
+    "branch_name_pattern": "^[a-z0-9-]+$",
+    "commit_types": ["feat", "fix", "test"],
+    "default_base_branch": "main",
+    "issue_title_max_length": 72,
+}
+with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as f:
+    yaml.dump(payload, f)
+    tmp_path = Path(f.name)
+
+gc = ConfigLoader(tmp_path.parent).load_git_config(config_path=tmp_path)
+assert gc.branch_types == ["feature", "fix"]
+```
 
 ## See Also
 
-- [GitConfig Customization Guide](./git_config_customization.md) - User guide for customizing config
-- [PolicyEngine Documentation](../development/policy_engine.md) - How config is used for validation
-- [MCP Schema Caching Limitation](../development/issue55/mcp_schema_caching_limitation.md) - Important client-side limitation
+- [GitConfig Customization Guide](./git_config_customization.md) — user guide for editing git.yaml

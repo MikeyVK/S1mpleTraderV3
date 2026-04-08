@@ -448,11 +448,12 @@ TDD_PHASES = ["red", "green", "refactor"]
 **After** (Config):
 ```yaml
 # git.yaml
-branch_types: [feature, fix, refactor]
-tdd_phases:
-  red: test
-  green: feat
-  refactor: refactor
+branch_types: [feature, fix, refactor, docs, hotfix, epic]
+protected_branches: [main, master, develop]
+branch_name_pattern: "^[a-z0-9-]+$"
+commit_types: [feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert]
+default_base_branch: main
+issue_title_max_length: 72
 ```
 
 **Impact**: Git workflow customizable per project
