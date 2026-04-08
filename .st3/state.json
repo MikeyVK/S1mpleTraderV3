@@ -1,60 +1,58 @@
 {
-  "branch": "refactor/273-remove-commit-prefix-map",
-  "issue_number": 273,
-  "workflow_name": "refactor",
-  "current_phase": "documentation",
+  "branch": "bug/272-scopedecoder-wrong-phase-child-branches",
+  "issue_number": 272,
+  "workflow_name": "bug",
+  "current_phase": "validation",
   "current_cycle": null,
-  "last_cycle": 1,
-  "cycle_history": [],
+  "last_cycle": 3,
+  "cycle_history": [
+    {
+      "cycle_number": 2,
+      "name": "Unknown",
+      "forced": false,
+      "entered": "2026-04-08T20:14:24.645158+00:00"
+    },
+    {
+      "cycle_number": 3,
+      "name": "Unknown",
+      "forced": false,
+      "entered": "2026-04-08T20:22:30.680503+00:00"
+    }
+  ],
   "required_phases": [
     "research",
     "planning",
+    "design",
     "implementation",
     "validation",
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie.",
-  "issue_title": "Remove commit_prefix_map from git.yaml, fix PolicyEngine prefix SSOT",
+  "skip_reason": "Three changes are all minimal and surgical (precedence swap 5 lines, pattern change 1 line, new .gitattributes). No design document required \u2014 implementation details fully specified in planning.md with exact code diffs.",
+  "issue_title": "ScopeDecoder wrong phase on child branches with inherited commits",
   "parent_branch": null,
-  "created_at": "2026-04-07T12:37:43.536395+00:00",
+  "created_at": "2026-04-08T17:46:06.245278+00:00",
   "transitions": [
     {
       "from_phase": "research",
       "to_phase": "planning",
-      "timestamp": "2026-04-07T13:08:38.072069+00:00",
+      "timestamp": "2026-04-08T19:35:07.817099+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null
     },
     {
       "from_phase": "planning",
-      "to_phase": "tdd",
-      "timestamp": "2026-04-07T13:10:21.419347+00:00",
-      "human_approval": "Gebruiker akkoord: 7 april 2026 \u2014 geen ontwerp nodig, wijzigingen zijn duidelijk",
-      "forced": true,
-      "skip_reason": "Design fase overgeslagen: wijzigingen zijn exact gedefinieerd in research.md, geen architectuurkeuzes open, breaking flag-day change met 1 TDD-cyclus."
-    },
-    {
-      "from_phase": "tdd",
       "to_phase": "implementation",
-      "timestamp": "2026-04-08T06:17:26.212918+00:00",
-      "human_approval": "Gebruiker akkoord: 8 april 2026 \u2014 correctie van verkeerde fase tdd naar implementation (refactor workflow heeft geen tdd fase)",
+      "timestamp": "2026-04-08T20:06:30.972019+00:00",
+      "human_approval": "User approved on 2026-04-08: skip design, proceed directly to implementation",
       "forced": true,
-      "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie."
+      "skip_reason": "Three changes are all minimal and surgical (precedence swap 5 lines, pattern change 1 line, new .gitattributes). No design document required \u2014 implementation details fully specified in planning.md with exact code diffs."
     },
     {
       "from_phase": "implementation",
       "to_phase": "validation",
-      "timestamp": "2026-04-08T06:36:48.682756+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "validation",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-08T14:43:30.585102+00:00",
+      "timestamp": "2026-04-08T20:23:39.387404+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null

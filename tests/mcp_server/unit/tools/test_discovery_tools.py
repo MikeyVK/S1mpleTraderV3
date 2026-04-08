@@ -215,16 +215,28 @@ class TestGetWorkContextTool:
     async def test_get_context_detects_workflow_phase_from_commit_scope(
         self, tool: GetWorkContextTool
     ) -> None:
-        """Should detect workflow phase deterministically from commit-scope."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
+        """Should detect workflow phase from commit-scope and display it correctly."""
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class, patch(
+            "mcp_server.tools.discovery_tools.ScopeDecoder"
+        ) as mock_decoder_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
-            # Commit with proper commit-scope format (P_IMPLEMENTATION_SP_C1_RED)
             mock_git.get_recent_commits.return_value = [
                 "test(P_IMPLEMENTATION_SP_C1_RED): add failing test for DTO validation"
             ]
             mock_git_class.return_value = mock_git
             tool._git_manager = mock_git
+
+            mock_decoder = MagicMock()
+            mock_decoder.detect_phase.return_value = {
+                "workflow_phase": "implementation",
+                "sub_phase": "red",
+                "source": "commit-scope",
+                "confidence": "high",
+                "raw_scope": "P_IMPLEMENTATION_SP_C1_RED",
+                "error_message": None,
+            }
+            mock_decoder_class.return_value = mock_decoder
 
             tool._settings.github.token = None
             result = await tool.execute(GetWorkContextInput())

@@ -56,7 +56,7 @@ class ScopeDecoder:
     """
     Decoder for workflow phase from commit-scope with deterministic precedence.
 
-    Precedence: commit-scope > state.json > unknown (NO type-heuristic guessing)
+    Precedence: state.json > commit-scope > unknown (NO type-heuristic guessing)
 
     Scope Format:
         - P_PHASE: e.g., P_RESEARCH, P_TDD
@@ -93,7 +93,7 @@ class ScopeDecoder:
         """
         Detect workflow phase with deterministic precedence.
 
-        Precedence chain: commit-scope > state.json > unknown
+        Precedence chain: state.json > commit-scope > unknown
 
         Args:
             commit_message: Commit message to parse (Conventional Commits format)
@@ -108,17 +108,17 @@ class ScopeDecoder:
             - NO type-heuristic guessing from commit type
             - Validates phase names against workphases.yaml
         """
-        # Try commit-scope first (PRIMARY for context tools)
-        if commit_message:
-            scope_result = self._parse_commit_scope(commit_message)
-            if scope_result:
-                return scope_result
-
-        # Fallback to state.json (SECONDARY)
+        # Primary: state.json (authoritative current branch state)
         if fallback_to_state:
             state_result = self._read_state_json()
             if state_result:
                 return state_result
+
+        # Secondary: commit-scope (used by state_reconstructor with fallback_to_state=False)
+        if commit_message:
+            scope_result = self._parse_commit_scope(commit_message)
+            if scope_result:
+                return scope_result
 
         # Unknown fallback (TERTIARY)
         return self._unknown_fallback()

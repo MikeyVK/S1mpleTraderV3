@@ -7,6 +7,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from mcp_server.tools.pr_tools import (
     CreatePRInput,
@@ -67,10 +68,22 @@ async def test_merge_pr_tool(mock_github_manager: MagicMock, mock_git_config: Ma
     tool = MergePRTool(manager=mock_github_manager, git_config=mock_git_config)
     mock_github_manager.merge_pr.return_value = {"sha": "commitsHA123"}
 
-    params = MergePRInput(pr_number=20, merge_method="squash")
+    params = MergePRInput(pr_number=20, merge_method="merge")
     result = await tool.execute(params)
 
     mock_github_manager.merge_pr.assert_called_with(
-        pr_number=20, commit_message=None, merge_method="squash"
+        pr_number=20, commit_message=None, merge_method="merge"
     )
-    assert "Merged PR #20 using squash" in result.content[0]["text"]
+    assert "Merged PR #20 using merge" in result.content[0]["text"]
+
+
+def test_merge_pr_input_rejects_squash() -> None:
+    """squash is no longer a valid merge_method."""
+    with pytest.raises(ValidationError):
+        MergePRInput(pr_number=1, merge_method="squash")
+
+
+def test_merge_pr_input_rejects_rebase() -> None:
+    """rebase is no longer a valid merge_method."""
+    with pytest.raises(ValidationError):
+        MergePRInput(pr_number=1, merge_method="rebase")

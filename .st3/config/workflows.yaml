@@ -10,12 +10,12 @@ workflows:
   # Feature Development (full workflow)
   feature:
     name: feature
-    description: "Full development workflow with all phases (research → planning → design → implementation → validation → docs)"
+    description: "Full development workflow with all phases (research → design → planning → implementation → validation → docs)"
     default_execution_mode: interactive
     phases:
       - research
-      - planning
       - design
+      - planning
       - implementation
       - validation
       - documentation
@@ -23,12 +23,12 @@ workflows:
   # Bug Fix (with lightweight design phase for uniformity)
   bug:
     name: bug
-    description: "Bug fix workflow (research → planning → design → implementation → validation → docs)"
+    description: "Bug fix workflow (research → design → planning → implementation → validation → docs)"
     default_execution_mode: interactive
     phases:
       - research
-      - planning
       - design
+      - planning
       - implementation
       - validation
       - documentation
@@ -67,10 +67,11 @@ workflows:
   # Epic (research and planning focused)
   epic:
     name: epic
-    description: "Epic workflow for large initiatives (research → planning → design → coordination → documentation)"
+    description: "Epic workflow for large initiatives (research → design → planning → coordination → documentation)"
     default_execution_mode: interactive
     phases:
       - research
+      - design
       - planning
       - design
       - coordination
