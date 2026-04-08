@@ -2,9 +2,9 @@
   "branch": "refactor/273-remove-commit-prefix-map",
   "issue_number": 273,
   "workflow_name": "refactor",
-  "current_phase": "planning",
-  "current_cycle": null,
-  "last_cycle": null,
+  "current_phase": "implementation",
+  "current_cycle": 1,
+  "last_cycle": 0,
   "cycle_history": [],
   "required_phases": [
     "research",
@@ -14,7 +14,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
+  "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie.",
   "issue_title": "Remove commit_prefix_map from git.yaml, fix PolicyEngine prefix SSOT",
   "parent_branch": null,
   "created_at": "2026-04-07T12:37:43.536395+00:00",
@@ -26,6 +26,22 @@
       "human_approval": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "tdd",
+      "timestamp": "2026-04-07T13:10:21.419347+00:00",
+      "human_approval": "Gebruiker akkoord: 7 april 2026 \u2014 geen ontwerp nodig, wijzigingen zijn duidelijk",
+      "forced": true,
+      "skip_reason": "Design fase overgeslagen: wijzigingen zijn exact gedefinieerd in research.md, geen architectuurkeuzes open, breaking flag-day change met 1 TDD-cyclus."
+    },
+    {
+      "from_phase": "tdd",
+      "to_phase": "implementation",
+      "timestamp": "2026-04-08T06:17:26.212918+00:00",
+      "human_approval": "Gebruiker akkoord: 8 april 2026 \u2014 correctie van verkeerde fase tdd naar implementation (refactor workflow heeft geen tdd fase)",
+      "forced": true,
+      "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie."
     }
   ],
   "reconstructed": false

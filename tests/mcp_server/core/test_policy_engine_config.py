@@ -59,6 +59,21 @@ class TestPolicyEngineConfigIntegration:
         assert decision.allowed is False
         assert "TDD prefix" in decision.reason
 
+    def test_commit_allows_all_commit_types(self) -> None:
+        """All 11 conventional commit types must be allowed after fix.
+
+        Fix: get_all_prefixes() now derives from GitConfig.commit_types (11 types)
+        instead of commit_prefix_map (only 4). Previously chore/fix/ci/etc. were blocked.
+        """
+        for prefix in ["chore:", "fix:", "ci:", "build:", "perf:", "style:", "revert:"]:
+            decision = self.engine.decide(
+                operation="commit",
+                context={"message": f"{prefix} some message"},
+            )
+            assert decision.allowed is True, (
+                f"Expected '{prefix}' to be allowed after fix, got: {decision.reason}"
+            )
+
     def test_commit_rejects_phase_names(self) -> None:
         """Test that phase NAMES (red:, green:) are NOT accepted.
 

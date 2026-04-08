@@ -32,13 +32,6 @@ class TestGitToolsConfigIntegration:
         # Create custom git.yaml with "epic" and "hotfix" (no "feature")
         custom_config = {
             "branch_types": ["epic", "hotfix"],
-            "tdd_phases": ["red", "green", "refactor", "docs"],
-            "commit_prefix_map": {
-                "red": "test",
-                "green": "feat",
-                "refactor": "refactor",
-                "docs": "docs",
-            },
             "protected_branches": ["main"],
             "branch_name_pattern": "^[a-z0-9-]+$",
             "commit_types": [

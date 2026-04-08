@@ -71,7 +71,7 @@ def test_normalize_config_root_handles_workspace_and_st3_paths(tmp_path: Path) -
 def test_resolve_config_root_uses_preferred_workspace_root(tmp_path: Path) -> None:
     workspace_root = tmp_path / "workspace"
     config_root = workspace_root / ".st3" / "config"
-    _write_yaml(config_root / "git.yaml", "branch_types: []\ntdd_phases: []\n")
+    _write_yaml(config_root / "git.yaml", "branch_types: []\n")
 
     assert (
         resolve_config_root(

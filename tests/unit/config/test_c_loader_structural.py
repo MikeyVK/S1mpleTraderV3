@@ -56,12 +56,6 @@ def config_root(tmp_path: Path) -> Path:
         "git.yaml",
         {
             "branch_types": ["feature", "bug"],
-            "tdd_phases": ["red", "green", "refactor"],
-            "commit_prefix_map": {
-                "red": "test",
-                "green": "feat",
-                "refactor": "refactor",
-            },
             "protected_branches": ["main"],
             "branch_name_pattern": "^[a-z0-9-]+$",
             "commit_types": ["feat", "fix", "test"],

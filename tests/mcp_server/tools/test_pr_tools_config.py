@@ -30,8 +30,6 @@ class TestPRToolsConfigIntegration:
         # Create custom git.yaml with "develop" as default base
         custom_config = {
             "branch_types": ["feature", "fix"],
-            "tdd_phases": ["red", "green"],
-            "commit_prefix_map": {"red": "test", "green": "feat"},
             "protected_branches": ["main", "develop"],
             "branch_name_pattern": "^[a-z0-9-]+$",
             "commit_types": ["feat", "fix", "docs", "test", "refactor", "chore"],

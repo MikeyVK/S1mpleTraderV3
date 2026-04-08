@@ -112,8 +112,6 @@ def git_repo(tmp_path: Path) -> Path:
     # Create git.yaml (minimal config)
     git_config = {
         "branch_types": ["feature"],
-        "tdd_phases": ["red", "green", "refactor"],
-        "commit_prefix_map": {"red": "test", "green": "feat", "refactor": "refactor"},
         "protected_branches": ["main"],
         "branch_name_pattern": "^[a-z0-9-]+$",
         "commit_types": ["feat", "fix", "docs", "test", "refactor", "chore"],

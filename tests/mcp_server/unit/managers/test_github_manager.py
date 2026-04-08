@@ -204,13 +204,6 @@ class TestGitHubManagerValidateIssueParams:
     def git_config(self) -> GitConfig:
         return GitConfig(
             branch_types=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
-            tdd_phases=["red", "green", "refactor", "docs"],
-            commit_prefix_map={
-                "red": "test",
-                "green": "feat",
-                "refactor": "refactor",
-                "docs": "docs",
-            },
             protected_branches=["main", "master", "develop"],
             branch_name_pattern=r"^[a-z0-9-]+$",
             commit_types=[

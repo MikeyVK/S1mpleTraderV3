@@ -639,6 +639,122 @@
     ],
     "skip_reason": null,
     "parent_branch": null,
-    "created_at": "2026-04-07T12:37:42.710285+00:00"
+    "created_at": "2026-04-07T12:37:42.710285+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "description": "tdd_phases block removed from .st3/config/git.yaml",
+                "id": "c1.tdd_phases_removed_yaml",
+                "validates": {
+                  "file": ".st3/config/git.yaml",
+                  "text": "tdd_phases",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "commit_prefix_map block removed from .st3/config/git.yaml",
+                "id": "c1.commit_prefix_map_removed_yaml",
+                "validates": {
+                  "file": ".st3/config/git.yaml",
+                  "text": "commit_prefix_map",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "tdd_phases field removed from GitConfig",
+                "id": "c1.tdd_phases_removed_git_config",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "tdd_phases",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "commit_prefix_map field removed from GitConfig",
+                "id": "c1.commit_prefix_map_removed_git_config",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "commit_prefix_map",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "validate_cross_references model_validator removed from GitConfig",
+                "id": "c1.validate_cross_references_removed",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "validate_cross_references",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "has_phase() method removed from GitConfig",
+                "id": "c1.has_phase_removed",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "def has_phase",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "get_prefix() method removed from GitConfig",
+                "id": "c1.get_prefix_removed",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "def get_prefix",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "get_all_prefixes() returns list derived from commit_types",
+                "id": "c1.get_all_prefixes_rewritten",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "for t in self.commit_types",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "New dedicated validate_branch_name_pattern validator present in GitConfig",
+                "id": "c1.validate_branch_name_pattern_added",
+                "validates": {
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "def validate_branch_name_pattern",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "policies.yaml comment updated to reference commit_types",
+                "id": "c1.policies_yaml_comment_updated",
+                "validates": {
+                  "file": ".st3/config/policies.yaml",
+                  "text": "commit_types",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "test_policy_engine_config.py docstring updated to reference commit_types",
+                "id": "c1.policy_engine_docstring_updated",
+                "validates": {
+                  "file": "tests/mcp_server/core/test_policy_engine_config.py",
+                  "text": "commit_types",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "exit_criteria": "All tests pass, zero occurrences of commit_prefix_map and tdd_phases in codebase (excl. .git/), quality gates clean on changed files.",
+            "green": "Remove tdd_phases and commit_prefix_map from git.yaml and GitConfig. Delete has_phase(), get_prefix(), validate_cross_references. Extract branch_name_pattern to new validator. Rewrite get_all_prefixes() to use commit_types. Update comments in policies.yaml and policy_engine.py. Update docstring in test_policy_engine_config.py.",
+            "name": "Remove commit_prefix_map and tdd_phases",
+            "red": "Update all test fixtures and test files to expect the new state. Add test_get_all_prefixes asserting 11 types. Add test_commit_allows_all_commit_types for chore/fix/ci/build/perf/style/revert. Remove dead method tests (test_has_phase, test_get_prefix, old test_get_all_prefixes, test_invalid_commit_prefix_phase_raises). Clean 6 fixture helpers.",
+            "refactor": "Quality gates on changed files. Grep codebase for zero hits on commit_prefix_map, tdd_phases, has_phase, get_prefix, validate_cross_references. Run full test suite."
+          }
+        ],
+        "total": 1
+      }
+    }
   }
 }

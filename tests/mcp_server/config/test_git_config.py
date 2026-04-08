@@ -27,13 +27,6 @@ def _load_git_config(config_path: Path | None = None) -> GitConfig:
 def _git_config_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "branch_types": ["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
-        "tdd_phases": ["red", "green", "refactor", "docs"],
-        "commit_prefix_map": {
-            "red": "test",
-            "green": "feat",
-            "refactor": "refactor",
-            "docs": "docs",
-        },
         "protected_branches": ["main", "master", "develop"],
         "branch_name_pattern": r"^[a-z0-9-]+$",
         "commit_types": [
@@ -72,13 +65,6 @@ class TestGitConfig:
             "hotfix",
             "epic",
         ]
-        assert config.tdd_phases == ["red", "green", "refactor", "docs"]
-        assert config.commit_prefix_map == {
-            "red": "test",
-            "green": "feat",
-            "refactor": "refactor",
-            "docs": "docs",
-        }
         assert config.protected_branches == ["main", "master", "develop"]
         assert config.branch_name_pattern == r"^[a-z0-9-]+$"
         assert config.default_base_branch == "main"
@@ -104,12 +90,6 @@ class TestGitConfig:
         config2 = _load_git_config()
 
         assert config1 == config2
-
-    def test_invalid_commit_prefix_phase_raises(self) -> None:
-        with pytest.raises(ValueError, match="invalid phases"):
-            GitConfig.model_validate(
-                _git_config_payload(commit_prefix_map={"red": "test", "deploy": "chore"})
-            )
 
     def test_whitespace_branch_name_pattern_raises(self) -> None:
         with pytest.raises(ValueError, match="branch_name_pattern cannot be empty"):
@@ -143,16 +123,6 @@ class TestGitConfig:
         assert config.validate_branch_name("feature_123") is False
         assert config.validate_branch_name("feature/123") is False
 
-    def test_has_phase(self) -> None:
-        """Test has_phase() helper (Convention #2)."""
-        config = _load_git_config()
-
-        assert config.has_phase("red") is True
-        assert config.has_phase("green") is True
-        assert config.has_phase("docs") is True
-        assert config.has_phase("test") is False
-        assert config.has_phase("RED") is False
-
     def test_has_commit_type(self) -> None:
         config = _load_git_config()
 
@@ -160,21 +130,13 @@ class TestGitConfig:
         assert config.has_commit_type("FEAT") is True
         assert config.has_commit_type("unknown") is False
 
-    def test_get_prefix(self) -> None:
-        """Test get_prefix() helper (Convention #3)."""
-        config = _load_git_config()
-
-        assert config.get_prefix("red") == "test"
-        assert config.get_prefix("green") == "feat"
-        assert config.get_prefix("refactor") == "refactor"
-        assert config.get_prefix("docs") == "docs"
-
-        with pytest.raises(KeyError):
-            config.get_prefix("invalid")
-
     def test_get_all_prefixes(self) -> None:
         config = _load_git_config()
-        assert config.get_all_prefixes() == ["test:", "feat:", "refactor:", "docs:"]
+        expected = [
+            "feat:", "fix:", "docs:", "style:", "refactor:",
+            "test:", "chore:", "perf:", "ci:", "build:", "revert:",
+        ]
+        assert config.get_all_prefixes() == expected
 
     def test_build_branch_type_regex(self) -> None:
         """build_branch_type_regex should expose the configured branch alternatives."""
