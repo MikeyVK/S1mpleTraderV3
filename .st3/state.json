@@ -2,9 +2,9 @@
   "branch": "refactor/273-remove-commit-prefix-map",
   "issue_number": 273,
   "workflow_name": "refactor",
-  "current_phase": "implementation",
-  "current_cycle": 1,
-  "last_cycle": 0,
+  "current_phase": "validation",
+  "current_cycle": null,
+  "last_cycle": 1,
   "cycle_history": [],
   "required_phases": [
     "research",
@@ -42,6 +42,14 @@
       "human_approval": "Gebruiker akkoord: 8 april 2026 \u2014 correctie van verkeerde fase tdd naar implementation (refactor workflow heeft geen tdd fase)",
       "forced": true,
       "skip_reason": "Correctie: vorige transition_phase gebruikte per abuis fase 'tdd' i.p.v. 'implementation'. De refactor workflow kent geen tdd-fase. Dit is een correctieve transitie."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-04-08T06:36:48.682756+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false
