@@ -396,7 +396,9 @@ def test_config_package_contains_no_legacy_wrapper_modules() -> None:
         "workphases_config.py",
     }
     present_wrappers = sorted(
-        path.name for path in config_dir.iterdir() if path.is_file() and path.name in legacy_wrappers
+        path.name
+        for path in config_dir.iterdir()
+        if path.is_file() and path.name in legacy_wrappers
     )
     assert present_wrappers == []
 

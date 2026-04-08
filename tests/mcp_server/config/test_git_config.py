@@ -113,10 +113,10 @@ class TestGitConfig:
     def test_validate_branch_name(self) -> None:
         """Test validate_branch_name() helper (Convention #5)."""
         config = _load_git_config()
-        GitConfig._compiled_pattern = None
+        GitConfig._compiled_pattern = None  # type: ignore[reportPrivateUsage]
 
         assert config.validate_branch_name("feature-123-name") is True
-        assert GitConfig._compiled_pattern is not None
+        assert GitConfig._compiled_pattern is not None  # type: ignore[reportPrivateUsage]
         assert config.validate_branch_name("fix-bug") is True
         assert config.validate_branch_name("epic-76-tooling") is True
         assert config.validate_branch_name("Feature-123") is False
@@ -133,8 +133,17 @@ class TestGitConfig:
     def test_get_all_prefixes(self) -> None:
         config = _load_git_config()
         expected = [
-            "feat:", "fix:", "docs:", "style:", "refactor:",
-            "test:", "chore:", "perf:", "ci:", "build:", "revert:",
+            "feat:",
+            "fix:",
+            "docs:",
+            "style:",
+            "refactor:",
+            "test:",
+            "chore:",
+            "perf:",
+            "ci:",
+            "build:",
+            "revert:",
         ]
         assert config.get_all_prefixes() == expected
 
