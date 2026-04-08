@@ -121,12 +121,12 @@ def test_merge_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = MergePRTool(manager=manager, git_config=mock_git_config)
 
-    result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="squash")))
+    result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="merge")))
 
     assert not result.is_error
     assert "abc123" in result.content[0]["text"]
     mock_adapter.merge_pr.assert_called_with(
         pr_number=8,
         commit_message=None,
-        merge_method="squash",
+        merge_method="merge",
     )

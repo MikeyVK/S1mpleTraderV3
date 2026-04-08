@@ -120,7 +120,7 @@ class MergePRInput(BaseModel):
         default=None, description="Optional commit message for the merge"
     )
     merge_method: str = Field(
-        default="merge", description="Merge strategy", pattern="^(merge|squash|rebase)$"
+        default="merge", description="Merge strategy (only 'merge' is supported)", pattern="^merge$"
     )
 
 

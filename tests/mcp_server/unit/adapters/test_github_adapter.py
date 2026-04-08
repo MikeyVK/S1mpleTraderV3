@@ -153,11 +153,11 @@ def test_merge_pr_success(adapter: GitHubAdapter) -> None:
     mock_pr.merge.return_value = mock_merge_status
     adapter.client.get_repo.return_value.get_pull.return_value = mock_pr
 
-    result = adapter.merge_pr(1, "Merge commit", "squash")
+    result = adapter.merge_pr(1, "Merge commit", "merge")
 
     assert result["merged"] is True
     assert result["sha"] == "abc1234"
-    mock_pr.merge.assert_called_once_with(commit_message="Merge commit", merge_method="squash")
+    mock_pr.merge.assert_called_once_with(commit_message="Merge commit", merge_method="merge")
 
 
 def test_merge_pr_failed(adapter: GitHubAdapter) -> None:
