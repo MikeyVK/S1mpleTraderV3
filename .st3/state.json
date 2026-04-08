@@ -2,9 +2,9 @@
   "branch": "bug/272-scopedecoder-wrong-phase-child-branches",
   "issue_number": 272,
   "workflow_name": "bug",
-  "current_phase": "implementation",
-  "current_cycle": 3,
-  "last_cycle": 2,
+  "current_phase": "validation",
+  "current_cycle": null,
+  "last_cycle": 3,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -48,6 +48,14 @@
       "human_approval": "User approved on 2026-04-08: skip design, proceed directly to implementation",
       "forced": true,
       "skip_reason": "Three changes are all minimal and surgical (precedence swap 5 lines, pattern change 1 line, new .gitattributes). No design document required \u2014 implementation details fully specified in planning.md with exact code diffs."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-04-08T20:23:39.387404+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false
