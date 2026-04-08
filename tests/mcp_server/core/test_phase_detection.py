@@ -262,3 +262,35 @@ class TestScopeDecoder:
             assert result["workflow_phase"] == expected_phase
             assert result["source"] == "commit-scope"
             assert result["confidence"] == "high"
+
+    def test_detect_phase_state_json_wins_over_commit_scope(self, tmp_path: Path) -> None:
+        """state.json takes precedence over commit-scope (core of the bugfix)."""
+        # Arrange
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
+        decoder = ScopeDecoder(state_path=state_file)
+        # commit_message carries a valid phase-scope (P_RESEARCH) from the parent branch
+        commit_message = "docs(P_RESEARCH): finalize research doc"
+
+        # Act
+        result = decoder.detect_phase(commit_message, fallback_to_state=True)
+
+        # Assert - state.json wins, NOT commit-scope
+        assert result["workflow_phase"] == "planning"
+        assert result["source"] == "state.json"
+        assert result["confidence"] == "medium"
+
+    def test_detect_phase_fallback_false_still_uses_commit_scope(self, tmp_path: Path) -> None:
+        """fallback_to_state=False uses commit-scope exclusively (state_reconstructor path)."""
+        # Arrange
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
+        decoder = ScopeDecoder(state_path=state_file)
+        commit_message = "docs(P_RESEARCH): finalize research doc"
+
+        # Act
+        result = decoder.detect_phase(commit_message, fallback_to_state=False)
+
+        # Assert - fallback_to_state=False: commit-scope wins, state.json ignored
+        assert result["workflow_phase"] == "research"
+        assert result["source"] == "commit-scope"

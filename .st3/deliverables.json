@@ -771,6 +771,95 @@
     ],
     "skip_reason": null,
     "parent_branch": null,
-    "created_at": "2026-04-08T17:46:05.628145+00:00"
+    "created_at": "2026-04-08T17:46:05.628145+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 3,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "New test: test_detect_phase_state_json_wins_over_commit_scope passes (state.json wins over commit-scope)"
+              },
+              {
+                "id": "D1.2",
+                "description": "New test: test_detect_phase_fallback_false_still_uses_commit_scope passes (state_reconstructor path unaffected)"
+              },
+              {
+                "id": "D1.3",
+                "description": "Precedence inversion implemented in detect_phase() \u2014 state.json block moved before commit-scope block"
+              },
+              {
+                "id": "D1.4",
+                "description": "All existing tests in test_phase_detection.py remain green"
+              },
+              {
+                "id": "D1.5",
+                "description": "test_workflow_cycle_e2e.py (fallback_to_state=False) remains green"
+              },
+              {
+                "id": "D1.6",
+                "description": "Quality gates green on mcp_server/core/phase_detection.py"
+              }
+            ],
+            "exit_criteria": "All existing and new tests in test_phase_detection.py green; quality gates clean"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "New test: test_merge_pr_input_rejects_squash passes (ValidationError on squash)"
+              },
+              {
+                "id": "D2.2",
+                "description": "New test: test_merge_pr_input_rejects_rebase passes (ValidationError on rebase)"
+              },
+              {
+                "id": "D2.3",
+                "description": "MergePRInput.merge_method pattern changed from ^(merge|squash|rebase)$ to ^merge$"
+              },
+              {
+                "id": "D2.4",
+                "description": "test_pr_tools.py:70,74 updated: merge_method='squash' -> 'merge'"
+              },
+              {
+                "id": "D2.5",
+                "description": "test_github_extras.py:124,131 updated: merge_method='squash' -> 'merge'"
+              },
+              {
+                "id": "D2.6",
+                "description": "test_github_adapter.py:160 updated: merge_method='squash' -> 'merge'"
+              },
+              {
+                "id": "D2.7",
+                "description": "Quality gates green on mcp_server/tools/pr_tools.py"
+              }
+            ],
+            "exit_criteria": "New rejection tests pass; all 5 updated existing tests pass; quality gates clean"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": ".gitattributes created in repo root with .st3/state.json merge=ours"
+              },
+              {
+                "id": "D3.2",
+                "description": "git check-attr merge .st3/state.json returns 'merge: ours'"
+              },
+              {
+                "id": "D3.3",
+                "description": ".gitattributes tracked by git (git ls-files .gitattributes confirms)"
+              }
+            ],
+            "exit_criteria": "git check-attr returns merge: ours; file tracked in git"
+          }
+        ]
+      }
+    }
   }
 }

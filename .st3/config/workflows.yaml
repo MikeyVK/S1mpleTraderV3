@@ -27,8 +27,8 @@ workflows:
     default_execution_mode: interactive
     phases:
       - research
-      - planning
       - design
+      - planning
       - implementation
       - validation
       - documentation
