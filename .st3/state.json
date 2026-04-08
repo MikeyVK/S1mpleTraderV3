@@ -3,9 +3,16 @@
   "issue_number": 272,
   "workflow_name": "bug",
   "current_phase": "implementation",
-  "current_cycle": 1,
-  "last_cycle": 0,
-  "cycle_history": [],
+  "current_cycle": 2,
+  "last_cycle": 1,
+  "cycle_history": [
+    {
+      "cycle_number": 2,
+      "name": "Unknown",
+      "forced": false,
+      "entered": "2026-04-08T20:14:24.645158+00:00"
+    }
+  ],
   "required_phases": [
     "research",
     "planning",

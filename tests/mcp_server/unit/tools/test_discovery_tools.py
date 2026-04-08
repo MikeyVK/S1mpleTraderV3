@@ -215,7 +215,7 @@ class TestGetWorkContextTool:
     async def test_get_context_detects_workflow_phase_from_commit_scope(
         self, tool: GetWorkContextTool
     ) -> None:
-        """Should detect workflow phase deterministically from commit-scope."""
+        """Should detect workflow phase; state.json takes priority over commit-scope."""
         with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
@@ -231,10 +231,10 @@ class TestGetWorkContextTool:
 
         assert not result.is_error
         text = result.content[0]["text"].lower()
-        # Should identify implementation phase with red sub-phase from commit-scope
+        # Should identify implementation phase; state.json is the authoritative source
         assert "implementation" in text
         assert "red" in text or "🔴" in result.content[0]["text"]
-        assert "commit-scope" in text  # Source should be commit-scope
+        assert "state.json" in text  # Source should be state.json (higher priority)
 
     @pytest.mark.asyncio
     async def test_detect_workflow_phase_variations(self, tool: GetWorkContextTool) -> None:
