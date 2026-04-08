@@ -11,30 +11,16 @@ branch_types:
   - hotfix
   - epic
 
-# Convention #2: TDD phases (commit_tdd_phase validation)
-tdd_phases:
-  - red
-  - green
-  - refactor
-  - docs
-
-# Convention #3: Commit prefix mapping (TDD phase → Conventional Commit)
-commit_prefix_map:
-  red: test
-  green: feat
-  refactor: refactor
-  docs: docs
-
-# Convention #4: Protected branches (cannot be deleted)
+# Convention #2: Protected branches (cannot be deleted)
 protected_branches:
   - main
   - master
   - develop
 
-# Convention #5: Branch name pattern (kebab-case validation)
+# Convention #3: Branch name pattern (kebab-case validation)
 branch_name_pattern: "^[a-z0-9-]+$"
 
-# Convention #6: Conventional Commit types (Issue #138)
+# Convention #4: Conventional Commit types (Issue #138)
 # Source: https://www.conventionalcommits.org/
 commit_types:
   - feat

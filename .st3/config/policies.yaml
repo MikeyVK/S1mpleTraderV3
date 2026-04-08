@@ -41,4 +41,4 @@ operations:
   commit:
     description: "Git commit with message"
     allowed_phases: []  # All phases allowed
-    require_tdd_prefix: true  # Commit messages must start with TDD phase prefix (via GitConfig.commit_prefix_map)
+    require_tdd_prefix: true  # Commit messages must start with a conventional commit type (via GitConfig.commit_types)
