@@ -756,5 +756,21 @@
         "total": 1
       }
     }
+  },
+  "272": {
+    "issue_title": "ScopeDecoder wrong phase on child branches with inherited commits",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "implementation",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": null,
+    "created_at": "2026-04-08T17:46:05.628145+00:00"
   }
 }
