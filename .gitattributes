@@ -1,3 +1,5 @@
-# Prevent state.json contamination during merges.
-# Each branch retains its own workflow state on merge.
-.st3/state.json merge=ours
+# .gitattributes
+# Note: state.json and deliverables.json are excluded via .gitignore.
+# The merge=ours strategy was removed because it only protects against
+# overwriting existing files and does NOT prevent fresh additions when
+# the file was deleted on the target branch (chicken-and-egg problem).
