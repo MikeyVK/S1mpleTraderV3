@@ -2,7 +2,7 @@
 <!-- template=research version=8b7bb3ab created=2026-04-09T12:30Z updated= -->
 # Ready Phase Enforcement — Preventing Branch-Local Artifacts from Reaching Main
 
-**Status:** IN PROGRESS
+**Status:** FINAL
 **Version:** 1.0
 **Last Updated:** 2026-04-09
 
@@ -210,23 +210,39 @@ need to transition manually. No automated migration is provided. `force_phase_tr
 escape hatch for human-approved exceptions.
 
 **Schema flag day:**
-The `WorkPhaseConfig` Pydantic model will gain a new `terminal` field. Existing `workphases.yaml`
-without any `terminal: true` entry will cause the MCP server to **fail to start**. The config
-update (adding `terminal: true` to the correct phase) is the sole required migration step, and it
-ships as part of this change.
+The `workphases.yaml` schema will gain a boolean `terminal` field per phase entry. The config
+loader enforces at startup that exactly one phase has `terminal: true`. Existing deployments
+without any `terminal: true` entry will cause the MCP server to **fail to start**. Adding
+`terminal: true` to the correct phase entry is the sole required migration step, and it ships
+as part of this change.
 
 ---
 
 ## Open Questions
 
-1. Which config file is the authoritative source for enforcement behavior triggered at a specific
-   phase — and where does merge-time enforcement belong within the existing config hierarchy?
-2. Which config loader file is responsible for injecting the terminal phase into workflow phase
-   lists at load time?
-3. What existing tests assert on workflow phase counts or phase ordering, and will they break when
-   the terminal phase is injected?
-4. How should in-flight branches (pre-terminal-phase) behave on the day of deployment?
-   Is `force_phase_transition` documentation sufficient, or is an explicit migration note required?
+All questions resolved prior to design phase transition.
+
+1. **Which config file is the authoritative source for enforcement behavior triggered at a specific
+   phase?**
+   `phase_contracts.yaml` — it is the existing home for exit-requirements and phase-triggered gates.
+   A global `merge_policy` section at the top of that file follows the established convention and
+   satisfies Principle 13.
+
+2. **Which config loader file is responsible for injecting the terminal phase into workflow phase
+   lists at load time?**
+   `mcp_server/config/loader.py` — `ConfigLoader.load_workflow_config()` is the sole loader of
+   `workflows.yaml` and constructs all workflow phase lists. Terminal phase injection belongs here
+   (or in a dedicated enrichment step called from this method).
+
+3. **What existing tests assert on workflow phase counts or phase ordering, and will they break?**
+   A new `terminal` field with `False` as default does not break existing `PhaseDefinition` or
+   `WorkphasesConfig` instantiations. However, tests that assert exact phase counts or phase order
+   on loaded workflows will break when the loader injects the terminal phase. These must be updated
+   as part of the implementation.
+
+4. **How should in-flight branches (pre-terminal-phase) behave on the day of deployment?**
+   `force_phase_transition` is sufficient. A release note in the PR description documents the
+   required manual step. No automated migration is provided (YAGNI).
 
 ---
 
@@ -280,15 +296,15 @@ message.
 
 ### E6 — No Hardcoded Terminal Phase Name in Python
 
-No Python file contains `== "ready"` or any other hardcoded terminal phase name check. Phase
-identity is read from config. All tests that verify terminal phase behavior are parameterized
-through the config, not through string literals.
+No Python file contains a hardcoded terminal phase name check. Phase identity is read from config.
+All tests that verify terminal phase behavior are parameterized through the config, not through
+string literals. (The candidate name "ready" appears in the branch name and illustrations only;
+the design phase decides the final name.)
 
 ### E7 — Config Loader Injects Terminal Phase
 
-Every workflow's phase list contains the terminal phase as the last entry after loading, regardless
-of whether it is listed in `workflows.yaml`. The injection is driven by the `terminal: true` flag,
-not by a hardcoded phase name.
+Every workflow's active phase list contains the terminal phase as the last entry after loading,
+regardless of whether it is explicitly listed in `workflows.yaml`.
 
 ### E8 — Server Fails Fast on Misconfiguration
 
