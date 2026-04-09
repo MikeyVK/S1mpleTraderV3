@@ -155,6 +155,7 @@ class MCPServer:
         git_config = config_loader.load_git_config()
         workflow_config = config_loader.load_workflow_config()
         workphases_config = config_loader.load_workphases_config()
+        workflow_config = ConfigLoader._inject_terminal_phase(workflow_config, workphases_config)
         quality_config = config_loader.load_quality_config()
         label_config = config_loader.load_label_config()
         issue_config = config_loader.load_issue_config()

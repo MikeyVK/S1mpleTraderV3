@@ -114,6 +114,29 @@ class ConfigLoader:
         data, resolved_path = self._load_yaml("workphases.yaml", config_path=config_path)
         return self._validate_schema(WorkphasesConfig, data, resolved_path)
 
+    @staticmethod
+    def _inject_terminal_phase(
+        workflow_config: WorkflowConfig,
+        workphases_config: WorkphasesConfig,
+    ) -> WorkflowConfig:
+        """Return new WorkflowConfig with terminal phase appended to every workflow.
+
+        Guarantees:
+        - No mutation of inputs (CQS / D6).
+        - No file I/O.
+        - Idempotent: if terminal phase already present in workflow.phases, skipped.
+        """
+        terminal = workphases_config.get_terminal_phase()
+        new_workflows: dict[str, Any] = {}
+        for name, workflow in workflow_config.workflows.items():
+            if terminal not in workflow.phases:
+                new_phases = list(workflow.phases) + [terminal]
+                new_workflow = workflow.model_copy(update={"phases": new_phases})
+            else:
+                new_workflow = workflow
+            new_workflows[name] = new_workflow
+        return workflow_config.model_copy(update={"workflows": new_workflows})
+
     def load_artifact_registry_config(
         self,
         config_path: Path | None = None,
