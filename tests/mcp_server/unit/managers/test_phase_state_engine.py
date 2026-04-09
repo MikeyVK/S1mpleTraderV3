@@ -90,9 +90,9 @@ class TestTDDPhaseHooks:
             state_repository=InMemoryStateRepository(),
         )
 
-        # Initialize branch in design phase
+        # Initialize branch in planning phase
         state_engine.initialize_branch(
-            branch=branch, issue_number=issue_number, initial_phase="design"
+            branch=branch, issue_number=issue_number, initial_phase="planning"
         )
 
         # Verify no TDD cycle yet
@@ -268,9 +268,9 @@ class TestTransitionHooksWiring:
             state_repository=InMemoryStateRepository(),
         )
 
-        # Initialize branch in design phase
+        # Initialize branch in planning phase
         state_engine.initialize_branch(
-            branch=branch, issue_number=issue_number, initial_phase="design"
+            branch=branch, issue_number=issue_number, initial_phase="planning"
         )
 
         # Verify no TDD cycle before transition

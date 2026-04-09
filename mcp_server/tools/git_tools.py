@@ -308,7 +308,14 @@ class GitCommitTool(BaseTool):
             if workflow_phase is None:
                 if self._state_engine is None:
                     raise ValueError("PhaseStateEngine must be injected for auto-detection")
-                workflow_phase = self._state_engine.get_current_phase(branch=current_branch)
+                try:
+                    workflow_phase = self._state_engine.get_current_phase(branch=current_branch)
+                except FileNotFoundError:
+                    return ToolResult.error(
+                        f"No state.json found for branch '{current_branch}'. "
+                        "Provide workflow_phase explicitly: "
+                        "git_add_or_commit(workflow_phase='<phase>', message='...')"
+                    )
 
                 logger.info(
                     "Auto-detected workflow_phase from state.json",
