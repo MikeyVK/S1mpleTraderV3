@@ -2,7 +2,7 @@
   "branch": "refactor/283-ready-phase-enforcement",
   "issue_number": 283,
   "workflow_name": "refactor",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -14,10 +14,19 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
+  "skip_reason": "Refactor workflow does not include a design phase by default. Design phase is required for this issue: the Expected Results framework must be elaborated into concrete YAML structures, Pydantic model shape, tool contracts, and loader behavior before implementation cycles can be defined.",
   "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
   "parent_branch": null,
   "created_at": "2026-04-09T11:43:14.613856+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-04-09T12:05:17.199643+00:00",
+      "human_approval": "User approved on 2026-04-09 \u2014 'laten we voor nu overgang naar design fase forceren'",
+      "forced": true,
+      "skip_reason": "Refactor workflow does not include a design phase by default. Design phase is required for this issue: the Expected Results framework must be elaborated into concrete YAML structures, Pydantic model shape, tool contracts, and loader behavior before implementation cycles can be defined."
+    }
+  ],
   "reconstructed": false
 }
