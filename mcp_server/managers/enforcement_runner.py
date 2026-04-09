@@ -173,13 +173,12 @@ class EnforcementRunner:
         """Block commits that stage branch-local artifacts (.st3/ paths)."""
         del action, workspace_root
         files = context.get_param("files")
-        if not files:
+        if not files or not isinstance(files, (list, tuple)):
             return None
-        offending = [str(f) for f in files if str(f).startswith(_BRANCH_LOCAL_PREFIX)]  # type: ignore[union-attr]
+        offending = [str(f) for f in files if str(f).startswith(_BRANCH_LOCAL_PREFIX)]
         if offending:
             raise ValidationError(
-                "Cannot commit branch-local artifacts: "
-                + ", ".join(offending),
+                f"Cannot commit branch-local artifacts: {', '.join(offending)}",
                 hints=[
                     "Remove .st3/ paths from the files list.",
                     "Add .st3/state.json and .st3/deliverables.json to .gitignore.",

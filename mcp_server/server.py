@@ -34,7 +34,11 @@ from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.managers.phase_contract_resolver import MergeReadinessContext, PhaseConfigContext, PhaseContractResolver
+from mcp_server.managers.phase_contract_resolver import (
+    MergeReadinessContext,
+    PhaseConfigContext,
+    PhaseContractResolver,
+)
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
