@@ -907,18 +907,98 @@
               ".st3/config/phase_contracts.yaml"
             ],
             "deliverables": [
-              "PhaseDefinition.terminal: bool = False field",
-              "WorkphasesConfig model_validator raises if >1 terminal phase",
-              "WorkphasesConfig.get_terminal_phase() -> str",
-              "BranchLocalArtifact Pydantic model (pattern: str, merge_action: Literal)",
-              "MergePolicy Pydantic model (exclude_branch_local_artifacts: list, pr_allowed_phase: str)",
-              "PhaseContractsConfig.merge_policy: MergePolicy (required, no default)",
-              "PhaseContractsConfig.get_pr_allowed_phase() -> str",
-              "workphases.yaml: ready phase + terminal: true marker",
-              "phase_contracts.yaml: merge_policy block for all 6 workflows",
-              "Tests V6/V7/N_PCR_DOUBLE fixed to supply required merge_policy fields"
+              {
+                "id": "c283_1.terminal_field",
+                "description": "PhaseDefinition.terminal: bool = False field added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/workphases.py",
+                  "text": "terminal: bool = False"
+                }
+              },
+              {
+                "id": "c283_1.terminal_validator",
+                "description": "WorkphasesConfig model_validator raises if >1 terminal phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/workphases.py",
+                  "text": "validate_single_terminal_phase"
+                }
+              },
+              {
+                "id": "c283_1.get_terminal_phase",
+                "description": "WorkphasesConfig.get_terminal_phase() returns name of phase with terminal=True",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/workphases.py",
+                  "text": "def get_terminal_phase"
+                }
+              },
+              {
+                "id": "c283_1.branch_local_artifact",
+                "description": "BranchLocalArtifact Pydantic model with pattern and merge_action fields",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/phase_contracts_config.py",
+                  "text": "class BranchLocalArtifact"
+                }
+              },
+              {
+                "id": "c283_1.merge_policy_model",
+                "description": "MergePolicy Pydantic model with exclude_branch_local_artifacts and pr_allowed_phase fields",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/phase_contracts_config.py",
+                  "text": "class MergePolicy"
+                }
+              },
+              {
+                "id": "c283_1.merge_policy_required",
+                "description": "PhaseContractsConfig.merge_policy: MergePolicy field (required, no default)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/phase_contracts_config.py",
+                  "text": "merge_policy: MergePolicy"
+                }
+              },
+              {
+                "id": "c283_1.get_pr_allowed_phase",
+                "description": "PhaseContractsConfig.get_pr_allowed_phase() returns pr_allowed_phase from merge_policy",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/phase_contracts_config.py",
+                  "text": "def get_pr_allowed_phase"
+                }
+              },
+              {
+                "id": "c283_1.workphases_yaml_terminal",
+                "description": "workphases.yaml ready phase entry with terminal: true",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/workphases.yaml",
+                  "text": "terminal: true"
+                }
+              },
+              {
+                "id": "c283_1.phase_contracts_yaml_merge_policy",
+                "description": "phase_contracts.yaml merge_policy block for all 6 workflows",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/phase_contracts.yaml",
+                  "text": "merge_policy:"
+                }
+              },
+              {
+                "id": "c283_1.v7_blast_radius",
+                "description": "test_support.py V7 fixture updated to supply merge_policy field",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/test_support.py",
+                  "text": "merge_policy"
+                }
+              }
             ],
-            "exit_criteria": "WorkphasesConfig rejects two terminal phases; PhaseContractsConfig rejects missing merge_policy; get_terminal_phase() returns 'ready'; get_pr_allowed_phase() returns configured phase; V6/V7/N_PCR_DOUBLE pass; full suite green"
+            "exit_criteria": "WorkphasesConfig rejects two terminal phases; PhaseContractsConfig rejects missing merge_policy; get_terminal_phase() returns 'ready'; get_pr_allowed_phase() returns configured phase; V6 blast-radius test passes with updated fixtures; N_PCR_DOUBLE passes with merge_policy supplied; V7 passes; full suite green"
           },
           {
             "cycle_number": 2,
@@ -929,12 +1009,71 @@
               "mcp_server/server.py"
             ],
             "deliverables": [
-              "ConfigLoader._inject_terminal_phase(workflow_config, workphases_config) @staticmethod",
-              "server.py: load workphases_config first, then inject, then validate, then construct",
-              "Test V8: injection happy path (ready phase in workflow after inject)",
-              "Test V9: injection is idempotent (double inject has no effect)"
+              {
+                "id": "c283_2.inject_static_method",
+                "description": "ConfigLoader._inject_terminal_phase(workflow_config, workphases_config) @staticmethod added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/loader.py",
+                  "text": "def _inject_terminal_phase"
+                }
+              },
+              {
+                "id": "c283_2.server_injection_call",
+                "description": "server.py calls ConfigLoader._inject_terminal_phase after load and before ConfigValidator construction",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "_inject_terminal_phase"
+                }
+              },
+              {
+                "id": "c283_2.test_inject_appends",
+                "description": "test_inject_terminal_phase_appends_to_all_workflows test added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_loader.py",
+                  "text": "test_inject_terminal_phase_appends_to_all_workflows"
+                }
+              },
+              {
+                "id": "c283_2.test_inject_no_duplicate",
+                "description": "test_inject_terminal_phase_does_not_duplicate test added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_loader.py",
+                  "text": "test_inject_terminal_phase_does_not_duplicate"
+                }
+              },
+              {
+                "id": "c283_2.test_inject_no_mutation",
+                "description": "test_inject_terminal_phase_returns_new_object test added (CQS / D6)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_loader.py",
+                  "text": "test_inject_terminal_phase_returns_new_object"
+                }
+              },
+              {
+                "id": "c283_2.test_inject_no_file_io",
+                "description": "test_inject_terminal_phase_no_file_io test added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_loader.py",
+                  "text": "test_inject_terminal_phase_no_file_io"
+                }
+              },
+              {
+                "id": "c283_2.test_load_no_inject",
+                "description": "test_load_workflow_config_does_not_inject test added: load_workflow_config() result must NOT contain terminal phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_loader.py",
+                  "text": "test_load_workflow_config_does_not_inject"
+                }
+              }
             ],
-            "exit_criteria": "V8 and V9 pass; workflow_config contains ready phase after injection; _inject_terminal_phase is @staticmethod; load_workflow_config() not modified; full suite green"
+            "exit_criteria": "N6 ordering constraint: _inject_terminal_phase call in server.py appears after load_workphases_config() and before ConfigValidator construction; test_load_workflow_config_does_not_inject passes (load_workflow_config result contains no terminal phase); V8 test_workflow_config.py phase list assertion passes; V9 workflow_fixtures.py assertions unchanged; full suite green"
           },
           {
             "cycle_number": 3,
@@ -948,15 +1087,71 @@
               ".st3/config/enforcement.yaml"
             ],
             "deliverables": [
-              "MergeReadinessContext frozen dataclass (current_phase, terminal_phase, branch_local_artifacts, merge_policy)",
-              "EnforcementRunner.check_branch_local_artifacts handler",
-              "EnforcementRunner.check_merge_readiness handler",
-              "enforcement.yaml: exclude_branch_local_artifacts rule",
-              "enforcement.yaml: check_merge_readiness rule",
-              "ConfigValidator._validate_merge_policy_phase() cross-validates pr_allowed_phase",
-              "server.py: EnforcementRunner constructed with merge_readiness_context arg"
+              {
+                "id": "c283_3.merge_readiness_context",
+                "description": "MergeReadinessContext frozen dataclass in phase_contract_resolver.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_contract_resolver.py",
+                  "text": "class MergeReadinessContext"
+                }
+              },
+              {
+                "id": "c283_3.handler_branch_local",
+                "description": "EnforcementRunner._handle_exclude_branch_local_artifacts handler added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_handle_exclude_branch_local_artifacts"
+                }
+              },
+              {
+                "id": "c283_3.handler_merge_readiness",
+                "description": "EnforcementRunner._handle_check_merge_readiness handler added",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_handle_check_merge_readiness"
+                }
+              },
+              {
+                "id": "c283_3.enforcement_yaml_git_commit",
+                "description": "enforcement.yaml exclude_branch_local_artifacts rule for git_commit event",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "exclude_branch_local_artifacts"
+                }
+              },
+              {
+                "id": "c283_3.enforcement_yaml_create_pr",
+                "description": "enforcement.yaml check_merge_readiness rule for create_pr event",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "check_merge_readiness"
+                }
+              },
+              {
+                "id": "c283_3.validator_merge_policy_phase",
+                "description": "ConfigValidator._validate_merge_policy_phase() cross-validates pr_allowed_phase against known workphases",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/validator.py",
+                  "text": "def _validate_merge_policy_phase"
+                }
+              },
+              {
+                "id": "c283_3.server_merge_readiness_ctx",
+                "description": "server.py constructs MergeReadinessContext and passes to EnforcementRunner",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "MergeReadinessContext"
+                }
+              }
             ],
-            "exit_criteria": "check_branch_local_artifacts blocks .st3/ paths on git_commit; check_merge_readiness blocks create_pr when not in pr_allowed_phase; ConfigValidator raises ConfigError for unknown pr_allowed_phase; enforcement.yaml new rules activate; full suite green"
+            "exit_criteria": "check_branch_local_artifacts handler blocks .st3/ paths on git_commit event; check_merge_readiness handler blocks create_pr when current_phase != pr_allowed_phase; ConfigValidator raises ConfigError for unknown pr_allowed_phase; handlers are registered before enforcement_event is wired into tool dispatch (C4 depends on C3 for this); full suite green"
           },
           {
             "cycle_number": 4,
@@ -967,13 +1162,53 @@
               "mcp_server/tools/pr_tools.py"
             ],
             "deliverables": [
-              "GitCommitTool.enforcement_event = 'git_commit' class variable (execute() unchanged)",
-              "CreatePRTool.enforcement_event = 'create_pr' class variable (execute() unchanged)",
-              "Integration test: git_commit with .st3/ artifact staged is blocked",
-              "Integration test: create_pr outside pr_allowed_phase is blocked",
-              "Integration test: create_pr in pr_allowed_phase is allowed"
+              {
+                "id": "c283_4.git_commit_enforcement_event",
+                "description": "GitCommitTool.enforcement_event = 'git_commit' class variable added (execute() unchanged)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "\"git_commit\""
+                }
+              },
+              {
+                "id": "c283_4.create_pr_enforcement_event",
+                "description": "CreatePRTool.enforcement_event = 'create_pr' class variable added (execute() unchanged)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/pr_tools.py",
+                  "text": "\"create_pr\""
+                }
+              },
+              {
+                "id": "c283_4.test_git_commit_blocked",
+                "description": "Integration test: git_commit with .st3/ artifact staged is blocked by enforcement",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_ready_phase_enforcement.py",
+                  "text": "test_git_commit_blocked_when_branch_local_artifact_staged"
+                }
+              },
+              {
+                "id": "c283_4.test_create_pr_blocked",
+                "description": "Integration test: create_pr outside pr_allowed_phase is blocked",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_ready_phase_enforcement.py",
+                  "text": "test_create_pr_blocked_outside_pr_allowed_phase"
+                }
+              },
+              {
+                "id": "c283_4.test_create_pr_allowed",
+                "description": "Integration test: create_pr when current_phase == pr_allowed_phase is allowed",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_ready_phase_enforcement.py",
+                  "text": "test_create_pr_allowed_in_pr_allowed_phase"
+                }
+              }
             ],
-            "exit_criteria": "All 3 integration tests pass; execute() methods unchanged; enforcement_event = 'git_commit' and 'create_pr' wired; full suite green; run_quality_gates(scope=branch) green"
+            "exit_criteria": "execute() on GitCommitTool contains no enforcement logic (no direct reference to pr_allowed_phase, merge_readiness, or handler calls inside execute()); execute() on CreatePRTool contains no enforcement logic; integration test covers git_commit blocked path, create_pr blocked path, create_pr allowed path; full suite green; run_quality_gates(scope=branch) green"
           },
           {
             "cycle_number": 5,
@@ -987,14 +1222,26 @@
               "show_yaml.py"
             ],
             "deliverables": [
-              ".gitattributes: merge=ours rule removed for .st3/ paths",
-              "check_yaml.py deleted",
-              "fix_yaml.py deleted",
-              "revert_yaml.py deleted",
-              "show_yaml.py deleted",
-              "Regression test: no merge=ours rule in .gitattributes for .st3/"
+              {
+                "id": "c283_5.gitattributes_no_merge_ours",
+                "description": ".gitattributes: merge=ours rule removed for .st3/ paths",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".gitattributes",
+                  "text": "merge=ours"
+                }
+              },
+              {
+                "id": "c283_5.regression_test",
+                "description": "Regression test verifies no merge=ours rule remains for .st3/ in .gitattributes",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/regression/test_gitattributes.py",
+                  "text": "test_no_merge_ours_for_st3_paths"
+                }
+              }
             ],
-            "exit_criteria": "Select-String '.st3/' .gitattributes -> 0 results; Test-Path check_yaml.py, fix_yaml.py, revert_yaml.py, show_yaml.py each -> False; regression test passes; full suite green"
+            "exit_criteria": "check_yaml.py absent from working tree; fix_yaml.py absent; revert_yaml.py absent; show_yaml.py absent; no merge=ours rule in .gitattributes; regression test passes; full suite green"
           }
         ]
       }
