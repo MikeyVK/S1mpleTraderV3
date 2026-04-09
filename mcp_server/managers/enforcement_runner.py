@@ -15,10 +15,12 @@ from pathlib import Path
 from typing import cast
 
 from mcp_server.core.exceptions import ConfigError, ValidationError
+from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
+_BRANCH_LOCAL_PREFIX = ".st3/"
 
 __all__ = [
     "EnforcementAction",
@@ -77,9 +79,11 @@ class EnforcementRunner:
         workspace_root: Path,
         config: EnforcementConfig,
         registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
+        merge_readiness_ctx: MergeReadinessContext | None = None,
     ) -> None:
         self.workspace_root = Path(workspace_root)
         self._config = config
+        self._merge_readiness_ctx = merge_readiness_ctx
         if registry is None:
             self._registry = self._build_default_registry()
         elif isinstance(registry, EnforcementRegistry):
@@ -125,6 +129,14 @@ class EnforcementRunner:
             "check_branch_policy",
             self._handle_check_branch_policy,
         )
+        registry.register(
+            "exclude_branch_local_artifacts",
+            self._handle_exclude_branch_local_artifacts,
+        )
+        registry.register(
+            "check_merge_readiness",
+            self._handle_check_merge_readiness,
+        )
         return registry
 
     def _handle_check_branch_policy(
@@ -151,3 +163,47 @@ class EnforcementRunner:
             f"Branch type '{branch_type}' cannot be created from base '{base_branch}'",
             hints=[f"Allowed bases: {', '.join(allowed_patterns)}"],
         )
+
+    def _handle_exclude_branch_local_artifacts(
+        self,
+        action: EnforcementAction,
+        context: EnforcementContext,
+        workspace_root: Path,
+    ) -> str | None:
+        """Block commits that stage branch-local artifacts (.st3/ paths)."""
+        del action, workspace_root
+        files = context.get_param("files")
+        if not files:
+            return None
+        offending = [str(f) for f in files if str(f).startswith(_BRANCH_LOCAL_PREFIX)]  # type: ignore[union-attr]
+        if offending:
+            raise ValidationError(
+                "Cannot commit branch-local artifacts: "
+                + ", ".join(offending),
+                hints=[
+                    "Remove .st3/ paths from the files list.",
+                    "Add .st3/state.json and .st3/deliverables.json to .gitignore.",
+                ],
+            )
+        return None
+
+    def _handle_check_merge_readiness(
+        self,
+        action: EnforcementAction,
+        context: EnforcementContext,
+        workspace_root: Path,
+    ) -> str | None:
+        """Block PR creation when current branch phase is not the PR-allowed phase."""
+        del action, context, workspace_root
+        if self._merge_readiness_ctx is None:
+            return None
+        ctx = self._merge_readiness_ctx
+        if ctx.current_phase != ctx.pr_allowed_phase:
+            raise ValidationError(
+                f"PR not allowed: current phase is '{ctx.current_phase}', "
+                f"but PRs require phase '{ctx.pr_allowed_phase}'.",
+                hints=[
+                    f"Transition to '{ctx.pr_allowed_phase}' before creating a PR.",
+                ],
+            )
+        return None

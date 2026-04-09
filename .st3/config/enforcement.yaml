@@ -13,3 +13,13 @@ enforcement:
           fix: [main, "epic/*"]
           refactor: [main, "epic/*"]
           docs: [main, "epic/*"]
+  - event_source: tool
+    tool: git_add_or_commit
+    timing: pre
+    actions:
+      - type: exclude_branch_local_artifacts
+  - event_source: tool
+    tool: create_pr
+    timing: pre
+    actions:
+      - type: check_merge_readiness

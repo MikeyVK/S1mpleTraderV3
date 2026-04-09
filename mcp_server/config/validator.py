@@ -55,6 +55,10 @@ class ConfigValidator:
             structure=structure,
             known_artifact_types=known_artifact_types,
         )
+        self._validate_merge_policy_phase(
+            phase_contracts=phase_contracts,
+            known_phases=known_phases,
+        )
 
     def _validate_workflow_phases(
         self,
@@ -128,3 +132,15 @@ class ConfigValidator:
                 raise ConfigError(
                     f"Directory '{directory_path}' references unknown parent: '{policy.parent}'"
                 )
+
+    def _validate_merge_policy_phase(
+        self,
+        phase_contracts: PhaseContractsConfig,
+        known_phases: set[str],
+    ) -> None:
+        pr_phase = phase_contracts.merge_policy.pr_allowed_phase
+        if pr_phase not in known_phases:
+            raise ConfigError(
+                f"merge_policy.pr_allowed_phase '{pr_phase}' is not a known workphase. "
+                f"Known phases: {sorted(known_phases)}"
+            )

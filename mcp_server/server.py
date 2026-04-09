@@ -34,7 +34,7 @@ from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, PhaseContractResolver
+from mcp_server.managers.phase_contract_resolver import MergeReadinessContext, PhaseConfigContext, PhaseContractResolver
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
@@ -237,9 +237,19 @@ class MCPServer:
             registry=artifact_registry,
             project_structure_config=project_structure_config,
         )
+        try:
+            _current_branch = self.git_manager.get_current_branch()
+            _current_phase = self.phase_state_engine.get_current_phase(_current_branch)
+            _merge_readiness_ctx: MergeReadinessContext | None = MergeReadinessContext(
+                current_phase=_current_phase,
+                pr_allowed_phase=phase_contracts_config.get_pr_allowed_phase(),
+            )
+        except Exception:  # noqa: BLE001
+            _merge_readiness_ctx = None
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,
             config=enforcement_config,
+            merge_readiness_ctx=_merge_readiness_ctx,
         )
 
         self.server = Server(server_name)

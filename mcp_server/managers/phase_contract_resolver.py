@@ -16,6 +16,14 @@ _DELIVERABLES_DISPLAY_PATH = ".st3/deliverables.json"
 
 
 @dataclass(frozen=True)
+class MergeReadinessContext:
+    """Context for merge readiness enforcement checks."""
+
+    current_phase: str
+    pr_allowed_phase: str
+
+
+@dataclass(frozen=True)
 class PhaseConfigContext:
     """Facade bundling workphase, phase contract, and issue deliverable context."""
 
