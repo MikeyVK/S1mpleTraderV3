@@ -45,6 +45,7 @@ class CreatePRTool(BaseTool):
     name = "create_pr"
     description = "Create a new GitHub Pull Request"
     args_model = CreatePRInput
+    enforcement_event: str | None = "create_pr"
 
     def __init__(self, manager: GitHubManager, git_config: GitConfig) -> None:
         self.manager = manager

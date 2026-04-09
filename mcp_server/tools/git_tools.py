@@ -280,6 +280,7 @@ class GitCommitTool(BaseTool):
     name = "git_add_or_commit"
     description = "Commit changes with workflow phase scope (e.g., test(P_TDD_SP_RED): message)"
     args_model = GitCommitInput
+    enforcement_event: str | None = "git_add_or_commit"
 
     def __init__(
         self,
