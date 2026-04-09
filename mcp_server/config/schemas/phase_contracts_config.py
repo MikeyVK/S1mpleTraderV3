@@ -18,6 +18,20 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class BranchLocalArtifact(BaseModel):
+    """Single branch-local artifact definition from merge_policy."""
+
+    path: str
+    reason: str
+
+
+class MergePolicy(BaseModel):
+    """Merge policy configuration from phase_contracts.yaml."""
+
+    pr_allowed_phase: str
+    branch_local_artifacts: list[BranchLocalArtifact] = Field(default_factory=list)
+
+
 class CheckSpec(BaseModel):
     """Typed phase check specification loaded from YAML or deliverables.json."""
 
@@ -55,4 +69,9 @@ class PhaseContractsConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    merge_policy: MergePolicy
     workflows: dict[str, dict[str, PhaseContractPhase]] = Field(default_factory=dict)
+
+    def get_pr_allowed_phase(self) -> str:
+        """Return the phase name that permits PR creation."""
+        return self.merge_policy.pr_allowed_phase

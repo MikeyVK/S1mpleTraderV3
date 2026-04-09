@@ -67,6 +67,13 @@ phases:
       - "sync"         # Synchronize across issues
       - "review"       # Epic-level review
 
+  ready:
+    display_name: "Ready"
+    description: "Terminal phase — merge readiness verified, PR allowed"
+    commit_type_hint: null
+    subphases: []
+    terminal: true
+
 # Validation Rules
 # 1. Phase names must match workflows.yaml phase references
 # 2. Subphases are strict whitelists (ScopeEncoder validates)

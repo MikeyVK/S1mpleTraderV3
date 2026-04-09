@@ -219,6 +219,9 @@ class TestTransitionHooksWiring:
         config_dir.mkdir(parents=True, exist_ok=True)
         (config_dir / "phase_contracts.yaml").write_text(
             (
+                "merge_policy:\n"
+                "  pr_allowed_phase: ready\n"
+                "  branch_local_artifacts: []\n"
                 "workflows:\n"
                 "  feature:\n"
                 "    implementation:\n"

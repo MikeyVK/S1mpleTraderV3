@@ -37,6 +37,9 @@ phases:
     display_name: "Implementation"
   documentation:
     display_name: "Documentation"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -44,6 +47,9 @@ phases:
 
     (config_dir / "phase_contracts.yaml").write_text(
         """
+merge_policy:
+  pr_allowed_phase: ready
+  branch_local_artifacts: []
 workflows:
   feature:
     planning:
@@ -145,11 +151,14 @@ class TestPhaseConfigContext:
         config_dir.mkdir(parents=True)
 
         (config_dir / "workphases.yaml").write_text(
-            "phases:\n  implementation:\n    display_name: Implementation\n",
+            "phases:\n  implementation:\n    display_name: Implementation\n  ready:\n    display_name: Ready\n    terminal: true\n",
             encoding="utf-8",
         )
         (config_dir / "phase_contracts.yaml").write_text(
             """
+merge_policy:
+  pr_allowed_phase: ready
+  branch_local_artifacts: []
 workflows:
   feature:
     implementation:
@@ -174,11 +183,14 @@ workflows:
         config_dir.mkdir(parents=True)
 
         (config_dir / "workphases.yaml").write_text(
-            "phases:\n  planning:\n    display_name: Planning\n",
+            "phases:\n  planning:\n    display_name: Planning\n  ready:\n    display_name: Ready\n    terminal: true\n",
             encoding="utf-8",
         )
         (config_dir / "phase_contracts.yaml").write_text(
             """
+merge_policy:
+  pr_allowed_phase: ready
+  branch_local_artifacts: []
 workflows:
   feature:
     planning: {}

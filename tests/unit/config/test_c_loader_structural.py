@@ -105,7 +105,11 @@ def config_root(tmp_path: Path) -> Path:
                     "subphases": ["red", "green", "refactor"],
                     "exit_requires": [],
                     "entry_expects": [],
-                }
+                },
+                "ready": {
+                    "display_name": "Ready",
+                    "terminal": True,
+                },
             },
         },
     )
@@ -237,6 +241,10 @@ def config_root(tmp_path: Path) -> Path:
     write_yaml(
         "phase_contracts.yaml",
         {
+            "merge_policy": {
+                "pr_allowed_phase": "ready",
+                "branch_local_artifacts": [],
+            },
             "workflows": {
                 "feature": {
                     "implementation": {

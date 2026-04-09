@@ -63,6 +63,10 @@ phases:
     commit_type: "chore"
     subphases: ["delegation", "sync", "review"]
 
+  ready:
+    display_name: "Ready"
+    terminal: true
+
 version: "1.0"
 """,
         encoding="utf-8",

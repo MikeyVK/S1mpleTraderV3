@@ -226,6 +226,9 @@ phases:
         description: "TDD cycle breakdown"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         return tmp_path
@@ -242,6 +245,9 @@ phases:
     display_name: "Planning"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         return tmp_path
@@ -341,6 +347,9 @@ phases:
         description: "TDD cycle breakdown"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         branch = "feature/42-test"
@@ -440,6 +449,9 @@ phases:
     display_name: "Planning"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         branch = "feature/42-test"

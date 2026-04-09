@@ -83,6 +83,13 @@ def git_repo(tmp_path: Path) -> Path:
                 "commit_type_hint": "docs",
                 "subphases": [],
             },
+            "ready": {
+                "display_name": "Ready",
+                "description": "Terminal phase — merge readiness verified",
+                "commit_type_hint": None,
+                "subphases": [],
+                "terminal": True,
+            },
         },
     }
     (config_dir / "workphases.yaml").write_text(yaml.dump(workphases), encoding="utf-8")

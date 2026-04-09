@@ -48,6 +48,9 @@ phases:
     exit_requires:
       - key: "planning_deliverables"
         description: "TDD cycle breakdown"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
 
@@ -71,6 +74,9 @@ phases:
     entry_expects:
       - key: "planning_deliverables"
         description: "Expected from planning phase"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
 
@@ -97,6 +103,9 @@ phases:
     exit_requires:
       - key: "planning_deliverables"
         description: "TDD cycle breakdown"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
 
