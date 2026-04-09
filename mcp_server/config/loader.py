@@ -115,7 +115,7 @@ class ConfigLoader:
         return self._validate_schema(WorkphasesConfig, data, resolved_path)
 
     @staticmethod
-    def inject_terminal_phase(
+    def _inject_terminal_phase(
         workflow_config: WorkflowConfig,
         workphases_config: WorkphasesConfig,
     ) -> WorkflowConfig:

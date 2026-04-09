@@ -91,7 +91,7 @@ class TestPhaseContractsConfigMergePolicy:
 
     def test_extra_fields_still_forbidden(self) -> None:
         with pytest.raises(ValidationError):
-            PhaseContractsConfig(
+            PhaseContractsConfig(  # type: ignore[call-arg]
                 merge_policy=_minimal_policy(),
                 workflows={},
                 unknown_field="x",
