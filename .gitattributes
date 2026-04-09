@@ -1,3 +1,0 @@
-# Prevent state.json contamination during merges.
-# Each branch retains its own workflow state on merge.
-.st3/state.json merge=ours
