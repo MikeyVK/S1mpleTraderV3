@@ -6,13 +6,11 @@
 @dependencies: [pytest, mcp_server.config.loader, mcp_server.config.schemas]
 """
 
-import pytest
-
 from pathlib import Path
 
 from mcp_server.config.loader import ConfigLoader
-from mcp_server.config.schemas.workphases import PhaseDefinition, WorkphasesConfig
 from mcp_server.config.schemas.workflows import WorkflowConfig
+from mcp_server.config.schemas.workphases import PhaseDefinition, WorkphasesConfig
 
 
 def _workflow_config(phases: list[str]) -> WorkflowConfig:
@@ -48,7 +46,7 @@ class TestInjectTerminalPhase:
         workflow_config = _workflow_config(["planning", "implementation"])
         workphases = _workphases_config("ready")
 
-        result = ConfigLoader._inject_terminal_phase(workflow_config, workphases)
+        result = ConfigLoader.inject_terminal_phase(workflow_config, workphases)
 
         assert "ready" in result.workflows["feature"].phases
 
@@ -57,7 +55,7 @@ class TestInjectTerminalPhase:
         workflow_config = _workflow_config(["planning", "implementation", "ready"])
         workphases = _workphases_config("ready")
 
-        result = ConfigLoader._inject_terminal_phase(workflow_config, workphases)
+        result = ConfigLoader.inject_terminal_phase(workflow_config, workphases)
 
         assert result.workflows["feature"].phases.count("ready") == 1
 
@@ -67,7 +65,7 @@ class TestInjectTerminalPhase:
         workphases = _workphases_config("ready")
         original_phases = list(workflow_config.workflows["feature"].phases)
 
-        result = ConfigLoader._inject_terminal_phase(workflow_config, workphases)
+        result = ConfigLoader.inject_terminal_phase(workflow_config, workphases)
 
         assert result is not workflow_config
         assert workflow_config.workflows["feature"].phases == original_phases
@@ -77,7 +75,7 @@ class TestInjectTerminalPhase:
         workflow_config = _workflow_config(["planning"])
         workphases = _workphases_config("ready")
 
-        result = ConfigLoader._inject_terminal_phase(workflow_config, workphases)
+        result = ConfigLoader.inject_terminal_phase(workflow_config, workphases)
 
         assert result is not None
 
