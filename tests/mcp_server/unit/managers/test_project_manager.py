@@ -55,8 +55,8 @@ class TestProjectManagerWorkflows:
         assert len(workflow.phases) == 6
         expected = [
             "research",
-            "planning",
             "design",
+            "planning",
             "implementation",
             "validation",
             "documentation",
