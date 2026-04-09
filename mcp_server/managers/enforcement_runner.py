@@ -8,6 +8,8 @@ Dispatch-level enforcement runner for tool events configured in
 
 from __future__ import annotations
 
+import json
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from fnmatch import fnmatch
@@ -20,7 +22,37 @@ from mcp_server.schemas import EnforcementAction, EnforcementConfig, Enforcement
 from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
-_BRANCH_LOCAL_PREFIX = ".st3/"
+
+
+def _read_current_phase(workspace_root: Path) -> str | None:
+    """Read the current workflow phase from .st3/state.json at call time."""
+    state_file = workspace_root / ".st3" / "state.json"
+    if not state_file.exists():
+        return None
+    data: dict[str, object] = json.loads(state_file.read_text(encoding="utf-8"))
+    raw = data.get("current_phase")
+    return str(raw) if raw else None
+
+
+def _git_is_tracked(workspace_root: Path, path: str) -> bool:
+    """Return True if *path* is currently tracked in the git index."""
+    result = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", path],
+        cwd=workspace_root,
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def _git_rm_cached(workspace_root: Path, path: str) -> None:
+    """Remove *path* from the git index without deleting the working-tree file."""
+    subprocess.run(
+        ["git", "rm", "--cached", "--ignore-unmatch", path],
+        cwd=workspace_root,
+        capture_output=True,
+        check=False,
+    )
+
 
 __all__ = [
     "EnforcementAction",
@@ -79,11 +111,11 @@ class EnforcementRunner:
         workspace_root: Path,
         config: EnforcementConfig,
         registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
-        merge_readiness_ctx: MergeReadinessContext | None = None,
+        merge_readiness_context: MergeReadinessContext | None = None,
     ) -> None:
         self.workspace_root = Path(workspace_root)
         self._config = config
-        self._merge_readiness_ctx = merge_readiness_ctx
+        self._merge_readiness_context = merge_readiness_context
         if registry is None:
             self._registry = self._build_default_registry()
         elif isinstance(registry, EnforcementRegistry):
@@ -170,21 +202,41 @@ class EnforcementRunner:
         context: EnforcementContext,
         workspace_root: Path,
     ) -> str | None:
-        """Block commits that stage branch-local artifacts (.st3/ paths)."""
-        del action, workspace_root
-        files = context.get_param("files")
-        if not files or not isinstance(files, (list, tuple)):
+        """Auto-exclude configured branch-local artifacts from the commit index.
+
+        Only runs when the current workflow phase equals the configured terminal phase.
+        For each artifact in merge_readiness_context.branch_local_artifacts that is
+        git-tracked, runs ``git rm --cached`` and returns a formatted exclusion note.
+        """
+        del action, context
+        if self._merge_readiness_context is None:
             return None
-        offending = [str(f) for f in files if str(f).startswith(_BRANCH_LOCAL_PREFIX)]
-        if offending:
-            raise ValidationError(
-                f"Cannot commit branch-local artifacts: {', '.join(offending)}",
-                hints=[
-                    "Remove .st3/ paths from the files list.",
-                    "Add .st3/state.json and .st3/deliverables.json to .gitignore.",
-                ],
-            )
-        return None
+        ctx = self._merge_readiness_context
+
+        current_phase = _read_current_phase(workspace_root)
+        if current_phase != ctx.terminal_phase:
+            return None
+
+        excluded = [
+            artifact
+            for artifact in ctx.branch_local_artifacts
+            if _git_is_tracked(workspace_root, artifact.path)
+        ]
+        if not excluded:
+            return None
+
+        for artifact in excluded:
+            _git_rm_cached(workspace_root, artifact.path)
+
+        lines = ["Branch-local artifacts excluded from commit index:"]
+        for artifact in excluded:
+            lines.append(f"  - {artifact.path}")
+            lines.append(f"    Reason: {artifact.reason}")
+        lines.append("")
+        lines.append(
+            "Source: .st3/config/phase_contracts.yaml → merge_policy.branch_local_artifacts"
+        )
+        return "\n".join(lines)
 
     def _handle_check_merge_readiness(
         self,
@@ -192,17 +244,42 @@ class EnforcementRunner:
         context: EnforcementContext,
         workspace_root: Path,
     ) -> str | None:
-        """Block PR creation when current branch phase is not the PR-allowed phase."""
-        del action, context, workspace_root
-        if self._merge_readiness_ctx is None:
+        """Block PR creation when phase or tracked-artifact checks fail.
+
+        Check 1 — Phase gate: current_phase must equal pr_allowed_phase.
+        Check 2 — Artifact pre-flight: no branch-local artifact may remain git-tracked.
+        Both checks read live state at handler execution time.
+        """
+        del action, context
+        if self._merge_readiness_context is None:
             return None
-        ctx = self._merge_readiness_ctx
-        if ctx.current_phase != ctx.pr_allowed_phase:
+        ctx = self._merge_readiness_context
+
+        # Check 1 — Phase gate (read live from state.json)
+        current_phase = _read_current_phase(workspace_root)
+        if current_phase != ctx.pr_allowed_phase:
             raise ValidationError(
-                f"PR not allowed: current phase is '{ctx.current_phase}', "
-                f"but PRs require phase '{ctx.pr_allowed_phase}'.",
+                f"PR creation requires phase '{ctx.pr_allowed_phase}'. "
+                f"Current phase: '{current_phase}'.",
+                hints=[f'transition_phase(to_phase="{ctx.pr_allowed_phase}")'],
+            )
+
+        # Check 2 — Artifact pre-flight
+        tracked = [
+            artifact
+            for artifact in ctx.branch_local_artifacts
+            if _git_is_tracked(workspace_root, artifact.path)
+        ]
+        if tracked:
+            artifact_hints = [f"  - {a.path}\n    Reason: {a.reason}" for a in tracked]
+            raise ValidationError(
+                "Branch-local artifacts are still git-tracked and would contaminate main:",
                 hints=[
-                    f"Transition to '{ctx.pr_allowed_phase}' before creating a PR.",
+                    *artifact_hints,
+                    "Commit first in the ready phase to auto-exclude them:",
+                    '  git_add_or_commit(message="chore: prepare branch for PR")',
+                    "Source: .st3/config/phase_contracts.yaml"
+                    " → merge_policy.branch_local_artifacts",
                 ],
             )
         return None

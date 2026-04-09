@@ -14,10 +14,13 @@ Tests for ConfigValidator._validate_merge_policy_phase cross-validation (C3 issu
 """
 
 # Standard library
-# (geen)
+from typing import Any
 
 # Third-party
 import pytest
+
+from mcp_server.config.schemas.phase_contracts_config import MergePolicy
+from mcp_server.config.schemas.workphases import PhaseDefinition
 
 # Project modules
 from mcp_server.config.validator import ConfigValidator
@@ -30,13 +33,11 @@ from mcp_server.schemas import (
     WorkflowConfig,
     WorkphasesConfig,
 )
-from mcp_server.config.schemas.phase_contracts_config import MergePolicy
-from mcp_server.config.schemas.workphases import PhaseDefinition
 
 
 def _workphases(phases: list[str] = None, terminal: str = "ready") -> WorkphasesConfig:  # type: ignore[assignment]
     phase_dict: dict[str, PhaseDefinition] = {}
-    for p in (phases or ["planning", "implementation"]):
+    for p in phases or ["planning", "implementation"]:
         phase_dict[p] = PhaseDefinition(display_name=p.capitalize())
     phase_dict[terminal] = PhaseDefinition(display_name=terminal.capitalize(), terminal=True)
     return WorkphasesConfig(version="1.0", phases=phase_dict)
@@ -52,11 +53,11 @@ def _phase_contracts(pr_allowed_phase: str = "ready") -> PhaseContractsConfig:
 def _stub_validate_startup_args(
     pr_allowed_phase: str = "ready",
     workphases: WorkphasesConfig | None = None,
-) -> dict:
+) -> dict[str, Any]:
     return {
-        "policies": OperationPoliciesConfig(version="1.0", operations={}),
+        "policies": OperationPoliciesConfig(version="1.0", operations={}),  # type: ignore[call-arg]
         "workflow": WorkflowConfig(version="1.0", workflows={}),
-        "structure": ProjectStructureConfig(version="1.0", directories={}),
+        "structure": ProjectStructureConfig(version="1.0", directories={}),  # type: ignore[call-arg]
         "artifact": ArtifactRegistryConfig(version="1.0", artifact_types=[]),
         "phase_contracts": _phase_contracts(pr_allowed_phase),
         "workphases": workphases or _workphases(),
@@ -69,7 +70,7 @@ class TestConfigValidatorC3:
     def test_validate_merge_policy_phase_raises_for_unknown_phase(
         self,
     ) -> None:
-        """_validate_merge_policy_phase raises ConfigError when pr_allowed_phase is not in workphases."""
+        """_validate_merge_policy_phase raises ConfigError for unknown pr_allowed_phase."""
         # Arrange
         phase_contracts = _phase_contracts(pr_allowed_phase="nonexistent_phase")
         workphases = _workphases()
@@ -84,7 +85,7 @@ class TestConfigValidatorC3:
     def test_validate_merge_policy_phase_ok_for_known_phase(
         self,
     ) -> None:
-        """_validate_merge_policy_phase does not raise when pr_allowed_phase is a known workphase."""
+        """_validate_merge_policy_phase does not raise for a known workphase."""
         # Arrange
         phase_contracts = _phase_contracts(pr_allowed_phase="ready")
         workphases = _workphases()
@@ -98,7 +99,7 @@ class TestConfigValidatorC3:
     def test_validate_startup_raises_for_invalid_merge_policy_phase(
         self,
     ) -> None:
-        """validate_startup calls _validate_merge_policy_phase and raises for invalid pr_allowed_phase."""
+        """validate_startup raises ConfigError for invalid pr_allowed_phase."""
         # Arrange
         kwargs = _stub_validate_startup_args(pr_allowed_phase="unknown_phase")
 

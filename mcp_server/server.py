@@ -241,19 +241,17 @@ class MCPServer:
             registry=artifact_registry,
             project_structure_config=project_structure_config,
         )
-        try:
-            _current_branch = self.git_manager.get_current_branch()
-            _current_phase = self.phase_state_engine.get_current_phase(_current_branch)
-            _merge_readiness_ctx: MergeReadinessContext | None = MergeReadinessContext(
-                current_phase=_current_phase,
-                pr_allowed_phase=phase_contracts_config.get_pr_allowed_phase(),
-            )
-        except Exception:  # noqa: BLE001
-            _merge_readiness_ctx = None
+        _merge_readiness_context = MergeReadinessContext(
+            terminal_phase=workphases_config.get_terminal_phase(),
+            pr_allowed_phase=phase_contracts_config.get_pr_allowed_phase(),
+            branch_local_artifacts=tuple(
+                phase_contracts_config.merge_policy.branch_local_artifacts
+            ),
+        )
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,
             config=enforcement_config,
-            merge_readiness_ctx=_merge_readiness_ctx,
+            merge_readiness_context=_merge_readiness_context,
         )
 
         self.server = Server(server_name)

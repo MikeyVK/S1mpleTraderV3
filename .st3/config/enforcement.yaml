@@ -14,6 +14,8 @@ enforcement:
           refactor: [main, "epic/*"]
           docs: [main, "epic/*"]
   - event_source: tool
+    # Note: design §2.8 shows 'git_commit' but the actual tool name is 'git_add_or_commit'.
+    # This is an intentional correction — 'git_add_or_commit' is the registered tool name.
     tool: git_add_or_commit
     timing: pre
     actions:
