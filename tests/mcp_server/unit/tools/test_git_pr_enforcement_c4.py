@@ -6,7 +6,8 @@ Unit + integration tests for C4: GitCommitTool and CreatePRTool enforcement even
 Tests verify:
 - GitCommitTool.enforcement_event == "git_add_or_commit"
 - CreatePRTool.enforcement_event == "create_pr"
-- Integration: runner.run() dispatched via GitCommitTool.enforcement_event excludes tracked artifacts
+- Integration: runner.run() dispatched via GitCommitTool.enforcement_event
+  excludes tracked artifacts
 - Integration: runner.run() via CreatePRTool.enforcement_event blocks wrong phase
 - Integration: runner.run() via CreatePRTool.enforcement_event blocks tracked artifacts
 - Integration: runner.run() via CreatePRTool.enforcement_event succeeds on happy path
@@ -110,7 +111,7 @@ class TestGitPREnforcementC4:
     # ── Integration: runner.run() dispatches via tool.enforcement_event ───────
 
     def test_git_commit_in_terminal_phase_excludes_artifacts(self, tmp_path: Path) -> None:
-        """runner.run() with GitCommitTool.enforcement_event excludes tracked artifacts in terminal phase."""
+        """runner.run() via GitCommitTool.enforcement_event excludes tracked artifacts."""
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         ctx = EnforcementContext(
@@ -136,7 +137,7 @@ class TestGitPREnforcementC4:
         assert any("excluded" in n.lower() for n in notes)
 
     def test_create_pr_wrong_phase_blocked(self, tmp_path: Path) -> None:
-        """runner.run() with CreatePRTool.enforcement_event raises ValidationError when phase is wrong."""
+        """runner.run() via CreatePRTool.enforcement_event raises ValidationError (wrong phase)."""
         _write_state(tmp_path, "implementation")
         runner = _make_runner(tmp_path, _merge_ctx(allowed="ready"))
         ctx = EnforcementContext(
@@ -153,7 +154,7 @@ class TestGitPREnforcementC4:
             )
 
     def test_create_pr_tracked_artifacts_blocked(self, tmp_path: Path) -> None:
-        """runner.run() with CreatePRTool.enforcement_event raises ValidationError with tracked artifacts."""
+        """runner.run() via CreatePRTool.enforcement_event raises ValidationError (tracked)."""
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         ctx = EnforcementContext(
