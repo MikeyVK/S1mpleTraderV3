@@ -2,7 +2,7 @@
 <!-- template=design version=5827e841 created=2026-04-09T12:19Z updated= -->
 # Ready Phase Enforcement — Design
 
-**Status:** DRAFT
+**Status:** FINAL
 **Version:** 2.0
 **Last Updated:** 2026-04-09
 
@@ -633,7 +633,7 @@ merge_policy:
 | Q | Question | Answer |
 |---|----------|--------|
 | Q1 | Authoritative config for phase enforcement? | `phase_contracts.yaml` global `merge_policy` section — P13 |
-| Q2 | Which loader file injects the terminal phase? | `ConfigLoader.load_workflow_config()` in `mcp_server/config/loader.py` |
+| Q2 | Which loader file injects the terminal phase? | `ConfigLoader._inject_terminal_phase(workflow_config, workphases_config)` — static helper in `mcp_server/config/loader.py`, called from `MCPServer.__init__` in `server.py`. **NOT** from `load_workflow_config()` (see §2.5). |
 | Q3 | Which tests break on terminal phase injection? | V6 (WorkphasesConfig validator), V7 (test_support.py fallback), V8 (workflow_config isolated fixtures — resolved by V5 fix), V9 (workflow_fixtures.py phase count/index), N_PCR_DOUBLE (phase_contract_resolver.py dual blast). Full fix contracts in §4. |
 | Q4 | In-flight branches on deploy day? | `force_phase_transition` + release note; no automated migration (YAGNI — research Flag Day) |
 
