@@ -805,3 +805,25 @@ async def test_git_add_or_commit_passes_when_phase_and_cycle_match(
     result = await tool.execute(params)
 
     assert "Committed: abc1234" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_no_state_json_returns_error(mock_git_manager: MagicMock) -> None:
+    """GitCommitTool returns ToolResult.error when state.json is missing (e.g. main)."""
+    mock_state_engine = MagicMock()
+    mock_state_engine.get_current_phase.side_effect = FileNotFoundError(
+        "Branch state for 'main' not found"
+    )
+    mock_git_manager.adapter.get_current_branch.return_value = "main"
+
+    tool = GitCommitTool(manager=mock_git_manager, state_engine=mock_state_engine)
+
+    # No workflow_phase — triggers auto-detect from state.json
+    params = GitCommitInput(message="chore: cleanup")
+
+    result = await tool.execute(params)
+
+    assert result.is_error
+    error_text = result.content[0]["text"]
+    assert "workflow_phase" in error_text
+    assert "main" in error_text
