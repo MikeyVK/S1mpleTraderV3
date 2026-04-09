@@ -14,11 +14,9 @@ Unit tests for workphases schema extensions (issue #283 C1)
 """
 
 # Standard library
-from typing import Any
 
 # Third-party
 import pytest
-from pathlib import Path
 from pydantic import ValidationError
 
 # Project modules

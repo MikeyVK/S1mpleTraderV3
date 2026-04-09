@@ -151,7 +151,12 @@ class TestPhaseConfigContext:
         config_dir.mkdir(parents=True)
 
         (config_dir / "workphases.yaml").write_text(
-            "phases:\n  implementation:\n    display_name: Implementation\n  ready:\n    display_name: Ready\n    terminal: true\n",
+            "phases:\n"
+            "  implementation:\n"
+            "    display_name: Implementation\n"
+            "  ready:\n"
+            "    display_name: Ready\n"
+            "    terminal: true\n",
             encoding="utf-8",
         )
         (config_dir / "phase_contracts.yaml").write_text(
@@ -183,7 +188,12 @@ workflows:
         config_dir.mkdir(parents=True)
 
         (config_dir / "workphases.yaml").write_text(
-            "phases:\n  planning:\n    display_name: Planning\n  ready:\n    display_name: Ready\n    terminal: true\n",
+            "phases:\n"
+            "  planning:\n"
+            "    display_name: Planning\n"
+            "  ready:\n"
+            "    display_name: Ready\n"
+            "    terminal: true\n",
             encoding="utf-8",
         )
         (config_dir / "phase_contracts.yaml").write_text(

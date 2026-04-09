@@ -216,9 +216,10 @@ class TestGetWorkContextTool:
         self, tool: GetWorkContextTool
     ) -> None:
         """Should detect workflow phase from commit-scope and display it correctly."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class, patch(
-            "mcp_server.tools.discovery_tools.ScopeDecoder"
-        ) as mock_decoder_class:
+        with (
+            patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
+        ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
             mock_git.get_recent_commits.return_value = [

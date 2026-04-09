@@ -9,20 +9,23 @@ Unit tests for phase_contracts schema extensions (issue #283 C1)
 @dependencies: [pytest, mcp_server.config.schemas.phase_contracts_config]
 @responsibilities:
     - Test TestPhaseContractsSchema functionality
-    - Verify BranchLocalArtifact, MergePolicy models, PhaseContractsConfig.merge_policy required field, get_pr_allowed_phase()
+    - Verify BranchLocalArtifact, MergePolicy models, PhaseContractsConfig.merge_policy
+      required field, get_pr_allowed_phase()
     - None
 """
 
 # Standard library
-from typing import Any
 
 # Third-party
 import pytest
-from pathlib import Path
 from pydantic import ValidationError
 
 # Project modules
-from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact, MergePolicy, PhaseContractsConfig
+from mcp_server.config.schemas.phase_contracts_config import (
+    BranchLocalArtifact,
+    MergePolicy,
+    PhaseContractsConfig,
+)
 
 
 def _minimal_policy(pr_allowed_phase: str = "ready") -> MergePolicy:
@@ -48,9 +51,7 @@ class TestBranchLocalArtifact:
             BranchLocalArtifact(path=".st3/state.json")  # type: ignore[call-arg]
 
     def test_valid_construction(self) -> None:
-        artifact = BranchLocalArtifact(
-            path=".st3/state.json", reason="branch-local MCP state"
-        )
+        artifact = BranchLocalArtifact(path=".st3/state.json", reason="branch-local MCP state")
         assert artifact.path == ".st3/state.json"
         assert artifact.reason == "branch-local MCP state"
 
@@ -77,7 +78,7 @@ class TestMergePolicy:
 
 
 class TestPhaseContractsConfigMergePolicy:
-    """PhaseContractsConfig.merge_policy required field + get_pr_allowed_phase() (C1 deliverable)."""
+    """PhaseContractsConfig.merge_policy required + get_pr_allowed_phase() (C1 deliverable)."""
 
     def test_merge_policy_required(self) -> None:
         """PhaseContractsConfig without merge_policy must raise ValidationError."""

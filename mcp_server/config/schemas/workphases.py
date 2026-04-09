@@ -39,7 +39,7 @@ class WorkphasesConfig(BaseModel):
     phases: dict[str, PhaseDefinition] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_single_terminal_phase(self) -> "WorkphasesConfig":
+    def validate_single_terminal_phase(self) -> WorkphasesConfig:
         """Enforce exactly one terminal phase across all phases."""
         terminal = [name for name, phase in self.phases.items() if phase.terminal]
         if len(terminal) == 0:

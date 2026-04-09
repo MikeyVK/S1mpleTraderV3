@@ -125,7 +125,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
 
     def test_label_startup_deleted(self) -> None:
@@ -208,7 +208,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
 
         with pytest.raises(ConfigError, match="unknown workflow"):
@@ -242,7 +242,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
 
         with pytest.raises(ConfigError, match="unknown phases"):
@@ -285,7 +285,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
         workphases_config = WorkphasesConfig(
             version="1.0",

@@ -235,10 +235,12 @@ def make_phase_state_engine(
             ),
         )
     else:
-        phase_contracts_config = PhaseContractsConfig.model_validate({
+        phase_contracts_config = PhaseContractsConfig.model_validate(
+            {
                 "workflows": {},
                 "merge_policy": {"pr_allowed_phase": "ready", "branch_local_artifacts": []},
-            })
+            }
+        )
     resolver = PhaseContractResolver(
         PhaseConfigContext(
             workphases=workphases_config,
