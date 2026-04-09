@@ -891,6 +891,113 @@
     ],
     "skip_reason": null,
     "parent_branch": null,
-    "created_at": "2026-04-09T11:43:14.316762+00:00"
+    "created_at": "2026-04-09T11:43:14.316762+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 5,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "name": "Pydantic Schemas + YAML Config",
+            "description": "PhaseDefinition.terminal; WorkphasesConfig validator + get_terminal_phase(); BranchLocalArtifact + MergePolicy + PhaseContractsConfig.merge_policy + get_pr_allowed_phase(); YAML configs updated; V6/V7/N_PCR_DOUBLE blast-radius fixes",
+            "files": [
+              "mcp_server/config/schemas/workphases.py",
+              "mcp_server/config/schemas/phase_contracts_config.py",
+              ".st3/config/workphases.yaml",
+              ".st3/config/phase_contracts.yaml"
+            ],
+            "deliverables": [
+              "PhaseDefinition.terminal: bool = False field",
+              "WorkphasesConfig model_validator raises if >1 terminal phase",
+              "WorkphasesConfig.get_terminal_phase() -> str",
+              "BranchLocalArtifact Pydantic model (pattern: str, merge_action: Literal)",
+              "MergePolicy Pydantic model (exclude_branch_local_artifacts: list, pr_allowed_phase: str)",
+              "PhaseContractsConfig.merge_policy: MergePolicy (required, no default)",
+              "PhaseContractsConfig.get_pr_allowed_phase() -> str",
+              "workphases.yaml: ready phase + terminal: true marker",
+              "phase_contracts.yaml: merge_policy block for all 6 workflows",
+              "Tests V6/V7/N_PCR_DOUBLE fixed to supply required merge_policy fields"
+            ],
+            "exit_criteria": "WorkphasesConfig rejects two terminal phases; PhaseContractsConfig rejects missing merge_policy; get_terminal_phase() returns 'ready'; get_pr_allowed_phase() returns configured phase; V6/V7/N_PCR_DOUBLE pass; full suite green"
+          },
+          {
+            "cycle_number": 2,
+            "name": "ConfigLoader Static Helper + server.py Injection",
+            "description": "ConfigLoader._inject_terminal_phase() static; server.py load->inject->validate->construct ordering; V8/V9 tests",
+            "files": [
+              "mcp_server/config/loader.py",
+              "mcp_server/server.py"
+            ],
+            "deliverables": [
+              "ConfigLoader._inject_terminal_phase(workflow_config, workphases_config) @staticmethod",
+              "server.py: load workphases_config first, then inject, then validate, then construct",
+              "Test V8: injection happy path (ready phase in workflow after inject)",
+              "Test V9: injection is idempotent (double inject has no effect)"
+            ],
+            "exit_criteria": "V8 and V9 pass; workflow_config contains ready phase after injection; _inject_terminal_phase is @staticmethod; load_workflow_config() not modified; full suite green"
+          },
+          {
+            "cycle_number": 3,
+            "name": "MergeReadinessContext + EnforcementRunner + ConfigValidator",
+            "description": "MergeReadinessContext frozen dataclass; EnforcementRunner handlers; enforcement.yaml; ConfigValidator cross-validate",
+            "files": [
+              "mcp_server/managers/phase_contract_resolver.py",
+              "mcp_server/managers/enforcement_runner.py",
+              "mcp_server/config/validator.py",
+              "mcp_server/server.py",
+              ".st3/config/enforcement.yaml"
+            ],
+            "deliverables": [
+              "MergeReadinessContext frozen dataclass (current_phase, terminal_phase, branch_local_artifacts, merge_policy)",
+              "EnforcementRunner.check_branch_local_artifacts handler",
+              "EnforcementRunner.check_merge_readiness handler",
+              "enforcement.yaml: exclude_branch_local_artifacts rule",
+              "enforcement.yaml: check_merge_readiness rule",
+              "ConfigValidator._validate_merge_policy_phase() cross-validates pr_allowed_phase",
+              "server.py: EnforcementRunner constructed with merge_readiness_context arg"
+            ],
+            "exit_criteria": "check_branch_local_artifacts blocks .st3/ paths on git_commit; check_merge_readiness blocks create_pr when not in pr_allowed_phase; ConfigValidator raises ConfigError for unknown pr_allowed_phase; enforcement.yaml new rules activate; full suite green"
+          },
+          {
+            "cycle_number": 4,
+            "name": "Tool Enforcement Event Declarations + Integration",
+            "description": "GitCommitTool.enforcement_event; CreatePRTool.enforcement_event; integration tests",
+            "files": [
+              "mcp_server/tools/git_tools.py",
+              "mcp_server/tools/pr_tools.py"
+            ],
+            "deliverables": [
+              "GitCommitTool.enforcement_event = 'git_commit' class variable (execute() unchanged)",
+              "CreatePRTool.enforcement_event = 'create_pr' class variable (execute() unchanged)",
+              "Integration test: git_commit with .st3/ artifact staged is blocked",
+              "Integration test: create_pr outside pr_allowed_phase is blocked",
+              "Integration test: create_pr in pr_allowed_phase is allowed"
+            ],
+            "exit_criteria": "All 3 integration tests pass; execute() methods unchanged; enforcement_event = 'git_commit' and 'create_pr' wired; full suite green; run_quality_gates(scope=branch) green"
+          },
+          {
+            "cycle_number": 5,
+            "name": "Cleanup",
+            "description": "Remove .gitattributes merge=ours for .st3/; delete 4 debug scripts",
+            "files": [
+              ".gitattributes",
+              "check_yaml.py",
+              "fix_yaml.py",
+              "revert_yaml.py",
+              "show_yaml.py"
+            ],
+            "deliverables": [
+              ".gitattributes: merge=ours rule removed for .st3/ paths",
+              "check_yaml.py deleted",
+              "fix_yaml.py deleted",
+              "revert_yaml.py deleted",
+              "show_yaml.py deleted",
+              "Regression test: no merge=ours rule in .gitattributes for .st3/"
+            ],
+            "exit_criteria": "Select-String '.st3/' .gitattributes -> 0 results; Test-Path check_yaml.py, fix_yaml.py, revert_yaml.py, show_yaml.py each -> False; regression test passes; full suite green"
+          }
+        ]
+      }
+    }
   }
 }
