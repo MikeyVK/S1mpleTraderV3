@@ -181,14 +181,14 @@ def test_transition_reconstructs_state_via_state_reconstructor_when_load_fails(
         ),
     )
 
-    result = engine.transition(branch=branch, to_phase="planning")
+    result = engine.transition(branch=branch, to_phase="design")
 
     assert result == {
         "success": True,
         "from_phase": "research",
-        "to_phase": "planning",
+        "to_phase": "design",
     }
-    assert repository.load(branch).current_phase == "planning"
+    assert repository.load(branch).current_phase == "design"
 
 
 def test_transition_saves_reconstructed_state_before_continuing(

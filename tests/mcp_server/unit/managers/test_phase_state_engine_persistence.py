@@ -82,14 +82,14 @@ class TestPhaseStateEnginePersistence:
         branch = "feature/1-first-feature"
         state_engine.initialize_branch(branch, 1, "research")
 
-        result = state_engine.transition(branch=branch, to_phase="planning")
+        result = state_engine.transition(branch=branch, to_phase="design")
         state_file = workspace_root / ".st3" / "state.json"
         disk_state = json.loads(state_file.read_text(encoding="utf-8"))
 
         assert result == {
             "success": True,
             "from_phase": "research",
-            "to_phase": "planning",
+            "to_phase": "design",
         }
-        assert disk_state["current_phase"] == "planning"
+        assert disk_state["current_phase"] == "design"
         assert disk_state["branch"] == branch
