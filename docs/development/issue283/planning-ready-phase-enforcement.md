@@ -38,9 +38,10 @@ Five TDD cycles implementing the ready-phase enforcement design (v2.0) for issue
 
 - C2 depends on C1 (WorkphasesConfig.get_terminal_phase() must exist before injection can call it)
 - C3 depends on C1 (MergeReadinessContext uses BranchLocalArtifact from C1; PhaseContractsConfig.get_pr_allowed_phase() from C1)
+- C3 also depends on C2 (server.py injection step must be present before MergeReadinessContext construction is added)
 - C4 depends on C3 (handlers must be registered before enforcement_event is wired into tool dispatch)
 - C5 is fully independent — can start immediately in parallel
-- C3 and C4 can be parallelised after C1+C2 are both complete
+- C5 is the only cycle that can run in parallel (start immediately after C1)
 
 ---
 
@@ -103,7 +104,7 @@ blast-radius test files (V6, V7, N_PCR_DOUBLE).
 
 **Goal:** Add `ConfigLoader._inject_terminal_phase(workflow_config, workphases_config)` as a static
 method. Update `server.py` `MCPServer.__init__` to call it with the correct load → inject → validate →
-construct ordering. Fix V8 phase list assertion. Fix V9 workflow_fixtures.py count/index uses.
+construct ordering. Fix V8 phase list assertion. Verify V9 workflow_fixtures.py assertions unchanged (no file edits needed).
 
 **Design refs:** §2.5, §4-V8, §4-V9
 
@@ -113,19 +114,20 @@ construct ordering. Fix V8 phase list assertion. Fix V9 workflow_fixtures.py cou
 | `mcp_server/config/loader.py` | Add `@staticmethod _inject_terminal_phase(workflow_config, workphases_config) -> WorkflowConfig` |
 | `mcp_server/server.py` | After `load_workflow_config()` + `load_workphases_config()`, call `ConfigLoader._inject_terminal_phase(...)` before `ConfigValidator` construction |
 | `tests/mcp_server/unit/config/test_workflow_config.py` | Update phase list assertion at line 201 to include `"ready"` (V8 secondary fix) |
-| `tests/mcp_server/fixtures/workflow_fixtures.py` | Review and update `[-1]` index and `len()` assertions (V9) |
+| `tests/mcp_server/fixtures/workflow_fixtures.py` | No changes required — `load_workflow_config()` bypass means injection never fires here. Verify existing `[-1]` and `len()` assertions remain valid (V9). |
 
 **New tests (RED first):**
 - `test_inject_terminal_phase_appends_to_all_workflows` — `_inject_terminal_phase` appends terminal phase to every workflow that lacks it
 - `test_inject_terminal_phase_does_not_duplicate` — workflows already containing terminal phase are left unchanged
 - `test_inject_terminal_phase_returns_new_object` — input `WorkflowConfig` is not mutated (CQS / D6)
 - `test_inject_terminal_phase_no_file_io` — calling the static method without a real filesystem does not raise
+- `test_load_workflow_config_does_not_inject` — `load_workflow_config()` result does NOT contain the terminal phase; guarantees injection was not re-introduced into the loader
 
 **Success Criteria:**
 - All new loader tests GREEN
 - `server.py` load sequence correct: injection before ConfigValidator construction
 - V8: `test_workflow_config.py` phase list assertion GREEN
-- V9: no regressions on `workflow_fixtures.py` consumer tests
+- V9: `workflow_fixtures.py` no file changes required; verify `[-1]` and `len()` assertions still pass
 - Full suite passes
 
 ---
@@ -242,7 +244,7 @@ still passes.
 ## Milestones
 
 - C1 GREEN: All V6/V7/N_PCR_DOUBLE blast-radius tests pass; new schema tests green
-- C2 GREEN: Terminal phase injected in loaded workflows; V8/V9 fixes applied
+- C2 GREEN: Terminal phase injected in server.py; V8 fix applied; V9 verified (no changes to workflow_fixtures.py)
 - C3 GREEN: Handlers functional; enforcement.yaml entries validated at startup
 - C4 GREEN: Full enforcement path covered by integration test
 - C5 GREEN: Removed files gone; full suite passes
