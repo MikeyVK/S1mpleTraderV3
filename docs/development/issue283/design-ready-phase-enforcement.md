@@ -75,6 +75,7 @@ workflow-native solution is required. See research doc for full root cause analy
 | P9 YAGNI | No backward-compat layer; clean break only |
 | P10 Cohesion | `terminal` flag belongs on the `PhaseDefinition`, not in a separate registry |
 | P13 Config-First enforcement | Artifact exclusion behavior declared in `phase_contracts.yaml` |
+| P5 CQS | `_inject_terminal_phase()` returns a new `WorkflowConfig`; source object never mutated |
 
 ---
 
@@ -178,7 +179,7 @@ class WorkphasesConfig(BaseModel):
 Two new Pydantic models to represent the `merge_policy` section:
 
 ```python
-# mcp_server/config/schemas/phase_contracts.py  (new models alongside existing ones)
+# mcp_server/config/schemas/phase_contracts_config.py  (new models alongside existing ones)
 
 class BranchLocalArtifact(BaseModel):
     path: str
@@ -189,17 +190,20 @@ class MergePolicy(BaseModel):
     branch_local_artifacts: list[BranchLocalArtifact] = Field(default_factory=list)
 ```
 
-**`PhaseContractsConfig`** gains an optional `merge_policy` field:
+**`PhaseContractsConfig`** gains a required `merge_policy` field (consistent with
+`model_config = ConfigDict(extra="forbid")` already in that class):
 
 ```python
 class PhaseContractsConfig(BaseModel):
-    merge_policy: MergePolicy | None = None
-    workflows: dict[str, dict[str, PhaseContract]] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
+
+    merge_policy: MergePolicy
+    workflows: dict[str, dict[str, PhaseContractPhase]] = Field(default_factory=dict)
 ```
 
-`merge_policy` is `None`-safe during the transition day; the tools check for its presence and
-raise a `ConfigError` if absent (Fail-Fast at call time, not at startup, because
-`PhaseContractsConfig` alone cannot validate cross-file constraints).
+`merge_policy` is **required**. If absent from `phase_contracts.yaml`, Pydantic raises a
+`ValidationError` at startup (P4 Fail-Fast). The Flag Day guarantee — config and code deploy
+together — makes a `None`-safe fallback unnecessary (P9 YAGNI).
 
 ### 2.5 `ConfigLoader` — Terminal Phase Injection
 
@@ -336,10 +340,22 @@ to a feature branch by mistake and must be absent from `main`):
 
 ---
 
+## Open Questions (Resolved)
+
+| Q | Question | Answer |
+|---|----------|--------|
+| Q1 | Authoritative config for phase enforcement? | `phase_contracts.yaml` global `merge_policy` section — P13 |
+| Q2 | Which loader file injects the terminal phase? | `ConfigLoader.load_workflow_config()` in `mcp_server/config/loader.py` |
+| Q3 | Which tests break on terminal phase injection? | Tests asserting exact phase counts or order on loaded workflows; `PhaseDefinition`/`WorkphasesConfig` instantiation tests are unaffected (`terminal` defaults to `False`) |
+| Q4 | In-flight branches on deploy day? | `force_phase_transition` + release note; no automated migration (YAGNI — research Flag Day) |
+
+---
+
 ## Related Documentation
 
 - [docs/development/issue283/research-ready-phase-enforcement.md](research-ready-phase-enforcement.md)
 - [mcp_server/config/schemas/workphases.py](../../../mcp_server/config/schemas/workphases.py)
+- [mcp_server/config/schemas/phase_contracts_config.py](../../../mcp_server/config/schemas/phase_contracts_config.py)
 - [mcp_server/config/loader.py](../../../mcp_server/config/loader.py)
 - [mcp_server/tools/pr_tools.py](../../../mcp_server/tools/pr_tools.py)
 - [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
@@ -353,102 +369,5 @@ to a feature branch by mistake and must be absent from `main`):
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-04-09 | Agent | Initial design — all sections complete |
+| 1.1 | 2026-04-09 | Agent | QA fixes A1–A5: duplicate removed, filename corrected, `merge_policy` required, Open Questions table added, P5 CQS constraint added |
 
-# Ready Phase Enforcement — Design
-
-**Status:** DRAFT  
-**Version:** 1.0  
-**Last Updated:** 2026-04-09
-
----
-
-## Purpose
-
-Translate Expected Results E1–E9 from the research document into concrete, implementable designs: YAML structures, Pydantic model contracts, loader behavior, tool contracts, and error message specifications.
-
-## Scope
-
-**In Scope:**
-workphases.yaml schema extension (terminal field), phase_contracts.yaml merge_policy section, PhaseDefinition and WorkphasesConfig Pydantic model contracts, ConfigLoader terminal phase injection, CreatePRTool phase gate and artifact pre-flight, GitCommitTool artifact auto-exclusion in terminal phase, removal of debug scripts and .gitattributes merge=ours
-
-**Out of Scope:**
-Implementation cycles and test definitions (planning phase), performance optimization, backward compatibility, workflows beyond feature/bug/hotfix/refactor/docs/epic
-
-## Prerequisites
-
-Read these first:
-1. Research document FINAL: docs/development/issue283/research-ready-phase-enforcement.md
-2. All open questions resolved — see research doc
-3. docs/coding_standards/ARCHITECTURE_PRINCIPLES.md read
----
-
-## 1. Context & Requirements
-
-### 1.1. Problem Statement
-
-Branch-local MCP artifacts (.st3/state.json, .st3/deliverables.json) reach main during PR merges. Three git-level root causes make the existing .gitattributes merge=ours strategy unreliable. The tracking of these files is intentional (multi-machine workflow continuity) so they cannot be .gitignored. Ad-hoc debug scripts also contaminate main. A workflow-native solution is required.
-
-### 1.2. Requirements
-
-**Functional:**
-- [ ] E1: Exactly one terminal phase declared in workphases.yaml; MCP server fails to start on violation
-- [ ] E2: Branch-local artifact list declared once in phase_contracts.yaml with per-artifact reasons
-- [ ] E3: CreatePRTool (draft + non-draft) blocked outside terminal phase with actionable error
-- [ ] E4: GitCommitTool auto-excludes branch-local artifacts from index when in terminal phase, with per-artifact output
-- [ ] E5: CreatePRTool verifies no branch-local artifacts are git-tracked before creating PR
-- [ ] E6: No hardcoded terminal phase name in Python; phase identity read from config
-- [ ] E7: Every workflow’s active phase list contains the terminal phase as last entry after loading
-- [ ] E8: MCP server fails to start with zero or multiple terminal phases (ConfigError)
-- [ ] E9: After first merged PR via new enforcement: main is free of state.json, deliverables.json, and debug scripts
-
-**Non-Functional:**
-- [ ] All new config fields have explicit Pydantic types with no silent defaults for required boolean flags
-- [ ] Error messages are actionable: they name the blocking condition and the corrective action
-- [ ] Terminal phase injection in ConfigLoader must not mutate the source workflow config object (CQS)
-- [ ] New PhaseDefinition.terminal field defaults to False so existing workphases.yaml loads without change until the terminal phase entry is added
-
-### 1.3. Constraints
-
-['Principle 2 (DRY/SSOT): branch-local artifact list has one authoritative config location', 'Principle 3 (Config-First): no phase names or artifact paths hardcoded in Python', 'Principle 4 (Fail-Fast): zero or multiple terminal phases must cause ConfigError at startup', 'Principle 8 (Explicit): terminal phase identity read from a declared flag, not inferred', 'Principle 9 (YAGNI): no backward-compat layer; clean break only', 'Principle 10 (Cohesion): terminal flag belongs on the phase definition, not in a separate registry', 'Principle 13 (Config-First enforcement): artifact exclusion behavior declared in phase_contracts.yaml']
----
-
-## 2. Design Options
----
-
-## 3. Chosen Design
-
-**Decision:** Extend workphases.yaml with a terminal boolean field per phase; add a global merge_policy section to phase_contracts.yaml; enforce both in Pydantic at startup; inject the terminal phase at end of every workflow’s phase list in ConfigLoader; gate CreatePRTool on terminal phase + artifact tracking check; auto-exclude branch-local artifacts in GitCommitTool when in terminal phase.
-
-**Rationale:** This approach satisfies all nine architectural constraints: config ownership in YAML (P2, P3, P13), startup validation (P4), explicit flag (P8), flag on the phase definition itself (P10), no migration code (P9). It makes the branch responsible for cleaning itself before a PR is allowed, independent of GitHub merge infrastructure.
-
-### 3.1. Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-
-## Related Documentation
-- **[docs/development/issue283/research-ready-phase-enforcement.md][related-1]**
-- **[mcp_server/config/schemas/workphases.py][related-2]**
-- **[mcp_server/config/loader.py][related-3]**
-- **[mcp_server/tools/pr_tools.py][related-4]**
-- **[mcp_server/tools/git_tools.py][related-5]**
-- **[.st3/config/workphases.yaml][related-6]**
-- **[.st3/config/phase_contracts.yaml][related-7]**
-
-<!-- Link definitions -->
-
-[related-1]: docs/development/issue283/research-ready-phase-enforcement.md
-[related-2]: mcp_server/config/schemas/workphases.py
-[related-3]: mcp_server/config/loader.py
-[related-4]: mcp_server/tools/pr_tools.py
-[related-5]: mcp_server/tools/git_tools.py
-[related-6]: .st3/config/workphases.yaml
-[related-7]: .st3/config/phase_contracts.yaml
-
----
-
-## Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 |  | Agent | Initial draft |
