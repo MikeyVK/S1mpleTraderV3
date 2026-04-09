@@ -1164,11 +1164,11 @@
             "deliverables": [
               {
                 "id": "c283_4.git_commit_enforcement_event",
-                "description": "GitCommitTool.enforcement_event = 'git_commit' class variable added (execute() unchanged)",
+                "description": "GitCommitTool.enforcement_event = 'git_add_or_commit' class variable added (execute() unchanged)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/tools/git_tools.py",
-                  "text": "\"git_commit\""
+                  "text": "\"git_add_or_commit\""
                 }
               },
               {
