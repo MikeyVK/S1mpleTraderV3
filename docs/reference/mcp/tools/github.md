@@ -517,8 +517,8 @@ Merge a pull request with specified merge strategy.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `pr_number` | `int` | **Yes** | Pull request number to merge |
-| `merge_method` | `str` | No | Merge strategy: `"merge"`, `"squash"`, `"rebase"` (default: `"merge"`) |
-| `commit_message` | `str` | No | Optional custom commit message (for merge/squash) |
+| `merge_method` | `str` | No | Merge strategy: only `"merge"` is supported (default: `"merge"`). `"squash"` and `"rebase"` are not supported and will return a validation error. |
+| `commit_message` | `str` | No | Optional custom commit message |
 
 #### Returns
 
@@ -529,44 +529,27 @@ Merge a pull request with specified merge strategy.
   "merge": {
     "sha": "abc123def456",
     "merged": true,
-    "method": "squash"
+    "method": "merge"
   }
 }
 ```
 
 #### Example Usage
 
-**Merge with default strategy:**
+**Merge PR (default strategy):**
 ```json
 {
   "pr_number": 45
 }
 ```
 
-**Squash merge with custom message:**
+**Merge with custom commit message:**
 ```json
 {
   "pr_number": 45,
-  "merge_method": "squash",
   "commit_message": "Feature: Add OAuth2 authentication (#45)\n\nCloses #123"
 }
 ```
-
-**Rebase merge:**
-```json
-{
-  "pr_number": 45,
-  "merge_method": "rebase"
-}
-```
-
-#### Merge Strategies
-
-| Method | Behavior | Commit History | Use Case |
-|--------|----------|----------------|----------|
-| `merge` (default) | Creates merge commit | All commits preserved | Feature branches with meaningful commit history |
-| `squash` | Squashes all commits into one | Single commit | Clean up messy WIP commits |
-| `rebase` | Rebases and fast-forwards | Linear history | Maintain linear history |
 
 #### Behavior Notes
 

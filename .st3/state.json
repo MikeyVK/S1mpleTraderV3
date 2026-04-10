@@ -39,7 +39,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Validation phase skipped \u2014 full suite (2708 passed, 0 failed) en quality gates (6/6 groen) zijn voldoende validatie voor deze refactor. QA-review was al uitgevoerd per cycle.",
+  "skip_reason": "QA review found 9 blockers (merge_method validation, phase param, tool counts) in README.md, MCP_TOOLS.md, github.md \u2014 must fix before merge",
   "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
   "parent_branch": null,
   "created_at": "2026-04-09T11:43:14.613856+00:00",
@@ -99,6 +99,22 @@
       "human_approval": "User approved on 2026-04-10",
       "forced": true,
       "skip_reason": "Validation phase skipped \u2014 full suite (2708 passed, 0 failed) en quality gates (6/6 groen) zijn voldoende validatie voor deze refactor. QA-review was al uitgevoerd per cycle."
+    },
+    {
+      "from_phase": "documentation",
+      "to_phase": "ready",
+      "timestamp": "2026-04-10T12:02:18.841831+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "ready",
+      "to_phase": "documentation",
+      "timestamp": "2026-04-10T12:14:29.675506+00:00",
+      "human_approval": "User approved force transition back to documentation for QA fixes \u2014 2026-04-10",
+      "forced": true,
+      "skip_reason": "QA review found 9 blockers (merge_method validation, phase param, tool counts) in README.md, MCP_TOOLS.md, github.md \u2014 must fix before merge"
     }
   ],
   "reconstructed": false

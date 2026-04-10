@@ -13,7 +13,7 @@
 
 ## Purpose
 
-Comprehensive navigation index for all 46 MCP server tools organized by functional category. This document serves as the entry point to the MCP Tools Reference suite, providing quick lookup and category-based navigation to detailed tool documentation.
+Comprehensive navigation index for all 50 MCP server tools organized by functional category. This document serves as the entry point to the MCP Tools Reference suite, providing quick lookup and category-based navigation to detailed tool documentation.
 
 The MCP server exposes a rich set of tools across eight functional domains: Git workflow automation, GitHub API integration, project lifecycle management, file editing, code scaffolding, quality assurance, documentation discovery, and server administration.
 
@@ -21,19 +21,17 @@ The MCP server exposes a rich set of tools across eight functional domains: Git 
 
 ## Tool Inventory Overview
 
-The MCP server has **46 registered tools** across 8 categories:
-
+The MCP server has **50 registered tools** across 8 categories:
 | Category | Tools | Documentation |
 |----------|-------|---------------|
 | **Git Workflow & Analysis** | 14 | [git.md](git.md) |
 | **GitHub Integration** | 16 | [github.md](github.md) |
-| **Project & Phase Management** | 4 | [project.md](project.md) |
+| **Project & Phase Management** | 8 | [project.md](project.md) |
 | **File Editing** | 2 | [editing.md](editing.md) |
 | **Scaffolding** | 1 | [scaffolding.md](scaffolding.md) |
 | **Quality & Validation** | 5 | [quality.md](quality.md) |
 | **Discovery & Admin** | 4 | [discovery.md](discovery.md) |
-| **TOTAL** | **46** | — |
-
+| **TOTAL** | **50** | — |
 ---
 
 ## Quick Reference by Category
@@ -46,7 +44,7 @@ Comprehensive Git automation with branch management, commit workflows, merge ope
 |------|---------|----------------|
 | `create_branch` | Create feature/bug/docs branches | `name`, `base_branch`, `branch_type` |
 | `git_status` | Check working directory status | None |
-| `git_add_or_commit` | Stage and commit with TDD phase prefix | `phase`, `message`, `files` |
+| `git_add_or_commit` | Stage and commit with workflow phase prefix | `workflow_phase`, `sub_phase`, `cycle_number`, `message` |
 | `git_checkout` | Switch branches (syncs phase state) | `branch` |
 | `git_push` | Push to origin with upstream tracking | `set_upstream` |
 | `git_merge` | Merge branch into current branch | `branch` |
@@ -185,11 +183,10 @@ Documentation search, work context aggregation, and server administration.
 ## Tool Registration Architecture
 
 | Tier | Tools | Count | Registration Condition |
-|------|-------|-------|------------------------|
-| **Always Available** | Git (14), Quality (5), File Editing (2), Dev/Admin (4), Project/Phase (4), Scaffolding (1), Discovery (2) | **32** | None |
-| **GitHub-Dependent** | Issues (5), PRs (3), Labels (5), Milestones (3) | **14** | Requires `GITHUB_TOKEN` environment variable |
-| **TOTAL** | — | **46** | — |
-
+| **Always Available** | Git (14), Quality (5), File Editing (2), Project/Phase (8), Scaffolding (1), Discovery & Admin (4) | **34** | None |
+| **GitHub-Dependent** | Issues (5), PRs (3), Labels (5), Milestones (3) | **16** | Requires `GITHUB_TOKEN` environment variable |
+| **TOTAL (with token)** | — | **50** | — |
+| **TOTAL (without token)** | — | **39** | Issues (5) registered as schema-only (no `GITHUB_TOKEN`) |
 **Note:** Issue management tools (5) are registered even without a token (schema-only registration). Tool calls will return errors if `GITHUB_TOKEN` is missing.
 
 ---
@@ -222,14 +219,12 @@ Documentation search, work context aggregation, and server administration.
 2. git_push(set_upstream=True)
 3. transition_phase(branch="feature/123-my-feature", to_phase="ready")
 4. create_pr(title="...", body="...", head="feature/123-my-feature", base="main")
-5. merge_pr(pr_number=42, merge_method="squash")
+5. merge_pr(pr_number=42, merge_method="merge")
 ```
 
 ---
 
 ## Design Principles
-
-### 1. Single Responsibility
 
 Each tool has one clear purpose. Complex workflows compose multiple tools rather than creating monolithic tools.
 
@@ -286,3 +281,4 @@ All GitHub tools (issues, PRs, labels, milestones) handle Unicode content correc
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 2.0 | 2026-02-08 | Agent | Complete navigation index for 46 tools across 8 categories |
+| 2.1 | 2026-04-10 | Agent | Fix tool counts (50 total, Project/Phase 8, GitHub-Dependent 16); fix stale params and merge_method |

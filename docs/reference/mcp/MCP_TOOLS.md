@@ -68,13 +68,13 @@ Create, list, and merge PRs with merge strategy options.
 |------|---------|------------|---------|
 | **CreatePRTool** | Create new PR | `title`, `body`, `head` (source branch), `base` (default: main), `draft` (optional) | PR number, URL |
 | **ListPRsTool** | List PRs with filters | `state` (open/closed/all), `base` (optional), `head` (optional) | Formatted list with numbers, titles, status |
-| **MergePRTool** | Merge PR | `pr_number`, `commit_message` (optional), `merge_method` (merge/squash/rebase, default: merge) | Merge result, SHA, message |
+| **MergePRTool** | Merge PR | `pr_number`, `commit_message` (optional), `merge_method` (only `"merge"` is supported) | Merge result, SHA, message |
 
 **Usage Example:**
 ```
 1. create_pr title="Add feature X" body="..." head=feature/x
 2. list_prs state=open base=main
-3. merge_pr pr_number=42 merge_method=squash
+3. merge_pr pr_number=42
 ```
 
 ### 4. Label Management Tools (5 tools)
@@ -269,7 +269,7 @@ File: `.vscode/mcp.json`
 8. transition_phase(to_phase="ready")
 9. create_pr(title="Add caching mechanism", body="...", head="feature/add-caching", base="main")
 10. (Request review, get approval)
-11. merge_pr(pr_number=123, merge_method="squash")
+11. merge_pr(pr_number=123)
 12. git_checkout(branch="main")
 13. git_delete_branch(branch="feature/add-caching", force=False)
 ```
