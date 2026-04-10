@@ -18,20 +18,20 @@ If you need the big-picture MCP server context (vision, architecture, roadmap), 
 
 > **⚡ CRITICAL:** VS Code Copilot uses lazy loading for MCP tools. Tools appear "disabled" until activated.
 
-**Activate all tool categories before proceeding:**
+**Load deferred tool categories before proceeding:**
+
+Use `tool_search_tool_regex` to load tools on demand. Examples:
 
 ```
-activate_file_editing_tools              → create_file, safe_edit_file, scaffold_artifact (unified tool for code+docs)
-activate_git_workflow_management_tools   → 15 git/PR tools (create_branch, git_status, etc.)
-activate_branch_phase_management_tools   → phase transition tools
-activate_issue_management_tools          → 6 issue tools (create_issue, list_issues, etc.)
-activate_label_management_tools          → 5 label tools
-activate_milestone_and_pr_management_tools → milestone + PR list tools
-activate_project_initialization_tools    → initialize_project, get_project_plan
-activate_code_validation_tools           → 4 validation tools
+tool_search_tool_regex("^mcp_st3")          → loads all ST3 workflow tools
+tool_search_tool_regex("create_file|safe_edit_file|scaffold_artifact")
+tool_search_tool_regex("create_branch|git_status|git_push")
+tool_search_tool_regex("transition_phase|force_phase_transition")
+tool_search_tool_regex("create_issue|list_issues|get_issue")
+tool_search_tool_regex("initialize_project|get_project_plan")
 ```
 
-**Why:** Tools are dynamically loaded by VS Code based on semantic name analysis. Without activation, they appear as "disabled by user" (misleading error message). This is a VS Code 1.108+ feature (Dec 2025), not part of MCP specification.
+**Why:** Tools use deferred loading in VS Code. They appear as "disabled by user" until loaded via `tool_search_tool_regex`. The old `activate_*` commands do **not** exist — calling them does nothing. Always use `tool_search_tool_regex` first.
 
 ### 1.2 State Synchronization (Execute Immediately)
 
@@ -82,12 +82,12 @@ create_issue(
 
 **Workflow Types (from `.st3/workflows.yaml`):**
 
-| **feature** | 6 phases: research → planning → design → tdd → integration → documentation | New functionality |
-| **bug** | 6 phases: research → planning → design → tdd → integration → documentation | Bug fixes |
+| **feature** | 6 phases: research → design → planning → implementation → validation → documentation | New functionality |
+| **bug** | 6 phases: research → design → planning → implementation → validation → documentation | Bug fixes |
 | **docs** | 2 phases: planning → documentation | Documentation work |
-| **refactor** | 5 phases: research → planning → tdd → integration → documentation | Code improvements |
-| **hotfix** | 3 phases: tdd → integration → documentation | Urgent fixes |
-| **epic** | 5 phases: research → planning → design → tdd → integration | Large multi-issue initiatives |
+| **refactor** | 5 phases: research → planning → implementation → validation → documentation | Code improvements |
+| **hotfix** | 3 phases: implementation → validation → documentation | Urgent fixes |
+| **epic** | 5 phases: research → design → planning → coordination → documentation | Large multi-issue initiatives |
 
 **Epic Support:**
 - Large issues use `type:epic` label
@@ -116,35 +116,35 @@ force_phase_transition(
 # Only use when documented reason exists
 ```
 
-### 2.3 TDD Cycle Within Phase
+### 2.3 Implementation Cycle Within Phase
 
-**RED → GREEN → REFACTOR Loop (Multiple cycles within `tdd` phase):**
+**RED → GREEN → REFACTOR loop, elke cyclus genummerd. `implementation` is de enige fase met subphases.**
 
-1. **RED Phase:**
-   - Write failing test
-   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="add test for X")`
-   - **Auto-detect:** `git_add_or_commit(message="add test for X")` (detects workflow_phase from state.json)
-   - **Legacy:** `git_add_or_commit(phase="red", message="...")` (DEPRECATED but still works)
+| Sub-phase | Commit | Scope format |
+|-----------|--------|--------------|
+| red | `test(P_IMPLEMENTATION_SP_C1_RED): ...` | `git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="...")` |
+| green | `feat(P_IMPLEMENTATION_SP_C1_GREEN): ...` | `git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="...")` |
+| refactor | `refactor(P_IMPLEMENTATION_SP_C1_REFACTOR): ...` | `git_add_or_commit(workflow_phase="implementation", sub_phase="refactor", cycle_number=1, message="...")` |
 
-2. **GREEN Phase:**
-   - Implement minimum code to pass
-   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="implement X")`
+> `cycle_number` is verplicht in `implementation`. Volgende cyclus: `transition_cycle(to_cycle=2)`.
+> `workflow_phase` mag worden weggelaten — auto-detect via `state.json`.
 
-3. **REFACTOR Phase:**
-   - Clean up code
-   - Run quality gates with explicit scope contract:
-     - `run_quality_gates(scope="files", files=["path/to/changed_file.py"])`
-     - `run_quality_gates(scope="branch")` for branch-wide check
-     - `run_quality_gates(scope="auto")` for baseline-aware rerun set
-   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="refactor", message="refactor X")`
+**Andere fasen (geen subphases behalve optioneel):**
+- `git_add_or_commit(workflow_phase="research", message="...")` → `docs(P_RESEARCH): ...`
+- `git_add_or_commit(workflow_phase="documentation", message="...")` → `docs(P_DOCUMENTATION): ...`
 
-4. **Test Execution:**
-   - **During TDD:** `run_tests(path="tests/specific_test.py")` for targeted tests
-   - **End of TDD phase:** `run_tests(path="tests/")` for full suite validation
-   - **Note:** Full suite (1000+ tests) generates significant output - see Issue #103 for enhancements
+**Kwaliteitscontrole (REFACTOR sub-phase):**
+- `run_quality_gates(scope="files", files=["path/to/file.py"])` — gerichte check
+- `run_quality_gates(scope="branch")` — branch-breed
 
-5. **Phase Transition:**
-   - After TDD cycles complete: `transition_phase(to_phase="integration")`
+**Test execution:**
+- Gericht: `run_tests(path="tests/specific_test.py")`
+- Einde fase: `run_tests(path="tests/")`
+
+**Fase-transitie na alle TDD-cycli:**
+```python
+transition_phase(to_phase="validation")
+```
 
 ### 2.4 Documentation Phases
 
@@ -194,15 +194,7 @@ force_phase_transition(
 | Restore files | `git_restore(files, source)` | `run_in_terminal("git restore")` |
 | Diff statistics | `git_diff_stat(source_branch, target_branch)` | `run_in_terminal("git diff --stat")` |
 
-**Note on git_add_or_commit:**
-- **New (Recommended):** `git_add_or_commit(message, workflow_phase?, sub_phase?, commit_type?)`  
-  - Generates scoped commits: `test(P_TDD_SP_RED): message`
-  - Auto-detects workflow_phase from state.json if omitted
-  - Supports all workflow phases (research, planning, design, tdd, integration, documentation)
-- **Legacy (DEPRECATED):** `git_add_or_commit(phase="red/green/refactor/docs", message)`  
-  - Legacy format: `test: message` (no scope)
-  - Backward compatible but will be removed in future version
-  - Use workflow_phase instead
+**`git_add_or_commit` vereiste parameters:** `workflow_phase` (auto-detect via state.json indien weggelaten), `cycle_number` (verplicht in `implementation`), `sub_phase` (optioneel). Gebruik `commit_type` alleen als override. De `phase` parameter bestaat **niet** — crasht met `extra='forbid'`.
 
 ### GitHub Issues
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -245,68 +237,30 @@ force_phase_transition(
 - **Code:** dto, worker, adapter, interface, tool, resource, schema, service
 - **Docs:** design, architecture, tracking, generic, research, planning
 
-**Registry:** `.st3/artifacts.yaml` defines all artifact types and their templates.
+**Registry:** `.st3/config/artifacts.yaml` (let op: niet `.st3/artifacts.yaml`)
 
-**Template System (Issue #72 - Multi-Tier Architecture):**
-- **5-tier Jinja2 hierarchy:** Tier 0 (universal SCAFFOLD) → Tier 1 (CODE/DOCUMENT/CONFIG format) → Tier 2 (Python/Markdown/YAML language) → Tier 3 (component/data/tool specialization) → Concrete (worker.py, research.md)
-- **Inheritance-aware introspection:** `introspect_template(name, with_inheritance=True)` returns complete variable schema (all tiers)
-- **SCAFFOLD metadata:** Header format depends on artifact type (Issue #239):
-  - **File artifacts** (dto, worker, adapter, …): two-line Python comment — `# path/to/file.py` + `# template=X version=Y created=Z updated=`
-  - **Ephemeral artifacts** (issue, tracking, …): compact HTML comment — `<!-- template=X version=Y -->`
-  - `output_path` **required** for file artifacts — omitting it raises `ERR_VALIDATION`
-  - `output_path` optional for ephemeral artifacts — when provided, artifact is written there instead of `.st3/temp/`
-- **Template registry:** `.st3/template_registry.json` maps version hashes to tier chains
-- **Validation integration:** All generated code passes Issue #52 validation (TEMPLATE_METADATA enforcement)
+**Template System (Issue #72 - 5-tier Jinja2):**
+- Tier 0 (SCAFFOLD) → Tier 1 (CODE/DOC/CONFIG) → Tier 2 (Python/Markdown/YAML) → Tier 3 (component type) → Concrete template
+- `output_path` is **optioneel** — wordt auto-resolved door ArtifactManager via `project_structure.yaml`. Geef het alleen op als override.
+- `generate_test` is een registry-flag per artifact type (`true` voor code, `false` voor docs) — testgeneratie nog **niet geïmplementeerd** in ArtifactManager.
+- `introspect_template` is een **interne Python-functie** in `mcp_server/scaffolding/template_introspector.py`, niet aanroepbaar via MCP.
+- SCAFFOLD-header in gegenereerde bestanden: twee Python-commentaarregels (`# path` + `# template=X version=Y created=Z updated=`)
 
-**Context Requirements:**
-- **Code artifacts:** Variables from all tiers (concrete + Tier 3 + Tier 2 + Tier 1 + Tier 0)
-- **Document artifacts:** Standard sections (purpose, scope, related_docs) + artifact-specific fields
-- **Missing variables:** Scaffolding will fail with clear error listing required fields
-- **System variables:** Auto-populated (timestamp, version_hash, output_path, artifact_type)
-
-**Example:**
+**Context meegeven:**
 ```python
-# Worker scaffolding (Python CODE artifact)
 scaffold_artifact(
     artifact_type="worker",
     name="ProcessWorker",
     context={
-        # Tier 4 (concrete): worker-specific
         "worker_name": "ProcessWorker",
         "worker_description": "Processes incoming events",
         "input_type": "EventDTO",
         "output_type": "ResultDTO",
-        
-        # Tier 3 (component): lifecycle pattern (if IWorkerLifecycle validated)
-        "config_type": "WorkerConfig",
-        "uses_async": True,
-        
-        # Tier 2 (language): Python syntax (often inferred from tier 3)
-        # Tier 1 (format): CODE structure (auto-provided by template)
-        # Tier 0 (universal): SCAFFOLD metadata (auto-generated)
-    }
-)
-
-# Research doc scaffolding (Markdown DOCUMENT artifact)
-scaffold_artifact(
-    artifact_type="research",
-    name="multi-tier-templates",
-    context={
-        # Document-specific
-        "title": "Issue #72 Multi-Tier Template Research",
-        "purpose": "Investigate template hierarchy to eliminate DRY violations",
-        "scope_in": "5-tier architecture, inheritance introspection, registry format",
-        "scope_out": "Implementation details, performance optimization",
-        "prerequisites": ["Research questions defined", "MVP validated"],
-        "related_docs": ["planning.md", "design.md"],
-        
-        # Optional: Custom sections
-        "sections": ["Background", "Alternatives", "Decision Rationale"],
     }
 )
 ```
 
-**Design Reference:** [docs/development/issue72/design.md](docs/development/issue72/design.md) - Complete 5-tier architecture specification
+**Design Reference:** [docs/development/issue72/design.md](docs/development/issue72/design.md)
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -336,6 +290,22 @@ scaffold_artifact(
 
 > **📌 Remember:** The ST3 MCP tools use Jinja2 templates that ensure consistency, correct imports, proper structure, and automatic test file generation. Manual file creation bypasses all these benefits.
 
+### Ready-Phase Enforcement (Issue #283)
+
+`create_pr` is geblokkeerd buiten de `ready` fase. `git_add_or_commit` in `ready` excludet automatisch branch-lokale artifacts uit de commit index.
+
+| Artifact | Pad | Reden |
+|----------|-----|-------|
+| Workflow state | `.st3/state.json` | Branch-local — mag nooit naar main |
+| Deliverables | `.st3/deliverables.json` | Branch-local — mag nooit naar main |
+
+Configuratie: `.st3/config/enforcement.yaml` + `.st3/config/phase_contracts.yaml`
+
+```
+create_pr → pre-check: current_phase == "ready" → geblokkeerd als niet ready
+git_add_or_commit → pre: exclude_branch_local_artifacts → git rm --cached automatisch
+```
+
 ---
 
 ## 🚫 run_in_terminal Restrictions (CRITICAL)
@@ -358,27 +328,7 @@ scaffold_artifact(
 
 **Default rule: If unsure, ask yourself "Is there an MCP tool for this?" If yes → use it. If no → ask user permission first.**
 
-**This restriction prevents bypassing:**
-- Template validation
-- SCAFFOLD metadata tracking
-- Quality gate enforcement
-- Audit trail in MCP workflow
-- Provenance tracking in template registry
-
-**Common mistakes to avoid:**
-```powershell
-# ❌ WRONG
-run_in_terminal("Set-Content file.py ...")
-run_in_terminal("git add .")
-run_in_terminal("pytest tests/")
-run_in_terminal("Copy-Item source.py dest.py")
-
-# ✅ CORRECT
-create_file(path="file.py", content=...)
-git_add_or_commit(phase="red", message="...")
-run_tests(path="tests/")
-# For copy: read original, create new with create_file
-```
+**Restriction prevents bypassing template validation, quality gates, audit trail, and provenance tracking.**
 
 ---
 
