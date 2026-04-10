@@ -29,7 +29,7 @@ import pytest
 # Project modules
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
-from mcp_server.core.exceptions import ValidationError
+from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.managers.enforcement_runner import (
     EnforcementAction,
     EnforcementConfig,
@@ -273,3 +273,32 @@ class TestEnforcementRunnerC3:
 
         # Should not raise ConfigError — both new action types must be registered
         EnforcementRunner(workspace_root=tmp_path, config=config)
+
+    # ── _git_rm_cached error handling ─────────────────────────────────────────
+
+    def test_exclude_handler_raises_on_git_rm_failure(self, tmp_path: Path) -> None:
+        """_git_rm_cached raises ExecutionError with recovery hints on non-zero exit."""
+        _write_state(tmp_path, "ready")
+        runner = _make_runner(tmp_path, _merge_ctx())
+        action = _base_action()
+        ctx = _base_context(tmp_path)
+
+        failing_result = SimpleNamespace(returncode=1, stderr=b"fatal: pathspec error")
+
+        with (
+            patch(
+                "mcp_server.managers.enforcement_runner._git_is_tracked",
+                return_value=True,
+            ),
+            patch(
+                "mcp_server.managers.enforcement_runner.subprocess.run",
+                return_value=failing_result,
+            ),
+            pytest.raises(ExecutionError) as exc_info,
+        ):
+            runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
+                action, ctx, tmp_path
+            )
+
+        assert "git rm --cached failed" in str(exc_info.value)
+        assert exc_info.value.recovery

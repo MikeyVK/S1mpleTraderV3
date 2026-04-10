@@ -16,7 +16,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import cast
 
-from mcp_server.core.exceptions import ConfigError, ValidationError
+from mcp_server.core.exceptions import ConfigError, ExecutionError, ValidationError
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
@@ -46,12 +46,22 @@ def _git_is_tracked(workspace_root: Path, path: str) -> bool:
 
 def _git_rm_cached(workspace_root: Path, path: str) -> None:
     """Remove *path* from the git index without deleting the working-tree file."""
-    subprocess.run(
+    result = subprocess.run(
         ["git", "rm", "--cached", "--ignore-unmatch", path],
         cwd=workspace_root,
         capture_output=True,
         check=False,
     )
+    if result.returncode != 0:
+        stderr = result.stderr.decode(errors="replace").strip()
+        raise ExecutionError(
+            f"git rm --cached failed for '{path}': {stderr}",
+            recovery=[
+                "Run `git status` to inspect the index state",
+                "Manually run: git rm --cached <path>",
+                f"Check that the file exists and is tracked: git ls-files {path}",
+            ],
+        )
 
 
 __all__ = [
