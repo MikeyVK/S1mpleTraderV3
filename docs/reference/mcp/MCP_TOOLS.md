@@ -18,7 +18,7 @@ Comprehensive git flow automation with TDD phase tracking.
 |------|---------|------------|---------|
 | **CreateBranchTool** | Create feature/fix/refactor/docs branch | `name` (kebab-case), `branch_type` (default: feature) | `create_feature_branch name=add-metrics` |
 | **GitStatusTool** | Show working tree status | None | Returns current branch, staged, unstaged files |
-| **GitCommitTool** | Commit with TDD phase prefix | `message`, `phase` (red/green/refactor/docs) | `commit message="Implement feature" phase=green` |
+| **GitCommitTool** | Commit with phase prefix | `message`, `workflow_phase`, `sub_phase`, `cycle_number` | `git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="...")` |
 | **GitCheckoutTool** | Switch branches | `branch` | `checkout main` |
 | **GitPushTool** | Push to origin | `set_upstream` (optional, for new branches) | `push set_upstream=true` |
 | **GitMergeTool** | Merge feature → main | `branch` to merge | `merge feature/new-feature` |
@@ -27,14 +27,15 @@ Comprehensive git flow automation with TDD phase tracking.
 
 **Workflow Example:**
 ```
-1. create_feature_branch name=my-feature
+1. create_branch(name="feature/my-feature", base_branch="main")
 2. (Make changes)
-3. git_commit message="Add feature" phase=green
-4. git_push set_upstream=true
-5. (Create PR via CreatePRTool)
-6. (After merge)
-7. git_checkout branch=main
-8. git_delete_branch branch=feature/my-feature
+3. git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Add feature")
+4. git_push(set_upstream=True)
+5. transition_phase(to_phase="ready")
+6. create_pr(title="Add feature", head="feature/my-feature", base="main")
+7. (After merge)
+8. git_checkout(branch="main")
+9. git_delete_branch(branch="feature/my-feature")
 ```
 
 **Related:** [TDD_WORKFLOW.md](../../coding_standards/TDD_WORKFLOW.md)
@@ -150,14 +151,14 @@ Generate new artifacts from templates (unified system).
 |------|---------|------------|---------|
 | **ScaffoldArtifactTool** | Generate code/docs from artifacts.yaml | `artifact_type` (dto/worker/design/etc), `name`, context fields (varies by type), `output_path` (optional) | Generated file path |
 
-**Artifact Types (from artifacts.yaml):**
+**Artifact Types (from .st3/config/artifacts.yaml):**
 - `dto` - Data Transfer Object with Pydantic
 - `worker` - Background job/processor
 - `design` - Design document
 - `adapter` - External API integration
 - `tool` - MCP tool
 
-See `.st3/artifacts.yaml` for complete list and required fields per type.
+See `.st3/config/artifacts.yaml` for complete list and required fields per type.
 
 ### 9. Development & File Tools (2 tools)
 
@@ -258,18 +259,19 @@ File: `.vscode/mcp.json`
 ### Complete Feature Branch Workflow
 
 ```
-1. create_feature_branch name=add-caching branch_type=feature
+1. create_branch(name="feature/add-caching", base_branch="main")
 2. (Make code changes in IDE)
-3. git_status
-4. git_commit message="Implement caching logic" phase=green
-5. run_quality_gates scope="files" files=["mcp_server/tools/cache.py"]
-6. run_tests path=tests/unit
-7. git_push set_upstream=true
-8. create_pr title="Add caching mechanism" body="Implements Redis caching for..." head=feature/add-caching base=main
-9. (Request review, get approval)
-10. merge_pr pr_number=123 merge_method=squash
-11. git_checkout branch=main
-12. git_delete_branch branch=feature/add-caching force=false
+3. git_status()
+4. git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement caching logic")
+5. run_quality_gates(scope="files", files=["mcp_server/tools/cache.py"])
+6. run_tests(path="tests/unit")
+7. git_push(set_upstream=True)
+8. transition_phase(to_phase="ready")
+9. create_pr(title="Add caching mechanism", body="...", head="feature/add-caching", base="main")
+10. (Request review, get approval)
+11. merge_pr(pr_number=123, merge_method="squash")
+12. git_checkout(branch="main")
+13. git_delete_branch(branch="feature/add-caching", force=False)
 ```
 
 ### Issue Lifecycle Management
@@ -292,7 +294,7 @@ File: `.vscode/mcp.json`
 ```
 
 Labels are assembled automatically from the required and optional fields. Do not pass a `labels` list — the tool enforces label policy from
-`.st3/issues.yaml` and `.st3/labels.yaml`. `body` is a structured object (not a free-form string);
+`.st3/config/issues.yaml` and `.st3/config/labels.yaml`. `body` is a structured object (not a free-form string);
 `problem` is the only required field.
 
 ### Release Milestone Workflow
@@ -312,9 +314,9 @@ Labels are assembled automatically from the required and optional fields. Do not
 ### TDD Workflow Integration
 
 ```
-RED Phase:    git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="Add failing test")
-GREEN Phase:  git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="Implement feature")
-REFACTOR:     git_add_or_commit(workflow_phase="tdd", sub_phase="refactor", message="Clean up code")
+RED Phase:    git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="Add failing test")
+GREEN Phase:  git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement feature")
+REFACTOR:     git_add_or_commit(workflow_phase="implementation", sub_phase="refactor", cycle_number=1, message="Clean up code")
 DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update documentation")
 ```
 
@@ -341,7 +343,7 @@ DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update 
 2. scaffold_artifact artifact_type="design" name="new-feature-design" context='{"issue_number":"42","title":"New Feature Design","author":"Developer"}'
 3. write content in created file
 4. validate_doc file_path=path/to/doc.md
-5. git_commit "docs: Add design document" phase=docs
+5. git_add_or_commit(workflow_phase="documentation", message="Add design document")
 ```
 
 ## Related Documentation

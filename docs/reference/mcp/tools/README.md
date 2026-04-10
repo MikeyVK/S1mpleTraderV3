@@ -208,20 +208,21 @@ Documentation search, work context aggregation, and server administration.
 
 ```
 1. scaffold_artifact(artifact_type="dto", name="MyFeature", context={...})
-2. git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="Add failing test for MyFeature")
+2. git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="Add failing test for MyFeature")
 3. safe_edit_file(path="...", line_edits=[...])  # Implement
 4. run_tests(path="tests/test_my_feature.py")
-5. git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="Implement MyFeature logic")
+5. git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement MyFeature logic")
 6. run_quality_gates(scope="files", files=["backend/dtos/my_feature.py"])
 ```
 
 ### Completing and Merging Work
 
 ```
-1. transition_phase(branch="feature/123-my-feature", to_phase="integration")
+1. transition_phase(branch="feature/123-my-feature", to_phase="validation")
 2. git_push(set_upstream=True)
-3. create_pr(title="...", body="...", head="feature/123-my-feature", base="main")
-4. merge_pr(pr_number=42, merge_method="squash")
+3. transition_phase(branch="feature/123-my-feature", to_phase="ready")
+4. create_pr(title="...", body="...", head="feature/123-my-feature", base="main")
+5. merge_pr(pr_number=42, merge_method="squash")
 ```
 
 ---

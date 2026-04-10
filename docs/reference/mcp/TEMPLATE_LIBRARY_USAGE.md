@@ -19,7 +19,7 @@ Practical guide for using and extending the multi-tier Jinja2 template library t
 ## Scope
 
 **In Scope:**
-['Scaffolding an artifact type (using the MCP tool)', 'How artifact types map to templates (.st3/artifacts.yaml)', 'How to cherry-pick Tier 3 patterns via {% import %}', 'How provenance is recorded (.st3/template_registry.json)', 'Adding a new Tier 3 pattern (SRP)', 'Adding a new Tier 2 language/syntax or Tier 1 format']
+['Scaffolding an artifact type (using the MCP tool)', 'How artifact types map to templates (.st3/config/artifacts.yaml)', 'How to cherry-pick Tier 3 patterns via {% import %}', 'How provenance is recorded (.st3/template_registry.json)', 'Adding a new Tier 3 pattern (SRP)', 'Adding a new Tier 2 language/syntax or Tier 1 format']
 
 **Out of Scope:**
 ['Full TEMPLATE_METADATA format → See docs/reference/mcp/template_metadata_format.md', 'Deep architecture rationale → See docs/architecture/TEMPLATE_LIBRARY.md']
@@ -30,7 +30,7 @@ Practical guide for using and extending the multi-tier Jinja2 template library t
 
 ### scaffold_artifact (MCP tool)
 
-Unified tool to scaffold any registered artifact type (code or document). Resolves a template via .st3/artifacts.yaml, renders via Jinja2, injects SCAFFOLD provenance, and updates .st3/template_registry.json.
+Unified tool to scaffold any registered artifact type (code or document). Resolves a template via .st3/config/artifacts.yaml, renders via Jinja2, injects SCAFFOLD provenance, and updates .st3/template_registry.json.
 
 **Methods:**
 

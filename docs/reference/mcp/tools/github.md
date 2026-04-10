@@ -422,6 +422,7 @@ Create a new pull request.
 - **Unicode Support:** Title and body support full Unicode
 - **Branch Validation:** Head branch must exist; base branch must exist
 - **Auto-link Issues:** Use `Closes #123` in body to auto-link issues
+- **Phase Guard (#283):** `create_pr` is blocked unless the current workflow phase is `ready`. Call `transition_phase(to_phase="ready")` first.
 
 ---
 
