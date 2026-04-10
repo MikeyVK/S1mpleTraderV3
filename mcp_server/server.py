@@ -14,6 +14,7 @@ import anyio
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
+    CallToolResult,
     EmbeddedResource,
     ImageContent,
     Resource,
@@ -498,6 +499,13 @@ class MCPServer:
 
         return response_content
 
+    def _convert_tool_result_to_mcp_result(self, result: ToolResult) -> CallToolResult:
+        """Convert ToolResult to CallToolResult while preserving error semantics."""
+        return CallToolResult(
+            content=self._convert_tool_result_to_content(result),
+            isError=result.is_error,
+        )
+
     @staticmethod
     def _tool_result_from_exception(exc: Exception) -> ToolResult:
         """Convert one enforcement exception into ToolResult.error()."""
@@ -569,7 +577,7 @@ class MCPServer:
         @self.server.call_tool()  # type: ignore[untyped-decorator]
         async def handle_call_tool(
             name: str, arguments: dict[str, Any] | None
-        ) -> list[TextContent | ImageContent | EmbeddedResource]:
+        ) -> CallToolResult | list[TextContent | ImageContent | EmbeddedResource]:
             call_id = uuid.uuid4().hex
             start_time = time.perf_counter()
             argument_keys = sorted((arguments or {}).keys())
@@ -596,7 +604,7 @@ class MCPServer:
 
                         pre_result = self._run_tool_enforcement(tool, "pre", validated)
                         if pre_result is not None:
-                            return self._convert_tool_result_to_content(pre_result)
+                            return self._convert_tool_result_to_mcp_result(pre_result)
 
                         # Execute tool
                         result = await tool.execute(validated)
@@ -609,10 +617,10 @@ class MCPServer:
                                 result=result,
                             )
                             if post_result is not None:
-                                return self._convert_tool_result_to_content(post_result)
+                                return self._convert_tool_result_to_mcp_result(post_result)
 
                         # Convert result to MCP content
-                        response_content = self._convert_tool_result_to_content(result)
+                        response_content = self._convert_tool_result_to_mcp_result(result)
 
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
 

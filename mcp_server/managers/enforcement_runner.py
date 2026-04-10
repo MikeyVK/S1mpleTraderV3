@@ -9,6 +9,7 @@ Dispatch-level enforcement runner for tool events configured in
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from mcp_server.schemas import EnforcementAction, EnforcementConfig, Enforcement
 from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
+_GIT_TIMEOUT_SECONDS = 2
 
 
 def _read_current_phase(workspace_root: Path) -> str | None:
@@ -34,26 +36,61 @@ def _read_current_phase(workspace_root: Path) -> str | None:
     return str(raw) if raw else None
 
 
+def _git_command_env() -> dict[str, str]:
+    """Build a non-interactive environment for git commands in request paths."""
+    env = os.environ.copy()
+    env.setdefault("GIT_TERMINAL_PROMPT", "0")
+    env.setdefault("GIT_PAGER", "cat")
+    env.setdefault("PAGER", "cat")
+    return env
+
+
+def _run_git_command(
+    workspace_root: Path,
+    args: list[str],
+    failure_context: str,
+) -> subprocess.CompletedProcess[str]:
+    """Run one git command with non-interactive safeguards for request paths."""
+    try:
+        return subprocess.run(
+            ["git", *args],
+            cwd=workspace_root,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_GIT_TIMEOUT_SECONDS,
+            env=_git_command_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ExecutionError(
+            f"{failure_context}: {exc}",
+            recovery=[
+                "Verify the workspace is a healthy git repository",
+                "Retry the operation from a non-interactive shell",
+            ],
+        ) from exc
+
+
 def _git_is_tracked(workspace_root: Path, path: str) -> bool:
     """Return True if *path* is currently tracked in the git index."""
-    result = subprocess.run(
-        ["git", "ls-files", "--error-unmatch", path],
-        cwd=workspace_root,
-        capture_output=True,
+    result = _run_git_command(
+        workspace_root,
+        ["ls-files", "--error-unmatch", path],
+        failure_context=f"git ls-files failed for '{path}'",
     )
     return result.returncode == 0
 
 
 def _git_rm_cached(workspace_root: Path, path: str) -> None:
     """Remove *path* from the git index without deleting the working-tree file."""
-    result = subprocess.run(
-        ["git", "rm", "--cached", "--ignore-unmatch", path],
-        cwd=workspace_root,
-        capture_output=True,
-        check=False,
+    result = _run_git_command(
+        workspace_root,
+        ["rm", "--cached", "--ignore-unmatch", path],
+        failure_context=f"git rm --cached failed for '{path}'",
     )
     if result.returncode != 0:
-        stderr = result.stderr.decode(errors="replace").strip()
+        stderr = result.stderr.strip()
         raise ExecutionError(
             f"git rm --cached failed for '{path}': {stderr}",
             recovery=[
