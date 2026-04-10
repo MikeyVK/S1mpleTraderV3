@@ -80,7 +80,7 @@ create_issue(
 # → Returns: issue #47: Add Redis caching to strategy loader
 ```
 
-**Workflow Types (from `.st3/workflows.yaml`):**
+**Workflow Types (from `.st3/config/workflows.yaml`):**
 
 | **feature** | 6 phases: research → design → planning → implementation → validation → documentation | New functionality |
 | **bug** | 6 phases: research → design → planning → implementation → validation → documentation | Bug fixes |
@@ -100,7 +100,7 @@ create_issue(
 **Sequential Transitions (Strict Enforcement):**
 ```python
 transition_phase(branch="feature/42-name", to_phase="design")
-# Validates against workflow definition in .st3/workflows.yaml
+# Validates against workflow definition in .st3/config/workflows.yaml
 # Must follow sequential order defined in workflow
 ```
 
@@ -154,11 +154,75 @@ transition_phase(to_phase="validation")
   - Unified tool for ALL artifacts (code + docs)
   - Auto-resolves paths from artifacts.yaml registry
 
-**Documentation Phase (after integration):**
+**Documentation Phase (after validation):**
 - Focus: Reference docs, project documentation updates
 - Tasks: Update issue content, generate PR description, finalize docs
 - Quality gate: `validate_architecture(scope="all")`
 
+### 2.5 Work Completion
+
+**PR Creation & Merge:**
+```
+1. transition_phase(to_phase="ready")
+2. git_add_or_commit(...)   ← triggers auto-exclude of .st3/state.json + .st3/deliverables.json
+3. create_pr(head="feature/42", base="main", title="...", body="...")
+4. Wait for human approval (ALWAYS REQUIRED)
+5. merge_pr(pr_number=X) - only after human approval
+6. Branch cleanup - discuss with human (context-dependent)
+   - State cleanup (.st3/state.json) is automatic on git_checkout
+```
+
+---
+
+## 🛠️ Phase 3: Execution Protocols
+
+**Use the specific protocol for your assigned task. DO NOT perform manual file operations where a tool exists.**
+
+### A. "Implement a New Component" (DTO, Worker, Adapter)
+1.  **Scaffold Code:**
+    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="ComponentName", context={...})`
+    *   Unified tool for generating code and documentation artifacts
+    *   Auto-resolves paths from artifacts.yaml registry
+    *   *Result:* Creates impl file with proper structure.
+2.  **TDD Loop (Strict):**
+    *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
+3.  **Phase Transition:**
+    *   `transition_phase(to_phase="validation")` after implementation cycles complete
+
+### B. "Create Documentation" (Architecture, Design, Plan)
+1.  **Scaffold Document:**
+    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="document-name", context={...})`
+    *   Same unified tool as code artifacts
+    *   Auto-resolves `docs/development/issueXX/` from artifacts.yaml
+    *   *Result:* Creates perfectly structured markdown file.
+2.  **Validate:**
+    *   `validate_architecture(scope="all")` — verifies doc structure against schema
+    *   Manual review: check all required sections are filled in
+
+### C. "Manage Labels & Milestones"
+1.  **Create Label:**
+    *   `create_label(name="type:feature", color="0e8a16", description="...")`
+    *   Labels validated against `.st3/config/labels.yaml`
+2.  **Detect Drift:**
+    *   `list_labels()` → compare against `.st3/config/labels.yaml`
+    *   Missing labels: `create_label(...)` per entry
+    *   Obsolete labels: `delete_label(name)` after confirming no active issues use it
+
+---
+
+## ⚠️ Phase 4: Critical Directives (The "Prime Directives")
+
+1.  **Issue-First Development:** Never work directly on `main`. Always start with `create_issue`.
+2.  **Workflow Enforcement:** Always `initialize_project` before work. Use `transition_phase` for progression.
+3.  **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
+4.  **Tools > Manual:** Never manually create a file if `scaffold_*` exists. Never manually parse status if `st3://status/*` exists.
+5.  **English Artifacts, Dutch Chat:**
+    *   Write Code/Docs/Commits in **English**.
+    *   Talk to the User in **Dutch** (Nederlands).
+6.  **Human-in-the-Loop:** PR merge ALWAYS requires human approval. `force_phase_transition` requires approval + reason.
+7.  **Quality Gates:** Run before phase transitions and before PR creation.
+
+---
 
 ## 🔧 Phase 5: Tool Priority Matrix (MANDATORY)
 
@@ -342,60 +406,4 @@ git_add_or_commit → pre: exclude_branch_local_artifacts → git rm --cached au
 *   "How do I start work?" → **Follow Phase 2: Issue-First Development Workflow.**
 
 > **Start now by running Phase 1.**
-### 2.5 Work Completion
-
-**PR Creation & Merge:**
-```
-1. create_pr(head="feature/42", base="main", title="...", body="...")
-2. Wait for human approval (ALWAYS REQUIRED)
-3. merge_pr(pr_number=X) - only after human approval
-4. Branch cleanup - discuss with human (context-dependent)
-   - State cleanup (.st3/state.json) is automatic on git_checkout
-```
-
----
-
-## 🛠️ Phase 3: Execution Protocols
-
-**Use the specific protocol for your assigned task. DO NOT perform manual file operations where a tool exists.**
-
-### A. "Implement a New Component" (DTO, Worker, Adapter)
-1.  **Scaffold Code:**
-    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="ComponentName", context={...})`
-    *   Unified tool for generating code and documentation artifacts
-    *   Auto-resolves paths from artifacts.yaml registry
-    *   *Result:* Creates impl file with proper structure.
-2.  **TDD Loop (Strict):**
-    *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
-3.  **Phase Transition:**
-    *   `transition_phase(to_phase="integration")` after TDD complete
-
-### B. "Create Documentation" (Architecture, Design, Plan)
-1.  **Scaffold Document:**
-    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="document-name", context={...})`
-    *   Same unified tool as code artifacts
-    *   Auto-resolves docs/development/issueXX/ from artifacts.yaml
-    *   *Result:* Creates perfectly structured markdown file.
-2.  **Validate:**
-
-### C. "Manage Labels & Milestones"
-1.  **Create Label:**
-    *   `create_label(name="type:feature", color="0e8a16", description="...")`
-    *   Labels validated against `.st3/labels.yaml`
-2.  **Detect Drift:**
-
----
-
-## ⚠️ Phase 4: Critical Directives (The "Prime Directives")
-
-1.  **Issue-First Development:** Never work directly on `main`. Always start with `create_issue`.
-2.  **Workflow Enforcement:** Always `initialize_project` before work. Use `transition_phase` for progression.
-3.  **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
-4.  **Tools > Manual:** Never manually create a file if `scaffold_*` exists. Never manually parse status if `st3://status/*` exists.
-5.  **English Artifacts, Dutch Chat:**
-    *   Write Code/Docs/Commits in **English**.
-    *   Talk to the User in **Dutch** (Nederlands).
-6.  **Human-in-the-Loop:** PR merge ALWAYS requires human approval. `force_phase_transition` requires approval + reason.
-7.  **Quality Gates:** Run before phase transitions and before PR creation.
-
----
+CRITICAL: Read agent.md before any work. Follow Tool Priority Matrix strictly. NEVER use run_in_terminal for file/git/test operations.
