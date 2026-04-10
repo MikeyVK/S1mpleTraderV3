@@ -23,6 +23,7 @@ Verifies the full enforcement dispatch path:
 
 # Standard library
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -199,3 +200,80 @@ class TestReadyPhaseEnforcement:
             )
 
         assert notes == []
+
+
+@pytest.fixture
+def git_repo(tmp_path: Path) -> Path:
+    """Minimal git repository with .st3/state.json tracked in the index."""
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    # Initial commit so HEAD exists
+    readme = tmp_path / "README.md"
+    readme.write_text("# Test\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    return tmp_path
+
+
+class TestReadyPhaseEnforcementRealGit:
+    """End-to-end test: git rm --cached actually removes artifacts from the index."""
+
+    def test_artifact_removed_from_index_after_runner_run(self, git_repo: Path) -> None:
+        """runner.run() in ready phase removes .st3/state.json from the real git index."""
+        # Arrange: write and stage the state.json artifact
+        _write_state(git_repo, "ready")
+        state_file = git_repo / ".st3" / "state.json"
+        subprocess.run(
+            ["git", "add", str(state_file)],
+            cwd=git_repo,
+            check=True,
+            capture_output=True,
+        )
+
+        # Verify it is tracked before enforcement
+        result_before = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", _STATE_JSON],
+            cwd=git_repo,
+            capture_output=True,
+        )
+        assert result_before.returncode == 0, "state.json must be staged before test"
+
+        # Act: run enforcement (no mocks — real subprocess calls)
+        runner = _make_runner(git_repo, _merge_ctx())
+        ctx = EnforcementContext(
+            workspace_root=git_repo,
+            tool_name=GitCommitTool.name,
+            params=SimpleNamespace(),
+        )
+        notes = runner.run(
+            event=GitCommitTool.enforcement_event,  # type: ignore[arg-type]
+            timing="pre",
+            context=ctx,
+        )
+
+        # Assert: artifact is no longer in the index
+        result_after = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", _STATE_JSON],
+            cwd=git_repo,
+            capture_output=True,
+        )
+        assert result_after.returncode != 0, (
+            "state.json must be removed from git index after enforcement"
+        )
+        assert any("excluded" in n.lower() for n in notes)
