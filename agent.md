@@ -18,20 +18,20 @@ If you need the big-picture MCP server context (vision, architecture, roadmap), 
 
 > **⚡ CRITICAL:** VS Code Copilot uses lazy loading for MCP tools. Tools appear "disabled" until activated.
 
-**Load deferred tool categories before proceeding:**
-
-Use `tool_search_tool_regex` to load tools on demand. Examples:
+**Activate all tool categories before proceeding:**
 
 ```
-tool_search_tool_regex("^mcp_st3")          → loads all ST3 workflow tools
-tool_search_tool_regex("create_file|safe_edit_file|scaffold_artifact")
-tool_search_tool_regex("create_branch|git_status|git_push")
-tool_search_tool_regex("transition_phase|force_phase_transition")
-tool_search_tool_regex("create_issue|list_issues|get_issue")
-tool_search_tool_regex("initialize_project|get_project_plan")
+activate_file_editing_tools              → create_file, safe_edit_file, scaffold_artifact (unified tool for code+docs)
+activate_git_workflow_management_tools   → 15 git/PR tools (create_branch, git_status, etc.)
+activate_branch_phase_management_tools   → phase transition tools
+activate_issue_management_tools          → 6 issue tools (create_issue, list_issues, etc.)
+activate_label_management_tools          → 5 label tools
+activate_milestone_and_pr_management_tools → milestone + PR list tools
+activate_project_initialization_tools    → initialize_project, get_project_plan
+activate_code_validation_tools           → 4 validation tools
 ```
 
-**Why:** Tools use deferred loading in VS Code. They appear as "disabled by user" until loaded via `tool_search_tool_regex`. The old `activate_*` commands do **not** exist — calling them does nothing. Always use `tool_search_tool_regex` first.
+**Why:** Tools are dynamically loaded by VS Code based on semantic name analysis. Without activation, they appear as "disabled by user" (misleading error message). This is a VS Code 1.108+ feature (Dec 2025), not part of MCP specification.
 
 ### 1.2 State Synchronization (Execute Immediately)
 

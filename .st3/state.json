@@ -2,7 +2,7 @@
   "branch": "refactor/283-ready-phase-enforcement",
   "issue_number": 283,
   "workflow_name": "refactor",
-  "current_phase": "ready",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": 5,
   "cycle_history": [
@@ -39,7 +39,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "QA review found 9 blockers (merge_method validation, phase param, tool counts) in README.md, MCP_TOOLS.md, github.md \u2014 must fix before merge",
+  "skip_reason": "Research doc v1.5 is QA-approved na twee review rondes. Research fase is inhoudelijk afgesloten. Directe overgang naar design.",
   "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
   "parent_branch": null,
   "created_at": "2026-04-09T11:43:14.613856+00:00",
@@ -123,6 +123,22 @@
       "human_approval": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "ready",
+      "to_phase": "research",
+      "timestamp": "2026-04-10T16:25:24.077305+00:00",
+      "human_approval": "User approved force transition to research on 2026-04-10 to document findings before solution design",
+      "forced": true,
+      "skip_reason": "Capture fresh findings for the git_add_or_commit branch-local artifact regression before designing the proper fix. No implementation changes should proceed from ready until research reflects the current runtime and commit-path behavior."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-04-11T18:28:29.755574+00:00",
+      "human_approval": "User approved in chat op 2026-04-11",
+      "forced": true,
+      "skip_reason": "Research doc v1.5 is QA-approved na twee review rondes. Research fase is inhoudelijk afgesloten. Directe overgang naar design."
     }
   ],
   "reconstructed": false
