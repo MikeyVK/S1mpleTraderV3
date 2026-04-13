@@ -147,7 +147,7 @@ Five callsites in production code bypass `ConfigLoader` and reconstruct `.st3/co
 | 4 | `mcp_server/managers/phase_state_engine.py` | 91 | Checks file existence to decide whether to relax an already-injected `WorkphasesConfig` object |
 | 5 | `mcp_server/managers/git_manager.py` | 26 | Default `_workphases_path`; re-opened as raw YAML inside `commit_with_scope(...)` |
 
-All other `.st3/config` strings in production are display-only constants in `ConfigError.file_path` (`_ENFORCEMENT_DISPLAY_PATH`, `_PHASE_CONTRACTS_DISPLAY_PATH`) — they do not open files and are legitimate.
+All other `.st3/config` strings in production are display-only constants in `ConfigError.file_path` (`_ENFORCEMENT_DISPLAY_PATH`, `_PHASE_CONTRACTS_DISPLAY_PATH`). These do not open files, but they still violate the total-ban policy established in the regression fix design: in implementation they will be replaced with a generic `{configRoot}/filename` form (e.g. `{configRoot}/enforcement.yaml`). Additionally, `_WORKPHASES_DISPLAY_PATH` in `phase_contract_resolver.py` is dead code — defined but never referenced anywhere — and will be removed without replacement.
 
 The root cause in all five cases is the same: `ScopeDecoder` and `GitManager` still accept a `workphases_path: Path` in their constructor instead of a typed `WorkphasesConfig` object. Replacing that interface eliminates all five violations simultaneously.
 

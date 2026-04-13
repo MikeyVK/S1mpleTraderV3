@@ -3,7 +3,7 @@
 # git_add_or_commit regression fix — NoteContext protocol, config-boundary closure
 
 **Status:** DRAFT  
-**Version:** 9.0  
+**Version:** 10.0  
 **Last Updated:** 2026-04-13
 
 ---
@@ -16,7 +16,7 @@ Define the complete design for the `git_add_or_commit` ready-phase regression fi
 2. **Typed notes protocol** — A symmetric bidirectional `NoteContext` replaces all `ToolResult.hints` and `MCPError.hints` usage.
 3. **Exception path migration** — `tool_error_handler` decorator migrated; `SuggestionNote`, `BlockerNote`, and `RecoveryNote` replace exception hints; semantic contract between diagnostic exception messages and actionable notes formalised.
 4. **Config-boundary closure** — All five raw-Path violations replaced with `WorkphasesConfig` injection.
-5. **`create_pr` check correction** — `_handle_check_merge_readiness` uses the correct proxy: `git log merge_base..HEAD -- path` (commits touching path) replaces `git ls-files` (is-tracked check).
+5. **`create_pr` check correction** — `_handle_check_merge_readiness` uses the correct proxy: `git diff --name-only merge_base..HEAD -- path` (net state-change) replaces `git log` (commit history touch, not net delta) and `git ls-files` (is-tracked check).
 
 ---
 
@@ -100,7 +100,8 @@ The ready-phase `git_add_or_commit` path contains five compounding defects:
 - [ ] All five config-root hardcoding violations must be eliminated; no production callsite may reconstruct `.st3/config/...` after the composition root.
 - [ ] A structural regression test must prevent future re-introduction of `.st3/config/` path literals in production code.
 - [ ] `MCPError.hints` and `ToolResult.hints` must be removed; all user-visible supplementary output routes through `NoteContext`.
-- [ ] The `create_pr` pre-flight check must use `git log merge_base..HEAD -- path` as its proxy for "commits touching this path on this branch" — not `git ls-files` (is-tracked).
+- [ ] The `create_pr` pre-flight check must use `git diff --name-only merge_base..HEAD -- path` as its proxy for net state-change on the branch — not `git log` (commit history touch, not net delta) and not `git ls-files` (is-tracked).
+- [ ] Display-only constants using `.st3/config/` string literals in exception messages (e.g. `_ENFORCEMENT_DISPLAY_PATH`) must be replaced with a generic `{configRoot}/filename` form. Dead display-path constants (e.g. `_WORKPHASES_DISPLAY_PATH` in `phase_contract_resolver.py`) must be removed.
 
 **Non-Functional:**
 
@@ -454,6 +455,19 @@ class NoteContext:
 | Unconditional render | `render_to_response()` is called on both success and error results; returns base unchanged if empty |
 | Server does not inspect entries | Server calls only `render_to_response()`; never calls `of_type()` or reads `_entries` |
 
+#### SRP Defence
+
+`NoteContext` is a value object for one invocation, not a service. Single reason to change: "adapt note-flow coordination for one tool invocation." All three methods serve that goal; none has an independent reason to change.
+
+Splitting into `NoteStore` + `NoteRenderer` does not resolve a real SRP violation:
+
+- Both would operate on the same `_entries` list and carry the same per-call lifetime.
+- The renderer needs store access; splitting adds indirection without isolation.
+- Comparable precedent: `ToolResult` combines data storage and factory methods (`ToolResult.text()`, `ToolResult.error()`) without SRP objection.
+
+Architecture Principle §3 (SRP): one reason to change, not one method per class.
+Architecture Principle §4 (Cohesion): storage, query, and render are cohesive under the note-flow coordination responsibility.
+
 ### 3.5 BaseTool Contract Change
 
 ```python
@@ -605,9 +619,11 @@ def commit_with_scope(self, ..., skip_paths: frozenset[str] = frozenset()) -> st
 
 ### 3.9 `_handle_check_merge_readiness` — Corrected Proxy
 
-The `create_pr` pre-flight check is implemented in `_handle_check_merge_readiness`. Its current proxy — `_git_is_tracked` → `git ls-files --error-unmatch` — tests whether a path is present in the local HEAD tree. This is wrong for the purpose of merge-safety: a file can be tracked in HEAD (created on this feature branch) and yet never appear in any commit, because the `git restore --staged` postcondition (§3.8) consistently removes it from staging before every commit. The proxy therefore produces a false positive: it blocks `create_pr` despite zero contamination risk.
+The `create_pr` pre-flight check is implemented in `_handle_check_merge_readiness`. Its current proxy — `_git_is_tracked` → `git ls-files --error-unmatch` — tests whether a path is present in the local HEAD tree. This is wrong for the purpose of merge-safety: a file can be tracked in HEAD (created on this feature branch) and yet never carry a net state-change into the merge, because the `git restore --staged` postcondition (§3.8) consistently removes it from staging before every commit. The proxy therefore produces a false positive: it blocks `create_pr` despite zero contamination risk.
 
-**Correct proxy:** does the branch have commits carrying a delta for this path?
+**Correct proxy:** does the branch introduce a net delta for this path relative to the target?
+
+A commit-history check (`git log`) can also produce false positives: a branch that adds and then deletes the same file has history touching the path but carries zero net delta into the merge. The correct test is `git diff merge_base..HEAD -- path`, which reports only actual net state-change.
 
 ```python
 # CURRENT (wrong proxy — in _handle_check_merge_readiness)
@@ -625,16 +641,24 @@ base = str(context.get_param("base"))                  # always non-None: apply_
 contaminated = [
     artifact
     for artifact in ctx.branch_local_artifacts
-    if _has_branch_commits_touching(workspace_root, artifact.path, base)  # ← commit history check
+    if _has_net_diff_for_path(workspace_root, artifact.path, base)  # ← net-diff check
 ]
 
 # Module-level helper — same pattern as _git_rm_cached (fail-fast on non-zero returncode)
-def _has_branch_commits_touching(workspace_root: Path, path: str, base: str) -> bool:
-    """Return True if HEAD has commits touching path not reachable from base.
+# Note: no note_context parameter — this is a module-level helper without access to the
+# per-call NoteContext. The handler calling this function is responsible for writing any
+# RecoveryNotes to note_context *before* calling this helper if pre-emptive guidance is
+# needed. ExecutionError is raised without recovery notes; the flag-day structural test
+# (§3.14) enforces that no recovery= kwargs appear anywhere.
+def _has_net_diff_for_path(workspace_root: Path, path: str, base: str) -> bool:
+    """Return True if HEAD introduces a net state-change for path relative to base.
+
+    Uses git diff merge_base..HEAD rather than git log, so that a branch that adds
+    then deletes the same file correctly returns False (zero net delta).
 
     base is read from EnforcementContext via context.get_param("base").
     CreatePRInput.apply_default_base_branch() ensures base is always non-None before
-    enforcement runs — no "main" fallback needed or safe here (Config-First principle).
+    enforcement runs — no fallback needed or permitted (Config-First principle).
     Module-level function; follows the same _run_git_command pattern as _git_is_tracked.
     Raises ExecutionError on non-zero git returncode (Fail-Fast principle).
     """
@@ -647,51 +671,43 @@ def _has_branch_commits_touching(workspace_root: Path, path: str, base: str) -> 
         stderr = merge_base_result.stderr.strip() or "unknown git error"
         raise ExecutionError(
             f"git merge-base failed for HEAD and '{base}': {stderr}",
-            recovery=[
-                f"Verify the target branch '{base}' exists locally and is fetched",
-                f"Manually run: git merge-base HEAD {base}",
-            ],
         )
 
     merge_base_sha = merge_base_result.stdout.strip()
-    log_result = _run_git_command(
+    diff_result = _run_git_command(
         workspace_root,
-        ["log", "--oneline", f"{merge_base_sha}..HEAD", "--", path],
-        failure_context=f"git log failed for path '{path}'",
+        ["diff", "--name-only", f"{merge_base_sha}..HEAD", "--", path],
+        failure_context=f"git diff failed for path '{path}'",
     )
-    if log_result.returncode != 0:
-        stderr = log_result.stderr.strip() or "unknown git error"
+    if diff_result.returncode != 0:
+        stderr = diff_result.stderr.strip() or "unknown git error"
         raise ExecutionError(
-            f"git log failed for path '{path}': {stderr}",
-            recovery=[
-                "Verify that the branch history is readable",
-                f"Manually run: git log --oneline {merge_base_sha}..HEAD -- {path}",
-            ],
+            f"git diff failed for path '{path}': {stderr}",
         )
 
-    return bool(log_result.stdout.strip())
+    return bool(diff_result.stdout.strip())
 ```
 
-Non-zero git exit codes are **not** interpreted as `False`. They are promoted to `ExecutionError`, because `_run_git_command` only wraps process-launch and timeout failures; semantic git failures remain the caller's responsibility.
+Non-zero git exit codes are **not** interpreted as `False`. They are promoted to `ExecutionError`, because `_run_git_command` only wraps process-launch and timeout failures; semantic git failures remain the caller's responsibility. The helper raises without `recovery=` kwargs — per the flag-day contract (§3.11, §3.14), recovery guidance is written as `RecoveryNote` entries by the caller, not via exception constructor parameters.
 
-**Relationship to §3.8 postcondition:** The two fixes are complementary — they share a single invariant: *no commit on the feature branch carries a delta for artifact paths.*
+**Relationship to §3.8 postcondition:** The two fixes are complementary — they share a single invariant: *no commit on the feature branch introduces a net delta for artifact paths.*
 
 | Layer | Mechanism | Effect |
 |-------|-----------|--------|
 | Commit (§3.8) | `git restore --staged` postcondition | Prevents artifact delta from entering any commit |
-| Gate (§3.9) | `git log merge_base..HEAD -- path` | Detects if any commit on the branch carries artifact delta |
+| Gate (§3.9) | `git diff merge_base..HEAD -- path` | Detects net state-change on the branch for each artifact path |
 
 Normal operation: §3.8 ensures §3.9 never fires. Defense-in-depth: §3.9 catches any bypass of §3.8.
 
-**Recovery for already-contaminated branches:** If `create_pr` is blocked because `_has_branch_commits_touching` returns `True`, the branch history carries artifact delta that predates this fix. Recovery requires rewriting the branch history to remove those commits:
+**Recovery for already-contaminated branches:** If `create_pr` is blocked because `_has_net_diff_for_path` returns `True`, the branch carries a net artifact-state change that predates this fix. Recovery requires rewriting the branch history to remove those commits:
 
 ```
 git rebase -i $(git merge-base HEAD <base>)
-# drop or edit the commit(s) listed by:
+# diagnose which commits to drop:
 # git log --oneline $(git merge-base HEAD <base>)..HEAD -- .st3/state.json .st3/deliverables.json
 ```
 
-After rebasing, the `create_pr` gate will pass because `_has_branch_commits_touching` will return `False` for the cleaned branch. This situation only arises on branches created before this fix is deployed; new branches are protected by §3.8 from the first commit.
+After rebasing, the `create_pr` gate will pass because `_has_net_diff_for_path` will return `False` for the cleaned branch. This situation only arises on branches created before this fix is deployed; new branches are protected by §3.8 from the first commit.
 
 **`base` parameter source:** `create_pr` tool params include `base=` (the target branch). `_handle_check_merge_readiness` reads `context.get_param("base")`. `CreatePRInput.apply_default_base_branch()` ensures this value is always non-None by the time enforcement runs — no fallback required and none permitted (Config-First principle: the default comes from `GitConfig.default_base_branch`, not from a hardcoded string in enforcement logic). No hard-coded branch names in enforcement logic.
 
@@ -879,10 +895,10 @@ Existing tests in `tests/mcp_server/unit/managers/test_enforcement_runner_c3.py`
 | `RecoveryNote` written + full dispatch | Rendered response contains both error text and recovery text; no overlap | — | Integration |
 | `tool_error_handler` after migration | `ToolResult.error` returned; no `hints` field on result; no note written by decorator | — | Unit |
 | `WorkphasesConfig` injection | `GitManager.commit_with_scope` executes without `open()` call | — | Unit (mock) |
-| `_handle_check_merge_readiness` with clean branch (artifact never committed) | `create_pr` not blocked; `_has_branch_commits_touching` returns `False` for all artifact paths | — | Integration (real git) |
-| `_handle_check_merge_readiness` with artifact directly committed (tool bypass) | `create_pr` blocked; `_has_branch_commits_touching` returns `True` for contaminated path | — | Integration (real git) |
-| Full `create_pr` with explicit non-existent `base=` | Fail-fast error response; no PR created; merge-base non-zero exit code is surfaced as `ExecutionError`, never treated as clean history | — | Integration (real git) |
-| `_has_branch_commits_touching` when `git log` returns non-zero | `ExecutionError` raised; helper never returns `False` on git failure | — | Unit (mocked git) |
+| `_handle_check_merge_readiness` with clean branch (artifact never committed) | `create_pr` not blocked; `_has_net_diff_for_path` returns `False` for all artifact paths | — | Integration (real git) |
+| `_handle_check_merge_readiness` with artifact directly committed (tool bypass) | `create_pr` blocked; `_has_net_diff_for_path` returns `True` for contaminated path | — | Integration (real git) |
+| Full `create_pr` with explicit non-existent `base=` | Fail-fast error response; no PR created; merge-base non-zero exit code surfaced as `ExecutionError`, never treated as clean history | — | Integration (real git) |
+| `_has_net_diff_for_path` when `git diff` returns non-zero | `ExecutionError` raised; helper never returns `False` on git failure | — | Unit (mocked git) |
 
 #### Structural Regression Tests
 
@@ -893,7 +909,16 @@ import pathlib
 
 
 def test_no_raw_st3_config_paths_in_production():
-    """No production code may construct .st3/config/ as a string literal."""
+    """No production module may contain a .st3/config/ string literal.
+
+    This covers both functional path reconstruction (the five config-root violations
+    eliminated via WorkphasesConfig injection) and display-only constants in exception
+    messages (e.g. _ENFORCEMENT_DISPLAY_PATH). The correct alternative for error-message
+    paths is a generic ``{configRoot}/filename`` form. Dead display-path constants
+    (e.g. _WORKPHASES_DISPLAY_PATH) must be removed, not kept as exempt exceptions.
+
+    If this test fails: replace the literal with the generic form, or remove the dead constant.
+    """
     for path in pathlib.Path("mcp_server/").rglob("*.py"):
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
@@ -965,6 +990,7 @@ def test_no_blockers_or_recovery_kwargs_on_exception_callsites():
 
 | Version | Date | Author | Changes |
 |---------|------|--------|----------|
+| 10.0 | 2026-04-13 | Agent | F1–F5 from QA session (IMP handover 20260413): (F1) §3.9 proxy corrected from `git log` to `git diff --name-only merge_base..HEAD` — net state-delta instead of commit history touch; helper renamed to `_has_net_diff_for_path`; §1.2 requirement and Purpose §5 updated to match; (F2) total ban on `.st3/config/` string literals formalised in §1.2 functional requirement and §3.14 structural test docstring; `{configRoot}/filename` defined as correct generic form for error messages; `_WORKPHASES_DISPLAY_PATH` identified as dead code to be removed; research doc display-only note corrected; test matrix rows updated to `_has_net_diff_for_path`; (F3) SRP defence subsection added to §3.4 NoteContext; (F4) `recovery=[...]` kwargs removed from §3.9 helper `ExecutionError` sites — module-level helper has no `note_context`; caller is responsible for `RecoveryNote` entries; (F5) supersession notes added to §2.6 and §2.7 of `design-ready-phase-enforcement.md`. |
 | 9.0 | 2026-04-13 | Agent | Final fail-fast blocker closed from QA v8 verdict: §3.9 now states explicitly that non-zero `git merge-base` and `git log` exit codes raise `ExecutionError` and are never interpreted as clean history; recovery messages aligned with runtime helper style; test matrix extended with one public integration case for invalid `base=` and one unit case for `git log` non-zero. |
 | 8.0 | 2026-04-13 | Agent | §3.9 API contract finalized (Findings 1–3 from QA v7.0): (1) `_run_git_command` calls now include required `failure_context=` parameter; (2) `or "main"` fallback removed — `CreatePRInput.apply_default_base_branch()` guarantees non-None `base` before enforcement runs; `Config-First` note added to docstring and prose; (3) §3.9 now includes recovery path for already-contaminated branches (`git rebase -i` to drop offending commits). |
 | 7.0 | 2026-04-13 | Agent | §3.9 API contract corrected (Finding 2 from QA v6.0): `_has_branch_commits_touching` rewritten as module-level function using `_run_git_command` (same pattern as `_git_is_tracked`); `self.git_adapter.merge_base/.git.log` (non-existent methods) replaced with explicit subprocess calls; `enforcement_ctx.params.get()` → `context.get_param()`; `del action, context` → `del action` (context retained to read `base`). Finding 1 accepted without change: `ExclusionNote` based on `is_tracked` reflects configured behavior per `phase_contracts.yaml`, not actual commit delta — accurately describes what the enforcement *would* exclude. |

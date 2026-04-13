@@ -275,6 +275,8 @@ no side effects — it is a pure transform (D6).
 
 ### 2.6 `GitCommitTool` — Enforcement Event Declaration
 
+> ⚠️ **Gedeeltelijk vervangen.** `design-git-add-commit-regression-fix.md` breidt het `execute()`-contract van `GitCommitTool` uit: een `context: NoteContext`-parameter wordt toegevoegd en `ExclusionNote`-entries worden uitgelezen voor `skip_paths`-doorgave aan `GitManager`. De `enforcement_event`-declaratie in dit sectie blijft ongewijzigd geldig. Autoriteitsvolgorde: de regression fix design prevaleert voor het `execute()`-contract; dit document prevaleert voor de `enforcement_event`-declaratie.
+
 `GitCommitTool` follows the identical pattern already in use by `CreateBranchTool` in the same
 file (`git_tools.py` line 121): declare the `enforcement_event` class variable. No changes to
 `execute()`.
@@ -292,6 +294,8 @@ All enforcement logic belongs in the `EnforcementRunner` handler registered for 
 preserved: `GitCommitTool` has exactly one reason to change — git commit mechanics.
 
 ### 2.7 `CreatePRTool` — Enforcement Event Declaration
+
+> ℹ️ **Volledig van kracht.** `CreatePRTool.execute()` wordt niet gewijzigd door de regression fix. Alleen §2.6 is gedeeltelijk vervangen.
 
 `CreatePRTool` follows the same pattern:
 
