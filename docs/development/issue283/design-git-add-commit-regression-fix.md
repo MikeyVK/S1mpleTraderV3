@@ -220,7 +220,7 @@ This sub-decision concerns where `PreflightError(blockers=...)` and `ExecutionEr
 | `ToolResult.hints` REMOVED | Dead on success path (confirmed in `_augment_text_with_error_metadata`); delivery exclusively via `NoteContext` |
 | `MCPError.hints` REMOVED | Flag-day clean break; all note-producing callsites migrate to typed notes at raise-site |
 | `WorkphasesConfig` replaces `workphases_path: Path` in 5 callsites | Single interface change eliminates all five violations; composition root already holds the loaded object |
-| `_handle_check_merge_readiness` proxy corrected | `git log merge_base..HEAD -- path` (commit-history check) replaces `git ls-files` (is-tracked check); postcondition (§3.8) ensures the check normally always passes; check provides defense-in-depth against tool bypass |
+| `_handle_check_merge_readiness` proxy corrected | `git diff --name-only merge_base..HEAD -- path` (net state-change) replaces `git ls-files` (is-tracked check); postcondition (§3.8) ensures the check normally always passes; check provides defense-in-depth against tool bypass |
 
 ### 3.2 Component Overview — Happy Path
 
