@@ -38,7 +38,7 @@ This document translates the five coordinated design changes in the v11.0 design
 | All raise-sites (26) | Migrate to typed notes (`BlockerNote`, `RecoveryNote`, `SuggestionNote`) |
 | `mcp_server/core/phase_detection.py` | Constructor accepts `WorkphasesConfig` |
 | `mcp_server/managers/phase_state_engine.py` | Remove file-existence check; use injected config |
-| `mcp_server/managers/enforcement.py` | `_handle_check_merge_readiness`: corrected proxy using `_has_net_diff_for_path` |
+| `mcp_server/managers/enforcement_runner.py` | `_handle_check_merge_readiness`: corrected proxy using `_has_net_diff_for_path` |
 | Structural regression tests | 3 AST-walk guards in `test_c_loader_structural.py` |
 | Public-path integration tests | Replace Principle-14-violating private-method tests |
 
@@ -100,9 +100,9 @@ Six TDD cycles closing the ready-phase commit regression. The cycle order respec
 ```
 C1 (contract surface)
   └── C2 (git semantics)
-        └── C3 (wiring — enforcement/tool/server) ─┐
-              └── C4 (flag-day exception migration) ─┤
-              └── C5 (config injection)             ─┤
+        ├── C3 (wiring — enforcement/tool/server) ─┐
+        │     └── C4 (flag-day exception migration) ─┤
+        └── C5 (config injection) ─────────────────┤
                                                      └── C6 (proxy correction + regression suite)
 ```
 
@@ -111,7 +111,7 @@ C1 (contract surface)
 | C1 → C2 | C2 only needs `ExclusionNote` type; git semantics do not require full NoteContext threading |
 | C2 → C3 | `GitCommitTool` reads `ExclusionNote` → `skip_paths`; `GitAdapter.commit(skip_paths=)` must exist first |
 | C3 → C4 | Exception flag-day migration writes typed notes to a `NoteContext` at each raise-site; the context must be in scope (threaded through the call chain) before migration is safe |
-| C3 → C5 | `GitManager` is touched by both C2 (skip_paths) and C5 (WorkphasesConfig); C3 completes the `GitManager` signature surface, so C5 can proceed cleanly |
+| C2 → C5 | `WorkphasesConfig` injection only needs the typed config object (C1) and the `GitManager` constructor already modified in C2 for `skip_paths`; C3 wiring is not a prerequisite for constructor signature changes |
 | C3 + C4 + C5 → C6 | The create_pr proxy fix and public-path integration tests require: (a) the full note flow working end-to-end (C3); (b) exception paths rendering typed notes (C4); (c) config boundary closed so server wire-up is clean (C5) |
 
 ### 6.2 Safe Parallelization
@@ -321,7 +321,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 - `mcp_server/core/exceptions.py` — remove `MCPError.hints`, `PreflightError(blockers=)`, `ExecutionError(recovery=)`
 - `mcp_server/tools/tool_result.py` — remove `ToolResult.hints`, `ToolResult.error(hints=...)`
 - `mcp_server/core/error_handling.py` — `tool_error_handler`: remove `hints` extraction, `hints=` in `ToolResult.error` calls
-- `mcp_server/managers/enforcement.py` — all raise-sites with `blockers=`/`recovery=`/`hints=` kwargs
+- `mcp_server/managers/enforcement_runner.py` — all raise-sites with `blockers=`/`recovery=`/`hints=` kwargs
 - `mcp_server/managers/git_manager.py` — raise-sites
 - `mcp_server/managers/phase_state_engine.py` — raise-sites
 - `mcp_server/core/phase_detection.py` — raise-sites
@@ -390,7 +390,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 - `mcp_server/core/phase_detection.py` — constructor: `workphases_config: WorkphasesConfig` replaces `workphases_path: Path`; remove CWD-sensitive fallback
 - `mcp_server/managers/phase_state_engine.py` — remove file-existence check at line 91; operate on already-injected config
 - `mcp_server/managers/git_manager.py` — constructor: `workphases_config: WorkphasesConfig`; `commit_with_scope` reads `self._workphases_config.phases[...]` directly
-- `mcp_server/core/scope_encoder.py` (or wherever `ScopeDecoder` lives) — constructor: `workphases_config: WorkphasesConfig`
+- `mcp_server/core/phase_detection.py` — `ScopeDecoder.__init__`: replace `workphases_path: Path` with `workphases_config: WorkphasesConfig`
 - `mcp_server/server.py` — lines 211, 222: `ScopeDecoder(workphases_config=workphases_config)`
 - `tests/mcp_server/unit/managers/test_git_manager_no_file_open.py` — new (or extend): `commit_with_scope` executes without `open()` call
 - `tests/mcp_server/unit/config/test_c_loader_structural.py` — `test_no_raw_st3_config_paths_in_production` turns GREEN after this cycle
@@ -446,7 +446,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 **Research Refs:** `_git_is_tracked` tests HEAD tree not net delta — false positive confirmed. Principle 14 debt: `test_enforcement_runner_c3.py` calls `_handle_exclude_branch_local_artifacts` directly — exactly the pattern ARCHITECTURE_PRINCIPLES §14 forbids.
 
 **Files or Modules Likely Touched:**
-- `mcp_server/managers/enforcement.py` — `_handle_check_merge_readiness`: replace `_git_is_tracked` with `_has_net_diff_for_path`; keep `context` (not discarded); add `_has_net_diff_for_path` helper
+- `mcp_server/managers/enforcement_runner.py` — `_handle_check_merge_readiness`: replace `_git_is_tracked` with `_has_net_diff_for_path`; keep `context` (not discarded); add `_has_net_diff_for_path` helper
 - `tests/mcp_server/unit/managers/test_enforcement_runner_c3.py` — replace private-method call patterns with public-path assertions
 - `tests/mcp_server/integration/test_git_add_commit_regression_c6.py` — new: full ready-phase dispatch regression suite
 - `tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py` — new: clean branch / contaminated branch gate tests
@@ -460,7 +460,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 - `test_enforcement_runner_private_method_access_absent` — current `test_enforcement_runner_c3.py` calls `_handle_exclude_branch_local_artifacts` directly — must be removed
 
 **GREEN:**
-- Add `_has_net_diff_for_path(workspace_root, path, base)` helper to `enforcement.py`
+- Add `_has_net_diff_for_path(workspace_root, path, base)` helper to `enforcement_runner.py`
 - Update `_handle_check_merge_readiness`: `del action` only (keep `context`); read `base = str(context.get_param("base"))`; replace `_git_is_tracked` check with `_has_net_diff_for_path`; on `ExecutionError`, write `RecoveryNote` before re-raise
 - Rewrite `test_enforcement_runner_c3.py` to call `EnforcementRunner.run()` (public API) and assert via `context.of_type(ExclusionNote)` at unit boundary; remove all private-method calls
 - Write integration test suite: real git repo; commit with `skip_paths` active; verify no delta; verify rendered response; both `create_pr` gate branches
@@ -472,7 +472,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 - Run full test suite: `pytest tests/mcp_server/` → all pass
 
 **Deliverables For This Cycle:**
-1. `_has_net_diff_for_path` helper in `enforcement.py`: uses `git diff --name-only merge_base..HEAD -- path`; raises `ExecutionError` on non-zero exit codes
+1. `_has_net_diff_for_path` helper in `enforcement_runner.py`: uses `git diff --name-only merge_base..HEAD -- path`; raises `ExecutionError` on non-zero exit codes
 2. `_handle_check_merge_readiness` uses `_has_net_diff_for_path`; `context` not discarded; `base` read from tool params
 3. Integration test: full `git_add_or_commit` ready-phase dispatch → no delta for `.st3/state.json` in commit diff
 4. Integration test: full `git_add_or_commit` ready-phase dispatch → rendered TextContent block contains `"Excluded from commit index: .st3/state.json"`
@@ -495,23 +495,10 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 
 ## 8. Deliverables.json Draft
 
+**Migration Note:** Issue 283 already has `planning_deliverables` in `.st3/deliverables.json` (5-cycle plan from 2026-04-09). The `save_planning_deliverables` guard raises `ValueError` if the key is already present. Before calling `save_planning_deliverables(283, <payload>)`, manually remove the `"planning_deliverables"` key from the `"283"` entry in `.st3/deliverables.json`. The old 5-cycle plan is superseded by this 6-cycle replan.
+
 ```json
 {
-  "issue_number": 283,
-  "issue_title": "git_add_or_commit regression fix — NoteContext protocol, config-boundary closure",
-  "workflow_name": "refactor",
-  "execution_mode": "tdd",
-  "required_phases": ["research", "planning", "implementation", "validation", "documentation"],
-  "planning_deliverables": [
-    {
-      "id": "P.1",
-      "description": "planning.md committed to docs/development/issue283/"
-    },
-    {
-      "id": "P.2",
-      "description": "Deliverables.json registered via save_planning_deliverables"
-    }
-  ],
   "tdd_cycles": {
     "total": 6,
     "cycles": [
@@ -575,9 +562,9 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
             "id": "C1.7",
             "description": "CommitNote has no to_message() method: render_to_response with only CommitNote returns base unchanged",
             "validates": {
-              "type": "absent_text",
-              "file": "mcp_server/core/operation_notes.py",
-              "text": "class CommitNote"
+              "type": "contains_text",
+              "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+              "text": "test_commit_note_not_renderable"
             }
           }
         ],
@@ -726,20 +713,20 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
           },
           {
             "id": "C4.4",
-            "description": "Structural test test_no_hints_kwarg_on_mcp_error_callsites turns GREEN",
+            "description": "hints= kwarg absent from mcp_server/tools/git_tools.py (structural test test_no_hints_kwarg_on_mcp_error_callsites GREEN)",
             "validates": {
-              "type": "contains_text",
-              "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
-              "text": "test_no_hints_kwarg_on_mcp_error_callsites"
+              "type": "absent_text",
+              "file": "mcp_server/tools/git_tools.py",
+              "text": "hints="
             }
           },
           {
             "id": "C4.5",
-            "description": "Structural test test_no_blockers_or_recovery_kwargs_on_exception_callsites turns GREEN",
+            "description": "blockers= kwarg absent from mcp_server/tools/git_tools.py (structural test test_no_blockers_or_recovery_kwargs_on_exception_callsites GREEN)",
             "validates": {
-              "type": "contains_text",
-              "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
-              "text": "test_no_blockers_or_recovery_kwargs_on_exception_callsites"
+              "type": "absent_text",
+              "file": "mcp_server/tools/git_tools.py",
+              "text": "blockers="
             }
           },
           {
@@ -762,7 +749,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
             "description": "ScopeDecoder.__init__ accepts workphases_config: WorkphasesConfig; workphases_path: Path constructor param absent",
             "validates": {
               "type": "absent_text",
-              "file": "mcp_server/core/scope_encoder.py",
+              "file": "mcp_server/core/phase_detection.py",
               "text": "workphases_path: Path"
             }
           },
@@ -804,11 +791,11 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
           },
           {
             "id": "C5.6",
-            "description": "Structural test test_no_raw_st3_config_paths_in_production turns GREEN",
+            "description": "Hard-coded .st3/config/workphases.yaml absent from phase_detection.py (structural test test_no_raw_st3_config_paths_in_production GREEN)",
             "validates": {
-              "type": "contains_text",
-              "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
-              "text": "test_no_raw_st3_config_paths_in_production"
+              "type": "absent_text",
+              "file": "mcp_server/core/phase_detection.py",
+              "text": ".st3/config/workphases.yaml"
             }
           }
         ],
@@ -819,10 +806,10 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
         "deliverables": [
           {
             "id": "C6.1",
-            "description": "_has_net_diff_for_path helper in enforcement.py uses git diff --name-only merge_base..HEAD",
+            "description": "_has_net_diff_for_path helper in enforcement_runner.py uses git diff --name-only merge_base..HEAD",
             "validates": {
               "type": "contains_text",
-              "file": "mcp_server/managers/enforcement.py",
+              "file": "mcp_server/managers/enforcement_runner.py",
               "text": "_has_net_diff_for_path"
             }
           },
@@ -831,7 +818,7 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
             "description": "_handle_check_merge_readiness does not reference _git_is_tracked",
             "validates": {
               "type": "absent_text",
-              "file": "mcp_server/managers/enforcement.py",
+              "file": "mcp_server/managers/enforcement_runner.py",
               "text": "_git_is_tracked"
             }
           },
@@ -873,11 +860,11 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
           },
           {
             "id": "C6.7",
-            "description": "Full test suite passes: pytest tests/mcp_server/ → 0 failures, 0 errors",
+            "description": "_augment_text_with_error_metadata absent from server.py; full test suite pytest tests/mcp_server/ → 0 failures, 0 errors",
             "validates": {
-              "type": "contains_text",
-              "file": "tests/mcp_server/integration/test_git_add_commit_regression_c6.py",
-              "text": "test_ready_phase_explicit_files_no_delta"
+              "type": "absent_text",
+              "file": "mcp_server/server.py",
+              "text": "_augment_text_with_error_metadata"
             }
           }
         ],

@@ -2,7 +2,7 @@
   "branch": "refactor/283-ready-phase-enforcement",
   "issue_number": 283,
   "workflow_name": "refactor",
-  "current_phase": "design",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": 5,
   "cycle_history": [
@@ -39,7 +39,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Research doc v1.5 is QA-approved na twee review rondes. Research fase is inhoudelijk afgesloten. Directe overgang naar design.",
+  "skip_reason": "QA GO verdict ontvangen na v11.0 review \u2014 alle eerdere blockers gesloten. Design is stabiel voor planning. Laatste cleanup (stale git log in decision table) is gecommit. Force transition omdat sequential validation al volledig afgerond is via QA-sessies.",
   "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
   "parent_branch": null,
   "created_at": "2026-04-09T11:43:14.613856+00:00",
@@ -139,6 +139,14 @@
       "human_approval": "User approved in chat op 2026-04-11",
       "forced": true,
       "skip_reason": "Research doc v1.5 is QA-approved na twee review rondes. Research fase is inhoudelijk afgesloten. Directe overgang naar design."
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-04-13T19:27:41.970135+00:00",
+      "human_approval": "User approved: QA GO verdict op v11.0, overgang naar planning geautoriseerd (2026-04-13)",
+      "forced": true,
+      "skip_reason": "QA GO verdict ontvangen na v11.0 review \u2014 alle eerdere blockers gesloten. Design is stabiel voor planning. Laatste cleanup (stale git log in decision table) is gecommit. Force transition omdat sequential validation al volledig afgerond is via QA-sessies."
     }
   ],
   "reconstructed": false
