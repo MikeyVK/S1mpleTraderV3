@@ -285,7 +285,7 @@ file (`git_tools.py` line 121): declare the `enforcement_event` class variable. 
 # mcp_server/tools/git_tools.py
 
 class GitCommitTool(BaseTool):
-    enforcement_event: str | None = "git_commit"   # NEW — one line only
+    enforcement_event: str | None = "git_add_or_commit"   # NEW — one line only
     # execute() is NOT modified
 ```
 
@@ -320,7 +320,7 @@ Two new enforcement rules are added to `.st3/config/enforcement.yaml`, after the
 # .st3/config/enforcement.yaml  (additions)
 
   - event_source: tool
-    tool: git_commit
+    tool: git_add_or_commit
     timing: pre
     actions:
       - type: exclude_branch_local_artifacts
