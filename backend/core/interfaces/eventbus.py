@@ -84,9 +84,7 @@ class SubscriptionScope:
     target_strategy_ids: set[str] | None = None
 
     def should_receive_event(
-        self,
-        publish_scope: ScopeLevel,
-        publish_strategy_id: str | None
+        self, publish_scope: ScopeLevel, publish_strategy_id: str | None
     ) -> bool:
         """
         Determine if subscription should receive event.
@@ -168,7 +166,7 @@ class IEventBus(Protocol):
         event_name: str,
         payload: BaseModel,
         scope: ScopeLevel,
-        strategy_instance_id: str | None = None
+        strategy_instance_id: str | None = None,
     ) -> None:
         """
         Broadcast event to matching subscribers.
@@ -213,7 +211,7 @@ class IEventBus(Protocol):
         event_name: str,
         handler: Callable[[BaseModel], None],
         scope: SubscriptionScope,
-        is_critical: bool = False
+        is_critical: bool = False,
     ) -> str:
         """
         Register event handler with flexible scoping.

@@ -20,6 +20,7 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
 from mcp_server.core.exceptions import ConfigError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.server import MCPServer
 from mcp_server.tools.base import BaseTool
@@ -166,7 +167,7 @@ class TestServerToolRegistration:
             description = "Dummy tool"
             args_model = None
 
-            async def execute(self, params: object, context: object) -> ToolResult:
+            async def execute(self, params: Any, context: NoteContext) -> ToolResult:  # noqa: ANN401
                 del params, context
                 return ToolResult.text("ok")
 

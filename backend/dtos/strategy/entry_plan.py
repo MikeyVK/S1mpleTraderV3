@@ -77,17 +77,12 @@ class EntryPlan(BaseModel):
 
     # Identiteit
     plan_id: str = Field(
-        default_factory=generate_entry_plan_id,
-        description="Unique identifier for this entry plan"
+        default_factory=generate_entry_plan_id, description="Unique identifier for this entry plan"
     )
 
     # Trade basics
-    symbol: str = Field(
-        description="Trading pair symbol (e.g., 'BTC_USDT')"
-    )
-    direction: Literal["BUY", "SELL"] = Field(
-        description="Trade direction"
-    )
+    symbol: str = Field(description="Trading pair symbol (e.g., 'BTC_USDT')")
+    direction: Literal["BUY", "SELL"] = Field(description="Trade direction")
 
     # Entry execution strategy
     order_type: Literal["MARKET", "LIMIT", "STOP_LIMIT"] = Field(
@@ -95,14 +90,8 @@ class EntryPlan(BaseModel):
     )
 
     # Price levels
-    limit_price: Decimal | None = Field(
-        None,
-        description="Limit price for LIMIT orders"
-    )
-    stop_price: Decimal | None = Field(
-        None,
-        description="Stop price for STOP_LIMIT orders"
-    )
+    limit_price: Decimal | None = Field(None, description="Limit price for LIMIT orders")
+    stop_price: Decimal | None = Field(None, description="Stop price for STOP_LIMIT orders")
 
     model_config = {
         "frozen": False,  # Mutable for updates
@@ -115,7 +104,7 @@ class EntryPlan(BaseModel):
                     "plan_id": "ENT_20251027_143052_a1b2c3d4",
                     "symbol": "BTC_USDT",
                     "direction": "BUY",
-                    "order_type": "MARKET"
+                    "order_type": "MARKET",
                 },
                 {
                     "description": "Limit entry at specific price",
@@ -123,7 +112,7 @@ class EntryPlan(BaseModel):
                     "symbol": "ETH_USDT",
                     "direction": "SELL",
                     "order_type": "LIMIT",
-                    "limit_price": "3510.00"
+                    "limit_price": "3510.00",
                 },
                 {
                     "description": "Stop-limit for breakout",
@@ -132,19 +121,17 @@ class EntryPlan(BaseModel):
                     "direction": "BUY",
                     "order_type": "STOP_LIMIT",
                     "stop_price": "125.00",
-                    "limit_price": "125.50"
-                }
+                    "limit_price": "125.50",
+                },
             ]
-        }
+        },
     }
 
     @field_validator("plan_id")
     @classmethod
     def validate_plan_id_format(cls, v: str) -> str:
         """Validate plan_id follows military datetime format: ENT_YYYYMMDD_HHMMSS_hash"""
-        pattern = r'^ENT_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^ENT_\d{8}_\d{6}_[0-9a-f]{8}$"
         if not re.match(pattern, v):
-            raise ValueError(
-                f"plan_id must match format ENT_YYYYMMDD_HHMMSS_hash, got: {v}"
-            )
+            raise ValueError(f"plan_id must match format ENT_YYYYMMDD_HHMMSS_hash, got: {v}")
         return v

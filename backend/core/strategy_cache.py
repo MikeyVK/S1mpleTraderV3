@@ -43,9 +43,7 @@ class StrategyCache:
         self._current_anchor: RunAnchor | None = None
 
     def start_new_strategy_run(
-        self,
-        strategy_cache: StrategyCacheType,
-        timestamp: datetime
+        self, strategy_cache: StrategyCacheType, timestamp: datetime
     ) -> None:
         """Configure cache for new strategy run."""
         self._current_cache = strategy_cache
@@ -54,15 +52,10 @@ class StrategyCache:
     def get_run_anchor(self) -> RunAnchor:
         """Get the point-in-time validation anchor."""
         if self._current_anchor is None:
-            raise NoActiveRunError(
-                "No active strategy run. Call start_new_strategy_run() first."
-            )
+            raise NoActiveRunError("No active strategy run. Call start_new_strategy_run() first.")
         return self._current_anchor
 
-    def get_required_dtos(
-        self,
-        requesting_worker
-    ) -> dict[type[BaseModel], BaseModel]:
+    def get_required_dtos(self, requesting_worker) -> dict[type[BaseModel], BaseModel]:
         """
         Retrieve DTOs required by worker from cache.
 
@@ -70,17 +63,11 @@ class StrategyCache:
         for extracting the specific DTOs it needs based on its manifest.
         """
         if self._current_cache is None:
-            raise NoActiveRunError(
-                "No active strategy run. Call start_new_strategy_run() first."
-            )
+            raise NoActiveRunError("No active strategy run. Call start_new_strategy_run() first.")
 
         return dict(self._current_cache)
 
-    def set_result_dto(
-        self,
-        producing_worker,
-        result_dto: BaseModel
-    ) -> None:
+    def set_result_dto(self, producing_worker, result_dto: BaseModel) -> None:
         """
         Add worker-produced DTO to cache.
 
@@ -88,9 +75,7 @@ class StrategyCache:
         type can exist (last write wins).
         """
         if self._current_cache is None:
-            raise NoActiveRunError(
-                "No active strategy run. Call start_new_strategy_run() first."
-            )
+            raise NoActiveRunError("No active strategy run. Call start_new_strategy_run() first.")
 
         # Store DTO using its type as key
         dto_type = type(result_dto)

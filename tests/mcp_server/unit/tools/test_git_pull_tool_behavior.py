@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Behavior tests for GitPullTool.
 
 Also covers input schema helpers for 100% module coverage.
@@ -10,8 +11,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.exceptions import PreflightError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.git_pull_tool import GitPullInput, GitPullTool, _input_schema
 
 

@@ -19,34 +19,21 @@ from pydantic import BaseModel, Field
 
 class Product(BaseModel):
     """Product data
-    
+
     Data Transfer Object for product.
-    
+
     Fields:
         id: Product ID
         name: Product name
         price: Product price
     """
-    id: int = Field(
-        description="Product ID"
-    )
-    name: str = Field(
-        description="Product name"
-    )
-    price: float = Field(
-        description="Product price"
-    )
+
+    id: int = Field(description="Product ID")
+    name: str = Field(description="Product name")
+    price: float = Field(description="Product price")
 
     model_config = {
         "frozen": True,
         "extra": "forbid",
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "id": 1,
-                    "name": "Widget",
-                    "price": 9.99
-                }
-            ]
-        }
+        "json_schema_extra": {"examples": [{"id": 1, "name": "Widget", "price": 9.99}]},
     }

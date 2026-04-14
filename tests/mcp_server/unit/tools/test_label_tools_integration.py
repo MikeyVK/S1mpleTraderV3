@@ -16,8 +16,8 @@ import pytest
 
 # Local
 from mcp_server.config.loader import ConfigLoader
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.config.schemas import LabelConfig
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.label_tools import (
     AddLabelsInput,
     AddLabelsTool,

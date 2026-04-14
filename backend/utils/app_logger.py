@@ -25,11 +25,13 @@ It is designed to be configured once at the application's entry point.
 # Standard library
 import logging
 import sys
-from typing import Any, Dict, List, Literal, MutableMapping, Optional, Tuple
+from collections.abc import MutableMapping
+from typing import Any, Literal
+
+from backend.config.schemas.platform_schema import LoggingConfig
 
 # Project modules
 from backend.utils.translator import Translator
-from backend.config.schemas.platform_schema import LoggingConfig
 
 
 class LogFormatter(logging.Formatter):
@@ -42,10 +44,10 @@ class LogFormatter(logging.Formatter):
 
     def __init__(
         self,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
+        fmt: str | None = None,
+        datefmt: str | None = None,
         style: Literal["%", "{", "$"] = "%",
-        translator: Optional[Translator] = None,
+        translator: Translator | None = None,
     ):
         """Initializes the LogFormatter.
 
@@ -72,12 +74,7 @@ class LogFormatter(logging.Formatter):
         values_dict = getattr(record, "values", {})
 
         # Step 1: Translate the message key, if it's a valid key.
-        if (
-            self.translator
-            and isinstance(key, str)
-            and "." in key
-            and " " not in key
-        ):
+        if self.translator and isinstance(key, str) and "." in key and " " not in key:
             translated_template = self.translator.get(key, default=key)
 
         # Step 2: Format the template with any provided values.
@@ -121,7 +118,7 @@ class LogEnricher(logging.LoggerAdapter[logging.Logger]):
 
     def process(
         self, msg: Any, kwargs: MutableMapping[str, Any]
-    ) -> Tuple[Any, MutableMapping[str, Any]]:
+    ) -> tuple[Any, MutableMapping[str, Any]]:
         """Merges the adapter's contextual information into the kwargs.
 
         Args:
@@ -167,15 +164,14 @@ class LogEnricher(logging.LoggerAdapter[logging.Logger]):
         self.log(26, key, values=values)
 
 
-
 class LogProfiler(logging.Filter):  # pylint: disable=too-few-public-methods
     """A logging filter that allows messages based on the active profile.
-    
+
     This class intentionally has only one public method (filter),
     which is the standard interface for logging.Filter.
     """
 
-    def __init__(self, profile: str, profile_definitions: Dict[str, List[str]]):
+    def __init__(self, profile: str, profile_definitions: dict[str, list[str]]):
         """Initializes the filter.
 
         Args:
@@ -198,6 +194,7 @@ class LogProfiler(logging.Filter):  # pylint: disable=too-few-public-methods
             active profile, False otherwise.
         """
         return record.levelname in self.allowed_levels
+
 
 CUSTOM_LEVELS = {
     "SETUP": 15,

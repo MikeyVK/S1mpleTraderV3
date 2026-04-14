@@ -238,7 +238,8 @@ class TestGitToolsIntegration:
 
         tool = make_create_branch_tool(mock_manager)
         result = await tool.execute(
-            CreateBranchInput(name="test-feature", branch_type="feature", base_branch="HEAD"), NoteContext()
+            CreateBranchInput(name="test-feature", branch_type="feature", base_branch="HEAD"),
+            NoteContext(),
         )
 
         assert "feature/test-feature" in result.content[0]["text"]
@@ -275,7 +276,8 @@ class TestGitToolsIntegration:
                 sub_phase="green",
                 commit_type="feat",
                 message="implement feature",
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert "abc123def" in result.content[0]["text"]
@@ -299,7 +301,9 @@ class TestGitToolsIntegration:
         result = await tool.execute(GitRestoreInput(files=["a.py"], source="HEAD"), NoteContext())
 
         assert "Restored" in result.content[0]["text"]
-        mock_manager.restore.assert_called_once_with(files=["a.py"], note_context=ANY, source="HEAD")
+        mock_manager.restore.assert_called_once_with(
+            files=["a.py"], note_context=ANY, source="HEAD"
+        )
 
     @pytest.mark.asyncio
     async def test_git_checkout_tool_flow(self) -> None:
@@ -400,7 +404,9 @@ class TestQualityToolsIntegration:
         mock_manager = make_mock_qa_manager()
 
         tool = make_run_quality_gates_tool(mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["test.py"]), NoteContext())
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["test.py"]), NoteContext()
+        )
 
         assert result.content[0]["type"] == "text"
         data = result.content[1]["json"]
@@ -426,7 +432,9 @@ class TestQualityToolsIntegration:
             patch("pathlib.Path.read_text", return_value=mock_content),
         ):
             tool = ValidateDTOTool()
-            result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"), NoteContext())
+            result = await tool.execute(
+                ValidateDTOInput(file_path="backend/dtos/test.py"), NoteContext()
+            )
 
             assert result.is_error is False
             assert "DTO validation passed" in result.content[0]["text"]
@@ -477,7 +485,8 @@ class TestGitHubToolsIntegration:
                 priority="medium",
                 scope="mcp-server",
                 body=IssueBody(problem="Test body"),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert "42" in result.content[0]["text"] or "issue" in result.content[0]["text"].lower()
@@ -493,7 +502,8 @@ class TestGitHubToolsIntegration:
 
         tool = make_create_pr_tool(mock_manager)
         result = await tool.execute(
-            CreatePRInput(title="Test PR", body="Test body", head="feature/test", base="main"), NoteContext()
+            CreatePRInput(title="Test PR", body="Test body", head="feature/test", base="main"),
+            NoteContext(),
         )
 
         assert "99" in result.content[0]["text"] or "pr" in result.content[0]["text"].lower()

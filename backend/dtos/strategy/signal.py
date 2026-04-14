@@ -1,4 +1,4 @@
-﻿# backend/dtos/strategy/signal.py
+# backend/dtos/strategy/signal.py
 """
 Signal DTO: SignalDetector output contract.
 
@@ -20,6 +20,7 @@ Signal Framework:
 @dependencies: [pydantic, datetime, decimal, backend.utils.id_generators]
 @responsibilities: [signal detection contract, confidence scoring]
 """
+
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -71,29 +72,23 @@ class Signal(BaseModel):
 
     signal_id: str = Field(
         default_factory=generate_signal_id,
-        pattern=r'^SIG_\d{8}_\d{6}_[0-9a-f]{8}$',
-        description="Typed signal ID (military datetime format)"
+        pattern=r"^SIG_\d{8}_\d{6}_[0-9a-f]{8}$",
+        description="Typed signal ID (military datetime format)",
     )
 
-    timestamp: datetime = Field(
-        description="When the signal was detected (UTC)"
-    )
+    timestamp: datetime = Field(description="When the signal was detected (UTC)")
 
     symbol: str = Field(
         min_length=3,
         max_length=20,
-        pattern=r'^[A-Z][A-Z0-9_]*$',
-        description="Trading pair (UPPER_CASE format, e.g., BTC_USDT)"
+        pattern=r"^[A-Z][A-Z0-9_]*$",
+        description="Trading pair (UPPER_CASE format, e.g., BTC_USDT)",
     )
 
-    direction: Literal["long", "short"] = Field(
-        description="Trading direction"
-    )
+    direction: Literal["long", "short"] = Field(description="Trading direction")
 
     signal_type: str = Field(
-        min_length=3,
-        max_length=25,
-        description="Type of signal (UPPER_SNAKE_CASE)"
+        min_length=3, max_length=25, description="Type of signal (UPPER_SNAKE_CASE)"
     )
 
     confidence: Decimal | None = Field(
@@ -103,7 +98,7 @@ class Signal(BaseModel):
         description="Signal confidence [0.0, 1.0] for decision making (Decimal)",
     )
 
-    @field_validator('confidence', mode='before')
+    @field_validator("confidence", mode="before")
     @classmethod
     def convert_to_decimal(cls, v: float | Decimal | str | None) -> Decimal | None:
         """Convert float/str input to Decimal for financial precision."""
@@ -113,28 +108,24 @@ class Signal(BaseModel):
             return v
         return Decimal(str(v))
 
-    @field_validator('signal_type')
+    @field_validator("signal_type")
     @classmethod
     def validate_signal_type_format(cls, v: str) -> str:
         """Validate UPPER_SNAKE_CASE format and reserved prefixes."""
 
         # Check reserved prefixes first
-        reserved_prefixes = ['SYSTEM_', 'INTERNAL_', '_']
+        reserved_prefixes = ["SYSTEM_", "INTERNAL_", "_"]
         if any(v.startswith(prefix) for prefix in reserved_prefixes):
-            raise ValueError(
-                f"signal_type cannot start with reserved prefix: {v}"
-            )
+            raise ValueError(f"signal_type cannot start with reserved prefix: {v}")
 
         # Check UPPER_SNAKE_CASE pattern
-        pattern = r'^[A-Z][A-Z0-9_]*$'
+        pattern = r"^[A-Z][A-Z0-9_]*$"
         if not re.match(pattern, v):
-            raise ValueError(
-                f"signal_type must follow UPPER_SNAKE_CASE: {v}"
-            )
+            raise ValueError(f"signal_type must follow UPPER_SNAKE_CASE: {v}")
 
         return v
 
-    @field_validator('timestamp')
+    @field_validator("timestamp")
     @classmethod
     def ensure_utc_timezone(cls, v: datetime) -> datetime:
         """Ensure timestamp is timezone-aware and in UTC."""
@@ -154,7 +145,7 @@ class Signal(BaseModel):
                     "symbol": "BTC_USDT",
                     "direction": "long",
                     "signal_type": "FVG_BREAKOUT",
-                    "confidence": "0.85"
+                    "confidence": "0.85",
                 },
                 {
                     "description": "MSS reversal signal (SHORT)",
@@ -163,7 +154,7 @@ class Signal(BaseModel):
                     "symbol": "ETH_USDT",
                     "direction": "short",
                     "signal_type": "MSS_REVERSAL",
-                    "confidence": "0.72"
+                    "confidence": "0.72",
                 },
                 {
                     "description": "High confidence breakout (no confidence defaults to None)",
@@ -171,8 +162,8 @@ class Signal(BaseModel):
                     "timestamp": "2025-10-27T15:05:00Z",
                     "symbol": "SOL_USDC",
                     "direction": "long",
-                    "signal_type": "TREND_CONTINUATION"
-                }
+                    "signal_type": "TREND_CONTINUATION",
+                },
             ]
-        }
+        },
     }

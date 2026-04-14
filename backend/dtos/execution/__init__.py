@@ -11,8 +11,8 @@ from backend.dtos.execution.execution_group import (
 )
 
 __all__ = [
-    'ExecutionCommand',
-    'ExecutionCommandBatch',
-    'ExecutionMode',
-    'ExecutionGroup',
+    "ExecutionCommand",
+    "ExecutionCommandBatch",
+    "ExecutionMode",
+    "ExecutionGroup",
 ]

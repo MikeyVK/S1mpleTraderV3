@@ -10,7 +10,7 @@ from mcp_server.scaffolding.utils import validate_pascal_case
 class TestScaffolder(BaseScaffolder):
     """Scaffolds Test files."""
 
-    def validate(self, **kwargs: Any) -> bool:
+    def validate(self, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate test arguments."""
         if "name" in kwargs:
             validate_pascal_case(kwargs["name"])
@@ -19,7 +19,7 @@ class TestScaffolder(BaseScaffolder):
             raise ValidationError("Missing 'test_type' (dto or worker)")
         return True
 
-    def scaffold(self, name: str, **kwargs: Any) -> str:
+    def scaffold(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold a Test file.
 
         Args:
@@ -42,7 +42,7 @@ class TestScaffolder(BaseScaffolder):
 
         raise ValidationError(f"Unknown test_type: {test_type}")
 
-    def _scaffold_dto_test(self, name: str, **kwargs: Any) -> str:
+    def _scaffold_dto_test(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold DTO tests."""
         # Derive id_prefix if needed
         id_prefix = kwargs.get("id_prefix")
@@ -74,7 +74,7 @@ class TestScaffolder(BaseScaffolder):
                 )
             raise
 
-    def _scaffold_worker_test(self, name: str, **kwargs: Any) -> str:
+    def _scaffold_worker_test(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold Worker tests."""
         try:
             return str(

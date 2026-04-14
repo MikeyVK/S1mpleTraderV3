@@ -1,4 +1,5 @@
 # tests/mcp_server/managers/test_phase_state_engine_async.py
+# pyright: reportPrivateUsage=false
 """
 Tests for async-safe state.json operations in PhaseStateEngine.
 

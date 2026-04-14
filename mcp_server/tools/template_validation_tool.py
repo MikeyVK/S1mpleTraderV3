@@ -30,6 +30,7 @@ class TemplateValidationTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        assert self.args_model is not None
         return self.args_model.model_json_schema()
 
     async def execute(self, params: TemplateValidationInput, context: NoteContext) -> ToolResult:

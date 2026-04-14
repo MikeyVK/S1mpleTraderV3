@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Unit tests for issue_tools.py.
 
 @layer: Tests (Unit)

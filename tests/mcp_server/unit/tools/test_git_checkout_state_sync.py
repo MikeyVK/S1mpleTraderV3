@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Tests for GitCheckoutTool state synchronization with PhaseStateEngine.
 
 @layer: Tests (Unit)

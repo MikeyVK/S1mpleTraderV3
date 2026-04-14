@@ -34,7 +34,9 @@ async def test_dto_validation_tool() -> None:
         patch("pathlib.Path.exists", return_value=True),
         patch("pathlib.Path.read_text", return_value="@dataclass\nclass TestDTO: ..."),
     ):
-        result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"), NoteContext())
+        result = await tool.execute(
+            ValidateDTOInput(file_path="backend/dtos/test.py"), NoteContext()
+        )
 
     assert result.is_error is False
     assert "DTO validation passed" in result.content[0]["text"]
@@ -46,7 +48,9 @@ async def test_dto_validation_tool_missing_file() -> None:
     tool = ValidateDTOTool()
 
     with patch("pathlib.Path.exists", return_value=False):
-        result = await tool.execute(ValidateDTOInput(file_path="this/file/does/not/exist.py"), NoteContext())
+        result = await tool.execute(
+            ValidateDTOInput(file_path="this/file/does/not/exist.py"), NoteContext()
+        )
 
     assert result.is_error is True
     assert "DTO file not found" in result.content[0]["text"]

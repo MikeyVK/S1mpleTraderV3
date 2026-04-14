@@ -77,47 +77,35 @@ class CausalityChain(BaseModel):
 
     # === Worker Output IDs (Toegevoegd tijdens pipeline flow) ===
     signal_ids: list[str] = Field(
-        default_factory=list,
-        description="Signal IDs - multiple signals mogelijk (confluence)"
+        default_factory=list, description="Signal IDs - multiple signals mogelijk (confluence)"
     )
-    risk_ids: list[str] = Field(
-        default_factory=list,
-        description="Risk IDs (critical risk events)"
-    )
+    risk_ids: list[str] = Field(default_factory=list, description="Risk IDs (critical risk events)")
     strategy_directive_id: str | None = Field(
-        default=None,
-        description="StrategyDirective ID - planning bridge"
+        default=None, description="StrategyDirective ID - planning bridge"
     )
     entry_plan_id: str | None = Field(
-        default=None,
-        description="EntryPlan ID - entry execution plan"
+        default=None, description="EntryPlan ID - entry execution plan"
     )
-    size_plan_id: str | None = Field(
-        default=None,
-        description="SizePlan ID - position sizing plan"
-    )
+    size_plan_id: str | None = Field(default=None, description="SizePlan ID - position sizing plan")
     exit_plan_id: str | None = Field(
-        default=None,
-        description="ExitPlan ID - exit/stop management plan"
+        default=None, description="ExitPlan ID - exit/stop management plan"
     )
     execution_plan_id: str | None = Field(
-        default=None,
-        description="ExecutionPlan ID - execution trade-offs (HOW/WHEN)"
+        default=None, description="ExecutionPlan ID - execution trade-offs (HOW/WHEN)"
     )
     execution_command_id: str | None = Field(
-        default=None,
-        description="ExecutionCommand ID - final aggregated execution instruction"
+        default=None, description="ExecutionCommand ID - final aggregated execution instruction"
     )
     order_ids: list[str] = Field(
         default_factory=list,
-        description="Order IDs - execution intent (toegevoegd door ExecutionHandler)"
+        description="Order IDs - execution intent (toegevoegd door ExecutionHandler)",
     )
     fill_ids: list[str] = Field(
         default_factory=list,
         description=(
             "Fill IDs - execution reality (toegevoegd door ExchangeConnector, "
             "kan verschillen van orders bij partial fills)"
-        )
+        ),
     )
 
     model_config = {
@@ -130,7 +118,7 @@ class CausalityChain(BaseModel):
                     "description": "Tick-based flow (origin TICK → signal → strategy)",
                     "origin": {"id": "TCK_20251109_100000_a1b2c3d4", "type": "TICK"},
                     "signal_ids": ["SIG_20251109_100001_e5f6g7h8"],
-                    "strategy_directive_id": "STR_20251109_100002_m3n4o5p6"
+                    "strategy_directive_id": "STR_20251109_100002_m3n4o5p6",
                 },
                 {
                     "description": (
@@ -140,15 +128,15 @@ class CausalityChain(BaseModel):
                     "strategy_directive_id": "STR_20251109_120001_u1v2w3x4",
                     "entry_plan_id": "ENT_20251109_120002_y5z6a7b8",
                     "size_plan_id": "SIZ_20251109_120003_c9d0e1f2",
-                    "execution_command_id": "EXC_20251109_120010_g3h4i5j6"
+                    "execution_command_id": "EXC_20251109_120010_g3h4i5j6",
                 },
                 {
                     "description": "Risk-based exit (origin NEWS → risk → modify directive)",
                     "origin": {"id": "NWS_20251109_143000_k7l8m9n0", "type": "NEWS"},
                     "risk_ids": ["RSK_20251109_143001_o1p2q3r4"],
                     "strategy_directive_id": "STR_20251109_143002_w9x0y1z2",
-                    "exit_plan_id": "EXT_20251109_143003_a3b4c5d6"
-                }
+                    "exit_plan_id": "EXT_20251109_143003_a3b4c5d6",
+                },
             ]
-        }
+        },
     }

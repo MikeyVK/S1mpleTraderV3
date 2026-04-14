@@ -57,25 +57,24 @@ class TestSafeEditTool:
         content = "valid code"
 
         # Mock ValidationService.validate to return passing result
-        async def mock_validate(*_, **__):
+        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
             return True, ""  # passed=True, no issues
 
-        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
-            # Mock file writing
-            with (
-                patch("pathlib.Path.write_text") as mock_write,
-                patch("pathlib.Path.parent") as mock_parent,
-            ):
-                mock_parent.mkdir = MagicMock()
+        with (
+            patch.object(tool.validation_service, "validate", side_effect=mock_validate),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("pathlib.Path.parent") as mock_parent,
+        ):
+            mock_parent.mkdir = MagicMock()
 
-                # Execute
-                result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="strict"), NoteContext()
-                )
+            # Execute
+            result = await tool.execute(
+                SafeEditInput(path=path, content=content, mode="strict"), NoteContext()
+            )
 
-                # Verify
-                assert "File saved successfully" in result.content[0]["text"]
-                mock_write.assert_called_once_with(content, encoding="utf-8")
+            # Verify
+            assert "File saved successfully" in result.content[0]["text"]
+            mock_write.assert_called_once_with(content, encoding="utf-8")
 
     @pytest.mark.asyncio
     async def test_execute_strict_fail(self, tool: SafeEditTool) -> None:
@@ -84,21 +83,23 @@ class TestSafeEditTool:
         content = "invalid code"
 
         # Mock ValidationService.validate to return failing result
-        async def mock_validate(*_, **__):
+        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
             return False, "\n\n**Validation Issues:**\n❌ Error\n"
 
-        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
-            with patch("pathlib.Path.write_text") as mock_write:
-                # Execute
-                result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="strict"), NoteContext()
-                )
+        with (
+            patch.object(tool.validation_service, "validate", side_effect=mock_validate),
+            patch("pathlib.Path.write_text") as mock_write,
+        ):
+            # Execute
+            result = await tool.execute(
+                SafeEditInput(path=path, content=content, mode="strict"), NoteContext()
+            )
 
-                # Verify
-                text = result.content[0]["text"]
-                assert "Edit rejected" in text
-                assert "Error" in text
-                mock_write.assert_not_called()
+            # Verify
+            text = result.content[0]["text"]
+            assert "Edit rejected" in text
+            assert "Error" in text
+            mock_write.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_interactive_fail(self, tool: SafeEditTool) -> None:
@@ -107,21 +108,23 @@ class TestSafeEditTool:
         content = "invalid code"
 
         # Mock ValidationService.validate to return failing result
-        async def mock_validate(*_, **__):
+        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
             return False, "\n\n**Validation Issues:**\n❌ Error\n"
 
-        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
-            with patch("pathlib.Path.write_text") as mock_write:
-                # Execute
-                result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="interactive"), NoteContext()
-                )
+        with (
+            patch.object(tool.validation_service, "validate", side_effect=mock_validate),
+            patch("pathlib.Path.write_text") as mock_write,
+        ):
+            # Execute
+            result = await tool.execute(
+                SafeEditInput(path=path, content=content, mode="interactive"), NoteContext()
+            )
 
-                # Verify
-                text = result.content[0]["text"]
-                assert "File saved successfully" in text
-                assert "Saved with validation warnings" in text
-                mock_write.assert_called_once()
+            # Verify
+            text = result.content[0]["text"]
+            assert "File saved successfully" in text
+            assert "Saved with validation warnings" in text
+            mock_write.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_verify_only(self, tool: SafeEditTool) -> None:
@@ -130,20 +133,22 @@ class TestSafeEditTool:
         content = "code"
 
         # Mock ValidationService.validate to return passing result
-        async def mock_validate(*_, **__):
+        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
             return True, ""
 
-        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
-            with patch("pathlib.Path.write_text") as mock_write:
-                # Execute
-                result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="verify_only"), NoteContext()
-                )
+        with (
+            patch.object(tool.validation_service, "validate", side_effect=mock_validate),
+            patch("pathlib.Path.write_text") as mock_write,
+        ):
+            # Execute
+            result = await tool.execute(
+                SafeEditInput(path=path, content=content, mode="verify_only"), NoteContext()
+            )
 
-                # Verify
-                text = result.content[0]["text"]
-                assert "Validation Passed" in text
-                mock_write.assert_not_called()
+            # Verify
+            text = result.content[0]["text"]
+            assert "Validation Passed" in text
+            mock_write.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_fallback_validator_logic(self, tool: SafeEditTool) -> None:
@@ -153,7 +158,7 @@ class TestSafeEditTool:
 
         # Mock ValidationService.validate to return passing result
         # The fallback logic is now in ValidationService, not SafeEditTool
-        async def mock_validate(*_, **__):
+        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
             return True, ""
 
         with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
@@ -171,37 +176,37 @@ class TestSafeEditTool:
         new_content = "new code"
 
         # Mock ValidationService.validate to return failing result WITH formatted issues
-        async def mock_validate(*_, **__):
+        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
             # ValidationService._run_validators returns issues_text WITH header
             formatted_issues = "\n\n**Validation Issues:**\n❌ Syntax error\n"
             return False, formatted_issues
 
-        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
-            # Mock file read/write
-            with (
-                patch("pathlib.Path.exists", return_value=True),
-                patch("pathlib.Path.read_text", return_value=old_content),
-                patch("pathlib.Path.write_text") as mock_write,
-            ):
-                # Execute in strict mode (should reject + show diff)
-                result = await tool.execute(
-                    SafeEditInput(path=path, content=new_content, mode="strict", show_diff=True), NoteContext()
-                )
+        with (
+            patch.object(tool.validation_service, "validate", side_effect=mock_validate),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=old_content),
+            patch("pathlib.Path.write_text") as mock_write,
+        ):
+            # Execute in strict mode (should reject + show diff)
+            result = await tool.execute(
+                SafeEditInput(path=path, content=new_content, mode="strict", show_diff=True),
+                NoteContext(),
+            )
 
-                # Verify diff appears exactly once
-                text = result.content[0]["text"]
-                diff_count = text.count("**Diff Preview:**")
-                assert diff_count == 1, f"Expected 1 diff block, found {diff_count}"
+            # Verify diff appears exactly once
+            text = result.content[0]["text"]
+            diff_count = text.count("**Diff Preview:**")
+            assert diff_count == 1, f"Expected 1 diff block, found {diff_count}"
 
-                # Verify validation issues appear exactly once
-                issues_count = text.count("**Validation Issues:**")
-                assert issues_count == 1, f"Expected 1 issues block, found {issues_count}"
+            # Verify validation issues appear exactly once
+            issues_count = text.count("**Validation Issues:**")
+            assert issues_count == 1, f"Expected 1 issues block, found {issues_count}"
 
-                # Verify actual error message appears exactly once
-                error_count = text.count("Syntax error")
-                assert error_count == 1, f"Expected 1 'Syntax error', found {error_count}"
+            # Verify actual error message appears exactly once
+            error_count = text.count("Syntax error")
+            assert error_count == 1, f"Expected 1 'Syntax error', found {error_count}"
 
-                mock_write.assert_not_called()
+            mock_write.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_no_duplicate_real_validation(self, tool: SafeEditTool) -> None:
@@ -220,7 +225,8 @@ class TestSafeEditTool:
                     content="invalid syntax here @@@ not python",
                     mode="strict",
                     show_diff=True,
-                ), NoteContext()
+                ),
+                NoteContext(),
             )
 
             # Check response
@@ -255,7 +261,8 @@ class TestSafeEditTool:
                     search="this pattern does not exist",
                     replace="new text",
                     mode="strict",
-                ), NoteContext()
+                ),
+                NoteContext(),
             )
 
             # Check error message includes context
@@ -302,7 +309,8 @@ class TestSafeEditTool:
                             }
                         ],
                         mode="interactive",
-                    ), NoteContext()
+                    ),
+                    NoteContext(),
                 )
                 edit_results.append({"task": task_id, "success": True, "result": result})
             except (TimeoutError, ValueError, OSError) as e:

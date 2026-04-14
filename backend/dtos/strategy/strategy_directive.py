@@ -38,34 +38,20 @@ class EntryDirective(BaseModel):
         max_acceptable_slippage: Maximum acceptable slippage as decimal (e.g., 0.001 = 0.1%)
     """
 
-    symbol: str = Field(
-        ...,
-        description="Trading symbol (e.g., 'BTC_USDT')"
-    )
-    direction: str = Field(
-        ...,
-        description="Trade direction: BUY or SELL"
-    )
-    timing_preference: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] = Field(
+    symbol: str = Field(..., description="Trading symbol (e.g., 'BTC_USDT')")
+    direction: str = Field(..., description="Trade direction: BUY or SELL")
+    timing_preference: Annotated[Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))] = Field(
         default=Decimal("0.5"),
         description=(
-            "Entry timing urgency [0.0-1.0]: "
-            "1.0 = immediate, 0.0 = patient waiting for ideal price"
-        )
+            "Entry timing urgency [0.0-1.0]: 1.0 = immediate, 0.0 = patient waiting for ideal price"
+        ),
     )
     preferred_price_zone: tuple[Decimal, Decimal] | None = Field(
-        default=None,
-        description="Optional preferred entry price zone (min, max)"
+        default=None, description="Optional preferred entry price zone (min, max)"
     )
-    max_acceptable_slippage: Annotated[
-        Decimal, Field(ge=Decimal("0.0"))
-    ] = Field(
+    max_acceptable_slippage: Annotated[Decimal, Field(ge=Decimal("0.0"))] = Field(
         default=Decimal("0.005"),
-        description=(
-            "Maximum acceptable slippage as decimal (e.g., 0.001 = 0.1%)"
-        )
+        description=("Maximum acceptable slippage as decimal (e.g., 0.001 = 0.1%)"),
     )
 
 
@@ -79,30 +65,18 @@ class SizeDirective(BaseModel):
         account_risk_pct: Maximum account risk as decimal (e.g., 0.02 = 2%)
     """
 
-    aggressiveness: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] = Field(
+    aggressiveness: Annotated[Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))] = Field(
         default=Decimal("0.5"),
         description=(
-            "Position size aggressiveness [0.0-1.0]: "
-            "1.0 = maximum size, 0.0 = minimal size"
-        )
+            "Position size aggressiveness [0.0-1.0]: 1.0 = maximum size, 0.0 = minimal size"
+        ),
     )
-    max_risk_amount: Annotated[
-        Decimal, Field(gt=Decimal("0.0"))
-    ] = Field(
-        ...,
-        description=(
-            "Maximum risk amount in quote currency (e.g., 100.00 USDT)"
-        )
+    max_risk_amount: Annotated[Decimal, Field(gt=Decimal("0.0"))] = Field(
+        ..., description=("Maximum risk amount in quote currency (e.g., 100.00 USDT)")
     )
-    account_risk_pct: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] = Field(
+    account_risk_pct: Annotated[Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))] = Field(
         default=Decimal("0.02"),
-        description=(
-            "Maximum account risk as decimal (e.g., 0.02 = 2% of account)"
-        )
+        description=("Maximum account risk as decimal (e.g., 0.02 = 2% of account)"),
     )
 
 
@@ -118,30 +92,22 @@ class ExitDirective(BaseModel):
             (e.g., 0.015 = 1.5% from entry)
     """
 
-    profit_taking_preference: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] = Field(
-        default=Decimal("0.5"),
-        description=(
-            "Profit-taking aggressiveness [0.0-1.0]: "
-            "1.0 = tight targets (quick profits), 0.0 = let profits run"
+    profit_taking_preference: Annotated[Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))] = (
+        Field(
+            default=Decimal("0.5"),
+            description=(
+                "Profit-taking aggressiveness [0.0-1.0]: "
+                "1.0 = tight targets (quick profits), 0.0 = let profits run"
+            ),
         )
     )
-    risk_reward_ratio: Annotated[
-        Decimal, Field(gt=Decimal("0.0"))
-    ] = Field(
+    risk_reward_ratio: Annotated[Decimal, Field(gt=Decimal("0.0"))] = Field(
         default=Decimal("2.0"),
-        description=(
-            "Minimum risk-reward ratio (e.g., 2.5 = 2.5:1 reward to risk)"
-        )
+        description=("Minimum risk-reward ratio (e.g., 2.5 = 2.5:1 reward to risk)"),
     )
-    stop_loss_tolerance: Annotated[
-        Decimal, Field(ge=Decimal("0.0"))
-    ] = Field(
+    stop_loss_tolerance: Annotated[Decimal, Field(ge=Decimal("0.0"))] = Field(
         default=Decimal("0.02"),
-        description=(
-            "Stop loss distance as decimal (e.g., 0.015 = 1.5% from entry)"
-        )
+        description=("Stop loss distance as decimal (e.g., 0.015 = 1.5% from entry)"),
     )
 
 
@@ -161,23 +127,15 @@ class ExecutionDirective(BaseModel):
             as decimal
     """
 
-    execution_urgency: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] = Field(
+    execution_urgency: Annotated[Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))] = Field(
         default=Decimal("0.5"),
         description=(
-            "Execution urgency [0.0-1.0]: "
-            "1.0 = immediate market orders, 0.0 = patient limit orders"
-        )
+            "Execution urgency [0.0-1.0]: 1.0 = immediate market orders, 0.0 = patient limit orders"
+        ),
     )
-    max_total_slippage_pct: Annotated[
-        Decimal, Field(ge=Decimal("0.0"))
-    ] = Field(
+    max_total_slippage_pct: Annotated[Decimal, Field(ge=Decimal("0.0"))] = Field(
         default=Decimal("0.01"),
-        description=(
-            "Maximum total slippage across all executions as decimal "
-            "(e.g., 0.01 = 1%)"
-        )
+        description=("Maximum total slippage across all executions as decimal (e.g., 0.01 = 1%)"),
     )
 
 
@@ -214,14 +172,14 @@ class ExecutionPolicy(BaseModel):
             "Coordination mode: INDEPENDENT (fire all, ignore failures), "
             "COORDINATED (cancel pending on failure), "
             "SEQUENTIAL (execute in order, stop on failure)"
-        )
+        ),
     )
     timeout_seconds: Annotated[int, Field(gt=0)] | None = Field(
         default=None,
         description=(
             "Optional coordination timeout in seconds. "
             "For COORDINATED mode, defines how long to wait for all legs."
-        )
+        ),
     )
 
     model_config = {
@@ -423,69 +381,56 @@ class StrategyDirective(BaseModel):
 
     directive_id: str = Field(
         default_factory=generate_strategy_directive_id,
-        description="Auto-generated unique directive ID with STR_ prefix"
+        description="Auto-generated unique directive ID with STR_ prefix",
     )
     strategy_planner_id: str = Field(
-        ...,
-        description="ID of StrategyPlanner that produced this directive"
+        ..., description="ID of StrategyPlanner that produced this directive"
     )
     decision_timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
-        description="Auto-set UTC timestamp of directive creation"
+        description="Auto-set UTC timestamp of directive creation",
     )
     causality: CausalityChain = Field(
         ...,
         description=(
             "Causality tracking - IDs from birth (tick/news/schedule) through "
             "worker outputs (signals, assessments) to this directive"
-        )
+        ),
     )
     scope: DirectiveScope = Field(
-        ...,
-        description="Directive scope: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING"
+        ..., description="Directive scope: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING"
     )
-    confidence: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] = Field(
+    confidence: Annotated[Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))] = Field(
         ...,
         description=(
-            "Confidence score [0.0-1.0] in this directive "
-            "based on planner's analysis strength"
-        )
+            "Confidence score [0.0-1.0] in this directive based on planner's analysis strength"
+        ),
     )
     target_plan_ids: list[str] = Field(
         default_factory=list,
         description=(
-            "List of existing plan IDs to modify/close "
-            "(for MODIFY_EXISTING/CLOSE_EXISTING scopes)"
-        )
+            "List of existing plan IDs to modify/close (for MODIFY_EXISTING/CLOSE_EXISTING scopes)"
+        ),
     )
     entry_directive: EntryDirective | None = Field(
         default=None,
-        description=(
-            "Optional entry constraints for EntryPlanner (used for NEW_TRADE)"
-        )
+        description=("Optional entry constraints for EntryPlanner (used for NEW_TRADE)"),
     )
     size_directive: SizeDirective | None = Field(
         default=None,
         description=(
-            "Optional sizing constraints for SizePlanner "
-            "(used for NEW_TRADE/MODIFY_EXISTING)"
-        )
+            "Optional sizing constraints for SizePlanner (used for NEW_TRADE/MODIFY_EXISTING)"
+        ),
     )
     exit_directive: ExitDirective | None = Field(
         default=None,
         description=(
-            "Optional exit constraints for ExitPlanner "
-            "(used for NEW_TRADE/MODIFY_EXISTING)"
-        )
+            "Optional exit constraints for ExitPlanner (used for NEW_TRADE/MODIFY_EXISTING)"
+        ),
     )
     routing_directive: ExecutionDirective | None = Field(
         default=None,
-        description=(
-            "Optional routing constraints for ExecutionPlanner "
-            "(used for all scopes)"
-        )
+        description=("Optional routing constraints for ExecutionPlanner (used for all scopes)"),
     )
     execution_policy: ExecutionPolicy | None = Field(
         default=None,
@@ -494,7 +439,7 @@ class StrategyDirective(BaseModel):
             "Defines how multiple commands from this directive should be coordinated. "
             "Flows unchanged to ExecutionCommandBatch.mode. "
             "If None, defaults to INDEPENDENT (fire all, ignore failures)."
-        )
+        ),
     )
 
     @field_validator("target_plan_ids")
@@ -511,13 +456,9 @@ class StrategyDirective(BaseModel):
             if not v:
                 # Type narrowing: scope is DirectiveScope here
                 assert scope is not None
-                raise ValueError(
-                    f"target_plan_ids must not be empty for scope {scope.value}"
-                )
+                raise ValueError(f"target_plan_ids must not be empty for scope {scope.value}")
         elif scope == DirectiveScope.NEW_TRADE and v:
-            raise ValueError(
-                "target_plan_ids must be empty for NEW_TRADE scope"
-            )
+            raise ValueError("target_plan_ids must be empty for NEW_TRADE scope")
         return v
 
     model_config = {
@@ -535,23 +476,16 @@ class StrategyDirective(BaseModel):
                     "causality": {
                         "origin": {"id": "TCK_20251027_100000_x1y2z3a4", "type": "TICK"},
                         "signal_ids": ["SIG_20251027_100001_b5c6d7e8"],
-                        "strategy_directive_id": "STR_20251027_100002_a1b2c3d4"
+                        "strategy_directive_id": "STR_20251027_100002_a1b2c3d4",
                     },
                     "entry_directive": {
                         "symbol": "BTC_USDT",
                         "direction": "BUY",
-                        "order_preference": "LIMIT"
+                        "order_preference": "LIMIT",
                     },
-                    "size_directive": {
-                        "account_risk_pct": 0.01
-                    },
-                    "exit_directive": {
-                        "risk_reward_ratio": 2.0
-                    },
-                    "routing_directive": {
-                        "execution_urgency": 0.75,
-                        "max_slippage_pct": 0.002
-                    }
+                    "size_directive": {"account_risk_pct": 0.01},
+                    "exit_directive": {"risk_reward_ratio": 2.0},
+                    "routing_directive": {"execution_urgency": 0.75, "max_slippage_pct": 0.002},
                 },
                 {
                     "description": "Modify existing trade directive (risk response)",
@@ -564,11 +498,9 @@ class StrategyDirective(BaseModel):
                     "causality": {
                         "origin": {"id": "NWS_20251027_143000_r1s2t3u4", "type": "NEWS"},
                         "risk_ids": ["RSK_20251027_143001_v5w6x7y8"],
-                        "strategy_directive_id": "STR_20251027_143002_j3k4l5m6"
+                        "strategy_directive_id": "STR_20251027_143002_j3k4l5m6",
                     },
-                    "exit_directive": {
-                        "stop_loss_price": "95000.00"
-                    }
+                    "exit_directive": {"stop_loss_price": "95000.00"},
                 },
                 {
                     "description": "Close existing trade directive (exit signal)",
@@ -580,9 +512,9 @@ class StrategyDirective(BaseModel):
                     "target_plan_ids": ["TPL_20251027_100010_h7i8j9k0"],
                     "causality": {
                         "origin": {"id": "TCK_20251027_150000_l1m2n3o4", "type": "TICK"},
-                        "strategy_directive_id": "STR_20251027_150003_d3e4f5g6"
-                    }
-                }
+                        "strategy_directive_id": "STR_20251027_150003_d3e4f5g6",
+                    },
+                },
             ]
-        }
+        },
     }

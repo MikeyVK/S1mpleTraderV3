@@ -7,6 +7,7 @@ Immutable Pydantic model representing UserDTO data.
 @layer: DTOs (Strategy)
 @dependencies: [pydantic]
 """
+
 # Standard library
 from datetime import UTC, datetime
 
@@ -22,7 +23,7 @@ class UserDTO(BaseModel):
     # Primary identifier
     userdto_id: str = Field(
         default_factory=lambda: "USE_" + datetime.now(UTC).strftime("%Y%m%d_%H%M%S"),
-        description="UserDTO unique identifier (USE_YYYYMMDD_HHMMSS_hash format)"
+        description="UserDTO unique identifier (USE_YYYYMMDD_HHMMSS_hash format)",
     )
 
     # Core data fields
@@ -42,7 +43,7 @@ class UserDTO(BaseModel):
                     # TODO: Add realistic example field values
                 },
             ]
-        }
+        },
     }
 
     # Validators
@@ -51,10 +52,8 @@ class UserDTO(BaseModel):
     def validate_id_format(cls, v: str) -> str:
         """Validate userdto_id follows military datetime format."""
         import re
+
         pattern = r"^USE_\d{8}_\d{6}_[a-f0-9]+$"
         if not re.match(pattern, v):
-            raise ValueError(
-                f"userdto_id must match USE_YYYYMMDD_HHMMSS_hash format, got: {v}"
-            )
+            raise ValueError(f"userdto_id must match USE_YYYYMMDD_HHMMSS_hash format, got: {v}")
         return v
-

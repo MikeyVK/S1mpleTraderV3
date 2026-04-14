@@ -20,9 +20,10 @@ from typing import Any
 
 class EventProcessor:
     """Processes data events
-    
+
     Async worker for background task processing.
     """
+
     def __init__(self, eventbus: EventBus, logger: Logger):
         """Initialize EventProcessor."""
         self.eventbus = eventbus
@@ -30,10 +31,10 @@ class EventProcessor:
 
     async def execute(self, **kwargs: Any) -> Any:
         """Execute worker task.
-        
+
         Args:
             **kwargs: Task-specific parameters
-            
+
         Returns:
             Task result
         """

@@ -70,11 +70,7 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
         """Get worker name (IWorker requirement)."""
         return self._name
 
-    def initialize(
-        self,
-        strategy_cache: IStrategyCache | None = None,
-        **capabilities: Any
-    ) -> None:
+    def initialize(self, strategy_cache: IStrategyCache | None = None, **capabilities: Any) -> None:
         """
         Initialize with runtime dependencies.
 

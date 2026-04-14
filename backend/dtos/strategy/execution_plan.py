@@ -110,16 +110,13 @@ class ExecutionPlan(BaseModel):
 
     plan_id: str = Field(
         default_factory=generate_execution_plan_id,
-        pattern=r'^EXP_\d{8}_\d{6}_[0-9a-z]{5}$',
-        description="Unique execution plan ID (military datetime format)"
+        pattern=r"^EXP_\d{8}_\d{6}_[0-9a-z]{5}$",
+        description="Unique execution plan ID (military datetime format)",
     )
 
     action: ExecutionAction = Field(
         default=ExecutionAction.EXECUTE_TRADE,
-        description=(
-            "Action type (EXECUTE_TRADE, CANCEL_ORDER, "
-            "MODIFY_ORDER, CANCEL_GROUP)"
-        )
+        description=("Action type (EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER, CANCEL_GROUP)"),
     )
 
     execution_urgency: Decimal = Field(
@@ -127,61 +124,49 @@ class ExecutionPlan(BaseModel):
         ge=0,
         le=1,
         decimal_places=2,
-        max_digits=3
+        max_digits=3,
     )
 
     visibility_preference: Decimal = Field(
-        description=(
-            "Stealth vs transparency trade-off "
-            "(0.0=stealth, 1.0=visible)"
-        ),
+        description=("Stealth vs transparency trade-off (0.0=stealth, 1.0=visible)"),
         ge=0,
         le=1,
         decimal_places=2,
-        max_digits=3
+        max_digits=3,
     )
 
     max_slippage_pct: Decimal = Field(
-        description=(
-            "Hard price limit - max acceptable slippage (0.0-1.0 = 0-100%)"
-        ),
+        description=("Hard price limit - max acceptable slippage (0.0-1.0 = 0-100%)"),
         ge=0,
         le=1,
         decimal_places=4,
-        max_digits=5
+        max_digits=5,
     )
 
     must_complete_immediately: bool = Field(
-        default=False,
-        description="Force immediate execution (constraint, not hint)"
+        default=False, description="Force immediate execution (constraint, not hint)"
     )
 
     max_execution_window_minutes: int | None = Field(
-        default=None,
-        description="Maximum time window for completion (minutes)",
-        ge=1
+        default=None, description="Maximum time window for completion (minutes)", ge=1
     )
 
     preferred_execution_style: str | None = Field(
         default=None,
         description=(
-            "Hint for execution style (e.g., 'TWAP', 'VWAP', 'ICEBERG') - "
-            "MAY be interpreted"
-        )
+            "Hint for execution style (e.g., 'TWAP', 'VWAP', 'ICEBERG') - MAY be interpreted"
+        ),
     )
 
     chunk_count_hint: int | None = Field(
-        default=None,
-        description="Hint for number of execution chunks - MAY be interpreted",
-        ge=1
+        default=None, description="Hint for number of execution chunks - MAY be interpreted", ge=1
     )
 
     chunk_distribution: str | None = Field(
         default=None,
         description=(
-            "Hint for chunk distribution (e.g., 'UNIFORM', 'WEIGHTED') - "
-            "MAY be interpreted"
-        )
+            "Hint for chunk distribution (e.g., 'UNIFORM', 'WEIGHTED') - MAY be interpreted"
+        ),
     )
 
     min_fill_ratio: Decimal | None = Field(
@@ -190,7 +175,7 @@ class ExecutionPlan(BaseModel):
         ge=0,
         le=1,
         decimal_places=2,
-        max_digits=3
+        max_digits=3,
     )
 
     @field_validator("execution_urgency", "visibility_preference")
@@ -200,10 +185,7 @@ class ExecutionPlan(BaseModel):
         field_name = info.field_name
 
         if v < 0 or v > 1:
-            raise ValueError(
-                f"{field_name} must be between 0.0 and 1.0 "
-                f"(got {v})"
-            )
+            raise ValueError(f"{field_name} must be between 0.0 and 1.0 (got {v})")
 
         return v
 
@@ -213,8 +195,7 @@ class ExecutionPlan(BaseModel):
         """Ensure slippage is within 0.0-1.0 range (0-100%)."""
         if v < 0 or v > 1:
             raise ValueError(
-                f"max_slippage_pct must be between 0.0 and 1.0 "
-                f"(0-100% slippage, got {v})"
+                f"max_slippage_pct must be between 0.0 and 1.0 (0-100% slippage, got {v})"
             )
 
         return v
@@ -231,7 +212,7 @@ class ExecutionPlan(BaseModel):
                     "execution_urgency": "0.90",
                     "visibility_preference": "0.70",
                     "max_slippage_pct": "0.0100",
-                    "must_complete_immediately": True
+                    "must_complete_immediately": True,
                 },
                 {
                     "description": "Patient TWAP accumulation - stealth, low urgency",
@@ -245,7 +226,7 @@ class ExecutionPlan(BaseModel):
                     "preferred_execution_style": "TWAP",
                     "chunk_count_hint": 5,
                     "chunk_distribution": "UNIFORM",
-                    "min_fill_ratio": "0.80"
+                    "min_fill_ratio": "0.80",
                 },
                 {
                     "description": "Emergency cancel group - max urgency, immediate",
@@ -254,7 +235,7 @@ class ExecutionPlan(BaseModel):
                     "execution_urgency": "1.0",
                     "visibility_preference": "0.5",
                     "max_slippage_pct": "0.0",
-                    "must_complete_immediately": True
+                    "must_complete_immediately": True,
                 },
                 {
                     "description": "DEX swap - stealth mode, private mempool hint",
@@ -263,7 +244,7 @@ class ExecutionPlan(BaseModel):
                     "execution_urgency": "0.60",
                     "visibility_preference": "0.05",
                     "max_slippage_pct": "0.0200",
-                    "preferred_execution_style": "PRIVATE_MEMPOOL"
+                    "preferred_execution_style": "PRIVATE_MEMPOOL",
                 },
                 {
                     "description": "Backtest simulation - medium urgency, no hints",
@@ -271,8 +252,8 @@ class ExecutionPlan(BaseModel):
                     "action": "EXECUTE_TRADE",
                     "execution_urgency": "0.50",
                     "visibility_preference": "0.50",
-                    "max_slippage_pct": "0.0"
-                }
+                    "max_slippage_pct": "0.0",
+                },
             ]
-        }
+        },
     }

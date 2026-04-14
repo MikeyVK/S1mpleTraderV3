@@ -10,8 +10,8 @@ from unittest.mock import ANY, MagicMock
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.config.loader import ConfigLoader
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.git_tools import (
     CommitPhaseMismatchError,
@@ -578,7 +578,9 @@ async def test_git_restore_tool(mock_git_manager: MagicMock) -> None:
     params = GitRestoreInput(files=["foo.py", "bar.py"], source="HEAD")
     result = await tool.execute(params, NoteContext())
 
-    mock_git_manager.restore.assert_called_once_with(files=["foo.py", "bar.py"], note_context=ANY, source="HEAD")
+    mock_git_manager.restore.assert_called_once_with(
+        files=["foo.py", "bar.py"], note_context=ANY, source="HEAD"
+    )
     assert "Restored 2 file(s)" in result.content[0]["text"]
 
 

@@ -19,9 +19,10 @@ from typing import Any
 
 class DataProcessor:
     """Processes data with dict deps
-    
+
     Async worker for background task processing.
     """
+
     def __init__(self, event_bus: EventBus, logger: Logger):
         """Initialize DataProcessor."""
         self.event_bus = event_bus
@@ -29,10 +30,10 @@ class DataProcessor:
 
     async def execute(self, **kwargs: Any) -> Any:
         """Execute worker task.
-        
+
         Args:
             **kwargs: Task-specific parameters
-            
+
         Returns:
             Task result
         """

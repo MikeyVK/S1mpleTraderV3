@@ -118,7 +118,7 @@ class TransitionCycleTool(BaseTransitionTool):
         branch: str | None = None
         try:
             branch = self._get_git_manager().get_current_branch()
-        except Exception:
+        except (ValueError, OSError, RuntimeError):  # git unavailable — fall back to state file
             branch = None
 
         state_file = self.workspace_root / ".st3" / "state.json"
@@ -246,7 +246,7 @@ class ForceCycleTransitionTool(BaseTransitionTool):
         branch: str | None = None
         try:
             branch = self._get_git_manager().get_current_branch()
-        except Exception:
+        except (ValueError, OSError, RuntimeError):  # git unavailable — fall back to state file
             branch = None
 
         state_file = self.workspace_root / ".st3" / "state.json"

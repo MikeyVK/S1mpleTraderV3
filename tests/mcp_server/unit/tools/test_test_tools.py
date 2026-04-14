@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Unit tests for test_tools.py.
 
 @layer: Tests (Unit)
@@ -9,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.config.settings import Settings
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
 # ---------------------------------------------------------------------------

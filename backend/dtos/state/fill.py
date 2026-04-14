@@ -136,8 +136,5 @@ class Fill(BaseModel):
             ValueError: If prefix is not ORD_
         """
         if not v.startswith("ORD_"):
-            raise ValueError(
-                f"parent_order_id must start with 'ORD_', got: {v[:10]}..."
-            )
+            raise ValueError(f"parent_order_id must start with 'ORD_', got: {v[:10]}...")
         return v
-

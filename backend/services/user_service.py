@@ -11,9 +11,10 @@
 
 from typing import Any
 
+
 class UserService:
     """Service for managing user operations
-    
+
     Service command following execute pattern.
     """
 

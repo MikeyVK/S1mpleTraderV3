@@ -13,6 +13,7 @@
 # Third-party
 # Project modules
 
+
 class MathHelperV2:
     """Helper for calculations"""
 

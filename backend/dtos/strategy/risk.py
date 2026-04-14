@@ -1,4 +1,4 @@
-﻿# backend/dtos/strategy/risk.py
+# backend/dtos/strategy/risk.py
 """
 Risk DTO: RiskMonitor output contract.
 
@@ -21,6 +21,7 @@ Risk Framework:
 @dependencies: [pydantic, datetime, decimal, re, backend.utils.id_generators]
 @responsibilities: [risk detection contract, severity scoring]
 """
+
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -67,7 +68,7 @@ class Risk(BaseModel):
 
     risk_id: str = Field(
         default_factory=generate_risk_id,
-        pattern=r'^RSK_\d{8}_\d{6}_[0-9a-f]{8}$',
+        pattern=r"^RSK_\d{8}_\d{6}_[0-9a-f]{8}$",
         description="Unique risk ID (military datetime format)",
     )
 
@@ -93,7 +94,7 @@ class Risk(BaseModel):
         description="Affected symbol (None = system-wide risk)",
         min_length=3,
         max_length=20,
-        pattern=r'^[A-Z][A-Z0-9_]*$',
+        pattern=r"^[A-Z][A-Z0-9_]*$",
     )
 
     model_config = {
@@ -106,7 +107,7 @@ class Risk(BaseModel):
                     "risk_id": "RSK_20251027_100001_a1b2c3d4",
                     "timestamp": "2025-10-27T10:00:01Z",
                     "risk_type": "FLASH_CRASH",
-                    "severity": "0.95"
+                    "severity": "0.95",
                 },
                 {
                     "description": "Symbol-specific liquidity crisis",
@@ -114,7 +115,7 @@ class Risk(BaseModel):
                     "timestamp": "2025-10-27T14:30:00Z",
                     "risk_type": "LIQUIDITY_CRISIS",
                     "severity": "0.82",
-                    "affected_symbol": "BTC_USDT"
+                    "affected_symbol": "BTC_USDT",
                 },
                 {
                     "description": "Regulatory news event (medium severity)",
@@ -122,13 +123,13 @@ class Risk(BaseModel):
                     "timestamp": "2025-10-27T15:05:00Z",
                     "risk_type": "REGULATORY_NEWS",
                     "severity": "0.65",
-                    "affected_symbol": "ETH_USDT"
-                }
+                    "affected_symbol": "ETH_USDT",
+                },
             ]
-        }
+        },
     }
 
-    @field_validator('severity', mode='before')
+    @field_validator("severity", mode="before")
     @classmethod
     def convert_to_decimal(cls, v: float | Decimal | str | None) -> Decimal:
         """Convert float/str input to Decimal for financial precision."""
@@ -150,17 +151,13 @@ class Risk(BaseModel):
         """Validate UPPER_SNAKE_CASE format and reserved prefixes."""
 
         # Check reserved prefixes first
-        reserved_prefixes = ['SYSTEM_', 'INTERNAL_', '_']
+        reserved_prefixes = ["SYSTEM_", "INTERNAL_", "_"]
         if any(v.startswith(prefix) for prefix in reserved_prefixes):
-            raise ValueError(
-                f"risk_type cannot start with reserved prefix: {v}"
-            )
+            raise ValueError(f"risk_type cannot start with reserved prefix: {v}")
 
         # Check UPPER_SNAKE_CASE pattern
-        pattern = r'^[A-Z][A-Z0-9_]*$'
+        pattern = r"^[A-Z][A-Z0-9_]*$"
         if not re.match(pattern, v):
-            raise ValueError(
-                f"risk_type must follow UPPER_SNAKE_CASE: {v}"
-            )
+            raise ValueError(f"risk_type must follow UPPER_SNAKE_CASE: {v}")
 
         return v

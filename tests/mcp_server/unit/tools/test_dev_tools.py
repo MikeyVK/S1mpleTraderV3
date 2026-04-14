@@ -11,8 +11,8 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.config.settings import Settings
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
@@ -43,7 +43,9 @@ async def test_create_file_tool(tmp_path: Path) -> None:
     """Test CreateFileTool creates file with correct content in subdirectory."""
     tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
-    await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"), NoteContext())
+    await tool.execute(
+        CreateFileInput(path="new_dir/test.txt", content="hello world"), NoteContext()
+    )
 
     file_path = tmp_path / "new_dir/test.txt"
     assert file_path.exists()
@@ -55,7 +57,9 @@ async def test_create_file_security_check(tmp_path: Path) -> None:
     """Test CreateFileTool rejects path traversal attempts."""
     tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
-    result = await tool.execute(CreateFileInput(path="../outside.txt", content="bad"), NoteContext())
+    result = await tool.execute(
+        CreateFileInput(path="../outside.txt", content="bad"), NoteContext()
+    )
 
     assert result.is_error
     assert "Access denied" in result.content[0]["text"]

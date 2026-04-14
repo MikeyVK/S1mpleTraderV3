@@ -104,7 +104,9 @@ async def test_add_labels_tool(
 ) -> None:
     tool = AddLabelsTool(manager=mock_github_manager, label_config=test_label_config)
 
-    result = await tool.execute(AddLabelsInput(issue_number=10, labels=["bug", "p1"]), NoteContext())
+    result = await tool.execute(
+        AddLabelsInput(issue_number=10, labels=["bug", "p1"]), NoteContext()
+    )
 
     mock_github_manager.add_labels.assert_called_with(10, ["bug", "p1"])
     assert "Added labels to #10" in result.content[0]["text"]

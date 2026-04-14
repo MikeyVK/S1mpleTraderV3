@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 import jinja2
 import pytest
 
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 from tests.mcp_server.test_support import make_create_issue_tool
 

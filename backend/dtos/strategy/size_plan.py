@@ -64,32 +64,24 @@ class SizePlan(BaseModel):
     # Auto-generated ID
     plan_id: str = Field(
         default_factory=generate_size_plan_id,
-        description="Unique plan ID (SIZ_YYYYMMDD_HHMMSS_hash)"
+        description="Unique plan ID (SIZ_YYYYMMDD_HHMMSS_hash)",
     )
 
     # Position sizing (absolute values)
     position_size: Decimal = Field(
-        ...,
-        description="Absolute position size in base asset (e.g., 0.5 BTC)",
-        gt=0
+        ..., description="Absolute position size in base asset (e.g., 0.5 BTC)", gt=0
     )
 
     position_value: Decimal = Field(
-        ...,
-        description="Position value in quote asset (e.g., 50000 USDT)",
-        gt=0
+        ..., description="Position value in quote asset (e.g., 50000 USDT)", gt=0
     )
 
     risk_amount: Decimal = Field(
-        ...,
-        description="Absolute risk in quote asset (e.g., 1000 USDT)",
-        gt=0
+        ..., description="Absolute risk in quote asset (e.g., 1000 USDT)", gt=0
     )
 
     leverage: Decimal = Field(
-        default=Decimal("1.0"),
-        description="Leverage multiplier (1.0 = no leverage)",
-        ge=1.0
+        default=Decimal("1.0"), description="Leverage multiplier (1.0 = no leverage)", ge=1.0
     )
 
     @field_validator("plan_id")
@@ -101,9 +93,7 @@ class SizePlan(BaseModel):
 
         parts = v.split("_")
         if len(parts) != 4:  # SIZ_YYYYMMDD_HHMMSS_hash
-            raise ValueError(
-                "plan_id must follow format: SIZ_YYYYMMDD_HHMMSS_hash"
-            )
+            raise ValueError("plan_id must follow format: SIZ_YYYYMMDD_HHMMSS_hash")
 
         return v
 
@@ -119,7 +109,7 @@ class SizePlan(BaseModel):
                     "position_size": "0.25",
                     "position_value": "25000.00",
                     "risk_amount": "1000.00",
-                    "leverage": "1.0"
+                    "leverage": "1.0",
                 },
                 {
                     "description": "Leveraged position (2x)",
@@ -127,8 +117,8 @@ class SizePlan(BaseModel):
                     "position_size": "1.0",
                     "position_value": "100000.00",
                     "risk_amount": "2000.00",
-                    "leverage": "2.0"
-                }
+                    "leverage": "2.0",
+                },
             ]
-        }
+        },
     }

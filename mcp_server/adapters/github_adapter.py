@@ -64,9 +64,7 @@ class GitHubAdapter:
             return self.repo.get_issue(issue_number)
         except GithubException as e:
             if e.status == 404:
-                raise ExecutionError(
-                    f"Issue #{issue_number} not found"
-                ) from e
+                raise ExecutionError(f"Issue #{issue_number} not found") from e
             raise MCPSystemError(f"GitHub API error: {e}") from e
 
     def create_issue(
@@ -198,9 +196,7 @@ class GitHubAdapter:
             label.delete()
         except GithubException as e:
             if e.status == 404:
-                raise ExecutionError(
-                    f"Label '{name}' not found"
-                ) from e
+                raise ExecutionError(f"Label '{name}' not found") from e
             raise ExecutionError(f"Failed to delete label: {e}") from e
 
     def remove_labels(self, issue_number: int, labels: list[str]) -> None:
@@ -252,9 +248,7 @@ class GitHubAdapter:
             return milestone
         except GithubException as e:
             if e.status == 404:
-                raise ExecutionError(
-                    f"Milestone {milestone_number} not found"
-                ) from e
+                raise ExecutionError(f"Milestone {milestone_number} not found") from e
             raise ExecutionError(f"Failed to close milestone: {e}") from e
 
     def list_prs(
@@ -284,9 +278,7 @@ class GitHubAdapter:
             result = pr.merge(**kwargs)
         except GithubException as e:
             if e.status == 404:
-                raise ExecutionError(
-                    f"Pull request #{pr_number} not found"
-                ) from e
+                raise ExecutionError(f"Pull request #{pr_number} not found") from e
             raise ExecutionError(f"Failed to merge PR: {e}") from e
 
         if not result.merged:

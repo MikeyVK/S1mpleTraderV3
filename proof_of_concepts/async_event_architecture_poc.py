@@ -30,9 +30,11 @@ from enum import Enum
 # Event DTOs
 # ============================================================================
 
+
 @dataclass
 class CandleCloseEvent:
     """Market candle close event."""
+
     timestamp: datetime
     symbol: str
     close: float
@@ -45,6 +47,7 @@ class CandleCloseEvent:
 @dataclass
 class NewsEvent:
     """News article event."""
+
     timestamp: datetime
     headline: str
     sentiment: str
@@ -56,6 +59,7 @@ class NewsEvent:
 @dataclass
 class ScheduleEvent:
     """Scheduled trigger event."""
+
     timestamp: datetime
     schedule_type: str
 
@@ -66,6 +70,7 @@ class ScheduleEvent:
 @dataclass
 class SignalDetectedEvent:
     """Signal detection result."""
+
     timestamp: datetime
     strategy_id: str
     signal_type: str
@@ -79,8 +84,10 @@ class SignalDetectedEvent:
 # Event Bus (Async)
 # ============================================================================
 
+
 class ScopeLevel(str, Enum):
     """Event scope levels."""
+
     PLATFORM = "PLATFORM"
     STRATEGY = "STRATEGY"
 
@@ -88,6 +95,7 @@ class ScopeLevel(str, Enum):
 @dataclass
 class Subscription:
     """Event subscription record."""
+
     subscription_id: str
     event_name: str
     handler: Callable
@@ -115,7 +123,7 @@ class AsyncEventBus:
         event_name: str,
         payload: object,
         scope: ScopeLevel,
-        strategy_instance_id: str | None = None
+        strategy_instance_id: str | None = None,
     ) -> None:
         """
         Publish event to matching subscribers (async, non-blocking).
@@ -131,8 +139,7 @@ class AsyncEventBus:
         # Get matching subscriptions
         subscriptions = self._subscriptions.get(event_name, [])
         matching = [
-            sub for sub in subscriptions
-            if self._should_receive(sub, scope, strategy_instance_id)
+            sub for sub in subscriptions if self._should_receive(sub, scope, strategy_instance_id)
         ]
 
         # Invoke handlers asynchronously (non-blocking!)
@@ -155,7 +162,7 @@ class AsyncEventBus:
             avg_time = sum(self._publish_times[-10:]) / 10
             print(
                 f"[EventBus] Published {self._event_count} events "
-                f"(avg publish time: {avg_time*1000:.2f}ms)"
+                f"(avg publish time: {avg_time * 1000:.2f}ms)"
             )
 
     def subscribe(
@@ -163,7 +170,7 @@ class AsyncEventBus:
         event_name: str,
         handler: Callable,
         scope: ScopeLevel,
-        strategy_instance_id: str | None = None
+        strategy_instance_id: str | None = None,
     ) -> str:
         """Subscribe to event."""
         subscription_id = f"SUB_{len(self._subscriptions)}"
@@ -173,7 +180,7 @@ class AsyncEventBus:
             event_name=event_name,
             handler=handler,
             scope=scope,
-            strategy_instance_id=strategy_instance_id
+            strategy_instance_id=strategy_instance_id,
         )
 
         if event_name not in self._subscriptions:
@@ -183,10 +190,7 @@ class AsyncEventBus:
         return subscription_id
 
     def _should_receive(
-        self,
-        sub: Subscription,
-        event_scope: ScopeLevel,
-        event_strategy_id: str | None
+        self, sub: Subscription, event_scope: ScopeLevel, event_strategy_id: str | None
     ) -> bool:
         """Check if subscription should receive event."""
         if sub.scope == ScopeLevel.PLATFORM:
@@ -195,13 +199,13 @@ class AsyncEventBus:
         if event_scope != ScopeLevel.STRATEGY:
             return False
         # Wildcard (monitor all strategies) or exact match
-        return (sub.strategy_instance_id is None or
-                sub.strategy_instance_id == event_strategy_id)
+        return sub.strategy_instance_id is None or sub.strategy_instance_id == event_strategy_id
 
 
 # ============================================================================
 # Event Queue Manager
 # ============================================================================
+
 
 class EventQueueManager:
     """
@@ -253,13 +257,14 @@ class EventQueueManager:
             "enqueued": self._enqueue_count.get(strategy_id, 0),
             "dequeued": self._dequeue_count.get(strategy_id, 0),
             "queue_size": queue.qsize() if queue else 0,
-            "queue_maxsize": self._maxsize
+            "queue_maxsize": self._maxsize,
         }
 
 
 # ============================================================================
 # Platform Event Sources (Async Tasks)
 # ============================================================================
+
 
 class OhlcvProvider:
     """
@@ -287,14 +292,12 @@ class OhlcvProvider:
                 timestamp=datetime.now(),
                 symbol=self._symbol,
                 close=50000 + random.uniform(-1000, 1000),
-                volume=random.uniform(100, 1000)
+                volume=random.uniform(100, 1000),
             )
 
             # Publish (non-blocking!)
             await self._event_bus.publish(
-                event_name="APL_CANDLE_CLOSE_1H",
-                payload=candle,
-                scope=ScopeLevel.PLATFORM
+                event_name="APL_CANDLE_CLOSE_1H", payload=candle, scope=ScopeLevel.PLATFORM
             )
 
     def stop(self) -> None:
@@ -317,7 +320,7 @@ class NewsProvider:
             "Federal Reserve announces interest rate decision",
             "Major exchange reports security breach",
             "New cryptocurrency regulation proposed",
-            "Institutional adoption continues to grow"
+            "Institutional adoption continues to grow",
         ]
 
     async def run(self) -> None:
@@ -333,14 +336,12 @@ class NewsProvider:
             news = NewsEvent(
                 timestamp=datetime.now(),
                 headline=random.choice(self._headlines),
-                sentiment=random.choice(["positive", "negative", "neutral"])
+                sentiment=random.choice(["positive", "negative", "neutral"]),
             )
 
             # Publish
             await self._event_bus.publish(
-                event_name="APL_NEWS_EVENT",
-                payload=news,
-                scope=ScopeLevel.PLATFORM
+                event_name="APL_NEWS_EVENT", payload=news, scope=ScopeLevel.PLATFORM
             )
 
     def stop(self) -> None:
@@ -368,16 +369,11 @@ class Scheduler:
             await asyncio.sleep(3.0)
 
             # Create schedule event
-            schedule = ScheduleEvent(
-                timestamp=datetime.now(),
-                schedule_type="HOURLY_SCHEDULE"
-            )
+            schedule = ScheduleEvent(timestamp=datetime.now(), schedule_type="HOURLY_SCHEDULE")
 
             # Publish
             await self._event_bus.publish(
-                event_name="APL_HOURLY_SCHEDULE",
-                payload=schedule,
-                scope=ScopeLevel.PLATFORM
+                event_name="APL_HOURLY_SCHEDULE", payload=schedule, scope=ScopeLevel.PLATFORM
             )
 
     def stop(self) -> None:
@@ -389,6 +385,7 @@ class Scheduler:
 # FlowInitiator (Event Translator)
 # ============================================================================
 
+
 class FlowInitiator:
     """
     Per-strategy event translator.
@@ -397,10 +394,7 @@ class FlowInitiator:
     """
 
     def __init__(
-        self,
-        strategy_id: str,
-        event_bus: AsyncEventBus,
-        queue_manager: EventQueueManager
+        self, strategy_id: str, event_bus: AsyncEventBus, queue_manager: EventQueueManager
     ) -> None:
         self._strategy_id = strategy_id
         self._event_bus = event_bus
@@ -423,6 +417,7 @@ class FlowInitiator:
 # Strategy Worker (CPU-Intensive Processing)
 # ============================================================================
 
+
 class StrategyWorker:
     """
     Strategy worker that processes events from queue.
@@ -435,7 +430,7 @@ class StrategyWorker:
         strategy_id: str,
         worker_id: str,
         event_bus: AsyncEventBus,
-        queue_manager: EventQueueManager
+        queue_manager: EventQueueManager,
     ) -> None:
         self._strategy_id = strategy_id
         self._worker_id = worker_id
@@ -466,8 +461,10 @@ class StrategyWorker:
             # Log every 5 events
             if self._processed_count % 5 == 0:
                 avg_time = sum(self._processing_times[-5:]) / 5
-                print(f"[{self._worker_id}] Processed {self._processed_count} events "
-                      f"(avg time: {avg_time*1000:.2f}ms)")
+                print(
+                    f"[{self._worker_id}] Processed {self._processed_count} events "
+                    f"(avg time: {avg_time * 1000:.2f}ms)"
+                )
 
             # Publish result if significant
             if result:
@@ -475,7 +472,7 @@ class StrategyWorker:
                     event_name="SIGNAL_DETECTED",
                     payload=result,
                     scope=ScopeLevel.STRATEGY,
-                    strategy_instance_id=self._strategy_id
+                    strategy_instance_id=self._strategy_id,
                 )
 
     async def _process_event(self, event: object) -> SignalDetectedEvent | None:
@@ -495,7 +492,7 @@ class StrategyWorker:
                 timestamp=datetime.now(),
                 strategy_id=self._strategy_id,
                 signal_type="BUY" if random.random() > 0.5 else "SELL",
-                confidence=random.uniform(0.6, 0.95)
+                confidence=random.uniform(0.6, 0.95),
             )
 
         return None
@@ -510,14 +507,16 @@ class StrategyWorker:
             "processed": self._processed_count,
             "avg_processing_time_ms": (
                 sum(self._processing_times) / len(self._processing_times) * 1000
-                if self._processing_times else 0
-            )
+                if self._processing_times
+                else 0
+            ),
         }
 
 
 # ============================================================================
 # Platform Monitor (Observes All Strategies)
 # ============================================================================
+
 
 class PerformanceMonitor:
     """
@@ -535,7 +534,7 @@ class PerformanceMonitor:
             event_name="SIGNAL_DETECTED",
             handler=self.on_signal_detected,
             scope=ScopeLevel.STRATEGY,
-            strategy_instance_id=None  # Wildcard: all strategies
+            strategy_instance_id=None,  # Wildcard: all strategies
         )
 
     async def on_signal_detected(self, signal: SignalDetectedEvent) -> None:
@@ -549,8 +548,10 @@ class PerformanceMonitor:
 
         # Log aggregated stats
         total_signals = sum(len(signals) for signals in self._signals_by_strategy.values())
-        print(f"[PerformanceMonitor] Total signals detected: {total_signals} "
-              f"(across {len(self._signals_by_strategy)} strategies)")
+        print(
+            f"[PerformanceMonitor] Total signals detected: {total_signals} "
+            f"(across {len(self._signals_by_strategy)} strategies)"
+        )
 
     def get_stats(self) -> dict:
         """Get monitoring statistics."""
@@ -560,9 +561,8 @@ class PerformanceMonitor:
                 "buy_signals": sum(1 for s in signals if s.signal_type == "BUY"),
                 "sell_signals": sum(1 for s in signals if s.signal_type == "SELL"),
                 "avg_confidence": (
-                    sum(s.confidence for s in signals) / len(signals)
-                    if signals else 0
-                )
+                    sum(s.confidence for s in signals) / len(signals) if signals else 0
+                ),
             }
             for strategy_id, signals in self._signals_by_strategy.items()
         }
@@ -571,6 +571,7 @@ class PerformanceMonitor:
 # ============================================================================
 # Main Demo
 # ============================================================================
+
 
 async def main() -> None:
     """
@@ -616,26 +617,26 @@ async def main() -> None:
         event_bus.subscribe(
             event_name="APL_CANDLE_CLOSE_1H",
             handler=flow_initiator.on_platform_event,
-            scope=ScopeLevel.PLATFORM
+            scope=ScopeLevel.PLATFORM,
         )
         event_bus.subscribe(
             event_name="APL_NEWS_EVENT",
             handler=flow_initiator.on_platform_event,
-            scope=ScopeLevel.PLATFORM
+            scope=ScopeLevel.PLATFORM,
         )
         event_bus.subscribe(
             event_name="APL_HOURLY_SCHEDULE",
             handler=flow_initiator.on_platform_event,
-            scope=ScopeLevel.PLATFORM
+            scope=ScopeLevel.PLATFORM,
         )
 
         # Create workers (2 per strategy for parallel processing)
         for i in range(2):
             worker = StrategyWorker(
                 strategy_id=strategy_id,
-                worker_id=f"{strategy_id}_WORKER_{i+1}",
+                worker_id=f"{strategy_id}_WORKER_{i + 1}",
                 event_bus=event_bus,
-                queue_manager=queue_manager
+                queue_manager=queue_manager,
             )
             workers.append(worker)
 
@@ -651,7 +652,6 @@ async def main() -> None:
         asyncio.create_task(ohlcv_provider.run()),
         asyncio.create_task(news_provider.run()),
         asyncio.create_task(scheduler.run()),
-
         # Strategy workers
         *[asyncio.create_task(worker.run()) for worker in workers],
     ]
@@ -725,9 +725,9 @@ async def main() -> None:
 
     # Calculate missed events
     print("Event Loss Analysis:")
-    total_enqueued = sum(queue_manager.get_stats(sid)['enqueued'] for sid in strategy_ids)
-    total_dequeued = sum(queue_manager.get_stats(sid)['dequeued'] for sid in strategy_ids)
-    total_in_queue = sum(queue_manager.get_stats(sid)['queue_size'] for sid in strategy_ids)
+    total_enqueued = sum(queue_manager.get_stats(sid)["enqueued"] for sid in strategy_ids)
+    total_dequeued = sum(queue_manager.get_stats(sid)["dequeued"] for sid in strategy_ids)
+    total_in_queue = sum(queue_manager.get_stats(sid)["queue_size"] for sid in strategy_ids)
 
     print(f"  Total events enqueued: {total_enqueued}")
     print(f"  Total events processed: {total_dequeued}")

@@ -50,33 +50,27 @@ class Origin(BaseModel):
                 {
                     "id": "TCK_20251109_143022_abc123",
                     "type": "TICK",
-                    "description": "Market tick data origin"
+                    "description": "Market tick data origin",
                 },
                 {
                     "id": "NWS_20251109_150000_def456",
                     "type": "NEWS",
-                    "description": "News feed origin"
+                    "description": "News feed origin",
                 },
                 {
                     "id": "SCH_20251109_160000_ghi789",
                     "type": "SCHEDULE",
-                    "description": "Scheduled event origin"
-                }
+                    "description": "Scheduled event origin",
+                },
             ]
-        }
+        },
     }
 
-    @model_validator(mode='after')
-    def validate_id_prefix(self) -> 'Origin':
+    @model_validator(mode="after")
+    def validate_id_prefix(self) -> "Origin":
         """Validate ID prefix matches type."""
-        prefix = self.id.split('_')[0]
-        expected = {
-            OriginType.TICK: "TCK",
-            OriginType.NEWS: "NWS",
-            OriginType.SCHEDULE: "SCH"
-        }
+        prefix = self.id.split("_")[0]
+        expected = {OriginType.TICK: "TCK", OriginType.NEWS: "NWS", OriginType.SCHEDULE: "SCH"}
         if prefix != expected[self.type]:
-            raise ValueError(
-                f"ID prefix '{prefix}' doesn't match type '{self.type.value}'"
-            )
+            raise ValueError(f"ID prefix '{prefix}' doesn't match type '{self.type.value}'")
         return self

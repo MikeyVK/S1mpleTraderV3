@@ -1,4 +1,5 @@
 # tests/mcp_server/unit/tools/test_discovery_tools.py
+# pyright: reportPrivateUsage=false
 """
 Tests for Discovery Tools (search_documentation, get_work_context).
 

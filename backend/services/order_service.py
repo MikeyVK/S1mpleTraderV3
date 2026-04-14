@@ -17,9 +17,10 @@ from typing import Any
 
 # Project modules
 
+
 class OrderService:
     """Manages order operations
-    
+
     Service command following execute pattern.
     """
 

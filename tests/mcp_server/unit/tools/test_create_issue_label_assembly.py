@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """
 Cycle 5 — Label assembly in CreateIssueTool.
 

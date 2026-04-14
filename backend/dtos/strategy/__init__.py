@@ -13,14 +13,14 @@ from backend.dtos.strategy.strategy_directive import (
 )
 
 __all__ = [
-    'DirectiveScope',
-    'EntryPlan',
-    'ExecutionAction',
-    'ExecutionPlan',
-    'ExecutionPolicy',
-    'ExitPlan',
-    'Signal',
-    'SizePlan',
-    'StrategyDirective',
-    'Risk',
+    "DirectiveScope",
+    "EntryPlan",
+    "ExecutionAction",
+    "ExecutionPlan",
+    "ExecutionPolicy",
+    "ExitPlan",
+    "Signal",
+    "SizePlan",
+    "StrategyDirective",
+    "Risk",
 ]

@@ -20,12 +20,12 @@ from mcp_server.tools.milestone_tools import (
 
 
 @pytest.fixture
-def mock_github_manager():
+def mock_github_manager() -> MagicMock:
     return MagicMock()
 
 
 @pytest.mark.asyncio
-async def test_list_milestones_tool(mock_github_manager) -> None:
+async def test_list_milestones_tool(mock_github_manager: MagicMock) -> None:
     tool = ListMilestonesTool(manager=mock_github_manager)
     m1 = MagicMock(number=1, title="M1", state="open")
     m1.due_on = MagicMock(isoformat=lambda: "2023-01-01")
@@ -39,7 +39,7 @@ async def test_list_milestones_tool(mock_github_manager) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_milestone_tool(mock_github_manager) -> None:
+async def test_create_milestone_tool(mock_github_manager: MagicMock) -> None:
     tool = CreateMilestoneTool(manager=mock_github_manager)
     mock_github_manager.create_milestone.return_value = MagicMock(number=2)
 
@@ -53,7 +53,7 @@ async def test_create_milestone_tool(mock_github_manager) -> None:
 
 
 @pytest.mark.asyncio
-async def test_close_milestone_tool(mock_github_manager) -> None:
+async def test_close_milestone_tool(mock_github_manager: MagicMock) -> None:
     tool = CloseMilestoneTool(manager=mock_github_manager)
     mock_github_manager.close_milestone.return_value = MagicMock(number=3, title="Sprint X")
 

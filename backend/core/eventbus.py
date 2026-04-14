@@ -39,12 +39,7 @@ class CriticalEventHandlerError(Exception):
         subscription_id: ID of failed subscription
     """
 
-    def __init__(
-        self,
-        message: str,
-        original_error: Exception,
-        subscription_id: str
-    ) -> None:
+    def __init__(self, message: str, original_error: Exception, subscription_id: str) -> None:
         super().__init__(message)
         self.original_error = original_error
         self.subscription_id = subscription_id
@@ -116,7 +111,7 @@ class EventBus(IEventBus):
         event_name: str,
         payload: BaseModel,
         scope: ScopeLevel,
-        strategy_instance_id: str | None = None
+        strategy_instance_id: str | None = None,
     ) -> None:
         """
         Broadcast event to matching subscribers.
@@ -139,15 +134,14 @@ class EventBus(IEventBus):
         """
         # Validate strategy_instance_id requirement
         if scope == ScopeLevel.STRATEGY and strategy_instance_id is None:
-            raise ValueError(
-                "strategy_instance_id is required when scope=STRATEGY"
-            )
+            raise ValueError("strategy_instance_id is required when scope=STRATEGY")
 
         # Lock ONLY for reading subscription list
         with self._lock:
             all_subscriptions = self._subscriptions.get(event_name, [])
             matching_subscriptions = [
-                sub for sub in all_subscriptions
+                sub
+                for sub in all_subscriptions
                 if sub.scope.should_receive_event(scope, strategy_instance_id)
             ]
 
@@ -160,7 +154,7 @@ class EventBus(IEventBus):
         event_name: str,
         handler: Callable[[BaseModel], None],
         scope: SubscriptionScope,
-        is_critical: bool = False
+        is_critical: bool = False,
     ) -> str:
         """
         Register event handler with flexible scoping.
@@ -187,7 +181,7 @@ class EventBus(IEventBus):
                 event_name=event_name,
                 handler=handler,
                 scope=scope,
-                is_critical=is_critical
+                is_critical=is_critical,
             )
 
             # Add to event index
@@ -231,11 +225,7 @@ class EventBus(IEventBus):
             # Remove from ID index
             del self._subscription_index[subscription_id]
 
-    def _invoke_handler(
-        self,
-        subscription: Subscription,
-        payload: BaseModel
-    ) -> None:
+    def _invoke_handler(self, subscription: Subscription, payload: BaseModel) -> None:
         """
         Invoke subscription handler with error handling.
 
@@ -262,13 +252,13 @@ class EventBus(IEventBus):
                     extra={
                         "subscription_id": subscription.subscription_id,
                         "event_name": subscription.event_name,
-                        "handler": subscription.handler.__name__
-                    }
+                        "handler": subscription.handler.__name__,
+                    },
                 )
                 raise CriticalEventHandlerError(
                     f"Critical handler failed for event {subscription.event_name}",
                     original_error=e,
-                    subscription_id=subscription.subscription_id
+                    subscription_id=subscription.subscription_id,
                 ) from e
             # Strategy worker failure = LOG + CONTINUE
             strategy_id = subscription.scope.strategy_instance_id
@@ -279,7 +269,7 @@ class EventBus(IEventBus):
                     "subscription_id": subscription.subscription_id,
                     "event_name": subscription.event_name,
                     "strategy_instance_id": strategy_id,
-                    "handler": subscription.handler.__name__
-                }
+                    "handler": subscription.handler.__name__,
+                },
             )
-                # Continue to next handler (no raise)
+            # Continue to next handler (no raise)

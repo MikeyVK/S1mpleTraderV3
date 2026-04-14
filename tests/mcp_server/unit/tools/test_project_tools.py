@@ -91,7 +91,8 @@ class TestInitializeProjectToolParentBranch:
                     issue_title="Test",
                     workflow_name="feature",
                     parent_branch="epic/76-quality-gates",
-                ), NoteContext()
+                ),
+                NoteContext(),
             )
 
         # Verify
@@ -118,7 +119,8 @@ class TestInitializeProjectToolParentBranch:
             result = await tool.execute(
                 InitializeProjectInput(
                     issue_number=80, issue_title="Test Auto-detect", workflow_name="bug"
-                ), NoteContext()
+                ),
+                NoteContext(),
             )
 
         # Verify
@@ -147,7 +149,8 @@ class TestInitializeProjectToolParentBranch:
             result = await tool.execute(
                 InitializeProjectInput(
                     issue_number=81, issue_title="Test Failed Detect", workflow_name="docs"
-                ), NoteContext()
+                ),
+                NoteContext(),
             )
 
         # Verify - no error, parent_branch is null
@@ -178,7 +181,8 @@ class TestInitializeProjectToolParentBranch:
                     issue_title="Test Override",
                     workflow_name="feature",
                     parent_branch="epic/special",
-                ), NoteContext()
+                ),
+                NoteContext(),
             )
 
         # Verify - auto-detect NOT called
@@ -256,7 +260,8 @@ class TestSavePlanningDeliverablesTool:
             SavePlanningDeliverablesInput(
                 issue_number=issue_number,
                 planning_deliverables=_minimal_deliverables(),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error, f"Expected success, got: {result.content}"
@@ -294,7 +299,8 @@ class TestSavePlanningDeliverablesTool:
             SavePlanningDeliverablesInput(
                 issue_number=issue_number,
                 planning_deliverables={"notes": "forgot the tdd_cycles key"},
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -318,7 +324,8 @@ class TestSavePlanningDeliverablesTool:
                 planning_deliverables=_minimal_deliverables(
                     validates={"type": "does_not_exist", "file": "x.py"}
                 ),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -340,7 +347,8 @@ class TestSavePlanningDeliverablesTool:
                 planning_deliverables=_minimal_deliverables(
                     validates={"type": "contains_text", "file": "x.py"}  # missing 'text'
                 ),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -359,7 +367,8 @@ class TestSavePlanningDeliverablesTool:
             SavePlanningDeliverablesInput(
                 issue_number=issue_number,
                 planning_deliverables=_minimal_deliverables(validates={"type": "wrong_type"}),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -417,7 +426,8 @@ class TestUpdatePlanningDeliverablesTool:
                         ],
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -452,7 +462,8 @@ class TestUpdatePlanningDeliverablesTool:
                         ],
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -488,7 +499,8 @@ class TestUpdatePlanningDeliverablesTool:
                         ],
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -516,7 +528,8 @@ class TestUpdatePlanningDeliverablesTool:
             UpdatePlanningDeliverablesInput(
                 issue_number=issue_number,
                 planning_deliverables=_minimal_deliverables(),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -534,7 +547,8 @@ class TestUpdatePlanningDeliverablesTool:
             UpdatePlanningDeliverablesInput(
                 issue_number=issue_number,
                 planning_deliverables=_minimal_deliverables(validates={"type": "unknown_type"}),
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -577,7 +591,8 @@ class TestPlanningDeliverablesPhaseSchema:
                         "deliverables": [{"id": "D-design-1", "description": "Design doc created"}]
                     },
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -599,7 +614,8 @@ class TestPlanningDeliverablesPhaseSchema:
                     **_minimal_deliverables(),
                     "unknown_phase": {"deliverables": []},
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert result.is_error
@@ -653,7 +669,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
                         "deliverables": [{"id": "Des2", "description": "new design deliverable"}]
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -698,7 +715,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
                         ]
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -739,7 +757,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
                         "deliverables": [{"id": "Doc2", "description": "new doc deliverable"}]
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -767,7 +786,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
                         ]
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -801,7 +821,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
                         ]
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -834,7 +855,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
                         ]
                     }
                 },
-            ), NoteContext()
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error

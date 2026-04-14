@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Behavior tests for GitFetchTool.
 
 Also covers input schema helpers for 100% module coverage.
@@ -10,8 +11,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.exceptions import PreflightError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.git_fetch_tool import GitFetchInput, GitFetchTool, _input_schema
 
 

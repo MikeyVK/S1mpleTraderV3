@@ -31,9 +31,11 @@ from dataclasses import dataclass
 # Event DTOs (Must be picklable for multiprocessing)
 # ============================================================================
 
+
 @dataclass
 class Event:
     """Simple event DTO."""
+
     event_id: int
     source: str
     timestamp: float
@@ -44,11 +46,9 @@ class Event:
 # Event Source (Runs in SEPARATE PROCESS)
 # ============================================================================
 
+
 def event_source_process(
-    source_name: str,
-    interval_ms: int,
-    duration_sec: int,
-    event_queue: multiprocessing.Queue
+    source_name: str, interval_ms: int, duration_sec: int, event_queue: multiprocessing.Queue
 ) -> None:
     """
     Event source running in separate process.
@@ -71,7 +71,7 @@ def event_source_process(
                 event_id=event_count,
                 source=source_name,
                 timestamp=current_time,
-                data=f"{source_name}_Event_{event_count}"
+                data=f"{source_name}_Event_{event_count}",
             )
 
             # Put in queue (this is BLOCKING if queue full, but we use large queue)
@@ -96,6 +96,7 @@ def event_source_process(
 # ============================================================================
 # Async EventBus (Runs in MAIN PROCESS with async I/O)
 # ============================================================================
+
 
 class AsyncEventBus:
     """
@@ -132,22 +133,23 @@ class AsyncEventBus:
                     None,  # Use default executor
                     self._event_queue.get,
                     True,  # block=True
-                    0.01   # timeout=10ms
+                    0.01,  # timeout=10ms
                 )
 
                 if event is None:
                     # Sentinel received - one source completed
                     self._sources_completed += 1
                     elapsed = time.perf_counter() - start_time
-                    print(f"[{elapsed:.3f}s] EventBus: Source completed "
-                          f"({self._sources_completed}/{self._total_sources})")
+                    print(
+                        f"[{elapsed:.3f}s] EventBus: Source completed "
+                        f"({self._sources_completed}/{self._total_sources})"
+                    )
                     continue
 
                 # Process event
                 elapsed = time.perf_counter() - start_time
                 print(
-                    f"  [{elapsed:.3f}s] EventBus: "
-                    f"Received {event.source} Event_{event.event_id}"
+                    f"  [{elapsed:.3f}s] EventBus: Received {event.source} Event_{event.event_id}"
                 )
 
                 # Simulate processing delay (e.g., database write, API call)
@@ -178,18 +180,16 @@ class AsyncEventBus:
             events_by_source[event.source].append(event)
 
         return {
-            'total_received': len(self._received_events),
-            'by_source': {
-                source: len(events)
-                for source, events in events_by_source.items()
-            },
-            'events': self._received_events
+            "total_received": len(self._received_events),
+            "by_source": {source: len(events) for source, events in events_by_source.items()},
+            "events": self._received_events,
         }
 
 
 # ============================================================================
 # Slow Consumer (Simulates CPU-intensive processing)
 # ============================================================================
+
 
 class SlowConsumer:
     """
@@ -237,6 +237,7 @@ class SlowConsumer:
 # Main Test
 # ============================================================================
 
+
 async def async_main():
     """Main async test runner."""
 
@@ -269,7 +270,6 @@ async def async_main():
     return event_bus.get_stats()
 
 
-
 def main() -> None:
     """Main test entry point."""
     print("=" * 80)
@@ -288,7 +288,7 @@ def main() -> None:
     print()
 
     # Set start method
-    multiprocessing.set_start_method('spawn', force=True)
+    multiprocessing.set_start_method("spawn", force=True)
 
     # Create shared queue
     event_queue = multiprocessing.Queue(maxsize=1000)
@@ -298,12 +298,12 @@ def main() -> None:
 
     source1 = multiprocessing.Process(
         target=event_source_process,
-        args=("FastSource", 50, 3, event_queue)  # 50ms interval, 3 seconds
+        args=("FastSource", 50, 3, event_queue),  # 50ms interval, 3 seconds
     )
 
     source2 = multiprocessing.Process(
         target=event_source_process,
-        args=("SlowSource", 100, 3, event_queue)  # 100ms interval, 3 seconds
+        args=("SlowSource", 100, 3, event_queue),  # 100ms interval, 3 seconds
     )
 
     source1.start()
@@ -329,17 +329,17 @@ def main() -> None:
     print()
 
     print("Events by source:")
-    for source, count in stats['by_source'].items():
+    for source, count in stats["by_source"].items():
         print(f"  {source}: {count} events")
     print()
 
     # Calculate expected events
     fast_expected = 3.0 / 0.05  # 3 seconds / 50ms = 60 events
-    slow_expected = 3.0 / 0.1   # 3 seconds / 100ms = 30 events
+    slow_expected = 3.0 / 0.1  # 3 seconds / 100ms = 30 events
     total_expected = fast_expected + slow_expected
 
-    fast_actual = stats['by_source'].get('FastSource', 0)
-    slow_actual = stats['by_source'].get('SlowSource', 0)
+    fast_actual = stats["by_source"].get("FastSource", 0)
+    slow_actual = stats["by_source"].get("SlowSource", 0)
 
     print("Expected events:")
     print(f"  FastSource: ~{fast_expected:.0f}")
@@ -356,12 +356,12 @@ def main() -> None:
     # Check for event loss
     fast_loss = fast_expected - fast_actual
     slow_loss = slow_expected - slow_actual
-    total_loss = total_expected - stats['total_received']
+    total_loss = total_expected - stats["total_received"]
 
     print("Event loss:")
-    print(f"  FastSource: {fast_loss:.0f} ({(fast_loss/fast_expected)*100:.1f}%)")
-    print(f"  SlowSource: {slow_loss:.0f} ({(slow_loss/slow_expected)*100:.1f}%)")
-    print(f"  Total: {total_loss:.0f} ({(total_loss/total_expected)*100:.1f}%)")
+    print(f"  FastSource: {fast_loss:.0f} ({(fast_loss / fast_expected) * 100:.1f}%)")
+    print(f"  SlowSource: {slow_loss:.0f} ({(slow_loss / slow_expected) * 100:.1f}%)")
+    print(f"  Total: {total_loss:.0f} ({(total_loss / total_expected) * 100:.1f}%)")
     print()
 
     if total_loss <= 5:  # Allow small margin (timing variations)

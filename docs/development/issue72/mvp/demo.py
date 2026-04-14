@@ -14,16 +14,14 @@ from jinja2 import Environment, FileSystemLoader, meta
 
 def demo_rendering() -> None:
     """Demonstrate that rendering still works with 4-tier inheritance."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("DEMO 1: Template Rendering (Jinja2 Auto-Resolves Inheritance)")
-    print("="*70)
+    print("=" * 70)
 
-    env = Environment(
-        loader=FileSystemLoader('docs/development/issue72/mvp/templates')
-    )
+    env = Environment(loader=FileSystemLoader("docs/development/issue72/mvp/templates"))
 
     # Render worker template with 4-tier inheritance
-    template = env.get_template('concrete_worker.py.jinja2')
+    template = env.get_template("concrete_worker.py.jinja2")
 
     context = {
         # Tier 0 (universal)
@@ -31,19 +29,15 @@ def demo_rendering() -> None:
         "template_id": "worker",
         "template_version": "1.0.0",
         "scaffold_created": "2026-01-22T10:30:00Z",
-
         # Tier 1 (code)
         "module_docstring": "Data processing worker implementation.",
-
         # Tier 2 (python) - handled by {% set %} in templates
-
         # Tier 3 (component) - handled by {% set %} in templates
-
         # Concrete (worker-specific)
         "worker_name": "DataProcessor",
         "worker_description": "Processes incoming data streams.",
         "worker_dependencies": "[DataValidator, DataTransformer]",
-        "worker_logic": "return {'status': 'processed', 'data': context['input_data']}"
+        "worker_logic": "return {'status': 'processed', 'data': context['input_data']}",
     }
 
     output = template.render(**context)
@@ -59,19 +53,17 @@ def demo_rendering() -> None:
 
 def demo_introspection_comparison() -> None:
     """Compare single-template vs multi-tier introspection."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("DEMO 2: Introspection Comparison")
-    print("="*70)
+    print("=" * 70)
 
-    env = Environment(
-        loader=FileSystemLoader('docs/development/issue72/mvp/templates')
-    )
+    env = Environment(loader=FileSystemLoader("docs/development/issue72/mvp/templates"))
 
     # Method 1: Single-template introspection (current production approach)
     print("\n📍 Method 1: Single-Template Introspection (CURRENT)")
     print("-" * 70)
 
-    source, _, _ = env.loader.get_source(env, 'concrete_worker.py.jinja2')
+    source, _, _ = env.loader.get_source(env, "concrete_worker.py.jinja2")
     ast = env.parse(source)
     vars_single = meta.find_undeclared_variables(ast)
 
@@ -83,7 +75,7 @@ def demo_introspection_comparison() -> None:
     print("\n📍 Method 2: Multi-Tier Introspection (MVP)")
     print("-" * 70)
 
-    schema = introspect_template_with_inheritance(env, 'concrete_worker.py.jinja2')
+    schema = introspect_template_with_inheritance(env, "concrete_worker.py.jinja2")
 
     print(f"Inheritance chain: {len(schema.inheritance_chain)} tiers")
     for i, tier in enumerate(schema.inheritance_chain):
@@ -95,9 +87,9 @@ def demo_introspection_comparison() -> None:
     print(f"  Optional: {len(schema.optional)}")
 
     # Comparison
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("COMPARISON RESULTS")
-    print("="*70)
+    print("=" * 70)
 
     missing_vars = all_vars - vars_single
 
@@ -116,21 +108,19 @@ def demo_introspection_comparison() -> None:
 
 def demo_tier_contribution() -> None:
     """Show which variables come from which tier."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("DEMO 3: Variable Contribution Per Tier")
-    print("="*70)
+    print("=" * 70)
 
-    env = Environment(
-        loader=FileSystemLoader('docs/development/issue72/mvp/templates')
-    )
+    env = Environment(loader=FileSystemLoader("docs/development/issue72/mvp/templates"))
 
     # Introspect each tier individually
     tiers = [
-        'tier0_base_artifact.jinja2',
-        'tier1_base_code.jinja2',
-        'tier2_base_python.jinja2',
-        'tier3_base_python_component.jinja2',
-        'concrete_worker.py.jinja2'
+        "tier0_base_artifact.jinja2",
+        "tier1_base_code.jinja2",
+        "tier2_base_python.jinja2",
+        "tier3_base_python_component.jinja2",
+        "concrete_worker.py.jinja2",
     ]
 
     tier_vars = {}
@@ -146,9 +136,9 @@ def demo_tier_contribution() -> None:
             print(f"    - {var}")
 
     # Show cumulative effect
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("CUMULATIVE EFFECT")
-    print("="*70)
+    print("=" * 70)
 
     cumulative = set()
     for i, tier in enumerate(tiers):
@@ -174,9 +164,9 @@ if __name__ == "__main__":
         # Demo 3: Tier contribution analysis
         demo_tier_contribution()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ MVP COMPLETE - All Demos Successful!")
-        print("="*70)
+        print("=" * 70)
         print("\nKey Findings:")
         print("  1. ✅ 4-tier inheritance works perfectly with Jinja2")
         print("  2. ✅ Rendering requires NO changes (FileSystemLoader handles it)")
@@ -187,4 +177,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
