@@ -259,7 +259,7 @@ def config_root(tmp_path: Path) -> Path:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         },
     )
 

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.exceptions import PreflightError
 from mcp_server.tools.git_fetch_tool import GitFetchInput, GitFetchTool, _input_schema
 
@@ -47,7 +48,7 @@ async def test_git_fetch_success_returns_text() -> None:
 
     run_sync = AsyncMock(return_value=manager.fetch.return_value)
     with patch("mcp_server.tools.git_fetch_tool.anyio.to_thread.run_sync", new=run_sync):
-        result = await tool.execute(GitFetchInput())
+        result = await tool.execute(GitFetchInput(), NoteContext())
 
     assert result.is_error is False
     assert "Fetched from origin" in str(result)
@@ -62,7 +63,7 @@ async def test_git_fetch_mcperror_returns_tool_error() -> None:
 
     run_sync = AsyncMock(side_effect=PreflightError("No remote"))
     with patch("mcp_server.tools.git_fetch_tool.anyio.to_thread.run_sync", new=run_sync):
-        result = await tool.execute(GitFetchInput(remote="origin"))
+        result = await tool.execute(GitFetchInput(remote="origin"), NoteContext())
 
     assert result.is_error is True
     assert "No remote" in str(result)
@@ -77,7 +78,7 @@ async def test_git_fetch_runtime_error_returns_tool_error() -> None:
 
     run_sync = AsyncMock(side_effect=RuntimeError("boom"))
     with patch("mcp_server.tools.git_fetch_tool.anyio.to_thread.run_sync", new=run_sync):
-        result = await tool.execute(GitFetchInput(remote="origin"))
+        result = await tool.execute(GitFetchInput(remote="origin"), NoteContext())
 
     assert result.is_error is True
     assert "Fetch failed: boom" in str(result)

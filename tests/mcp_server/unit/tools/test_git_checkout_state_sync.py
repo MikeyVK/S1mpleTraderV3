@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.state_repository import BranchState
 from mcp_server.tools.git_tools import GitCheckoutTool
 from mcp_server.tools.tool_result import ToolResult
@@ -37,7 +38,7 @@ class TestGitCheckoutStateSync:
         )
         tool._state_engine = mock_engine
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         mock_manager.checkout.assert_called_once_with("feature/123-test")
         mock_engine.get_state.assert_called_once_with("feature/123-test")
@@ -60,7 +61,7 @@ class TestGitCheckoutStateSync:
         mock_engine.get_state.side_effect = ValueError("State sync failed")
         tool._state_engine = mock_engine
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         mock_manager.checkout.assert_called_once_with("feature/456-test")
         assert isinstance(result, ToolResult)
@@ -86,7 +87,7 @@ class TestGitCheckoutStateSync:
         )
         tool._state_engine = mock_engine
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         mock_manager.checkout.assert_called_once_with("main")
         mock_engine.get_state.assert_called_once_with("main")

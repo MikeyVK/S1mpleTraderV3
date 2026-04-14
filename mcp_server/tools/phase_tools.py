@@ -21,12 +21,13 @@ from typing import Any
 import anyio
 from pydantic import BaseModel, Field, field_validator
 
+from mcp_server.core.operation_notes import NoteContext
+
 # Project modules
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 
 class TransitionPhaseInput(BaseModel):
@@ -97,7 +98,7 @@ class TransitionPhaseTool(_BaseTransitionTool):
     args_model = TransitionPhaseInput
     enforcement_event = "transition_phase"
 
-    async def execute(self, params: TransitionPhaseInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: TransitionPhaseInput, context: NoteContext) -> ToolResult:
         """Execute standard phase transition.
 
         Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
@@ -110,6 +111,7 @@ class TransitionPhaseTool(_BaseTransitionTool):
         Returns:
             ToolResult with success or error message
         """
+        del context  # Not used
         engine = self._create_engine()
 
         def do_transition() -> dict[str, Any]:
@@ -141,7 +143,7 @@ class ForcePhaseTransitionTool(_BaseTransitionTool):
     args_model = ForcePhaseTransitionInput
     enforcement_event = "transition_phase"
 
-    async def execute(self, params: ForcePhaseTransitionInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: ForcePhaseTransitionInput, context: NoteContext) -> ToolResult:
         """Execute forced phase transition.
 
         Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
@@ -154,6 +156,7 @@ class ForcePhaseTransitionTool(_BaseTransitionTool):
         Returns:
             ToolResult with success or error message
         """
+        del context  # Not used
         engine = self._create_engine()
 
         def do_force_transition() -> dict[str, Any]:

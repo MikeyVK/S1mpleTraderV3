@@ -4,9 +4,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 
 class HealthCheckInput(BaseModel):
@@ -24,5 +24,6 @@ class HealthCheckTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, _params: HealthCheckInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: HealthCheckInput, context: NoteContext) -> ToolResult:
+        del params, context  # Not used
         return ToolResult.text("OK")

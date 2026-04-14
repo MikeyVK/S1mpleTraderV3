@@ -16,6 +16,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
+from mcp_server.core.operation_notes import NoteContext
 
 # Module under test
 from mcp_server.managers.git_manager import GitManager
@@ -56,7 +57,7 @@ class TestGitManagerValidation:
 
     def test_create_branch_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test creating a branch with explicit base."""
-        name = manager.create_branch("my-feature", "feature", "HEAD")
+        name = manager.create_branch("my-feature", "feature", "HEAD", NoteContext())
 
         assert name == "feature/my-feature"
         mock_adapter.create_branch.assert_called_once_with("feature/my-feature", base="HEAD")
@@ -64,7 +65,7 @@ class TestGitManagerValidation:
 
     def test_create_branch_epic_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test creating an epic branch with explicit base."""
-        name = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD")
+        name = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD", NoteContext())
 
         assert name == "epic/91-test-suite-cleanup"
         mock_adapter.create_branch.assert_called_once_with(
@@ -75,24 +76,24 @@ class TestGitManagerValidation:
     def test_create_branch_invalid_type(self, manager: GitManager) -> None:
         """Test validation of branch type."""
         with pytest.raises(ValidationError, match="Invalid branch type"):
-            manager.create_branch("valid-name", "invalid-type", "HEAD")
+            manager.create_branch("valid-name", "invalid-type", "HEAD", NoteContext())
 
     def test_create_branch_invalid_name(self, manager: GitManager) -> None:
         """Test validation of branch name (regex)."""
         with pytest.raises(ValidationError, match="Invalid branch name"):
-            manager.create_branch("Bad Name!", "feature", "HEAD")
+            manager.create_branch("Bad Name!", "feature", "HEAD", NoteContext())
 
     def test_create_branch_dirty(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test pre-flight check failure for dirty working directory."""
         mock_adapter.is_clean.return_value = False
 
         with pytest.raises(PreflightError, match="Working directory is not clean"):
-            manager.create_branch("valid-name", "feature", "HEAD")
+            manager.create_branch("valid-name", "feature", "HEAD", NoteContext())
 
     def test_delete_branch_protected(self, manager: GitManager) -> None:
         """Test deletion of protected branch is prevented."""
         with pytest.raises(ValidationError, match="Cannot delete protected branch"):
-            manager.delete_branch("main")
+            manager.delete_branch("main", NoteContext())
 
 
 class TestGitManagerOperations:
@@ -112,14 +113,14 @@ class TestGitManagerOperations:
 
     def test_restore_success(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test restore operation."""
-        manager.restore(files=["a.py", "b.py"], source="HEAD")
+        manager.restore(files=["a.py", "b.py"], note_context=NoteContext(), source="HEAD")
 
         mock_adapter.restore.assert_called_once_with(files=["a.py", "b.py"], source="HEAD")
 
     def test_restore_requires_files(self, manager: GitManager) -> None:
         """Test restore operation requires files."""
         with pytest.raises(ValidationError):
-            manager.restore(files=[])
+            manager.restore(files=[], note_context=NoteContext())
 
     def test_checkout(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test checkout delegation."""
@@ -133,18 +134,18 @@ class TestGitManagerOperations:
 
     def test_merge_clean(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test merge with clean state."""
-        manager.merge("feature-branch")
+        manager.merge("feature-branch", NoteContext())
         mock_adapter.merge.assert_called_once_with("feature-branch")
 
     def test_merge_dirty(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test merge fails with dirty state."""
         mock_adapter.is_clean.return_value = False
         with pytest.raises(PreflightError, match="Working directory is not clean"):
-            manager.merge("feature-branch")
+            manager.merge("feature-branch", NoteContext())
 
     def test_delete_branch_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test deleting a valid branch."""
-        manager.delete_branch("feature/old")
+        manager.delete_branch("feature/old", NoteContext())
         mock_adapter.delete_branch.assert_called_once_with("feature/old", force=False)
 
     def test_stash_operations(self, manager: GitManager, mock_adapter: MagicMock) -> None:
@@ -209,7 +210,7 @@ class TestGitManagerCreateBranch:
         self, manager: GitManager, mock_adapter: MagicMock
     ) -> None:
         """RED: Should pass base_branch to adapter.create_branch as base."""
-        manager.create_branch("test", "feature", "main")
+        manager.create_branch("test", "feature", "main", NoteContext())
 
         mock_adapter.create_branch.assert_called_once_with("feature/test", base="main")
 
@@ -256,6 +257,7 @@ version: "1.0"
         result = manager.commit_with_scope(
             workflow_phase="research",
             message="investigate alternatives",
+            note_context=NoteContext(),
         )
 
         assert result == "abc123"
@@ -274,6 +276,7 @@ version: "1.0"
             sub_phase="red",
             message="add failing test",
             commit_type="test",
+            note_context=NoteContext(),
         )
 
         assert result == "def456"
@@ -293,6 +296,7 @@ version: "1.0"
             cycle_number=1,
             message="implement feature",
             commit_type="feat",
+            note_context=NoteContext(),
         )
 
         assert result == "ghi789"
@@ -312,6 +316,7 @@ version: "1.0"
             workflow_phase="coordination",
             sub_phase="delegation",
             message="delegate to child issues",
+            note_context=NoteContext(),
         )
 
         assert result == "jkl012"
@@ -333,6 +338,7 @@ version: "1.0"
             message="clean up code",
             files=["src/app.py", "tests/test_app.py"],
             commit_type="refactor",
+            note_context=NoteContext(),
         )
 
         assert result == "mno345"
@@ -353,6 +359,7 @@ version: "1.0"
             sub_phase="red",
             message="fix failing test",
             commit_type="fix",  # Override default 'test'
+            note_context=NoteContext(),
         )
 
         assert result == "pqr678"
@@ -368,6 +375,7 @@ version: "1.0"
             manager.commit_with_scope(
                 workflow_phase="invalid_phase",
                 message="test",
+                note_context=NoteContext(),
             )
 
     def test_commit_with_scope_invalid_subphase_raises_error(self, manager: GitManager) -> None:
@@ -377,6 +385,7 @@ version: "1.0"
                 workflow_phase="implementation",
                 sub_phase="invalid_subphase",
                 message="test",
+                note_context=NoteContext(),
             )
 
     def test_commit_with_scope_empty_files_raises_error(self, manager: GitManager) -> None:
@@ -386,4 +395,5 @@ version: "1.0"
                 workflow_phase="research",
                 message="test",
                 files=[],
+                note_context=NoteContext(),
             )

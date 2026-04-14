@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.config.settings import Settings
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
@@ -57,7 +58,7 @@ async def test_run_tests_success(
     # Mock return: stdout, stderr, returncode
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     assert result.content[0]["type"] == "text"
     assert result.content[1]["json"]["summary"]["passed"] == 1
@@ -81,7 +82,7 @@ async def test_run_tests_failure(
         1,
     )
 
-    result = await tool.execute(RunTestsInput(path="tests/foo.py"))
+    result = await tool.execute(RunTestsInput(path="tests/foo.py"), NoteContext())
 
     assert result.content[0]["type"] == "text"
     assert result.content[1]["json"]["summary"]["failed"] == 1
@@ -94,7 +95,7 @@ async def test_run_tests_markers(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/", markers="integration"))
+    await tool.execute(RunTestsInput(path="tests/", markers="integration"), NoteContext())
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "-m" in cmd
@@ -108,7 +109,7 @@ async def test_run_tests_exception(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.side_effect = OSError("Boom")
 
-    result = await tool.execute(RunTestsInput(path="tests/"))
+    result = await tool.execute(RunTestsInput(path="tests/"), NoteContext())
 
     assert result.is_error
     assert "Failed to run tests: Boom" in result.content[0]["text"]
@@ -159,7 +160,7 @@ async def test_run_tests_json_response_on_success(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     assert result.content[0]["type"] == "text"
     assert result.content[1]["json"]["summary"]["failed"] == 0
@@ -175,7 +176,7 @@ async def test_run_tests_json_response_on_failure(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     assert result.content[0]["type"] == "text"
     data = result.content[1]["json"]
@@ -218,7 +219,7 @@ async def test_last_failed_only_adds_lf_flag(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/", last_failed_only=True))
+    await tool.execute(RunTestsInput(path="tests/", last_failed_only=True), NoteContext())
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" in cmd
@@ -232,7 +233,7 @@ async def test_last_failed_only_default_no_lf_flag(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/"))
+    await tool.execute(RunTestsInput(path="tests/"), NoteContext())
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" not in cmd
@@ -246,7 +247,7 @@ async def test_last_failed_only_combined_with_path(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/unit", last_failed_only=True))
+    await tool.execute(RunTestsInput(path="tests/unit", last_failed_only=True), NoteContext())
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" in cmd
@@ -304,7 +305,7 @@ async def test_space_separated_paths_produce_multiple_args_in_cmd(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("2 passed in 0.20s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/test_a.py tests/test_b.py"))
+    await tool.execute(RunTestsInput(path="tests/test_a.py tests/test_b.py"), NoteContext())
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "tests/test_a.py" in cmd
@@ -319,7 +320,7 @@ async def test_scope_full_produces_no_path_args_in_cmd(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = ("10 passed in 1.00s\n", "", 0)
 
-    await tool.execute(RunTestsInput(scope="full"))
+    await tool.execute(RunTestsInput(scope="full"), NoteContext())
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     # cmd should not contain any test path arguments (only flags/options)
@@ -389,7 +390,7 @@ async def test_run_tests_text_content_is_summary_line(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     text = result.content[0]["text"]
     # Must be summary line, not a JSON blob
@@ -405,7 +406,7 @@ async def test_run_tests_text_content_is_summary_line_on_failure(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     text = result.content[0]["text"]
     assert not text.startswith("{"), f"content[0]['text'] should be summary_line not JSON: {text!r}"
@@ -453,7 +454,7 @@ async def test_run_tests_content0_is_text_summary(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     assert result.content[0]["type"] == "text", (
         f"Expected content[0] type='text', got '{result.content[0]['type']}'"
@@ -468,7 +469,7 @@ async def test_run_tests_content1_is_json_payload(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     assert result.content[1]["type"] == "json", (
         f"Expected content[1] type='json', got '{result.content[1]['type']}'"
@@ -484,7 +485,7 @@ async def test_run_tests_content0_text_contains_summary_line(
     tool = RunTestsTool(settings=injected_settings)
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit"))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
     assert isinstance(result.content[0].get("text", None), str)
     assert len(result.content[0]["text"]) > 0

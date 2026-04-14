@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import LabelConfig
 from mcp_server.managers.github_manager import GitHubManager
@@ -65,7 +66,7 @@ def test_create_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     tool = CreatePRTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(
-        tool.execute(CreatePRInput(title="New Feature", body="Description", head="feature/branch"))
+        tool.execute(CreatePRInput(title="New Feature", body="Description", head="feature/branch"), NoteContext())
     )
 
     assert "Created PR #123" in result.content[0]["text"]
@@ -80,7 +81,7 @@ def test_add_labels_tool(mock_adapter: Mock, test_label_config: LabelConfig) -> 
     tool = AddLabelsTool(manager=manager, label_config=test_label_config)
 
     result = asyncio.run(
-        tool.execute(AddLabelsInput(issue_number=456, labels=["bug", "high-priority"]))
+        tool.execute(AddLabelsInput(issue_number=456, labels=["bug", "high-priority"]), NoteContext())
     )
 
     assert "Added labels to #456" in result.content[0]["text"]
@@ -106,7 +107,7 @@ def test_list_prs_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = ListPRsTool(manager=manager, git_config=mock_git_config)
 
-    result = asyncio.run(tool.execute(ListPRsInput()))
+    result = asyncio.run(tool.execute(ListPRsInput(), NoteContext()))
 
     assert not result.is_error
     assert "#5" in result.content[0]["text"]
@@ -121,7 +122,7 @@ def test_merge_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = MergePRTool(manager=manager, git_config=mock_git_config)
 
-    result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="merge")))
+    result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="merge"), NoteContext()))
 
     assert not result.is_error
     assert "abc123" in result.content[0]["text"]

@@ -8,9 +8,9 @@ from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 
 class CreateFileInput(BaseModel):
@@ -52,8 +52,9 @@ class CreateFileTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: CreateFileInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: CreateFileInput, context: NoteContext) -> ToolResult:
         """Execute the tool."""
+        del context  # Deprecated tool — context unused
         warnings.warn(
             "create_file is deprecated. Use scaffold_artifact instead.",
             DeprecationWarning,

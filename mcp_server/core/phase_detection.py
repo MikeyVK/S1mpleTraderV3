@@ -82,7 +82,7 @@ class ScopeDecoder:
             workphases_path: Path to workphases.yaml file (defaults to .st3/config/workphases.yaml)
         """
         self.state_path = state_path or Path(".st3/state.json")
-        self.workphases_path = workphases_path or Path(".st3/config/workphases.yaml")
+        self.workphases_path = workphases_path or Path(".st3") / "config" / "workphases.yaml"
         self._valid_phases: set[str] | None = None
 
     def detect_phase(

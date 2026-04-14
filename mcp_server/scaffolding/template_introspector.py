@@ -108,10 +108,6 @@ def introspect_template(env: jinja2.Environment, template_source: str) -> Templa
     except jinja2.TemplateSyntaxError as e:
         raise ExecutionError(
             f"Template syntax error: {e}",
-            recovery=[
-                "Check template for valid Jinja2 syntax",
-                "Verify all tags are properly closed",
-            ],
         ) from e
 
     # Extract all undeclared variables
@@ -186,7 +182,6 @@ def _parse_template_ast(env: jinja2.Environment, template_file: Path) -> nodes.T
     except jinja2.TemplateSyntaxError as exc:
         raise ExecutionError(
             f"Template syntax error in {template_file}: {exc}",
-            recovery=["Check template for valid Jinja2 syntax"],
         ) from exc
 
 
@@ -220,7 +215,6 @@ def introspect_template_with_inheritance(template_root: Path, template_path: str
     if not full_path.exists():
         raise ExecutionError(
             f"Template not found: {template_path}",
-            recovery=["Check template directory structure"],
         )
 
     chain = TemplateAnalyzer(template_root).get_inheritance_chain(full_path)

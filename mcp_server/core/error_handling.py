@@ -47,14 +47,12 @@ def tool_error_handler(func: Callable[..., Awaitable[T]]) -> Callable[..., Await
         ) as exc:
             message = ""
             error_code: str | None = None
-            hints: list[str] | None = None
             file_path: str | None = None
 
             # Preserve MCPError contract
             if isinstance(exc, MCPError):
                 message = exc.message
                 error_code = exc.code
-                hints = exc.hints if exc.hints else None
                 # Only ConfigError has file_path attribute
                 if isinstance(exc, ConfigError):
                     file_path = exc.file_path
@@ -93,7 +91,6 @@ def tool_error_handler(func: Callable[..., Awaitable[T]]) -> Callable[..., Await
                         content=content,
                         is_error=True,
                         error_code=error_code,
-                        hints=hints,
                         file_path=file_path,
                     ),
                 )
@@ -103,7 +100,6 @@ def tool_error_handler(func: Callable[..., Awaitable[T]]) -> Callable[..., Await
                     ToolResult.error(
                         message=message,
                         error_code=error_code,
-                        hints=hints,
                         file_path=file_path,
                     ),
                 )

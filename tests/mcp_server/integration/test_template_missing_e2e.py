@@ -3,7 +3,7 @@
 Tests that when a template file does not exist on disk, the error
 propagates correctly through the entire call stack:
 
-1. JinjaRenderer raises ExecutionError with recovery hints
+1. JinjaRenderer raises ExecutionError
 2. TemplateScaffolder propagates ExecutionError (no conversion)
 3. ArtifactManager propagates ExecutionError
 4. Tool error_handler converts to ToolResult with preserved contract
@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from mcp_server.config.loader import ConfigLoader
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
@@ -43,7 +44,6 @@ async def test_template_missing_error_propagates_through_call_chain(
     Validates:
     - is_error=True
     - error_code="ERR_EXECUTION"
-    - hints populated with recovery information
     - message contains template path
     """
     # Arrange: Add artifact type with non-existent template to registry
@@ -79,8 +79,6 @@ async def test_template_missing_error_propagates_through_call_chain(
     )
 
     # Reinitialize manager with updated registry (hermetic fixture uses temp workspace)
-    # The artifact_manager fixture already has temp renderer injected
-    # We just need to reload the registry
     artifact_manager.scaffolder.registry = fresh_registry
     artifact_manager.registry = fresh_registry
 
@@ -88,19 +86,14 @@ async def test_template_missing_error_propagates_through_call_chain(
     tool = ScaffoldArtifactTool(manager=artifact_manager)
 
     # Act: Call tool with artifact type that has missing template
-    # This will:
-    # This will:
-    # 1. ArtifactRegistry checks if 'dto_missing' exists -> ConfigError
-    # 2. ArtifactManager propagates ConfigError
-    # 3. Tool error_handler catches and converts to ToolResult with ERR_CONFIG
-    # 5. Tool error_handler catches and converts to ToolResult
     result = await tool.execute(
         ScaffoldArtifactInput(
             artifact_type="dto_missing",
             name="TestDTO",
             output_path="mcp_server/dtos/test.py",
             context={"description": "Test DTO"},
-        )
+        ),
+        NoteContext(),
     )
 
     # Assert: Error contract preserved through entire call chain
@@ -109,17 +102,7 @@ async def test_template_missing_error_propagates_through_call_chain(
         f"Expected ERR_EXECUTION (template resolution failure), got {result.error_code}"
     )
 
-    # Verify hints populated for template recovery
-    assert result.hints is not None, "Expected hints to be populated"
-    assert len(result.hints) > 0, "Expected at least one hint"
-
-    hints_text = " ".join(result.hints).lower()
-    assert any(
-        keyword in hints_text
-        for keyword in ["template", "does_not_exist", "check", "fallback", "path"]
-    ), f"Expected template-related hints, got: {result.hints}"
-
-    # Verify message contains template path information now that the registry reload succeeds
+    # Verify message contains template path information
     assert result.content is not None
     assert len(result.content) > 0
     message = result.content[0]["text"]

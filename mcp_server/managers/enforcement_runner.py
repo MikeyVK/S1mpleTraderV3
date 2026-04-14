@@ -19,7 +19,12 @@ from pathlib import Path
 from typing import cast
 
 from mcp_server.core.exceptions import ConfigError, ExecutionError, ValidationError
-from mcp_server.core.operation_notes import ExclusionNote, NoteContext
+from mcp_server.core.operation_notes import (
+    ExclusionNote,
+    NoteContext,
+    RecoveryNote,
+    SuggestionNote,
+)
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
@@ -82,7 +87,7 @@ def _git_is_tracked(workspace_root: Path, path: str) -> bool:
     return result.returncode == 0
 
 
-def _git_rm_cached(workspace_root: Path, path: str) -> None:
+def _git_rm_cached(workspace_root: Path, path: str, note_context: NoteContext) -> None:
     """Remove *path* from the git index without deleting the working-tree file."""
     result = _run_git_command(
         workspace_root,
@@ -91,13 +96,11 @@ def _git_rm_cached(workspace_root: Path, path: str) -> None:
     )
     if result.returncode != 0:
         stderr = result.stderr.strip()
-        raise ExecutionError(
-            f"git rm --cached failed for '{path}': {stderr}",
-            recovery=[
-                "Run 'git status' to inspect current index state",
-                f"Manually run: git rm --cached {path}",
-            ],
+        note_context.produce(
+            RecoveryNote(message="Run 'git status' to inspect current index state")
         )
+        note_context.produce(RecoveryNote(message=f"Manually run: git rm --cached {path}"))
+        raise ExecutionError(f"git rm --cached failed for '{path}': {stderr}")
 
 
 __all__ = [
@@ -236,7 +239,7 @@ class EnforcementRunner:
         note_context: NoteContext,
     ) -> None:
         """Block invalid branch creation bases based on branch-type rules."""
-        del self, workspace_root, note_context
+        del self, workspace_root
         branch_type = context.get_param("branch_type")
         base_branch = context.get_param("base_branch")
         if not branch_type or not base_branch:
@@ -249,9 +252,11 @@ class EnforcementRunner:
         if any(fnmatch(str(base_branch), pattern) for pattern in allowed_patterns):
             return
 
+        note_context.produce(
+            SuggestionNote(message=f"Allowed bases: {', '.join(allowed_patterns)}")
+        )
         raise ValidationError(
             f"Branch type '{branch_type}' cannot be created from base '{base_branch}'",
-            hints=[f"Allowed bases: {', '.join(allowed_patterns)}"],
         )
 
     def _handle_exclude_branch_local_artifacts(
@@ -297,7 +302,7 @@ class EnforcementRunner:
         Check 2 — Artifact pre-flight: no branch-local artifact may remain git-tracked.
         Both checks read live state at handler execution time.
         """
-        del action, context, note_context
+        del action, context
         if self._merge_readiness_context is None:
             return
         ctx = self._merge_readiness_context
@@ -305,10 +310,12 @@ class EnforcementRunner:
         # Check 1 — Phase gate (read live from state.json)
         current_phase = _read_current_phase(workspace_root)
         if current_phase != ctx.pr_allowed_phase:
+            note_context.produce(
+                SuggestionNote(message=f'transition_phase(to_phase="{ctx.pr_allowed_phase}")')
+            )
             raise ValidationError(
                 f"PR creation requires phase '{ctx.pr_allowed_phase}'. "
                 f"Current phase: '{current_phase}'.",
-                hints=[f'transition_phase(to_phase="{ctx.pr_allowed_phase}")'],
             )
 
         # Check 2 — Artifact pre-flight
@@ -318,14 +325,24 @@ class EnforcementRunner:
             if _git_is_tracked(workspace_root, artifact.path)
         ]
         if tracked:
-            artifact_hints = [f"  - {a.path}\n    Reason: {a.reason}" for a in tracked]
+            for a in tracked:
+                note_context.produce(
+                    SuggestionNote(message=f"  - {a.path}\n    Reason: {a.reason}")
+                )
+            note_context.produce(
+                SuggestionNote(message="Commit first in the ready phase to auto-exclude them:")
+            )
+            note_context.produce(
+                SuggestionNote(
+                    message='  git_add_or_commit(message="chore: prepare branch for PR")'
+                )
+            )
+            note_context.produce(
+                SuggestionNote(
+                    message="Source: .st3/config/phase_contracts.yaml"
+                    " → merge_policy.branch_local_artifacts"
+                )
+            )
             raise ValidationError(
                 "Branch-local artifacts are still git-tracked and would contaminate main:",
-                hints=[
-                    *artifact_hints,
-                    "Commit first in the ready phase to auto-exclude them:",
-                    '  git_add_or_commit(message="chore: prepare branch for PR")',
-                    "Source: .st3/config/phase_contracts.yaml"
-                    " → merge_policy.branch_local_artifacts",
-                ],
             )

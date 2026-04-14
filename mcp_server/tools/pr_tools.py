@@ -5,11 +5,11 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import GitConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 
 class CreatePRInput(BaseModel):
@@ -57,7 +57,8 @@ class CreatePRTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: CreatePRInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: CreatePRInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         result = self.manager.create_pr(
             title=params.title,
             body=params.body,
@@ -95,7 +96,8 @@ class ListPRsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: ListPRsInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: ListPRsInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             prs = self.manager.list_prs(state=params.state, base=params.base, head=params.head)
         except ExecutionError as e:
@@ -142,7 +144,8 @@ class MergePRTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: MergePRInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: MergePRInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             result = self.manager.merge_pr(
                 pr_number=params.pr_number,

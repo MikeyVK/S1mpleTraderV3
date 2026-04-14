@@ -14,6 +14,7 @@ from pathlib import Path
 # Third-party
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
 
@@ -49,7 +50,7 @@ async def test_tool_execute_scaffolds_design_doc(
     )
 
     # Act
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     # Assert
     assert result is not None
@@ -101,7 +102,7 @@ async def test_tool_execute_scaffolds_dto(
     )
 
     # Act
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     # Assert
     assert result is not None

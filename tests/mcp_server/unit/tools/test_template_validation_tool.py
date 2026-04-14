@@ -20,6 +20,7 @@ import pytest
 # Module under test
 from pydantic import ValidationError
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.template_validation_tool import (
     TemplateValidationInput,
     TemplateValidationTool,
@@ -65,7 +66,7 @@ class TestTemplateValidationTool:
 
             # Execute
             result = await tool.execute(
-                TemplateValidationInput(path=path, template_type=template_type)
+                TemplateValidationInput(path=path, template_type=template_type), NoteContext()
             )
 
             # Verify
@@ -96,7 +97,7 @@ class TestTemplateValidationTool:
 
             # Execute
             result = await tool.execute(
-                TemplateValidationInput(path=path, template_type=template_type)
+                TemplateValidationInput(path=path, template_type=template_type), NoteContext()
             )
 
             # Verify
@@ -126,7 +127,7 @@ class TestTemplateValidationTool:
             mock_validator_cls.return_value = mock_instance
 
             result = await tool.execute(
-                TemplateValidationInput(path=path, template_type=template_type)
+                TemplateValidationInput(path=path, template_type=template_type), NoteContext()
             )
 
             assert "Validation error" in result.content[0]["text"]

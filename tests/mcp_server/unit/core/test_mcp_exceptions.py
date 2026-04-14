@@ -18,29 +18,27 @@ def test_mcp_error_defaults() -> None:
     error = MCPError("Something went wrong")
     assert error.message == "Something went wrong"
     assert error.code == "ERR_INTERNAL"
-    assert error.hints == []
 
 
 def test_validation_error() -> None:
-    """Test ValidationError stores hints correctly."""
-    error = ValidationError("Invalid input", hints=["Check format"])
+    """Test ValidationError has correct code."""
+    error = ValidationError("Invalid input")
     assert error.code == "ERR_VALIDATION"
-    assert error.hints == ["Check format"]
+    assert error.message == "Invalid input"
 
 
 def test_preflight_error() -> None:
-    """Test PreflightError stores blockers as hints."""
-    error = PreflightError("Check failed", blockers=["Dirty git tree"])
+    """Test PreflightError has correct code."""
+    error = PreflightError("Check failed")
     assert error.code == "ERR_PREFLIGHT"
-    assert error.blockers == ["Dirty git tree"]
-    assert error.hints == ["Dirty git tree"]
+    assert error.message == "Check failed"
 
 
 def test_execution_error() -> None:
-    """Test ExecutionError stores recovery steps."""
-    error = ExecutionError("Command failed", recovery=["Try again"])
+    """Test ExecutionError has correct code."""
+    error = ExecutionError("Command failed")
     assert error.code == "ERR_EXECUTION"
-    assert error.recovery == ["Try again"]
+    assert error.message == "Command failed"
 
 
 def test_system_error() -> None:

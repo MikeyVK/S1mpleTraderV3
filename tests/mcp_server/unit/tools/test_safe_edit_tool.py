@@ -27,6 +27,7 @@ import pytest
 from pydantic import ValidationError
 
 # Project modules
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool
 
 
@@ -69,7 +70,7 @@ class TestSafeEditTool:
 
                 # Execute
                 result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="strict")
+                    SafeEditInput(path=path, content=content, mode="strict"), NoteContext()
                 )
 
                 # Verify
@@ -90,7 +91,7 @@ class TestSafeEditTool:
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
                 result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="strict")
+                    SafeEditInput(path=path, content=content, mode="strict"), NoteContext()
                 )
 
                 # Verify
@@ -113,7 +114,7 @@ class TestSafeEditTool:
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
                 result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="interactive")
+                    SafeEditInput(path=path, content=content, mode="interactive"), NoteContext()
                 )
 
                 # Verify
@@ -136,7 +137,7 @@ class TestSafeEditTool:
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
                 result = await tool.execute(
-                    SafeEditInput(path=path, content=content, mode="verify_only")
+                    SafeEditInput(path=path, content=content, mode="verify_only"), NoteContext()
                 )
 
                 # Verify
@@ -157,7 +158,7 @@ class TestSafeEditTool:
 
         with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             # Execute
-            await tool.execute(SafeEditInput(path=path, content=content))
+            await tool.execute(SafeEditInput(path=path, content=content), NoteContext())
 
             # Verify that validate was called (fallback logic is internal to service)
             tool.validation_service.validate.assert_called_once()
@@ -184,7 +185,7 @@ class TestSafeEditTool:
             ):
                 # Execute in strict mode (should reject + show diff)
                 result = await tool.execute(
-                    SafeEditInput(path=path, content=new_content, mode="strict", show_diff=True)
+                    SafeEditInput(path=path, content=new_content, mode="strict", show_diff=True), NoteContext()
                 )
 
                 # Verify diff appears exactly once
@@ -219,7 +220,7 @@ class TestSafeEditTool:
                     content="invalid syntax here @@@ not python",
                     mode="strict",
                     show_diff=True,
-                )
+                ), NoteContext()
             )
 
             # Check response
@@ -254,7 +255,7 @@ class TestSafeEditTool:
                     search="this pattern does not exist",
                     replace="new text",
                     mode="strict",
-                )
+                ), NoteContext()
             )
 
             # Check error message includes context
@@ -301,7 +302,7 @@ class TestSafeEditTool:
                             }
                         ],
                         mode="interactive",
-                    )
+                    ), NoteContext()
                 )
                 edit_results.append({"task": task_id, "success": True, "result": result})
             except (TimeoutError, ValueError, OSError) as e:

@@ -12,6 +12,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 
 
@@ -31,7 +32,7 @@ def test_git_manager_create_branch_valid(mock_git_adapter: Mock, git_config: Git
     mock_git_adapter.is_clean.return_value = True
     manager = GitManager(git_config=git_config, adapter=mock_git_adapter)
 
-    branch = manager.create_branch("my-feature", "feature", "HEAD")
+    branch = manager.create_branch("my-feature", "feature", "HEAD", NoteContext())
 
     assert branch == "feature/my-feature"
     mock_git_adapter.create_branch.assert_called_with("feature/my-feature", base="HEAD")
@@ -44,7 +45,7 @@ def test_git_manager_create_branch_epic_valid(
     mock_git_adapter.is_clean.return_value = True
     manager = GitManager(git_config=git_config, adapter=mock_git_adapter)
 
-    branch = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD")
+    branch = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD", NoteContext())
 
     assert branch == "epic/91-test-suite-cleanup"
     mock_git_adapter.create_branch.assert_called_with("epic/91-test-suite-cleanup", base="HEAD")
@@ -56,14 +57,14 @@ def test_git_manager_create_branch_dirty(mock_git_adapter: Mock, git_config: Git
     manager = GitManager(git_config=git_config, adapter=mock_git_adapter)
 
     with pytest.raises(PreflightError):
-        manager.create_branch("my-feature", "feature", "HEAD")
+        manager.create_branch("my-feature", "feature", "HEAD", NoteContext())
 
 
 def test_git_manager_invalid_name(mock_git_adapter: Mock, git_config: GitConfig) -> None:
     """Test that invalid branch names are rejected."""
     manager = GitManager(git_config=git_config, adapter=mock_git_adapter)
     with pytest.raises(ValidationError):
-        manager.create_branch("Invalid Name", "feature", "HEAD")
+        manager.create_branch("Invalid Name", "feature", "HEAD", NoteContext())
 
 
 def test_git_manager_commit_tdd(mock_git_adapter: Mock, git_config: GitConfig) -> None:
@@ -72,6 +73,7 @@ def test_git_manager_commit_tdd(mock_git_adapter: Mock, git_config: GitConfig) -
     manager.commit_with_scope(
         "implementation",
         "Added test",
+        NoteContext(),
         sub_phase="red",
         cycle_number=1,
         commit_type="test",
@@ -80,4 +82,5 @@ def test_git_manager_commit_tdd(mock_git_adapter: Mock, git_config: GitConfig) -
     mock_git_adapter.commit.assert_called_with(
         "test(P_IMPLEMENTATION_SP_C1_RED): Added test",
         files=None,
+        skip_paths=frozenset(),
     )

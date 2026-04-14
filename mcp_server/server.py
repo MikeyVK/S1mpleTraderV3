@@ -28,8 +28,8 @@ from mcp_server.config.loader import ConfigLoader, resolve_config_root
 from mcp_server.config.settings import Settings
 from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.exceptions import MCPError
-from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.logging import get_logger, setup_logging
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.managers.deliverable_checker import DeliverableChecker
@@ -671,15 +671,6 @@ class MCPServer:
                 )
         except KeyboardInterrupt:
             lifecycle_logger.info("MCP server interrupted by user")
-        except Exception as e:
-            lifecycle_logger.error(
-                "MCP server crashed: %s",
-                e,
-                exc_info=True,
-                extra={"props": {"error_type": type(e).__name__, "error_message": str(e)}},
-            )
-            # Re-raise to ensure proper exit code
-            raise
         finally:
             lifecycle_logger.info("MCP server shutting down")
 

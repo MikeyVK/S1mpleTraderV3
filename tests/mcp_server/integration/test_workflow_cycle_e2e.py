@@ -15,6 +15,7 @@ import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.loader import ConfigLoader
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
 from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
@@ -149,7 +150,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     2. Phase transitions through complete cycle
     3. Commit-scope encoding at each phase
     4. ScopeDecoder detection at each phase
-    5. Implementation subcycle (red → green → refactor)
+    5. Implementation subcycle (red -> green -> refactor)
     """
     # GIVEN: Initialized project with feature workflow
     pm = make_project_manager(git_repo)
@@ -194,6 +195,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     commit_hash = git_manager.commit_with_scope(
         workflow_phase="research",
         message="complete research",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
     assert commit_hash is not None
@@ -212,6 +214,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="planning",
         message="create plan",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 
@@ -228,6 +231,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="design",
         message="create design",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 
@@ -257,7 +261,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     # Transition to IMPLEMENTATION
     state_engine.transition(branch="feature/999-e2e-test", to_phase="implementation")
 
-    # Phase 4: IMPLEMENTATION CYCLE (red → green → refactor)
+    # Phase 4: IMPLEMENTATION CYCLE (red -> green -> refactor)
 
     # IMPLEMENTATION: RED
     test_file.write_text("red phase\n")
@@ -267,6 +271,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         cycle_number=1,
         commit_type="test",
         message="add failing test",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 
@@ -284,6 +289,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         cycle_number=1,
         commit_type="feat",
         message="implement feature",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 
@@ -301,6 +307,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         cycle_number=1,
         commit_type="refactor",
         message="refactor code",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 
@@ -318,6 +325,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="validation",
         message="add validation tests",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 
@@ -334,6 +342,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="documentation",
         message="update docs",
+        note_context=NoteContext(),
         files=[str(test_file)],
     )
 

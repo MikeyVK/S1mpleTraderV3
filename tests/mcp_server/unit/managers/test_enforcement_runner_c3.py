@@ -29,7 +29,7 @@ import pytest
 # Project modules
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
-from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementAction,
@@ -152,7 +152,11 @@ class TestEnforcementRunnerC3:
         assert result is None
 
     def test_exclude_handler_removes_tracked_artifacts(self, tmp_path: Path) -> None:
-        """_handle_exclude_branch_local_artifacts produces ExclusionNote entries instead of calling _git_rm_cached."""
+        """_handle_exclude_branch_local_artifacts produces ExclusionNote entries.
+
+        Verifies ExclusionNote entries are produced instead of calling
+        _git_rm_cached.
+        """
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         action = _base_action()
@@ -276,7 +280,9 @@ class TestEnforcementRunnerC3:
 
     # ── _git_rm_cached error handling ─────────────────────────────────────────
 
-    def test_exclude_handler_no_git_rm_cached_even_with_subprocess_failure(self, tmp_path: Path) -> None:
+    def test_exclude_handler_no_git_rm_cached_even_with_subprocess_failure(
+        self, tmp_path: Path
+    ) -> None:
         """_handle_exclude_branch_local_artifacts does not call _git_rm_cached after C3.
 
         Verifies that even when subprocess.run would return a failure code, no

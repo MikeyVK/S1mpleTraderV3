@@ -115,14 +115,15 @@ class TestEnforcementRunnerC3:
             "mcp_server.managers.enforcement_runner._git_is_tracked",
             return_value=False,
         ):
-            result = runner.run(
-                event="git_add_or_commit",
-                timing="pre",
-                enforcement_ctx=enforcement_ctx,
-                note_context=note_context,
-            )
-
-        assert result is None, f"Expected None but got {result!r}"
+            assert (
+                runner.run(
+                    event="git_add_or_commit",
+                    timing="pre",
+                    enforcement_ctx=enforcement_ctx,
+                    note_context=note_context,
+                )
+                is None
+            ), "runner.run() must return None"
 
     def test_enforcement_runner_writes_exclusion_note(self, tmp_path: Path) -> None:
         """Confirmed-tracked artifacts must produce ExclusionNote entries in NoteContext.

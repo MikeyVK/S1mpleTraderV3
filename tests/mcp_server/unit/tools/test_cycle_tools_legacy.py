@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.cycle_tools import (
     ForceCycleTransitionInput,
     ForceCycleTransitionTool,
@@ -151,7 +152,7 @@ class TestTransitionCycleTool:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
 
         # Assert successful transition
         assert not result.is_error, f"Expected success: {result.content}"
@@ -191,7 +192,7 @@ class TestTransitionCycleTool:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=1))
+            result = await tool.execute(TransitionCycleInput(to_cycle=1), NoteContext())
 
         # Assert blocked
         assert result.is_error, "Expected backward transition to be blocked"
@@ -218,7 +219,7 @@ class TestTransitionCycleTool:
             mock_git_class.return_value = mock_git
 
             # Try to jump from cycle 1 to 3 (skipping 2)
-            result = await tool.execute(TransitionCycleInput(to_cycle=3))
+            result = await tool.execute(TransitionCycleInput(to_cycle=3), NoteContext())
 
         # Assert blocked
         assert result.is_error, "Expected non-sequential jump to be blocked"
@@ -254,7 +255,7 @@ class TestTransitionCycleTool:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
 
         # Assert blocked
         assert result.is_error, "Expected transition to be blocked outside TDD phase"
@@ -371,7 +372,8 @@ class TestForceCycleTransitionTool:
                     to_cycle=1,
                     skip_reason="Re-testing schema changes",
                     human_approval="John approved on 2026-02-17",
-                )
+                ),
+                NoteContext(),
             )
 
         # Assert success
@@ -415,7 +417,8 @@ class TestForceCycleTransitionTool:
                     to_cycle=4,
                     skip_reason="Cycle 3 covered by integration tests",
                     human_approval="Jane approved on 2026-02-17",
-                )
+                ),
+                NoteContext(),
             )
 
         # Assert success
@@ -449,7 +452,8 @@ class TestForceCycleTransitionTool:
                     to_cycle=1,
                     skip_reason="",  # Empty reason
                     human_approval="John approved on 2026-02-17",
-                )
+                ),
+                NoteContext(),
             )
 
         # Assert blocked
@@ -476,7 +480,8 @@ class TestForceCycleTransitionTool:
                     to_cycle=1,
                     skip_reason="Re-testing schema changes",
                     human_approval="",  # Empty approval
-                )
+                ),
+                NoteContext(),
             )
 
         # Assert blocked
@@ -594,7 +599,8 @@ class TestForceCycleAuditSchema:
                     to_cycle=4,
                     skip_reason="Cycles 3 covered by parent",
                     human_approval="John approved on 2026-02-17",
-                )
+                ),
+                NoteContext(),
             )
 
         assert not result.is_error, f"Expected success: {result.content}"
@@ -634,7 +640,8 @@ class TestForceCycleAuditSchema:
                     to_cycle=1,
                     skip_reason="Re-testing",
                     human_approval="John approved",
-                )
+                ),
+                NoteContext(),
             )
 
         project_manager = make_project_manager(workspace_root)
@@ -671,7 +678,8 @@ class TestForceCycleAuditSchema:
                     to_cycle=4,
                     skip_reason="Cycles 3 covered by parent tests",
                     human_approval="Jane approved on 2026-02-17",
-                )
+                ),
+                NoteContext(),
             )
 
         assert not result.is_error
@@ -784,7 +792,7 @@ class TestTransitionCycleHistory:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
 
         assert not result.is_error, f"Expected success: {result.content}"
 
@@ -817,10 +825,10 @@ class TestTransitionCycleHistory:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result1 = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result1 = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
             assert not result1.is_error
 
-            result2 = await tool.execute(TransitionCycleInput(to_cycle=3))
+            result2 = await tool.execute(TransitionCycleInput(to_cycle=3), NoteContext())
             assert not result2.is_error
 
         project_manager = make_project_manager(workspace_root)
@@ -958,7 +966,7 @@ class TestTransitionCycleExitCriteria:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
 
         assert result.is_error, "Must block when exit_criteria is empty"
         text = result.content[0]["text"]
@@ -998,7 +1006,7 @@ class TestTransitionCycleExitCriteria:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
 
         assert result.is_error, "Must block when exit_criteria key is missing"
         text = result.content[0]["text"]
@@ -1037,6 +1045,6 @@ class TestTransitionCycleExitCriteria:
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
 
-            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+            result = await tool.execute(TransitionCycleInput(to_cycle=2), NoteContext())
 
         assert not result.is_error, f"Must succeed when exit_criteria present: {result.content}"

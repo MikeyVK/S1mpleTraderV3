@@ -166,8 +166,8 @@ class TestServerToolRegistration:
             description = "Dummy tool"
             args_model = None
 
-            async def execute(self, params: object) -> ToolResult:
-                del params
+            async def execute(self, params: object, context: object) -> ToolResult:
+                del params, context
                 return ToolResult.text("ok")
 
         with patch("mcp_server.server.Settings") as mock_settings_cls:
@@ -282,7 +282,7 @@ class TestServerToolRegistration:
             ) as mock_create_pr:
                 response = await handler(_make_create_pr_request())
 
-        text = response.root.content[0].text
+        text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
         assert response.root.isError is True
         assert "PR creation requires phase 'ready'" in text
         assert "Current phase: 'documentation'" in text
@@ -316,7 +316,7 @@ class TestServerToolRegistration:
             ) as mock_create_pr:
                 response = await handler(_make_create_pr_request())
 
-        text = response.root.content[0].text
+        text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
         assert response.root.isError is True
         assert "Branch-local artifacts are still git-tracked" in text
         assert ".st3/state.json" in text

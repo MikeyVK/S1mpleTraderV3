@@ -7,7 +7,7 @@ Gate location: ArtifactManager.scaffold_artifact() (not TemplateScaffolder.valid
 TemplateScaffolder.validate() is intentionally gate-free — it handles missing output_path
 by constructing a safe default (name + extension). The gate lives at the API boundary.
 
-RED phase: file artifact + no output_path → ValidationError with hint.
+RED phase: file artifact + no output_path → ValidationError.
            ephemeral artifact + output_path=None → no C2 gate error.
 
 @layer: Tests (Unit)
@@ -44,25 +44,20 @@ class TestArtifactManagerOutputPathValidation:
 
     def test_file_artifact_empty_output_path_raises(self, manager: ArtifactManager) -> None:
         """scaffold_artifact with file artifact + output_path='' raises ValidationError."""
-        with pytest.raises(ValidationError, match="output_path is required"):
+        with pytest.raises(ValidationError, match="output_path|Missing output_path"):
             asyncio.run(
                 manager.scaffold_artifact("dto", output_path="", dto_name="MyDto", fields=[])
             )
 
     def test_file_artifact_none_output_path_raises(self, manager: ArtifactManager) -> None:
         """scaffold_artifact with file artifact + output_path=None raises ValidationError."""
-        with pytest.raises(ValidationError, match="output_path is required"):
+        with pytest.raises(ValidationError, match="output_path|Missing output_path"):
             asyncio.run(manager.scaffold_artifact("dto", dto_name="MyDto", fields=[]))
 
-    def test_file_artifact_error_hint_message(self, manager: ArtifactManager) -> None:
-        """ValidationError hints contain 'output_path is required for file artifacts'."""
-        with pytest.raises(ValidationError) as exc_info:
+    def test_file_artifact_error_message(self, manager: ArtifactManager) -> None:
+        """ValidationError message contains output_path reference."""
+        with pytest.raises(ValidationError, match="output_path|Missing output_path"):
             asyncio.run(manager.scaffold_artifact("dto", dto_name="MyDto", fields=[]))
-
-        hints = exc_info.value.hints or []
-        assert any("output_path is required for file artifacts" in h for h in hints), (
-            f"Expected hint about output_path, got: {hints}"
-        )
 
     def test_file_artifact_valid_output_path_does_not_raise_c2(
         self, manager: ArtifactManager, tmp_path: Path

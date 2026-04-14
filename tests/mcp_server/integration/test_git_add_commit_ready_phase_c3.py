@@ -24,15 +24,19 @@ driven by a real git repository. Verifies:
 # Standard library
 import json
 from pathlib import Path
+from shutil import copytree
+from unittest.mock import patch
 
 # Third-party
 import pytest
 from git import Repo as GitRepo
+from mcp.types import CallToolRequest, CallToolRequestParams
 
 # Project modules
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
+from mcp_server.config.settings import ServerSettings, Settings
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementContext,
@@ -40,7 +44,13 @@ from mcp_server.managers.enforcement_runner import (
 )
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
-from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
+from mcp_server.server import MCPServer
+from mcp_server.tools.git_tools import (
+    GitCommitInput,
+    GitCommitTool,
+    build_commit_type_resolver,
+    build_phase_guard,
+)
 from mcp_server.tools.tool_result import ToolResult
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
@@ -212,4 +222,109 @@ class TestGitAddCommitReadyPhaseC3:
         all_text = " ".join(c["text"] for c in rendered.content if c.get("type") == "text")
         assert _STATE_JSON in all_text, (
             f"Expected '{_STATE_JSON}' in rendered response text but got: {all_text!r}"
+        )
+
+
+class TestGitAddCommitReadyPhaseC3ServerDispatch:
+    """Primary server-dispatch proof: C3 NoteContext wiring via MCPServer.handle_call_tool.
+
+    Proves the full wire-through via the server's request_handlers[CallToolRequest]
+    dispatcher, consistent with how real MCP clients invoke tools. The enforcement
+    runner writes ExclusionNote → GitCommitTool reads it → state.json absent from
+    the resulting commit diff.
+    """
+
+    @pytest.mark.asyncio
+    async def test_server_dispatch_excludes_state_json_from_commit(self, tmp_path: Path) -> None:
+        """Primary C3 integration proof via MCPServer.handle_call_tool dispatch.
+
+        Planning.md C3 deliverable #5 (primary path):
+          1. Set up a real git repo in tmp_path (state.json + normal.py committed).
+          2. Instantiate MCPServer with workspace_root=tmp_path.
+          3. Invoke dispatch via server.request_handlers[CallToolRequest].
+          4. Assert response text does NOT include an error.
+          5. Assert state.json absent from the last commit diff (zero-delta).
+          6. Assert .st3/state.json path appears in response text
+             (rendered ExclusionNote).
+        """
+        # ── Setup: real git repo with both branch-local artifacts tracked ─────
+        repo = _init_repo_with_initial_commit(tmp_path)
+
+        # Modify both files to simulate pre-ready-commit state.
+        (tmp_path / "normal.py").write_text("# v2\n", encoding="utf-8")
+        (tmp_path / _STATE_JSON).write_text(
+            json.dumps({"current_phase": "ready", "branch": "refactor/283", "cycle": 3}),
+            encoding="utf-8",
+        )
+
+        # Copy .st3/config from real workspace so MCPServer can initialise
+        config_dir = tmp_path / ".st3" / "config"
+        repo_root = Path(__file__).parent.parent.parent.parent
+        copytree(repo_root / ".st3" / "config", config_dir, dirs_exist_ok=True)
+
+        # ── Instantiate MCPServer pointing at tmp_path ────────────────────────
+        settings = Settings(
+            server=ServerSettings(
+                workspace_root=str(tmp_path),
+                config_root=str(config_dir),
+            )
+        )
+        # Patch github token to None so no real API calls are attempted
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value = settings
+            server = MCPServer()
+
+        # ── Re-register GitCommitTool so it operates on tmp_path ─────────────
+        git_commit_tool = GitCommitTool(
+            manager=GitManager(
+                git_config=server.git_manager.git_config,
+                adapter=GitAdapter(str(tmp_path)),
+                workphases_path=config_dir / "workphases.yaml",
+            ),
+            phase_guard=build_phase_guard(tmp_path),
+            commit_type_resolver=build_commit_type_resolver(
+                server.phase_state_engine,
+                server.phase_contract_resolver,
+            ),
+            state_engine=server.phase_state_engine,
+        )
+        server.tools = [
+            t if t.name != "git_add_or_commit" else git_commit_tool for t in server.tools
+        ]
+
+        # ── Dispatch via real server handler ──────────────────────────────────
+        handler = server.server.request_handlers[CallToolRequest]
+        req = CallToolRequest(
+            params=CallToolRequestParams(
+                name="git_add_or_commit",
+                arguments={
+                    "message": "ready phase server dispatch test",
+                    "workflow_phase": "documentation",
+                    "commit_type": "docs",
+                },
+            )
+        )
+        response = await handler(req)
+
+        # ── Assertions ────────────────────────────────────────────────────────
+        content_texts = [c.text for c in response.root.content if hasattr(c, "text")]
+        all_text = " ".join(content_texts)
+
+        assert not response.root.isError, f"Expected success but got error: {all_text!r}"
+
+        # Zero-delta: state.json must NOT appear in the commit diff
+        commits = list(repo.iter_commits(max_count=1))
+        last_commit = commits[0]
+        diff_paths = {d.a_path for d in last_commit.diff(last_commit.parents[0])}
+        assert _STATE_JSON not in diff_paths, (
+            f"Non-zero delta on '{_STATE_JSON}' — NoteContext wiring failed via server dispatch. "
+            f"All paths in commit: {sorted(diff_paths)}"
+        )
+        assert "normal.py" in diff_paths, (
+            "normal.py missing from commit diff — test setup integrity failure"
+        )
+
+        # ExclusionNote rendered: state.json path visible in response
+        assert _STATE_JSON in all_text, (
+            f"Expected '{_STATE_JSON}' in rendered response but got: {all_text!r}"
         )

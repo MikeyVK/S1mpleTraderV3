@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from pytest import MonkeyPatch
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.admin_tools import (
     RestartServerInput,
     RestartServerTool,
@@ -54,7 +55,7 @@ def test_restart_marker_written_with_correct_schema(
     params = RestartServerInput(reason="Test marker schema")
 
     async def run_test() -> None:
-        await tool.execute(params)
+        await tool.execute(params, NoteContext())
         await asyncio.sleep(0.01)
         await asyncio.sleep(0)
 
@@ -117,7 +118,7 @@ def test_restart_events_logged_to_audit_trail(
     params = RestartServerInput(reason="Test restart execution")
 
     async def run_test() -> None:
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert result.isError is False
         assert "exit with code 42" in result.content[0].text
         await asyncio.sleep(0.01)
@@ -256,7 +257,7 @@ def test_restart_uses_sys_exit_42_not_os_execv(
     params = RestartServerInput(reason="test sys.exit(42) restart")
 
     async def run_test() -> None:
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert result.isError is False
         await asyncio.sleep(0.01)
         await asyncio.sleep(0)

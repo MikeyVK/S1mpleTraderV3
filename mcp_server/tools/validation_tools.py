@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -35,7 +36,8 @@ class ValidationTool(BaseTool):
         assert self.args_model is not None
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: ValidationInput) -> ToolResult:
+    async def execute(self, params: ValidationInput, context: NoteContext) -> ToolResult:
+        del context  # Stub — not used yet
         # Stub implementation. In reality, this would use QAManager to scan code.
         return ToolResult.text(f"Architecture validation passed for scope: {params.scope}")
 
@@ -58,7 +60,8 @@ class ValidateDTOTool(BaseTool):
         assert self.args_model is not None
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: ValidateDTOInput) -> ToolResult:
+    async def execute(self, params: ValidateDTOInput, context: NoteContext) -> ToolResult:
+        del context  # Not used by this read-only validation tool
         dto_path = Path(params.file_path)
         if not dto_path.exists():
             return ToolResult.error(f"DTO file not found: {params.file_path}")

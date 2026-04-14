@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from mcp_server.config.loader import ConfigLoader
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 
 
@@ -38,6 +39,7 @@ class TestGitManagerSkipPaths:
         manager.commit_with_scope(
             workflow_phase="implementation",
             message="add feature",
+            note_context=NoteContext(),
             sub_phase="green",
             cycle_number=2,
             skip_paths=skip,
@@ -62,6 +64,7 @@ class TestGitManagerSkipPaths:
         manager.commit_with_scope(
             workflow_phase="implementation",
             message="normal commit",
+            note_context=NoteContext(),
             sub_phase="green",
             cycle_number=2,
         )

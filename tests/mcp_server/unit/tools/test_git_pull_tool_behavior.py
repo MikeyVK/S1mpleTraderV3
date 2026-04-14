@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.exceptions import PreflightError
 from mcp_server.tools.git_pull_tool import GitPullInput, GitPullTool, _input_schema
 
@@ -53,7 +54,7 @@ async def test_git_pull_success_syncs_phase_state() -> None:
     with (
         patch("mcp_server.tools.git_pull_tool.anyio.to_thread.run_sync", new=run_sync),
     ):
-        result = await tool.execute(GitPullInput(remote="origin", rebase=False))
+        result = await tool.execute(GitPullInput(remote="origin", rebase=False), NoteContext())
 
     assert result.is_error is False
     assert "Pulled" in str(result)
@@ -79,7 +80,7 @@ async def test_git_pull_phase_sync_failure_is_non_fatal() -> None:
     with (
         patch("mcp_server.tools.git_pull_tool.anyio.to_thread.run_sync", new=run_sync),
     ):
-        result = await tool.execute(GitPullInput(remote="origin", rebase=False))
+        result = await tool.execute(GitPullInput(remote="origin", rebase=False), NoteContext())
 
     assert result.is_error is False
     assert "Pulled" in str(result)
@@ -95,7 +96,7 @@ async def test_git_pull_mcperror_returns_tool_error() -> None:
 
     run_sync = AsyncMock(side_effect=PreflightError("dirty"))
     with patch("mcp_server.tools.git_pull_tool.anyio.to_thread.run_sync", new=run_sync):
-        result = await tool.execute(GitPullInput(remote="origin", rebase=False))
+        result = await tool.execute(GitPullInput(remote="origin", rebase=False), NoteContext())
 
     assert result.is_error is True
     assert "dirty" in str(result)
@@ -110,7 +111,7 @@ async def test_git_pull_runtime_error_returns_tool_error() -> None:
 
     run_sync = AsyncMock(side_effect=RuntimeError("boom"))
     with patch("mcp_server.tools.git_pull_tool.anyio.to_thread.run_sync", new=run_sync):
-        result = await tool.execute(GitPullInput(remote="origin", rebase=False))
+        result = await tool.execute(GitPullInput(remote="origin", rebase=False), NoteContext())
 
     assert result.is_error is True
     assert "Pull failed: boom" in str(result)

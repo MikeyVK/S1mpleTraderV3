@@ -19,6 +19,7 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.schemas import WorkflowConfig
 from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
 from tests.mcp_server.test_support import (
@@ -70,7 +71,7 @@ class TestInitializeProjectToolMode1:
             params = InitializeProjectInput(
                 issue_number=39, issue_title="Fix initialization gap", workflow_name="bug"
             )
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
             # Verify success
             assert not result.is_error
@@ -114,7 +115,7 @@ class TestInitializeProjectToolMode1:
             params = InitializeProjectInput(
                 issue_number=42, issue_title="Add user authentication", workflow_name="feature"
             )
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
             assert not result.is_error
 
@@ -137,7 +138,7 @@ class TestInitializeProjectToolMode1:
             params = InitializeProjectInput(
                 issue_number=99, issue_title="Security fix", workflow_name="hotfix"
             )
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
             assert not result.is_error
 
@@ -189,7 +190,7 @@ class TestInitializeProjectToolMode1:
                     issue_title=f"Test {workflow_name}",
                     workflow_name=workflow_name,
                 )
-                result = await tool.execute(params)
+                result = await tool.execute(params, NoteContext())
 
                 assert not result.is_error, f"{workflow_name} workflow must work"
 
@@ -208,7 +209,7 @@ class TestInitializeProjectToolMode1:
             params = InitializeProjectInput(
                 issue_number=39, issue_title="Test error", workflow_name="bug"
             )
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
             # Should return error result
             assert result.is_error
@@ -229,7 +230,7 @@ class TestInitializeProjectToolMode1:
                 params = InitializeProjectInput(
                     issue_number=39, issue_title="Test error", workflow_name="bug"
                 )
-                result = await tool.execute(params)
+                result = await tool.execute(params, NoteContext())
 
                 # Should return error result
                 assert result.is_error
@@ -245,7 +246,7 @@ class TestInitializeProjectToolMode1:
             params = InitializeProjectInput(
                 issue_number=39, issue_title="Test format", workflow_name="bug"
             )
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
             assert not result.is_error
 
@@ -271,7 +272,7 @@ class TestInitializeProjectToolMode1:
             params = InitializeProjectInput(
                 issue_number=39, issue_title="Test separation", workflow_name="bug"
             )
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
             assert not result.is_error
 

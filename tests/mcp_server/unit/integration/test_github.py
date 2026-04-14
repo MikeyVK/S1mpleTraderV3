@@ -9,6 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.issue_tools import CreateIssueInput, IssueBody
 from tests.mcp_server.test_support import load_issue_tool_dependencies, make_create_issue_tool
@@ -67,6 +68,6 @@ def test_create_issue_tool(mock_adapter: Mock) -> None:
         scope="mcp-server",
         body=IssueBody(problem="Some problem description"),
     )
-    result = asyncio.run(tool.execute(params))
+    result = asyncio.run(tool.execute(params, NoteContext()))
 
     assert "Created issue #42" in result.content[0]["text"]

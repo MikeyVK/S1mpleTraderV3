@@ -17,6 +17,7 @@ import anyio
 from pydantic import BaseModel, Field
 
 from mcp_server.core.interfaces import GateViolation, IWorkflowGateRunner
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
@@ -24,7 +25,6 @@ from mcp_server.tools.phase_tools import (
     _BaseTransitionTool as BaseTransitionTool,  # pyright: ignore[reportPrivateUsage]  # Shared transition base pending tool consolidation.
 )
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 __all__ = [
     "ForceCycleTransitionInput",
@@ -67,8 +67,9 @@ class TransitionCycleTool(BaseTransitionTool):
     args_model = TransitionCycleInput
     enforcement_event = "transition_cycle"
 
-    async def execute(self, params: TransitionCycleInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: TransitionCycleInput, context: NoteContext) -> ToolResult:
         """Execute cycle transition through the shared orchestration path."""
+        del context  # Orchestration tool — context unused
         branch = self._get_current_branch()
         issue_number = params.issue_number or self._extract_issue_number(branch)
         if issue_number is None:
@@ -171,8 +172,9 @@ class ForceCycleTransitionTool(BaseTransitionTool):
     args_model = ForceCycleTransitionInput
     enforcement_event = "transition_cycle"
 
-    async def execute(self, params: ForceCycleTransitionInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: ForceCycleTransitionInput, context: NoteContext) -> ToolResult:
         """Execute forced cycle transition through the shared inspection path."""
+        del context  # Orchestration tool — context unused
         branch = self._get_current_branch()
         issue_number = params.issue_number or self._extract_issue_number(branch)
         if issue_number is None:

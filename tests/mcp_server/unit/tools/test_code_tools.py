@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from mcp_server.config.settings import Settings
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 
 
@@ -17,7 +18,7 @@ async def test_create_file_tool_success(tmp_path: Path) -> None:
     tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
     params = CreateFileInput(path="test.txt", content="hello")
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert "File created: test.txt" in result.content[0]["text"]
     assert (tmp_path / "test.txt").read_text(encoding="utf-8") == "hello"
@@ -28,7 +29,7 @@ async def test_create_file_tool_security_error(tmp_path: Path) -> None:
     tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
     params = CreateFileInput(path="../outside.txt", content="bad")
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert result.is_error
     assert "Access denied" in result.content[0]["text"]
@@ -40,4 +41,4 @@ async def test_create_file_tool_deprecation_warning(tmp_path: Path) -> None:
     params = CreateFileInput(path="test.txt", content="hello")
 
     with pytest.warns(DeprecationWarning, match="create_file is deprecated"):
-        await tool.execute(params)
+        await tool.execute(params, NoteContext())

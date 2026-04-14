@@ -19,9 +19,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 # Constants
 RESTART_MARKER_PATH = Path(".st3/.restart_marker")
@@ -109,7 +109,7 @@ class RestartServerTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: RestartServerInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: RestartServerInput, context: NoteContext) -> ToolResult:
         """Execute server restart.
 
         **Workflow:**
@@ -136,9 +136,8 @@ class RestartServerTool(BaseTool):
             - Restart marker written to .st3/.restart_marker
             - Server exits 500ms after returning response (graceful)
         """
+        del context  # Not used by restart tool
         logger = get_logger("tools.admin")
-
-        # Audit log: Restart requested
         restart_time = datetime.now(UTC)
         logger.info(
             "Server restart requested",
@@ -240,7 +239,7 @@ def restart_server(reason: str = "code changes") -> None:
     """
     tool = RestartServerTool()
     params = RestartServerInput(reason=reason)
-    asyncio.run(tool.execute(params))
+    asyncio.run(tool.execute(params, NoteContext()))
 
 
 def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:

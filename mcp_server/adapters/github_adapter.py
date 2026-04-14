@@ -65,7 +65,7 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Issue #{issue_number} not found", recovery=["Check issue number"]
+                    f"Issue #{issue_number} not found"
                 ) from e
             raise MCPSystemError(f"GitHub API error: {e}") from e
 
@@ -188,7 +188,6 @@ class GitHubAdapter:
             if e.status == 422:
                 raise ExecutionError(
                     f"Label '{name}' already exists",
-                    recovery=["Use a different name or delete existing label"],
                 ) from e
             raise ExecutionError(f"Failed to create label: {e}") from e
 
@@ -200,7 +199,7 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Label '{name}' not found", recovery=["Check label name"]
+                    f"Label '{name}' not found"
                 ) from e
             raise ExecutionError(f"Failed to delete label: {e}") from e
 
@@ -254,7 +253,7 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Milestone {milestone_number} not found", recovery=["Check milestone number"]
+                    f"Milestone {milestone_number} not found"
                 ) from e
             raise ExecutionError(f"Failed to close milestone: {e}") from e
 
@@ -286,14 +285,11 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Pull request #{pr_number} not found", recovery=["Check PR number"]
+                    f"Pull request #{pr_number} not found"
                 ) from e
             raise ExecutionError(f"Failed to merge PR: {e}") from e
 
         if not result.merged:
-            raise ExecutionError(
-                f"Merge failed: {result.message}",
-                recovery=["Resolve conflicts", "Verify merge permissions"],
-            )
+            raise ExecutionError(f"Merge failed: {result.message}")
 
         return {"merged": result.merged, "sha": result.sha, "message": result.message}

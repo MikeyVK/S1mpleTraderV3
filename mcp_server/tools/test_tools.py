@@ -12,9 +12,9 @@ from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 
 def _run_pytest_sync(cmd: list[str], cwd: str, timeout: int) -> tuple[str, str, int]:
@@ -187,8 +187,9 @@ class RunTestsTool(BaseTool):
             cmd.extend(["-m", params.markers])
         return cmd
 
-    async def execute(self, params: RunTestsInput, _context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: RunTestsInput, context: NoteContext) -> ToolResult:
         """Execute the tool."""
+        del context  # Not used
         cmd = self._build_cmd(params)
 
         effective_timeout = params.timeout or self.DEFAULT_TIMEOUT

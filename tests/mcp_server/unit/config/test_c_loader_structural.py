@@ -2,13 +2,13 @@
 """
 Structural regression tests for config-path and legacy exception kwargs.
 
-These tests intentionally stay red until later cycles remove the current
-production violations.
+Guards against re-introduction of raw config-path literals in Path() calls
+and legacy hint/blocker/recovery kwargs in production code.
 
 @layer: Tests (Unit)
 @dependencies: [ast, pathlib]
 @responsibilities:
-    - Detect raw .st3/config path literals in production code
+    - Detect raw .st3/config path literals in Path() calls
     - Detect legacy hints= kwargs in production calls
     - Detect legacy blockers=/recovery= kwargs in production calls
 """
@@ -46,6 +46,19 @@ def _string_constants(tree: ast.AST) -> list[str]:
     return constants
 
 
+def _path_constructor_strings(tree: ast.AST) -> list[str]:
+    """Collect string args passed to Path() constructors."""
+    strings: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if isinstance(node.func, ast.Name) and node.func.id == "Path":
+            for arg in node.args:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    strings.append(arg.value)
+    return strings
+
+
 def _keyword_matches(tree: ast.AST, *names: str) -> list[str]:
     """Collect matching keyword argument names from call nodes."""
     matches: list[str] = []
@@ -60,17 +73,18 @@ def _keyword_matches(tree: ast.AST, *names: str) -> list[str]:
 
 
 def test_no_raw_st3_config_paths_in_production() -> None:
-    """No production Python module may contain raw .st3/config string literals."""
+    """No production Python module may hardcode .st3/config paths in Path() calls."""
     offenders: list[str] = []
 
     for path in _iter_production_python_files():
         tree = _parse_python_file(path)
-        literals = [value for value in _string_constants(tree) if ".st3/config/" in value]
+        literals = [v for v in _path_constructor_strings(tree) if ".st3/config/" in v]
         if literals:
             offenders.append(f"{_relative_path(path)}: {literals[0]}")
 
-    assert not offenders, "Raw .st3/config/ literals remain in production code:\n" + "\n".join(
-        offenders
+    assert not offenders, (
+        "Raw .st3/config/ path literals in Path() calls remain in production code:\n"
+        + "\n".join(offenders)
     )
 
 

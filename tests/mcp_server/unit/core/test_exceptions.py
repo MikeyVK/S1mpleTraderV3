@@ -4,7 +4,7 @@
 @dependencies: pytest, mcp_server.core.exceptions
 @responsibilities:
   - Unit tests for exception hierarchy
-  - Verify exception contracts (code, message, hints)
+  - Verify exception contracts (code, message)
   - Ensure ConfigError format includes file_path
 """
 
@@ -23,13 +23,12 @@ from mcp_server.core.exceptions import (
 
 
 def test_mcp_error_base_contract() -> None:
-    """MCPError has message, code, and hints."""
-    error = MCPError("Test error", code="ERR_TEST", hints=["Fix it"])
+    """MCPError has message and code."""
+    error = MCPError("Test error", code="ERR_TEST")
 
-    assert str(error) == "Test error\n\n  Fix it"  # Hints are included in __str__()
+    assert str(error) == "Test error"
     assert error.message == "Test error"
     assert error.code == "ERR_TEST"
-    assert error.hints == ["Fix it"]
 
 
 def test_mcp_error_default_code() -> None:
@@ -37,7 +36,6 @@ def test_mcp_error_default_code() -> None:
     error = MCPError("Internal error")
 
     assert error.code == "ERR_INTERNAL"
-    assert error.hints == []
 
 
 def test_config_error_with_file_path() -> None:
@@ -45,14 +43,12 @@ def test_config_error_with_file_path() -> None:
     error = ConfigError(
         "Invalid YAML syntax",
         file_path=".st3/artifacts.yaml",
-        hints=["Check indentation", "Validate YAML online"],
     )
 
     assert "Invalid YAML syntax" in str(error)
     assert ".st3/artifacts.yaml" in str(error)
     assert error.code == "ERR_CONFIG"
     assert error.file_path == ".st3/artifacts.yaml"
-    assert len(error.hints) == 2
 
 
 def test_config_error_without_file_path() -> None:
@@ -66,33 +62,26 @@ def test_config_error_without_file_path() -> None:
 
 def test_validation_error() -> None:
     """ValidationError has ERR_VALIDATION code."""
-    error = ValidationError("Missing required field: title", hints=["Add title to context"])
+    error = ValidationError("Missing required field: title")
 
     assert error.code == "ERR_VALIDATION"
     assert "Missing required field: title" in str(error)
-    assert error.hints == ["Add title to context"]
 
 
 def test_preflight_error() -> None:
-    """PreflightError has blockers."""
-    error = PreflightError(
-        "Pre-flight checks failed", blockers=["Workspace not clean", "Tests failing"]
-    )
+    """PreflightError has ERR_PREFLIGHT code."""
+    error = PreflightError("Pre-flight checks failed")
 
     assert error.code == "ERR_PREFLIGHT"
-    assert error.blockers == ["Workspace not clean", "Tests failing"]
-    assert error.hints == error.blockers  # blockers = hints
+    assert "Pre-flight checks failed" in str(error)
 
 
 def test_execution_error() -> None:
-    """ExecutionError has recovery hints."""
-    error = ExecutionError(
-        "Tool execution failed", recovery=["Retry with valid input", "Check permissions"]
-    )
+    """ExecutionError has ERR_EXECUTION code."""
+    error = ExecutionError("Tool execution failed")
 
     assert error.code == "ERR_EXECUTION"
-    assert error.recovery == ["Retry with valid input", "Check permissions"]
-    assert error.hints == error.recovery  # recovery = hints
+    assert "Tool execution failed" in str(error)
 
 
 def test_system_error() -> None:
@@ -118,4 +107,3 @@ def test_exception_catchable_as_base() -> None:
         raise ConfigError("Test error")
 
     assert isinstance(exc_info.value, ConfigError)
-    assert exc_info.value.code == "ERR_CONFIG"

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.issue_tools import (
     CloseIssueInput,
     CloseIssueTool,
@@ -41,7 +42,7 @@ async def test_create_issue_tool(mock_github_manager: MagicMock) -> None:
         scope="mcp-server",
         body=IssueBody(problem="Some problem description"),
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_github_manager.validate_issue_params.assert_called_once_with(
         issue_type="feature",
@@ -77,7 +78,7 @@ async def test_create_issue_tool_forwards_milestone(mock_github_manager: MagicMo
         body=IssueBody(problem="Needs milestone"),
         milestone="v2.0",
     )
-    await tool.execute(params)
+    await tool.execute(params, NoteContext())
 
     call_kwargs = mock_github_manager.create_issue.call_args.kwargs
     assert call_kwargs["milestone"] == 2
@@ -97,7 +98,7 @@ async def test_create_issue_tool_milestone_none_when_not_set(
         scope="mcp-server",
         body=IssueBody(problem="No milestone set"),
     )
-    await tool.execute(params)
+    await tool.execute(params, NoteContext())
 
     call_kwargs = mock_github_manager.create_issue.call_args.kwargs
     assert call_kwargs["milestone"] is None
@@ -109,7 +110,7 @@ async def test_update_issue_tool(mock_github_manager: MagicMock) -> None:
     mock_github_manager.update_issue.return_value = MagicMock(number=123)
 
     params = UpdateIssueInput(issue_number=123, title="Updated Title")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_github_manager.update_issue.assert_called_with(
         issue_number=123,
@@ -132,7 +133,7 @@ async def test_list_issues_tool(mock_github_manager: MagicMock) -> None:
     ]
 
     params = ListIssuesInput(state="open", labels=["bug"])
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_github_manager.list_issues.assert_called_with(state="open", labels=["bug"])
     assert "#1 Issue 1" in result.content[0]["text"]
@@ -155,7 +156,7 @@ async def test_get_issue_tool(mock_github_manager: MagicMock) -> None:
     )
     mock_github_manager.get_issue.return_value = issue_mock
 
-    result = await tool.execute(GetIssueInput(issue_number=1))
+    result = await tool.execute(GetIssueInput(issue_number=1), NoteContext())
 
     mock_github_manager.get_issue.assert_called_with(1)
     assert "#1: Bug" in result.content[0]["text"]
@@ -167,6 +168,6 @@ async def test_close_issue_tool(mock_github_manager: MagicMock) -> None:
     tool = CloseIssueTool(manager=mock_github_manager)
     mock_github_manager.close_issue.return_value = MagicMock(number=5)
 
-    await tool.execute(CloseIssueInput(issue_number=5, comment="Done"))
+    await tool.execute(CloseIssueInput(issue_number=5, comment="Done"), NoteContext())
 
     mock_github_manager.close_issue.assert_called_with(5, comment="Done")

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from mcp_server.config.settings import Settings
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -50,7 +51,7 @@ class TestSearchDocumentationE2E:
         tool = SearchDocumentationTool(
             settings=Settings(server={"workspace_root": str(sample_docs_dir.parent)})
         )
-        result = await tool.execute(SearchDocumentationInput(query="Python"))
+        result = await tool.execute(SearchDocumentationInput(query="Python"), NoteContext())
 
         assert isinstance(result, ToolResult)
         assert not result.is_error
@@ -68,7 +69,7 @@ class TestSearchDocumentationE2E:
             settings=Settings(server={"workspace_root": str(sample_docs_dir.parent)})
         )
         result = await tool.execute(
-            SearchDocumentationInput(query="style", scope="coding_standards")
+            SearchDocumentationInput(query="style", scope="coding_standards"), NoteContext()
         )
 
         assert not result.is_error
@@ -83,7 +84,7 @@ class TestSearchDocumentationE2E:
         tool = SearchDocumentationTool(
             settings=Settings(server={"workspace_root": str(sample_docs_dir.parent)})
         )
-        result = await tool.execute(SearchDocumentationInput(query="xyznonexistent"))
+        result = await tool.execute(SearchDocumentationInput(query="xyznonexistent"), NoteContext())
 
         assert not result.is_error
         output = result.content[0]["text"]
@@ -95,7 +96,7 @@ class TestSearchDocumentationE2E:
         tool = SearchDocumentationTool(
             settings=Settings(server={"workspace_root": str(sample_docs_dir.parent)})
         )
-        result = await tool.execute(SearchDocumentationInput(query="Python"))
+        result = await tool.execute(SearchDocumentationInput(query="Python"), NoteContext())
 
         assert not result.is_error
         output = result.content[0]["text"]
@@ -108,6 +109,6 @@ class TestSearchDocumentationE2E:
     async def test_tool_handles_missing_docs_dir(self, tmp_path: Path) -> None:
         """Test tool gracefully handles missing docs directory."""
         tool = SearchDocumentationTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
-        result = await tool.execute(SearchDocumentationInput(query="Python"))
+        result = await tool.execute(SearchDocumentationInput(query="Python"), NoteContext())
 
         assert result.is_error or "No results found" in result.content[0]["text"]

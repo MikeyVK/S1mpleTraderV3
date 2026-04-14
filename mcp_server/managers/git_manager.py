@@ -25,6 +25,7 @@ import yaml
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import BlockerNote, NoteContext, SuggestionNote
 from mcp_server.core.scope_encoder import ScopeEncoder
 from mcp_server.schemas import GitConfig
 
@@ -40,7 +41,7 @@ class GitManager:
     ) -> None:
         self.adapter = adapter or GitAdapter()
         self._git_config = git_config
-        self._workphases_path = workphases_path or Path(".st3/config/workphases.yaml")
+        self._workphases_path = workphases_path or Path(".st3") / "config" / "workphases.yaml"
 
     @property
     def git_config(self) -> GitConfig:
@@ -51,7 +52,9 @@ class GitManager:
         """Get git status."""
         return self.adapter.get_status()
 
-    def create_branch(self, name: str, branch_type: str, base_branch: str) -> str:
+    def create_branch(
+        self, name: str, branch_type: str, base_branch: str, note_context: NoteContext
+    ) -> str:
         """Create a new branch with explicit base_branch (Issue #64).
 
         Args:
@@ -70,17 +73,19 @@ class GitManager:
 
         # Convention #1: Branch type validation via GitConfig
         if not self._git_config.has_branch_type(branch_type):
-            raise ValidationError(
-                f"Invalid branch type: {branch_type}",
-                hints=[f"Allowed types: {', '.join(self._git_config.branch_types)}"],
+            note_context.produce(
+                SuggestionNote(message=f"Allowed types: {', '.join(self._git_config.branch_types)}")
             )
+            raise ValidationError(f"Invalid branch type: {branch_type}")
 
         # Convention #5: Branch name pattern via GitConfig
         if not self._git_config.validate_branch_name(name):
-            raise ValidationError(
-                f"Invalid branch name: {name}",
-                hints=[f"Must match pattern: {self._git_config.branch_name_pattern}"],
+            note_context.produce(
+                SuggestionNote(
+                    message=f"Must match pattern: {self._git_config.branch_name_pattern}"
+                )
             )
+            raise ValidationError(f"Invalid branch name: {name}")
 
         full_name = f"{branch_type}/{name}"
 
@@ -100,10 +105,10 @@ class GitManager:
 
         # Pre-flight check
         if not self.adapter.is_clean():
-            raise PreflightError(
-                "Working directory is not clean",
-                blockers=["Commit or stash changes before creating a new branch"],
+            note_context.produce(
+                BlockerNote(message="Commit or stash changes before creating a new branch")
             )
+            raise PreflightError("Working directory is not clean")
 
         self.adapter.create_branch(full_name, base=base_branch)
 
@@ -118,6 +123,7 @@ class GitManager:
         self,
         workflow_phase: str,
         message: str,
+        note_context: NoteContext,
         sub_phase: str | None = None,
         cycle_number: int | None = None,
         commit_type: str | None = None,
@@ -158,10 +164,12 @@ class GitManager:
             # Generates: "fix(P_TDD_SP_RED): add tests" (override)
         """
         if files is not None and not files:
-            raise ValidationError(
-                "Files list cannot be empty",
-                hints=["Omit 'files' to commit everything, or provide at least one path"],
+            note_context.produce(
+                SuggestionNote(
+                    message="Omit 'files' to commit everything, or provide at least one path"
+                )
             )
+            raise ValidationError("Files list cannot be empty")
 
         # If commit_type override provided, use it
         if commit_type is None:
@@ -189,18 +197,17 @@ class GitManager:
         full_message = f"{commit_type}({scope}): {message}"
         return self.adapter.commit(full_message, files=files, skip_paths=skip_paths)
 
-    def restore(self, files: list[str], source: str = "HEAD") -> None:
+    def restore(self, files: list[str], note_context: NoteContext, source: str = "HEAD") -> None:
         """Restore files to a given source ref.
 
         Args:
             files: File paths to restore.
+            note_context: NoteContext for typed note production.
             source: Git ref to restore from (default HEAD).
         """
         if not files:
-            raise ValidationError(
-                "Files list cannot be empty",
-                hints=["Provide at least one path to restore"],
-            )
+            note_context.produce(SuggestionNote(message="Provide at least one path to restore"))
+            raise ValidationError("Files list cannot be empty")
         self.adapter.restore(files=files, source=source)
 
     def checkout(self, branch_name: str) -> None:
@@ -225,7 +232,7 @@ class GitManager:
         """
         return self.adapter.fetch(remote=remote, prune=prune)
 
-    def pull(self, remote: str = "origin", rebase: bool = False) -> str:
+    def pull(self, note_context: NoteContext, remote: str = "origin", rebase: bool = False) -> str:
         """Pull updates from a remote into the current branch.
 
         Responsibilities:
@@ -233,48 +240,51 @@ class GitManager:
         - Delegate execution to GitAdapter.pull().
 
         Usage example:
-        - manager.pull(remote="origin", rebase=False)
+        - manager.pull(note_context, remote="origin", rebase=False)
         """
         if not self.adapter.is_clean():
-            raise PreflightError(
-                "Working directory is not clean",
-                blockers=["Commit or stash changes before pulling"],
-            )
+            note_context.produce(BlockerNote(message="Commit or stash changes before pulling"))
+            raise PreflightError("Working directory is not clean")
 
         if self.adapter.get_current_branch() == "HEAD":
-            raise PreflightError(
-                "Detached HEAD - cannot pull",
-                blockers=["Checkout a branch before pulling"],
-            )
+            note_context.produce(BlockerNote(message="Checkout a branch before pulling"))
+            raise PreflightError("Detached HEAD - cannot pull")
 
         if not self.adapter.has_upstream():
-            raise PreflightError(
-                "No upstream configured for current branch",
-                blockers=[
-                    "Set upstream tracking (e.g. 'git branch --set-upstream-to=origin/<branch>')",
-                    "Or pull with an explicit refspec (not supported yet)",
-                ],
+            note_context.produce(
+                BlockerNote(
+                    message="Set upstream tracking"
+                    " (e.g. 'git branch --set-upstream-to=origin/<branch>')"
+                )
             )
+            note_context.produce(
+                BlockerNote(message="Or pull with an explicit refspec (not supported yet)")
+            )
+            raise PreflightError("No upstream configured for current branch")
 
         return self.adapter.pull(remote=remote, rebase=rebase)
 
-    def merge(self, branch_name: str) -> None:
+    def merge(self, branch_name: str, note_context: NoteContext) -> None:
         """Merge a branch into current branch."""
         if not self.adapter.is_clean():
-            raise PreflightError(
-                "Working directory is not clean",
-                blockers=["Commit or stash changes before merging"],
-            )
+            note_context.produce(BlockerNote(message="Commit or stash changes before merging"))
+            raise PreflightError("Working directory is not clean")
         self.adapter.merge(branch_name)
 
-    def delete_branch(self, branch_name: str, force: bool = False) -> None:
+    def delete_branch(
+        self, branch_name: str, note_context: NoteContext, force: bool = False
+    ) -> None:
         """Delete a branch."""
         # Convention #4: Protected branches via GitConfig
         if self._git_config.is_protected(branch_name):
-            raise ValidationError(
-                f"Cannot delete protected branch: {branch_name}",
-                hints=[f"Protected branches: {', '.join(self._git_config.protected_branches)}"],
+            note_context.produce(
+                SuggestionNote(
+                    message=(
+                        f"Protected branches: {', '.join(self._git_config.protected_branches)}"
+                    )
+                )
             )
+            raise ValidationError(f"Cannot delete protected branch: {branch_name}")
         self.adapter.delete_branch(branch_name, force=force)
 
     def stash(self, message: str | None = None, include_untracked: bool = False) -> None:

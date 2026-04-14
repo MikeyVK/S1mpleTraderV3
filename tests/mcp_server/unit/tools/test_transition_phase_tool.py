@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.phase_tools import (
@@ -85,7 +86,7 @@ class TestTransitionPhaseTool:
         )
 
         # Act
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Assert
         assert "✅" in result.content[0]["text"]
@@ -103,7 +104,7 @@ class TestTransitionPhaseTool:
         )
 
         # Act
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Assert
         assert "❌" in result.content[0]["text"]
@@ -122,7 +123,7 @@ class TestTransitionPhaseTool:
         )
 
         # Act
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Assert
         assert "❌" in result.content[0]["text"]
@@ -138,7 +139,7 @@ class TestTransitionPhaseTool:
         )
 
         # Act
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Assert
         assert "❌" in result.content[0]["text"]
@@ -159,7 +160,7 @@ class TestTransitionPhaseTool:
         )
 
         # Act
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Assert - Verify transition succeeded
         assert "✅" in result.content[0]["text"]

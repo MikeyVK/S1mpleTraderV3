@@ -229,13 +229,7 @@ class GitAdapter:
             fetch_info = remote_obj.fetch(prune=prune)
             return f"Fetched from {remote}: {len(fetch_info)} ref(s)"
         except ValueError as e:
-            raise ExecutionError(
-                f"Remote '{remote}' is not configured",
-                recovery=[
-                    "Configure a remote (e.g. 'origin')",
-                    "Check remotes via 'git remote -v'",
-                ],
-            ) from e
+            raise ExecutionError(f"Remote '{remote}' is not configured") from e
         except Exception as e:
             raise ExecutionError(f"Failed to fetch from remote '{remote}': {e}") from e
 
@@ -269,13 +263,7 @@ class GitAdapter:
                 return output
             return f"Pulled from {remote}"
         except ValueError as e:
-            raise ExecutionError(
-                f"Remote '{remote}' is not configured",
-                recovery=[
-                    "Configure a remote (e.g. 'origin')",
-                    "Check remotes via 'git remote -v'",
-                ],
-            ) from e
+            raise ExecutionError(f"Remote '{remote}' is not configured") from e
         except Exception as e:
             raise ExecutionError(f"Failed to pull from remote '{remote}': {e}") from e
 

@@ -84,7 +84,7 @@ class TestEnforcementRunner:
             action: EnforcementAction,
             context: EnforcementContext,
             workspace_root: Path,
-            note_context: NoteContext,
+            note_context: NoteContext,  # noqa: ARG001
         ) -> None:
             calls.append((action.type, context.tool_name))
             assert workspace_root == tmp_path
