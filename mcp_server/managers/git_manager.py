@@ -17,17 +17,14 @@ and commit message formatting based on the active workflow state.
     - Pre-flight checks (clean working directory) before branch operations
 """
 
-from pathlib import Path
 from typing import Any
-
-import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.logging import get_logger
 from mcp_server.core.operation_notes import BlockerNote, NoteContext, SuggestionNote
 from mcp_server.core.scope_encoder import ScopeEncoder
-from mcp_server.schemas import GitConfig
+from mcp_server.schemas import GitConfig, WorkphasesConfig
 
 
 class GitManager:
@@ -37,11 +34,11 @@ class GitManager:
         self,
         git_config: GitConfig,
         adapter: GitAdapter | None = None,
-        workphases_path: Path | None = None,
+        workphases_config: WorkphasesConfig | None = None,
     ) -> None:
         self.adapter = adapter or GitAdapter()
         self._git_config = git_config
-        self._workphases_path = workphases_path or Path(".st3") / "config" / "workphases.yaml"
+        self._workphases_config = workphases_config
 
     @property
     def git_config(self) -> GitConfig:
@@ -171,26 +168,28 @@ class GitManager:
             )
             raise ValidationError("Files list cannot be empty")
 
+        if self._workphases_config is None:
+            raise RuntimeError(
+                "workphases_config is required for commit_with_scope. "
+                "Pass workphases_config= to GitManager constructor."
+            )
+
         # If commit_type override provided, use it
         if commit_type is None:
-            # Load workphases config to get commit_type
-            with open(self._workphases_path, encoding="utf-8") as f:
-                workphases_config = yaml.safe_load(f)
-
-            phases = workphases_config.get("phases", {})
+            phases = self._workphases_config.phases
             phase_config = phases.get(workflow_phase.lower())
 
             if phase_config is None:
                 # ScopeEncoder will raise ValueError with actionable message
-                encoder = ScopeEncoder(self._workphases_path)
+                encoder = ScopeEncoder(self._workphases_config)
                 encoder.generate_scope(workflow_phase, sub_phase, cycle_number)
                 # Should never reach here due to ValueError above
                 raise RuntimeError("Unexpected: phase validation failed silently")
 
-            commit_type = phase_config.get("commit_type_hint", "chore") or "chore"
+            commit_type = phase_config.commit_type_hint or "chore"
 
         # Generate scope using ScopeEncoder (validates phase + subphase)
-        encoder = ScopeEncoder(self._workphases_path)
+        encoder = ScopeEncoder(self._workphases_config)
         scope = encoder.generate_scope(workflow_phase, sub_phase, cycle_number)
 
         # Format: type(scope): message

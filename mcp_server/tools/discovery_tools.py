@@ -15,6 +15,7 @@ from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.schemas import WorkphasesConfig
 from mcp_server.services.document_indexer import DocumentIndexer
 from mcp_server.services.search_service import SearchService
 from mcp_server.tools.base import BaseTool
@@ -113,6 +114,7 @@ class GetWorkContextTool(BaseTool):
         project_manager: ProjectManager,
         state_engine: PhaseStateEngine,
         github_manager: GitHubManager | None = None,
+        workphases_config: WorkphasesConfig | None = None,
     ) -> None:
         super().__init__()
         self._settings = settings
@@ -120,6 +122,7 @@ class GetWorkContextTool(BaseTool):
         self._project_manager = project_manager
         self._state_engine = state_engine
         self._github_manager = github_manager
+        self._workphases_config = workphases_config
 
     async def execute(self, params: GetWorkContextInput, context: NoteContext) -> ToolResult:
         """Execute work context aggregation."""
@@ -261,7 +264,16 @@ class GetWorkContextTool(BaseTool):
         latest_commit = commits[0]
 
         # Deterministic phase detection via ScopeDecoder
-        decoder = ScopeDecoder()
+        if self._workphases_config is None:
+            return {
+                "workflow_phase": "unknown",
+                "sub_phase": None,
+                "source": "unknown",
+                "confidence": "unknown",
+                "raw_scope": None,
+                "error_message": "WorkphasesConfig not injected",
+            }
+        decoder = ScopeDecoder(self._workphases_config)
         return decoder.detect_phase(commit_message=latest_commit, fallback_to_state=True)
 
     def _extract_checklist(self, body: str) -> list[str]:

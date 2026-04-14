@@ -22,8 +22,10 @@ def _make_manager() -> tuple[GitManager, MagicMock]:
     mock_adapter = MagicMock()
     mock_adapter.commit.return_value = "def5678"
 
-    git_config = ConfigLoader(Path(".st3/config")).load_git_config()
-    manager = GitManager(git_config=git_config, adapter=mock_adapter)
+    loader = ConfigLoader(Path(".st3/config"))
+    git_config = loader.load_git_config()
+    workphases_config = loader.load_workphases_config()
+    manager = GitManager(git_config=git_config, adapter=mock_adapter, workphases_config=workphases_config)
     return manager, mock_adapter
 
 

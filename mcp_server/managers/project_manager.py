@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 # Project modules
+from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.schemas import WorkflowConfig
@@ -89,11 +90,13 @@ class ProjectManager:
         workspace_root: Path | str,
         workflow_config: WorkflowConfig,
         git_manager: GitManager | None = None,
+        workphases_config: WorkphasesConfig | None = None,
     ) -> None:
         """Initialize ProjectManager."""
         self.workspace_root = Path(workspace_root)
         self.workflow_config = workflow_config
         self._git_manager = git_manager
+        self._workphases_config = workphases_config
         self.deliverables_file = self.workspace_root / ".st3" / "deliverables.json"
         self.atomic_json_writer = AtomicJsonWriter()
 
@@ -455,9 +458,13 @@ class ProjectManager:
             plan["current_phase"] = "unknown"
             plan["phase_source"] = "unknown"
             plan["phase_detection_error"] = "No commits found in repository"
+        elif self._workphases_config is None:
+            plan["current_phase"] = "unknown"
+            plan["phase_source"] = "unknown"
+            plan["phase_detection_error"] = "WorkphasesConfig not injected"
         else:
             # Detect phase from commit
-            decoder = ScopeDecoder()
+            decoder = ScopeDecoder(self._workphases_config)
             result = decoder.detect_phase(commit_message=recent_commits[0], fallback_to_state=True)
 
             # Add phase detection results to plan

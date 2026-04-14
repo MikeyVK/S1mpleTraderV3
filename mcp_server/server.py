@@ -188,11 +188,12 @@ class MCPServer:
             workphases=workphases_config,
         )
 
-        self.git_manager = GitManager(git_config=git_config)
+        self.git_manager = GitManager(git_config=git_config, workphases_config=workphases_config)
         self.project_manager = ProjectManager(
             workspace_root=workspace_root,
             workflow_config=workflow_config,
             git_manager=self.git_manager,
+            workphases_config=workphases_config,
         )
         self.phase_contract_resolver = PhaseContractResolver(
             PhaseConfigContext(
@@ -208,9 +209,7 @@ class MCPServer:
             workspace_root=workspace_root,
             git_config=git_config,
             project_manager=self.project_manager,
-            scope_decoder=ScopeDecoder(
-                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
-            ),
+            scope_decoder=ScopeDecoder(workphases_config=workphases_config),
         )
         self.phase_state_engine = PhaseStateEngine(
             workspace_root=workspace_root,
@@ -219,9 +218,7 @@ class MCPServer:
             workflow_config=workflow_config,
             workphases_config=workphases_config,
             state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
-            scope_decoder=ScopeDecoder(
-                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
-            ),
+            scope_decoder=ScopeDecoder(workphases_config=workphases_config),
             workflow_gate_runner=self.workflow_gate_runner,
             state_reconstructor=self.state_reconstructor,
         )
@@ -347,6 +344,7 @@ class MCPServer:
                 project_manager=self.project_manager,
                 state_engine=self.phase_state_engine,
                 github_manager=self.github_manager,
+                workphases_config=workphases_config,
             ),
         ]
 

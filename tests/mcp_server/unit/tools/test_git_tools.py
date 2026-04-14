@@ -380,20 +380,17 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager: Ma
 @pytest.mark.asyncio
 async def test_git_commit_integration_workflow_phases() -> None:
     """Integration test: Full commit workflow with real workphases.yaml."""
-    # Create a real GitManager with mocked adapter but real workphases.yaml
+    # Create a real GitManager with mocked adapter but real workphases config
     mock_adapter = MagicMock()
     mock_adapter.commit.return_value = "integration123"
 
-    # Use the real .st3/workphases.yaml
-    workphases_path = Path(".st3/workphases.yaml")
-    if not workphases_path.exists():
-        pytest.skip("workphases.yaml not found - skipping integration test")
-
-    git_config = ConfigLoader(config_root=Path(".st3")).load_git_config()
+    loader = ConfigLoader(config_root=Path(".st3/config"))
+    git_config = loader.load_git_config()
+    workphases_config = loader.load_workphases_config()
     manager = GitManager(
         git_config=git_config,
         adapter=mock_adapter,
-        workphases_path=workphases_path,
+        workphases_config=workphases_config,
     )
     resolver = MagicMock(
         side_effect=lambda _branch, workflow_phase, sub_phase: {
@@ -410,7 +407,7 @@ async def test_git_commit_integration_workflow_phases() -> None:
     result1 = await tool.execute(params1, NoteContext())
 
     assert "Committed: integration123" in result1.content[0]["text"]
-    mock_adapter.commit.assert_called_with("docs(P_RESEARCH): investigate alternatives", files=None)
+    mock_adapter.commit.assert_called_with("docs(P_RESEARCH): investigate alternatives", files=None, skip_paths=frozenset())
 
     # Test 2: TDD with subphase
     params2 = GitCommitInput(
@@ -423,7 +420,7 @@ async def test_git_commit_integration_workflow_phases() -> None:
 
     assert "Committed: integration123" in result2.content[0]["text"]
     mock_adapter.commit.assert_called_with(
-        "test(P_IMPLEMENTATION_SP_C1_RED): add failing test", files=None
+        "test(P_IMPLEMENTATION_SP_C1_RED): add failing test", files=None, skip_paths=frozenset()
     )
 
     # Test 3: Coordination phase (NEW)
@@ -436,7 +433,7 @@ async def test_git_commit_integration_workflow_phases() -> None:
 
     assert "Committed: integration123" in result3.content[0]["text"]
     mock_adapter.commit.assert_called_with(
-        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
+        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None, skip_paths=frozenset()
     )
 
 

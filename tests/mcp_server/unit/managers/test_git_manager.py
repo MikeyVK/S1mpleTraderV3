@@ -15,11 +15,27 @@ import pytest
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import GitConfig
+from mcp_server.config.schemas.workphases import PhaseDefinition, WorkphasesConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.operation_notes import NoteContext
 
 # Module under test
 from mcp_server.managers.git_manager import GitManager
+
+_TEST_WORKPHASES = WorkphasesConfig(
+    phases={
+        "research": PhaseDefinition(commit_type_hint="docs"),
+        "implementation": PhaseDefinition(
+            commit_type_hint=None,
+            subphases=["red", "green", "refactor"],
+        ),
+        "coordination": PhaseDefinition(
+            commit_type_hint="chore",
+            subphases=["delegation", "sync", "review"],
+            terminal=True,
+        ),
+    }
+)
 
 
 @pytest.fixture
@@ -224,29 +240,13 @@ class TestGitManagerCommitWithScope:
         return MagicMock()
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock, tmp_path: Path) -> GitManager:
+    def manager(self, mock_adapter: MagicMock) -> GitManager:
         """Fixture for GitManager with mocked adapter and test workphases."""
-        # Create test workphases.yaml
-        workphases_path = tmp_path / "workphases.yaml"
-        workphases_path.write_text("""
-phases:
-  research:
-    display_name: "Research"
-    commit_type_hint: "docs"
-    subphases: []
-  implementation:
-    display_name: "Implementation"
-    commit_type_hint: null
-    subphases: ["red", "green", "refactor"]
-  coordination:
-    display_name: "Coordination"
-    commit_type_hint: "chore"
-    subphases: ["delegation", "sync", "review"]
-version: "1.0"
-""")
-        mgr = GitManager(git_config=git_config, adapter=mock_adapter)
-        mgr._workphases_path = workphases_path
-        return mgr
+        return GitManager(
+            git_config=git_config,
+            adapter=mock_adapter,
+            workphases_config=_TEST_WORKPHASES,
+        )
 
     def test_commit_with_scope_phase_only(
         self, manager: GitManager, mock_adapter: MagicMock

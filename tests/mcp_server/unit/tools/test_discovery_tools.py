@@ -48,6 +48,7 @@ def make_work_context_tool(
         project_manager=MagicMock(),
         state_engine=MagicMock(),
         github_manager=MagicMock(),
+        workphases_config=load_workphases_config(),
     )
 
 

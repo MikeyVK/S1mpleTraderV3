@@ -182,12 +182,15 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_config = ConfigLoader(git_repo / ".st3" / "config").load_git_config(
         config_path=git_repo / ".st3" / "config" / "git.yaml"
     )
+    _workphases_config = ConfigLoader(git_repo / ".st3" / "config").load_workphases_config(
+        config_path=git_repo / ".st3" / "config" / "workphases.yaml"
+    )
     git_manager = GitManager(
         git_config=git_config,
         adapter=git_adapter,
-        workphases_path=git_repo / ".st3" / "config" / "workphases.yaml",
+        workphases_config=_workphases_config,
     )
-    decoder = ScopeDecoder()
+    decoder = ScopeDecoder(_workphases_config)
 
     # Phase 1: RESEARCH
     test_file = git_repo / "test.txt"

@@ -121,7 +121,7 @@ def _make_commit_tool(tmp_path: Path) -> GitCommitTool:
     manager = GitManager(
         git_config=git_config,
         adapter=GitAdapter(str(tmp_path)),
-        workphases_path=_REPO_ROOT / ".st3" / "config" / "workphases.yaml",
+        workphases_config=loader.load_workphases_config(),
     )
     return GitCommitTool(manager=manager)
 
@@ -279,7 +279,7 @@ class TestGitAddCommitReadyPhaseC3ServerDispatch:
             manager=GitManager(
                 git_config=server.git_manager.git_config,
                 adapter=GitAdapter(str(tmp_path)),
-                workphases_path=config_dir / "workphases.yaml",
+                workphases_config=ConfigLoader(config_root=config_dir).load_workphases_config(),
             ),
             phase_guard=build_phase_guard(tmp_path),
             commit_type_resolver=build_commit_type_resolver(

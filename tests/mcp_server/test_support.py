@@ -44,6 +44,7 @@ from mcp_server.schemas import (
     QualityConfig,
     ScaffoldMetadataConfig,
     WorkflowConfig,
+    WorkphasesConfig,
 )
 from mcp_server.tools.git_tools import CreateBranchInput
 from mcp_server.tools.issue_tools import CreateIssueTool
@@ -172,10 +173,15 @@ def make_project_manager(
         git_roots = _candidate_config_roots(workspace_root)
         if any((candidate / "git.yaml").exists() for candidate in git_roots):
             resolved_git_manager = make_git_manager(workspace_root)
+    workphases_config = cast(
+        WorkphasesConfig,
+        _load_config(workspace_root, "workphases.yaml", "load_workphases_config"),
+    )
     return ProjectManager(
         workspace_root=workspace_root,
         workflow_config=resolved_workflow_config,
         git_manager=resolved_git_manager,
+        workphases_config=workphases_config,
     )
 
 
@@ -193,7 +199,10 @@ def make_state_reconstructor(
         _load_config(workspace_root, "git.yaml", "load_git_config"),
     )
     resolved_scope_decoder = scope_decoder or ScopeDecoder(
-        workphases_path=workspace_path / ".st3" / "config" / "workphases.yaml"
+        workphases_config=cast(
+            WorkphasesConfig,
+            _load_config(workspace_root, "workphases.yaml", "load_workphases_config"),
+        )
     )
     return StateReconstructor(
         workspace_root=workspace_root,
@@ -251,7 +260,7 @@ def make_phase_state_engine(
         state_file=workspace_path / ".st3" / "state.json"
     )
     resolved_scope_decoder = scope_decoder or ScopeDecoder(
-        workphases_path=workspace_path / ".st3" / "config" / "workphases.yaml"
+        workphases_config=cast(WorkphasesConfig, workphases_config)
     )
     resolved_workflow_gate_runner = workflow_gate_runner or WorkflowGateRunner(
         deliverable_checker=DeliverableChecker(workspace_path),
