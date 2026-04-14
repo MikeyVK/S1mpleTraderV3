@@ -87,6 +87,36 @@ def _git_is_tracked(workspace_root: Path, path: str) -> bool:
     return result.returncode == 0
 
 
+def _has_net_diff_for_path(workspace_root: Path, path: str, base: str) -> bool:
+    """Return True if *path* has a net delta between the merge-base and HEAD.
+
+    Uses ``git diff --name-only merge_base..HEAD -- path`` to determine whether
+    this branch introduced any commits that modified *path* relative to *base*.
+
+    Raises ExecutionError on non-zero git exit codes so callers receive an
+    explicit signal rather than a silent false negative.
+    """
+    merge_base_result = _run_git_command(
+        workspace_root,
+        ["merge-base", "HEAD", base],
+        failure_context=f"git merge-base failed for base='{base}'",
+    )
+    if merge_base_result.returncode != 0:
+        raise ExecutionError(
+            f"git merge-base failed for base='{base}': {merge_base_result.stderr.strip()}"
+        )
+    merge_base = merge_base_result.stdout.strip()
+
+    diff_result = _run_git_command(
+        workspace_root,
+        ["diff", "--name-only", f"{merge_base}..HEAD", "--", path],
+        failure_context=f"git diff failed for path='{path}'",
+    )
+    if diff_result.returncode != 0:
+        raise ExecutionError(f"git diff failed for path='{path}': {diff_result.stderr.strip()}")
+    return path in diff_result.stdout.splitlines()
+
+
 def _git_rm_cached(workspace_root: Path, path: str, note_context: NoteContext) -> None:
     """Remove *path* from the git index without deleting the working-tree file."""
     result = _run_git_command(
@@ -296,16 +326,21 @@ class EnforcementRunner:
         workspace_root: Path,
         note_context: NoteContext,
     ) -> None:
-        """Block PR creation when phase or tracked-artifact checks fail.
+        """Block PR creation when phase or net-diff-artifact checks fail.
 
         Check 1 — Phase gate: current_phase must equal pr_allowed_phase.
-        Check 2 — Artifact pre-flight: no branch-local artifact may remain git-tracked.
+        Check 2 — Artifact net-diff pre-flight: no branch-local artifact may have
+          a net delta between the merge-base and HEAD. Uses _has_net_diff_for_path
+          (git diff merge_base..HEAD) rather than _git_is_tracked (git ls-files)
+          to avoid false positives when the artifact is inherited from the base branch.
         Both checks read live state at handler execution time.
         """
-        del action, context
+        del action  # action config not used; context MUST remain live for get_param()
         if self._merge_readiness_context is None:
             return
         ctx = self._merge_readiness_context
+
+        base = str(context.get_param("base") or "main")
 
         # Check 1 — Phase gate (read live from state.json)
         current_phase = _read_current_phase(workspace_root)
@@ -318,11 +353,11 @@ class EnforcementRunner:
                 f"Current phase: '{current_phase}'.",
             )
 
-        # Check 2 — Artifact pre-flight
+        # Check 2 — Artifact net-diff pre-flight (C6: replaces _git_is_tracked)
         tracked = [
             artifact
             for artifact in ctx.branch_local_artifacts
-            if _git_is_tracked(workspace_root, artifact.path)
+            if _has_net_diff_for_path(workspace_root, artifact.path, base)
         ]
         if tracked:
             for a in tracked:

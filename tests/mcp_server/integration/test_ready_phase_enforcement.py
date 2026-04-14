@@ -172,7 +172,7 @@ class TestReadyPhaseEnforcement:
         note_context = NoteContext()
         with (
             patch(
-                "mcp_server.managers.enforcement_runner._git_is_tracked",
+                "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
                 return_value=True,
             ),
             pytest.raises(ValidationError, match="git-tracked"),
@@ -196,7 +196,7 @@ class TestReadyPhaseEnforcement:
 
         note_context = NoteContext()
         with patch(
-            "mcp_server.managers.enforcement_runner._git_is_tracked",
+            "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
             return_value=False,
         ):
             runner.run(

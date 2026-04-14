@@ -93,6 +93,9 @@ def _init_repo_with_state_on_main(repo_dir: Path) -> GitRepo:
     )
     repo.index.add(["app.py", _STATE_JSON])
     repo.index.commit("initial: add app.py and state.json on main")
+    # Ensure the default branch is named 'main' regardless of git config
+    if repo.active_branch.name != "main":
+        repo.head.reference.rename("main")
     return repo
 
 
@@ -121,7 +124,7 @@ def _write_ready_state(tmp_path: Path, branch: str) -> None:
 class TestCreatePRMergeReadinessC6:
     """C6: _has_net_diff_for_path proxy semantics for create_pr merge-readiness gate."""
 
-    def test_clean_branch_not_blocked_by_merge_readiness(self, tmp_path: Path) -> None:
+    def test_create_pr_not_blocked_on_clean_branch(self, tmp_path: Path) -> None:
         """Clean branch (state.json inherited from main, never re-committed) must NOT be blocked.
 
         C6 RED: Fails with _git_is_tracked (git ls-files returns 0 because state.json IS
@@ -162,7 +165,7 @@ class TestCreatePRMergeReadinessC6:
             note_context=NoteContext(),
         )
 
-    def test_contaminated_branch_blocked_by_merge_readiness(self, tmp_path: Path) -> None:
+    def test_create_pr_blocked_on_contaminated_branch(self, tmp_path: Path) -> None:
         """Branch that directly committed state.json MUST be blocked (regression guard).
 
         Both _git_is_tracked and _has_net_diff_for_path should block this scenario.
@@ -176,6 +179,9 @@ class TestCreatePRMergeReadinessC6:
         (tmp_path / "app.py").write_text("# app\n", encoding="utf-8")
         repo.index.add(["app.py"])
         repo.index.commit("initial: add app.py (no state.json on main)")
+        # Ensure the default branch is named 'main' regardless of git config
+        if repo.active_branch.name != "main":
+            repo.head.reference.rename("main")
 
         feature_branch = repo.create_head("feature/contaminated")
         feature_branch.checkout()
@@ -219,12 +225,7 @@ def test_enforcement_runner_c3_has_no_private_method_calls() -> None:
     Planning.md §3.14: Private method call patterns in test_enforcement_runner_c3.py
     are exactly the pattern ARCHITECTURE_PRINCIPLES §14 forbids.
     """
-    test_file = (
-        Path(__file__).parent.parent
-        / "unit"
-        / "managers"
-        / "test_enforcement_runner_c3.py"
-    )
+    test_file = Path(__file__).parent.parent / "unit" / "managers" / "test_enforcement_runner_c3.py"
     source = test_file.read_text(encoding="utf-8")
 
     assert "_handle_exclude_branch_local_artifacts" not in source, (

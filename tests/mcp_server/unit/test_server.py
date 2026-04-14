@@ -310,11 +310,17 @@ class TestServerToolRegistration:
             server = MCPServer()
             handler = server.server.request_handlers[CallToolRequest]
 
-            with patch.object(
-                server.github_manager,
-                "create_pr",
-                side_effect=AssertionError("create_pr should not be called"),
-            ) as mock_create_pr:
+            with (
+                patch(
+                    "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
+                    return_value=True,
+                ),
+                patch.object(
+                    server.github_manager,
+                    "create_pr",
+                    side_effect=AssertionError("create_pr should not be called"),
+                ) as mock_create_pr,
+            ):
                 response = await handler(_make_create_pr_request())
 
         text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
