@@ -1,5 +1,21 @@
 # mcp_server/managers/git_manager.py
-"""Git Manager for business logic."""
+"""
+Git Manager — business logic for git workflow conventions.
+
+Coordinates git operations with workflow-phase awareness. Delegates all raw
+git calls to GitAdapter. Applies branch-naming conventions, scope encoding,
+and commit message formatting based on the active workflow state.
+
+@layer: Backend (Managers)
+@dependencies: [yaml, mcp_server.adapters.git_adapter, mcp_server.core.exceptions,
+                mcp_server.core.logging, mcp_server.core.scope_encoder,
+                mcp_server.schemas]
+@responsibilities:
+    - Enforce branch naming and type validation (via GitConfig)
+    - Generate scoped commit messages (type(scope): message)
+    - Forward skip_paths to GitAdapter.commit() unchanged
+    - Pre-flight checks (clean working directory) before branch operations
+"""
 
 from pathlib import Path
 from typing import Any

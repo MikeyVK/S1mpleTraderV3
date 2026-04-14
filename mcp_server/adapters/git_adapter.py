@@ -1,5 +1,22 @@
 # mcp_server/adapters/git_adapter.py
-"""Git adapter for the MCP server."""
+"""
+Git Adapter — local git repository operations.
+
+Wraps GitPython's Repo object with a domain-facing API. All git operations
+performed by the MCP server route through this adapter. Sole owner of all
+git staging and unstaging operations, including the skip_paths zero-delta
+postcondition: every path in skip_paths is removed from the index via
+git restore --staged before index.commit().
+
+@layer: Backend (Adapters)
+@dependencies: [GitPython, mcp_server.config.settings, mcp_server.core.exceptions,
+                mcp_server.core.logging]
+@responsibilities:
+    - Expose git operations (commit, checkout, branch, push, fetch, restore)
+    - Enforce skip_paths postcondition: restore --staged for each path after
+      all staging, before index.commit()
+    - Raise ExecutionError / MCPSystemError on git failures
+"""
 
 from pathlib import Path
 from typing import Any
