@@ -1,3 +1,4 @@
+# mcp_server/adapters/git_adapter.py
 """Git adapter for the MCP server."""
 
 from pathlib import Path

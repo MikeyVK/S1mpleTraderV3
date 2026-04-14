@@ -1,3 +1,4 @@
+# mcp_server/managers/git_manager.py
 """Git Manager for business logic."""
 
 from pathlib import Path

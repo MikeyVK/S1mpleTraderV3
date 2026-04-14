@@ -1,10 +1,12 @@
-"""Tests for GitManager.commit_with_scope() skip_paths forwarding — C2.
+# tests/mcp_server/unit/managers/test_git_manager_skip_paths.py
+"""
+Tests for GitManager commit_with_scope() skip_paths forwarding.
+
+Regression guard for skip_paths parameter plumbing: commit_with_scope() must
+accept skip_paths and forward it unchanged to GitAdapter.commit().
 
 @layer: Tests (Unit)
-@dependencies: pytest, mcp_server.managers.git_manager
-
-Tests verify that commit_with_scope() accepts skip_paths and forwards it to
-GitAdapter.commit(). Regression guard for the skip_paths postcondition.
+@dependencies: pytest, mcp_server.managers.git_manager, mcp_server.config.loader
 """
 
 from pathlib import Path
