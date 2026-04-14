@@ -9,6 +9,7 @@ from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import LabelConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 
 class ListLabelsInput(BaseModel):
@@ -32,7 +33,7 @@ class ListLabelsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: ListLabelsInput) -> ToolResult:
+    async def execute(self, params: ListLabelsInput, context: NoteContext | None = None) -> ToolResult:
         del params
         labels = self.manager.list_labels()
 
@@ -70,7 +71,7 @@ class CreateLabelTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: CreateLabelInput) -> ToolResult:
+    async def execute(self, params: CreateLabelInput, context: NoteContext | None = None) -> ToolResult:
         # Load label config for validation
         # Validate label name pattern
         is_valid, error_msg = self._label_config.validate_label_name(params.name)
@@ -118,7 +119,7 @@ class DeleteLabelTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: DeleteLabelInput) -> ToolResult:
+    async def execute(self, params: DeleteLabelInput, context: NoteContext | None = None) -> ToolResult:
         self.manager.delete_label(params.name)
         return ToolResult.text(f"Deleted label: **{params.name}**")
 
@@ -145,7 +146,7 @@ class RemoveLabelsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: RemoveLabelsInput) -> ToolResult:
+    async def execute(self, params: RemoveLabelsInput, context: NoteContext | None = None) -> ToolResult:
         self.manager.remove_labels(params.issue_number, params.labels)
         return ToolResult.text(
             f"Removed labels from #{params.issue_number}: {', '.join(params.labels)}"
@@ -174,7 +175,7 @@ class AddLabelsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: AddLabelsInput) -> ToolResult:
+    async def execute(self, params: AddLabelsInput, context: NoteContext | None = None) -> ToolResult:
         # Load label config for validation
         # Validate all labels exist
         undefined = [label for label in params.labels if not self._label_config.label_exists(label)]
@@ -209,7 +210,7 @@ class DetectLabelDriftTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: DetectLabelDriftInput) -> ToolResult:
+    async def execute(self, params: DetectLabelDriftInput, context: NoteContext | None = None) -> ToolResult:
         """Detect label drift between YAML and GitHub."""
         del params
         try:

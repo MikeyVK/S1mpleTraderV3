@@ -35,6 +35,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
 from mcp_server.core.exceptions import ValidationError
+from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementContext,
     EnforcementRunner,
@@ -121,21 +122,21 @@ class TestReadyPhaseEnforcement:
             params=SimpleNamespace(),
         )
 
-        with (
-            patch(
-                "mcp_server.managers.enforcement_runner._git_is_tracked",
-                return_value=True,
-            ),
-            patch("mcp_server.managers.enforcement_runner._git_rm_cached"),
+        note_context = NoteContext()
+        with patch(
+            "mcp_server.managers.enforcement_runner._git_is_tracked",
+            return_value=True,
         ):
-            notes = runner.run(
+            runner.run(
                 event=GitCommitTool.enforcement_event,  # type: ignore[arg-type]
                 timing="pre",
-                context=ctx,
+                enforcement_ctx=ctx,
+                note_context=note_context,
             )
 
+        notes = note_context.of_type(ExclusionNote)
         assert len(notes) > 0
-        assert any("excluded" in n.lower() for n in notes)
+        assert any(_STATE_JSON in n.file_path for n in notes)
 
     # ── Integration: create_pr pre-enforcement ────────────────────────────────
 
@@ -149,11 +150,13 @@ class TestReadyPhaseEnforcement:
             params=SimpleNamespace(),
         )
 
+        note_context = NoteContext()
         with pytest.raises(ValidationError, match="ready"):
             runner.run(
                 event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]
                 timing="pre",
-                context=ctx,
+                enforcement_ctx=ctx,
+                note_context=note_context,
             )
 
     def test_create_pr_blocked_when_branch_local_artifacts_tracked(self, tmp_path: Path) -> None:
@@ -166,6 +169,7 @@ class TestReadyPhaseEnforcement:
             params=SimpleNamespace(),
         )
 
+        note_context = NoteContext()
         with (
             patch(
                 "mcp_server.managers.enforcement_runner._git_is_tracked",
@@ -176,7 +180,8 @@ class TestReadyPhaseEnforcement:
             runner.run(
                 event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]
                 timing="pre",
-                context=ctx,
+                enforcement_ctx=ctx,
+                note_context=note_context,
             )
 
     def test_create_pr_allowed_in_pr_allowed_phase(self, tmp_path: Path) -> None:
@@ -189,17 +194,17 @@ class TestReadyPhaseEnforcement:
             params=SimpleNamespace(),
         )
 
+        note_context = NoteContext()
         with patch(
             "mcp_server.managers.enforcement_runner._git_is_tracked",
             return_value=False,
         ):
-            notes = runner.run(
+            runner.run(
                 event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]
                 timing="pre",
-                context=ctx,
+                enforcement_ctx=ctx,
+                note_context=note_context,
             )
-
-        assert notes == []
 
 
 @pytest.fixture
@@ -232,10 +237,10 @@ def git_repo(tmp_path: Path) -> Path:
 
 
 class TestReadyPhaseEnforcementRealGit:
-    """End-to-end test: git rm --cached actually removes artifacts from the index."""
+    """End-to-end test: C3 enforcement produces ExclusionNote without calling git rm --cached."""
 
     def test_artifact_removed_from_index_after_runner_run(self, git_repo: Path) -> None:
-        """runner.run() in ready phase removes .st3/state.json from the real git index."""
+        """C3: runner writes ExclusionNote; does NOT call git rm --cached."""
         # Arrange: write and stage the state.json artifact
         _write_state(git_repo, "ready")
         state_file = git_repo / ".st3" / "state.json"
@@ -261,19 +266,25 @@ class TestReadyPhaseEnforcementRealGit:
             tool_name=GitCommitTool.name,
             params=SimpleNamespace(),
         )
-        notes = runner.run(
+        note_context = NoteContext()
+        runner.run(
             event=GitCommitTool.enforcement_event,  # type: ignore[arg-type]
             timing="pre",
-            context=ctx,
+            enforcement_ctx=ctx,
+            note_context=note_context,
         )
 
-        # Assert: artifact is no longer in the index
+        notes = note_context.of_type(ExclusionNote)
+        assert any(_STATE_JSON in n.file_path for n in notes), (
+            "Expected ExclusionNote for state.json in NoteContext"
+        )
+
+        # C3: runner no longer calls git rm --cached — state.json must STILL be in index
         result_after = subprocess.run(
             ["git", "ls-files", "--error-unmatch", _STATE_JSON],
             cwd=git_repo,
             capture_output=True,
         )
-        assert result_after.returncode != 0, (
-            "state.json must be removed from git index after enforcement"
+        assert result_after.returncode == 0, (
+            "state.json must REMAIN in git index after C3 enforcement (no git rm in runner)"
         )
-        assert any("excluded" in n.lower() for n in notes)

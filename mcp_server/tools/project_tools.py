@@ -25,6 +25,7 @@ from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManag
 from mcp_server.schemas import WorkflowConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ class InitializeProjectTool(BaseTool):
             cancellable=True,
         )
 
-    async def execute(self, params: InitializeProjectInput) -> ToolResult:
+    async def execute(self, params: InitializeProjectInput, context: NoteContext | None = None) -> ToolResult:
         """Execute project initialization with atomic state creation.
 
         Issue #39: Creates both deliverables.json AND state.json atomically.
@@ -312,7 +313,7 @@ class GetProjectPlanTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return GetProjectPlanInput.model_json_schema()
 
-    async def execute(self, params: GetProjectPlanInput) -> ToolResult:
+    async def execute(self, params: GetProjectPlanInput, context: NoteContext | None = None) -> ToolResult:
         """Execute project plan retrieval.
 
         Args:
@@ -411,7 +412,7 @@ class SavePlanningDeliverablesTool(BaseTool):
         del workspace_root
         self._manager = manager
 
-    async def execute(self, params: SavePlanningDeliverablesInput) -> ToolResult:
+    async def execute(self, params: SavePlanningDeliverablesInput, context: NoteContext | None = None) -> ToolResult:
         """Persist planning deliverables with Layer 2 schema validation.
 
         Args:
@@ -502,7 +503,7 @@ class UpdatePlanningDeliverablesTool(BaseTool):
         del workspace_root
         self._manager = manager
 
-    async def execute(self, params: UpdatePlanningDeliverablesInput) -> ToolResult:
+    async def execute(self, params: UpdatePlanningDeliverablesInput, context: NoteContext | None = None) -> ToolResult:
         """Merge planning deliverables with Layer 2 schema validation.
 
         Args:

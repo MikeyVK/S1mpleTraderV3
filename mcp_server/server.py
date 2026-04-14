@@ -28,6 +28,7 @@ from mcp_server.config.loader import ConfigLoader, resolve_config_root
 from mcp_server.config.settings import Settings
 from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.exceptions import MCPError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.artifact_manager import ArtifactManager
@@ -456,20 +457,6 @@ class MCPServer:
             error_details = str(validation_error)
             return [TextContent(type="text", text=f"Invalid input for {name}: {error_details}")]
 
-    @staticmethod
-    def _augment_text_with_error_metadata(text: str, result: ToolResult) -> str:
-        """Add error_code and hints to text when result is error."""
-        if not result.is_error or not hasattr(result, "error_code"):
-            return text
-
-        if result.error_code:
-            text += f"\n\nError code: {result.error_code}"
-        if hasattr(result, "hints") and result.hints:
-            text += "\nHints:"
-            for hint in result.hints:
-                text += f"\n  - {hint}"
-        return text
-
     def _convert_tool_result_to_content(
         self, result: ToolResult
     ) -> list[TextContent | ImageContent | EmbeddedResource]:
@@ -479,7 +466,6 @@ class MCPServer:
         for content in result.content:
             if content.get("type") == "text":
                 text = content["text"]
-                text = self._augment_text_with_error_metadata(text, result)
                 response_content.append(TextContent(type="text", text=text))
             elif content.get("type") == "json":
                 response_content.append(
@@ -506,26 +492,12 @@ class MCPServer:
             isError=result.is_error,
         )
 
-    @staticmethod
-    def _tool_result_from_exception(exc: Exception) -> ToolResult:
-        """Convert one enforcement exception into ToolResult.error()."""
-        if isinstance(exc, MCPError):
-            return ToolResult.error(
-                message=exc.message,
-                error_code=exc.code,
-                hints=exc.hints if exc.hints else None,
-            )
-        if isinstance(exc, ValueError):
-            return ToolResult.error(f"Invalid input: {exc}")
-        if isinstance(exc, FileNotFoundError):
-            return ToolResult.error(f"Configuration error: {exc}")
-        return ToolResult.error(f"Unexpected error: {type(exc).__name__}: {exc}")
-
     def _run_tool_enforcement(
         self,
         tool: BaseTool,
         timing: str,
         params: BaseModel | dict[str, Any],
+        note_context: NoteContext,
         result: ToolResult | None = None,
     ) -> ToolResult | None:
         """Execute pre/post enforcement for one tool when configured."""
@@ -533,16 +505,22 @@ class MCPServer:
         if event is None:
             return None
 
-        context = EnforcementContext(
+        enforcement_ctx = EnforcementContext(
             workspace_root=self._workspace_root,
             tool_name=tool.name,
             params=params,
             tool_result=result,
         )
         try:
-            self.enforcement_runner.run(event=event, timing=timing, context=context)
-        except Exception as exc:  # noqa: BLE001
-            return self._tool_result_from_exception(exc)
+            self.enforcement_runner.run(
+                event=event,
+                timing=timing,
+                enforcement_ctx=enforcement_ctx,
+                note_context=note_context,
+            )
+        except MCPError as exc:
+            base = ToolResult.error(message=exc.message, error_code=exc.code)
+            return note_context.render_to_response(base)
         return None
 
     def setup_handlers(self) -> None:
@@ -602,24 +580,30 @@ class MCPServer:
                         if isinstance(validated, list):
                             return validated
 
-                        pre_result = self._run_tool_enforcement(tool, "pre", validated)
+                        note_context = NoteContext()
+
+                        pre_result = self._run_tool_enforcement(
+                            tool, "pre", validated, note_context=note_context
+                        )
                         if pre_result is not None:
                             return self._convert_tool_result_to_mcp_result(pre_result)
 
                         # Execute tool
-                        result = await tool.execute(validated)
+                        raw_result = await tool.execute(validated, note_context)
 
-                        if not result.is_error:
+                        if not raw_result.is_error:
                             post_result = self._run_tool_enforcement(
                                 tool,
                                 "post",
                                 validated,
-                                result=result,
+                                note_context=note_context,
+                                result=raw_result,
                             )
                             if post_result is not None:
                                 return self._convert_tool_result_to_mcp_result(post_result)
 
-                        # Convert result to MCP content
+                        # Render notes and convert result to MCP content
+                        result = note_context.render_to_response(raw_result)
                         response_content = self._convert_tool_result_to_mcp_result(result)
 
                         duration_ms = (time.perf_counter() - start_time) * 1000.0

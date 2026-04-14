@@ -30,8 +30,10 @@ import pytest
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
+    EnforcementAction,
     EnforcementConfig,
     EnforcementContext,
+    EnforcementRule,
     EnforcementRunner,
 )
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
@@ -65,6 +67,25 @@ def _make_runner(tmp_path: Path) -> EnforcementRunner:
     )
 
 
+def _make_exclusion_runner(tmp_path: Path) -> EnforcementRunner:
+    """Runner with the exclude_branch_local_artifacts rule wired for git_add_or_commit pre."""
+    config = EnforcementConfig(
+        enforcement=[
+            EnforcementRule(
+                event_source="tool",
+                tool="git_add_or_commit",
+                timing="pre",
+                actions=[EnforcementAction(type="exclude_branch_local_artifacts")],
+            )
+        ]
+    )
+    return EnforcementRunner(
+        workspace_root=tmp_path,
+        config=config,
+        merge_readiness_context=_merge_ctx(),
+    )
+
+
 def _write_state(tmp_path: Path, current_phase: str) -> None:
     state_dir = tmp_path / ".st3"
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -78,12 +99,7 @@ class TestEnforcementRunnerC3:
     """C3 contract: run() returns None and writes ExclusionNote per excluded artifact."""
 
     def test_enforcement_runner_run_returns_none(self, tmp_path: Path) -> None:
-        """run() must return None after C3 — not list[str].
-
-        Planning.md C3: EnforcementRunner.run() return type → None.
-        ExclusionNote entries convey excluded paths via NoteContext, not return value.
-        RED: fails because run() currently returns list[str].
-        """
+        """run() must return None — not list[str] — after C3 rewrite."""
         runner = _make_runner(tmp_path)
         _write_state(tmp_path, "ready")
         enforcement_ctx = EnforcementContext(
@@ -100,7 +116,7 @@ class TestEnforcementRunnerC3:
             result = runner.run(
                 event="git_add_or_commit",
                 timing="pre",
-                context=enforcement_ctx,
+                enforcement_ctx=enforcement_ctx,
                 note_context=note_context,
             )
 
@@ -110,9 +126,8 @@ class TestEnforcementRunnerC3:
         """Confirmed-tracked artifacts must produce ExclusionNote entries in NoteContext.
 
         Planning.md C3 deliverable #1: run() writes ExclusionNote per excluded path.
-        RED: fails because NoteContext threading does not exist yet.
         """
-        runner = _make_runner(tmp_path)
+        runner = _make_exclusion_runner(tmp_path)
         _write_state(tmp_path, "ready")
         enforcement_ctx = EnforcementContext(
             workspace_root=tmp_path,
@@ -128,7 +143,7 @@ class TestEnforcementRunnerC3:
             runner.run(
                 event="git_add_or_commit",
                 timing="pre",
-                context=enforcement_ctx,
+                enforcement_ctx=enforcement_ctx,
                 note_context=note_context,
             )
 
@@ -142,13 +157,8 @@ class TestEnforcementRunnerC3:
         )
 
     def test_enforcement_runner_no_git_ops(self, tmp_path: Path) -> None:
-        """_handle_exclude_branch_local_artifacts must not call _git_rm_cached.
-
-        Planning.md C3 deliverable #2: zero git rm --cached in exclusion handler.
-        All git ops moved to GitAdapter.commit(skip_paths=).
-        RED: fails because handler currently calls _git_rm_cached.
-        """
-        runner = _make_runner(tmp_path)
+        """_handle_exclude_branch_local_artifacts must not call _git_rm_cached after C3."""
+        runner = _make_exclusion_runner(tmp_path)
         _write_state(tmp_path, "ready")
         enforcement_ctx = EnforcementContext(
             workspace_root=tmp_path,
@@ -169,7 +179,7 @@ class TestEnforcementRunnerC3:
             runner.run(
                 event="git_add_or_commit",
                 timing="pre",
-                context=enforcement_ctx,
+                enforcement_ctx=enforcement_ctx,
                 note_context=note_context,
             )
 
@@ -181,55 +191,40 @@ class TestGitCommitToolC3:
 
     @pytest.mark.asyncio
     async def test_git_commit_tool_execute_accepts_context(self) -> None:
-        """execute(params, context) must be the new public signature.
-
-        Planning.md C3: BaseTool.execute() gains context: NoteContext as required
-        second parameter. RED: fails because execute() currently takes only params.
-        """
+        """execute(params, context) accepted as new public contract."""
         from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
 
         mock_manager = MagicMock()
-        mock_manager.git_config.commit_types = [
-            "feat", "fix", "chore", "refactor", "test", "docs",
-        ]
+        mock_manager.git_config.commit_types = ["feat", "fix", "chore", "refactor", "test", "docs"]
         mock_manager.adapter.get_current_branch.return_value = "refactor/283"
         mock_manager.commit_with_scope.return_value = "abc1234"
 
         tool = GitCommitTool(manager=mock_manager)
-        params = GitCommitInput(message="test commit", workflow_phase="documentation")
-        note_context = NoteContext()
-
-        result = await tool.execute(params, note_context)
-
-        assert not result.is_error, f"Expected success but got error: {result}"
+        params = GitCommitInput(message="test", workflow_phase="documentation")
+        result = await tool.execute(params, NoteContext())
+        assert not result.is_error
 
     @pytest.mark.asyncio
     async def test_git_commit_tool_reads_exclusion_note(self) -> None:
-        """GitCommitTool must read ExclusionNote entries and pass them as skip_paths.
-
-        Planning.md C3 deliverable #4: tool reads context.of_type(ExclusionNote)
-        and passes resulting frozenset to commit_with_scope(skip_paths=...).
-        RED: fails because execute() does not yet read ExclusionNote.
-        """
+        """GitCommitTool must read ExclusionNote entries and pass as skip_paths."""
         from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
 
         mock_manager = MagicMock()
-        mock_manager.git_config.commit_types = [
-            "feat", "fix", "chore", "refactor", "test", "docs",
-        ]
+        mock_manager.git_config.commit_types = ["feat", "fix", "chore", "refactor", "test", "docs"]
         mock_manager.adapter.get_current_branch.return_value = "refactor/283"
         mock_manager.commit_with_scope.return_value = "def5678"
 
         tool = GitCommitTool(manager=mock_manager)
-        params = GitCommitInput(message="ready commit", workflow_phase="documentation")
+        params = GitCommitInput(message="ready", workflow_phase="documentation")
         note_context = NoteContext()
         note_context.produce(ExclusionNote(file_path=_STATE_JSON))
         note_context.produce(ExclusionNote(file_path=_DELIVERABLES_JSON))
 
         await tool.execute(params, note_context)
 
-        call_kwargs = mock_manager.commit_with_scope.call_args.kwargs
-        skip_paths = call_kwargs.get("skip_paths", frozenset())
+        skip_paths = mock_manager.commit_with_scope.call_args.kwargs.get(
+            "skip_paths", frozenset()
+        )
         assert _STATE_JSON in skip_paths, (
             f"Expected '{_STATE_JSON}' in skip_paths but got: {skip_paths}"
         )
@@ -239,13 +234,7 @@ class TestGitCommitToolC3:
 
     @pytest.mark.asyncio
     async def test_server_renders_exclusion_note_in_response(self) -> None:
-        """Server render_to_response must include ExclusionNote text in the result.
-
-        Planning.md C3: server calls context.render_to_response() unconditionally;
-        ExclusionNote.to_message() output must appear in rendered response content.
-        RED: fails because server does not yet call render_to_response.
-        """
-        from mcp_server.core.operation_notes import NoteContext, ExclusionNote
+        """NoteContext.render_to_response must include ExclusionNote text in the result."""
         from mcp_server.tools.tool_result import ToolResult
 
         note_context = NoteContext()

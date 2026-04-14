@@ -30,6 +30,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
 from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementAction,
     EnforcementConfig,
@@ -128,7 +129,7 @@ class TestEnforcementRunnerC3:
         ctx = _base_context(tmp_path)
 
         result = runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
-            action, ctx, tmp_path
+            action, ctx, tmp_path, NoteContext()
         )
 
         assert result is None
@@ -145,17 +146,18 @@ class TestEnforcementRunnerC3:
             return_value=False,
         ):
             result = runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+                action, ctx, tmp_path, NoteContext()
             )
 
         assert result is None
 
     def test_exclude_handler_removes_tracked_artifacts(self, tmp_path: Path) -> None:
-        """exclude_branch_local_artifacts calls git rm --cached for each tracked artifact."""
+        """_handle_exclude_branch_local_artifacts produces ExclusionNote entries instead of calling _git_rm_cached."""
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         action = _base_action()
         ctx = _base_context(tmp_path)
+        note_context = NoteContext()
 
         with (
             patch(
@@ -167,19 +169,21 @@ class TestEnforcementRunnerC3:
             ) as mock_rm,
         ):
             runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+                action, ctx, tmp_path, note_context
             )
 
-        assert mock_rm.call_count == 2
-        mock_rm.assert_any_call(tmp_path, _STATE_JSON)
-        mock_rm.assert_any_call(tmp_path, _DELIVERABLES_JSON)
+        mock_rm.assert_not_called()
+        paths = {n.file_path for n in note_context.of_type(ExclusionNote)}
+        assert _STATE_JSON in paths
+        assert _DELIVERABLES_JSON in paths
 
     def test_exclude_handler_output_format(self, tmp_path: Path) -> None:
-        """exclude_branch_local_artifacts return value matches the §2.9 format exactly."""
+        """_handle_exclude_branch_local_artifacts produces ExclusionNote entries in NoteContext."""
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         action = _base_action()
         ctx = _base_context(tmp_path)
+        note_context = NoteContext()
 
         with (
             patch(
@@ -188,19 +192,15 @@ class TestEnforcementRunnerC3:
             ),
             patch("mcp_server.managers.enforcement_runner._git_rm_cached"),
         ):
-            result = runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+            runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
+                action, ctx, tmp_path, note_context
             )
 
-        assert result is not None
-        assert "Branch-local artifacts excluded from commit index:" in result
-        assert f"  - {_STATE_JSON}" in result
-        assert f"    Reason: {_ARTIFACT_STATE.reason}" in result
-        assert f"  - {_DELIVERABLES_JSON}" in result
-        assert (
-            "Source: .st3/config/phase_contracts.yaml → merge_policy.branch_local_artifacts"
-            in result
-        )
+        notes = note_context.of_type(ExclusionNote)
+        paths = {n.file_path for n in notes}
+        assert _STATE_JSON in paths
+        assert _DELIVERABLES_JSON in paths
+        assert len(notes) == 2
 
     # ── check_merge_readiness handler ─────────────────────────────────────────
 
@@ -217,7 +217,7 @@ class TestEnforcementRunnerC3:
 
         with pytest.raises(ValidationError, match="ready"):
             runner._handle_check_merge_readiness(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+                action, ctx, tmp_path, NoteContext()
             )
 
     def test_check_merge_readiness_blocks_tracked_artifacts(self, tmp_path: Path) -> None:
@@ -239,7 +239,7 @@ class TestEnforcementRunnerC3:
             pytest.raises(ValidationError, match="git-tracked"),
         ):
             runner._handle_check_merge_readiness(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+                action, ctx, tmp_path, NoteContext()
             )
 
     def test_check_merge_readiness_happy_path(self, tmp_path: Path) -> None:
@@ -258,7 +258,7 @@ class TestEnforcementRunnerC3:
             return_value=False,
         ):
             result = runner._handle_check_merge_readiness(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+                action, ctx, tmp_path, NoteContext()
             )
 
         assert result is None
@@ -276,13 +276,17 @@ class TestEnforcementRunnerC3:
 
     # ── _git_rm_cached error handling ─────────────────────────────────────────
 
-    def test_exclude_handler_raises_on_git_rm_failure(self, tmp_path: Path) -> None:
-        """_git_rm_cached raises ExecutionError with recovery hints on non-zero exit."""
+    def test_exclude_handler_no_git_rm_cached_even_with_subprocess_failure(self, tmp_path: Path) -> None:
+        """_handle_exclude_branch_local_artifacts does not call _git_rm_cached after C3.
+
+        Verifies that even when subprocess.run would return a failure code, no
+        ExecutionError is raised — because _git_rm_cached is never called in C3.
+        """
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         action = _base_action()
         ctx = _base_context(tmp_path)
-
+        note_context = NoteContext()
         failing_result = SimpleNamespace(returncode=1, stderr=b"fatal: pathspec error")
 
         with (
@@ -294,11 +298,11 @@ class TestEnforcementRunnerC3:
                 "mcp_server.managers.enforcement_runner.subprocess.run",
                 return_value=failing_result,
             ),
-            pytest.raises(ExecutionError) as exc_info,
         ):
+            # Should NOT raise — no git rm call, so subprocess failure is irrelevant
             runner._handle_exclude_branch_local_artifacts(  # pyright: ignore[reportPrivateUsage]
-                action, ctx, tmp_path
+                action, ctx, tmp_path, note_context
             )
 
-        assert "git rm --cached failed" in str(exc_info.value)
-        assert exc_info.value.recovery
+        paths = {n.file_path for n in note_context.of_type(ExclusionNote)}
+        assert _STATE_JSON in paths

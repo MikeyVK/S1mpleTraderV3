@@ -8,6 +8,7 @@ from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 
 class ListMilestonesInput(BaseModel):
@@ -32,7 +33,7 @@ class ListMilestonesTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: ListMilestonesInput) -> ToolResult:
+    async def execute(self, params: ListMilestonesInput, context: NoteContext | None = None) -> ToolResult:
         try:
             milestones = self.manager.list_milestones(state=params.state)
         except ExecutionError as e:
@@ -73,7 +74,7 @@ class CreateMilestoneTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: CreateMilestoneInput) -> ToolResult:
+    async def execute(self, params: CreateMilestoneInput, context: NoteContext | None = None) -> ToolResult:
         try:
             milestone = self.manager.create_milestone(
                 title=params.title,
@@ -106,7 +107,7 @@ class CloseMilestoneTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: CloseMilestoneInput) -> ToolResult:
+    async def execute(self, params: CloseMilestoneInput, context: NoteContext | None = None) -> ToolResult:
         try:
             milestone = self.manager.close_milestone(params.milestone_number)
         except ExecutionError as e:

@@ -26,6 +26,7 @@ from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 
 class TransitionPhaseInput(BaseModel):
@@ -96,7 +97,7 @@ class TransitionPhaseTool(_BaseTransitionTool):
     args_model = TransitionPhaseInput
     enforcement_event = "transition_phase"
 
-    async def execute(self, params: TransitionPhaseInput) -> ToolResult:
+    async def execute(self, params: TransitionPhaseInput, context: NoteContext | None = None) -> ToolResult:
         """Execute standard phase transition.
 
         Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
@@ -140,7 +141,7 @@ class ForcePhaseTransitionTool(_BaseTransitionTool):
     args_model = ForcePhaseTransitionInput
     enforcement_event = "transition_phase"
 
-    async def execute(self, params: ForcePhaseTransitionInput) -> ToolResult:
+    async def execute(self, params: ForcePhaseTransitionInput, context: NoteContext | None = None) -> ToolResult:
         """Execute forced phase transition.
 
         Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based

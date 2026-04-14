@@ -18,6 +18,7 @@ from mcp_server.services.document_indexer import DocumentIndexer
 from mcp_server.services.search_service import SearchService
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 
 class SearchDocumentationInput(BaseModel):
@@ -47,7 +48,7 @@ class SearchDocumentationTool(BaseTool):
         super().__init__()
         self._settings = settings
 
-    async def execute(self, params: SearchDocumentationInput) -> ToolResult:
+    async def execute(self, params: SearchDocumentationInput, context: NoteContext | None = None) -> ToolResult:
         """Execute documentation search using DocumentIndexer + SearchService."""
         # Build index from docs directory
         docs_dir = Path(self._settings.server.workspace_root) / "docs"
@@ -124,7 +125,7 @@ class GetWorkContextTool(BaseTool):
         self._state_engine = state_engine
         self._github_manager = github_manager
 
-    async def execute(self, params: GetWorkContextInput) -> ToolResult:
+    async def execute(self, params: GetWorkContextInput, context: NoteContext | None = None) -> ToolResult:
         """Execute work context aggregation."""
         context: dict[str, Any] = {}
 

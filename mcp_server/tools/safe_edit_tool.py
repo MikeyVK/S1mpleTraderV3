@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Project modules
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.validation.validation_service import ValidationService
 
 
@@ -221,7 +222,7 @@ class SafeEditTool(BaseTool):
         """Return the input schema for the tool."""
         return SafeEditInput.model_json_schema()
 
-    async def execute(self, params: SafeEditInput) -> ToolResult:
+    async def execute(self, params: SafeEditInput, context: NoteContext | None = None) -> ToolResult:
         """Execute the safe edit with validation.
 
         Uses file-level locking to prevent concurrent edits on the same file.

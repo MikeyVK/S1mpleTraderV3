@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.validation.template_validator import TemplateValidator
 
 
@@ -31,7 +32,7 @@ class TemplateValidationTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: TemplateValidationInput) -> ToolResult:
+    async def execute(self, params: TemplateValidationInput, context: NoteContext | None = None) -> ToolResult:
         """Execute template validation."""
         try:
             validator = TemplateValidator(params.template_type)

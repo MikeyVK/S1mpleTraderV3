@@ -171,7 +171,7 @@ class TestGitAddCommitReadyPhaseC3:
         runner.run(
             event="git_add_or_commit",
             timing="pre",
-            context=enforcement_ctx,
+            enforcement_ctx=enforcement_ctx,
             note_context=note_context,
         )
 

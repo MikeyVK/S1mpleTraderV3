@@ -25,6 +25,7 @@ from mcp_server.core.logging import get_logger
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 logger = get_logger("tools.git_fetch")
 
@@ -70,7 +71,7 @@ class GitFetchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitFetchInput) -> ToolResult:
+    async def execute(self, params: GitFetchInput, context: NoteContext | None = None) -> ToolResult:
         try:
             result = await anyio.to_thread.run_sync(
                 lambda: self.manager.fetch(remote=params.remote, prune=params.prune)

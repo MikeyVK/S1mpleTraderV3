@@ -24,6 +24,7 @@ from mcp_server.tools.phase_tools import (
     _BaseTransitionTool as BaseTransitionTool,  # pyright: ignore[reportPrivateUsage]  # Shared transition base pending tool consolidation.
 )
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 __all__ = [
     "ForceCycleTransitionInput",
@@ -66,7 +67,7 @@ class TransitionCycleTool(BaseTransitionTool):
     args_model = TransitionCycleInput
     enforcement_event = "transition_cycle"
 
-    async def execute(self, params: TransitionCycleInput) -> ToolResult:
+    async def execute(self, params: TransitionCycleInput, context: NoteContext | None = None) -> ToolResult:
         """Execute cycle transition through the shared orchestration path."""
         branch = self._get_current_branch()
         issue_number = params.issue_number or self._extract_issue_number(branch)
@@ -170,7 +171,7 @@ class ForceCycleTransitionTool(BaseTransitionTool):
     args_model = ForceCycleTransitionInput
     enforcement_event = "transition_cycle"
 
-    async def execute(self, params: ForceCycleTransitionInput) -> ToolResult:
+    async def execute(self, params: ForceCycleTransitionInput, context: NoteContext | None = None) -> ToolResult:
         """Execute forced cycle transition through the shared inspection path."""
         branch = self._get_current_branch()
         issue_number = params.issue_number or self._extract_issue_number(branch)

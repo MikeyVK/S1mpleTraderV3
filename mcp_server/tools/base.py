@@ -6,14 +6,15 @@ from typing import Any
 from pydantic import BaseModel
 
 from mcp_server.core.error_handling import tool_error_handler
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.tool_result import ToolResult
 
 
 class BaseTool(ABC):
     """Abstract base class for all tools.
 
-    Subclasses must override execute() with a single parameters argument
-    typed as their specific Pydantic model (InputModel).
+    Subclasses must override execute() with a parameters argument typed as their
+    specific Pydantic model (InputModel) and a context: NoteContext argument.
 
     Error handling is automatically applied via @tool_error_handler decorator.
     """
@@ -36,11 +37,12 @@ class BaseTool(ABC):
         cls.execute = tool_error_handler(original_execute)  # type: ignore[assignment]
 
     @abstractmethod
-    async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401
+    async def execute(self, params: Any, context: NoteContext | None = None) -> ToolResult:  # noqa: ANN401
         """Execute the tool.
 
         Args:
             params: Validated Pydantic model instance containing arguments.
+            context: Per-call NoteContext for producing and reading typed notes.
         """
 
     @property

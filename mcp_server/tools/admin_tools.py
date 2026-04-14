@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from mcp_server.core.logging import get_logger
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 
 # Constants
 RESTART_MARKER_PATH = Path(".st3/.restart_marker")
@@ -108,7 +109,7 @@ class RestartServerTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: RestartServerInput) -> ToolResult:
+    async def execute(self, params: RestartServerInput, context: NoteContext | None = None) -> ToolResult:
         """Execute server restart.
 
         **Workflow:**

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import cast
 
 from mcp_server.core.exceptions import ConfigError, ExecutionError, ValidationError
+from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
@@ -49,27 +50,15 @@ def _run_git_command(
     workspace_root: Path,
     args: list[str],
     failure_context: str,
-) -> subprocess.CompletedProcess[str]:
-    """Run one git command with non-interactive safeguards for request paths."""
-    try:
-        return subprocess.run(
-            ["git", *args],
-            cwd=workspace_root,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=_GIT_TIMEOUT_SECONDS,
-            env=_git_command_env(),
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise ExecutionError(
-            f"{failure_context}: {exc}",
-            recovery=[
-                "Verify the workspace is a healthy git repository",
-                "Retry the operation from a non-interactive shell",
-            ],
-        ) from exc
+) -> subprocess.CompletedProcess[bytes]:
+    """Run a git subcommand non-interactively and return the CompletedProcess."""
+    return subprocess.run(
+        ["git", *args],
+        cwd=workspace_root,
+        env=_git_command_env(),
+        capture_output=True,
+        timeout=_GIT_TIMEOUT_SECONDS,
+    )
 
 
 def _git_is_tracked(workspace_root: Path, path: str) -> bool:
@@ -94,9 +83,8 @@ def _git_rm_cached(workspace_root: Path, path: str) -> None:
         raise ExecutionError(
             f"git rm --cached failed for '{path}': {stderr}",
             recovery=[
-                "Run `git status` to inspect the index state",
-                "Manually run: git rm --cached <path>",
-                f"Check that the file exists and is tracked: git ls-files {path}",
+                "Run 'git status' to inspect current index state",
+                f"Manually run: git rm --cached {path}",
             ],
         )
 
@@ -105,6 +93,7 @@ __all__ = [
     "EnforcementAction",
     "EnforcementConfig",
     "EnforcementContext",
+    "EnforcementConfig",
     "EnforcementRule",
     "EnforcementRunner",
 ]
@@ -128,7 +117,10 @@ class EnforcementContext:
         return None
 
 
-ActionHandler = Callable[[EnforcementAction, EnforcementContext, Path], str | None]
+ActionHandler = Callable[
+    [EnforcementAction, EnforcementContext, Path, NoteContext],
+    None,
+]
 
 
 class EnforcementRegistry:
@@ -171,19 +163,26 @@ class EnforcementRunner:
             self._registry = EnforcementRegistry(registry)
         self._validate_registered_actions()
 
-    def run(self, event: str, timing: str, context: EnforcementContext) -> list[str]:
-        """Execute matching actions for one event and timing pair."""
-        notes: list[str] = []
+    def run(
+        self,
+        event: str,
+        timing: str,
+        enforcement_ctx: EnforcementContext,
+        note_context: NoteContext,
+    ) -> None:
+        """Execute matching actions for one event and timing pair.
+
+        C3: returns None; all results conveyed via note_context.produce().
+        """
         for rule in self._config.enforcement:
             if rule.event_source != "tool":
                 continue
             if rule.tool != event or rule.timing != timing:
                 continue
             for action in rule.actions:
-                note = self._registry.get(action.type)(action, context, self.workspace_root)
-                if note:
-                    notes.append(note)
-        return notes
+                self._registry.get(action.type)(
+                    action, enforcement_ctx, self.workspace_root, note_context
+                )
 
     def _validate_registered_actions(self) -> None:
         """Fail fast when config references unknown action types."""
@@ -223,20 +222,21 @@ class EnforcementRunner:
         action: EnforcementAction,
         context: EnforcementContext,
         workspace_root: Path,
-    ) -> str | None:
+        note_context: NoteContext,
+    ) -> None:
         """Block invalid branch creation bases based on branch-type rules."""
-        del self, workspace_root
+        del self, workspace_root, note_context
         branch_type = context.get_param("branch_type")
         base_branch = context.get_param("base_branch")
         if not branch_type or not base_branch:
-            return None
+            return
 
         allowed_patterns = action.rules.get(str(branch_type), [])
         if not allowed_patterns:
-            return None
+            return
 
         if any(fnmatch(str(base_branch), pattern) for pattern in allowed_patterns):
-            return None
+            return
 
         raise ValidationError(
             f"Branch type '{branch_type}' cannot be created from base '{base_branch}'",
@@ -248,58 +248,47 @@ class EnforcementRunner:
         action: EnforcementAction,
         context: EnforcementContext,
         workspace_root: Path,
-    ) -> str | None:
-        """Auto-exclude configured branch-local artifacts from the commit index.
+        note_context: NoteContext,
+    ) -> None:
+        """Write ExclusionNote for each confirmed-tracked branch-local artifact.
 
         Only runs when the current workflow phase equals the configured terminal phase.
         For each artifact in merge_readiness_context.branch_local_artifacts that is
-        git-tracked, runs ``git rm --cached`` and returns a formatted exclusion note.
+        git-tracked, produces an ExclusionNote in note_context. No git operations.
+
+        C3 contract: zero git ops in this handler. GitAdapter.commit(skip_paths=)
+        owns the actual exclusion from the staging area.
         """
         del action, context
         if self._merge_readiness_context is None:
-            return None
+            return
         ctx = self._merge_readiness_context
 
         current_phase = _read_current_phase(workspace_root)
         if current_phase != ctx.terminal_phase:
-            return None
+            return
 
-        excluded = [
-            artifact
-            for artifact in ctx.branch_local_artifacts
-            if _git_is_tracked(workspace_root, artifact.path)
-        ]
-        if not excluded:
-            return None
-
-        for artifact in excluded:
-            _git_rm_cached(workspace_root, artifact.path)
-
-        lines = ["Branch-local artifacts excluded from commit index:"]
-        for artifact in excluded:
-            lines.append(f"  - {artifact.path}")
-            lines.append(f"    Reason: {artifact.reason}")
-        lines.append("")
-        lines.append(
-            "Source: .st3/config/phase_contracts.yaml → merge_policy.branch_local_artifacts"
-        )
-        return "\n".join(lines)
+        for artifact in ctx.branch_local_artifacts:
+            if not _git_is_tracked(workspace_root, artifact.path):
+                continue
+            note_context.produce(ExclusionNote(file_path=artifact.path))
 
     def _handle_check_merge_readiness(
         self,
         action: EnforcementAction,
         context: EnforcementContext,
         workspace_root: Path,
-    ) -> str | None:
+        note_context: NoteContext,
+    ) -> None:
         """Block PR creation when phase or tracked-artifact checks fail.
 
         Check 1 — Phase gate: current_phase must equal pr_allowed_phase.
         Check 2 — Artifact pre-flight: no branch-local artifact may remain git-tracked.
         Both checks read live state at handler execution time.
         """
-        del action, context
+        del action, context, note_context
         if self._merge_readiness_context is None:
-            return None
+            return
         ctx = self._merge_readiness_context
 
         # Check 1 — Phase gate (read live from state.json)
@@ -329,4 +318,3 @@ class EnforcementRunner:
                     " → merge_policy.branch_local_artifacts",
                 ],
             )
-        return None
