@@ -892,7 +892,7 @@
     "skip_reason": null,
     "parent_branch": null,
     "created_at": "2026-04-09T11:43:14.316762+00:00",
-    "planning_deliverables": {
+    "planning_deliverables_legacy_2026_04_13": {
       "tdd_cycles": {
         "total": 5,
         "cycles": [
@@ -1242,6 +1242,756 @@
               }
             ],
             "exit_criteria": "check_yaml.py absent from working tree; fix_yaml.py absent; revert_yaml.py absent; show_yaml.py absent; no merge=ours rule in .gitattributes; regression test passes; full suite green"
+          }
+        ]
+      }
+    },
+    "planning_deliverables_legacy_2026_04_14": {
+      "tdd_cycles": {
+        "total": 6,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "C1.1",
+                "description": "mcp_server/core/operation_notes.py exists with all six NoteEntry variants, NoteEntry union, Renderable protocol, and NoteContext",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/core/operation_notes.py"
+                }
+              },
+              {
+                "id": "C1.2",
+                "description": "NoteContext.render_to_response returns base unchanged when no Renderable entries present",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+                  "text": "test_render_empty_returns_base_unchanged"
+                }
+              },
+              {
+                "id": "C1.3",
+                "description": "NoteContext.render_to_response appends TextContent block with all Renderable entries in insertion order",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+                  "text": "test_render_renderable_appends_text_content"
+                }
+              },
+              {
+                "id": "C1.4",
+                "description": "Structural test test_no_raw_st3_config_paths_in_production committed to test_c_loader_structural.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_raw_st3_config_paths_in_production"
+                }
+              },
+              {
+                "id": "C1.5",
+                "description": "Structural test test_no_hints_kwarg_on_mcp_error_callsites committed to test_c_loader_structural.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_hints_kwarg_on_mcp_error_callsites"
+                }
+              },
+              {
+                "id": "C1.6",
+                "description": "Structural test test_no_blockers_or_recovery_kwargs_on_exception_callsites committed to test_c_loader_structural.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_blockers_or_recovery_kwargs_on_exception_callsites"
+                }
+              },
+              {
+                "id": "C1.7",
+                "description": "CommitNote has no to_message() method: render_to_response with only CommitNote returns base unchanged",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+                  "text": "test_commit_note_not_renderable"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/core/test_note_context_unit.py \u2192 all pass; test_c_loader_structural.py importable; Pyright clean on operation_notes.py"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "C2.1",
+                "description": "GitAdapter.commit() accepts skip_paths: frozenset[str] parameter with postcondition",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "skip_paths: frozenset[str]"
+                }
+              },
+              {
+                "id": "C2.2",
+                "description": "GitAdapter.commit() calls git restore --staged for each path in skip_paths after all staging",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "restore"
+                }
+              },
+              {
+                "id": "C2.3",
+                "description": "GitManager.commit_with_scope() accepts and forwards skip_paths parameter",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/git_manager.py",
+                  "text": "skip_paths: frozenset[str]"
+                }
+              },
+              {
+                "id": "C2.4",
+                "description": "Unit test: skip_paths path absent from commit diff when files=None (stage-all route)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py",
+                  "text": "test_commit_with_skip_paths_files_none_no_delta"
+                }
+              },
+              {
+                "id": "C2.5",
+                "description": "Unit test: skip_paths path absent from commit diff when explicit files= list supplied",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py",
+                  "text": "test_commit_with_skip_paths_explicit_files_no_delta"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py \u2192 all pass"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "C3.1",
+                "description": "EnforcementRunner.run() return type is None; no git rm --cached calls in body",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "git rm"
+                }
+              },
+              {
+                "id": "C3.2",
+                "description": "EnforcementRunner.run() writes ExclusionNote to note_context for each excluded file",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "ExclusionNote"
+                }
+              },
+              {
+                "id": "C3.3",
+                "description": "BaseTool.execute abstract method signature includes context: NoteContext parameter",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/base.py",
+                  "text": "context: NoteContext"
+                }
+              },
+              {
+                "id": "C3.4",
+                "description": "GitCommitTool.execute reads ExclusionNote entries and passes skip_paths to commit_with_scope",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "of_type(ExclusionNote)"
+                }
+              },
+              {
+                "id": "C3.5",
+                "description": "MCPServer.handle_call_tool calls context.render_to_response unconditionally on success and error paths",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "render_to_response"
+                }
+              },
+              {
+                "id": "C3.6",
+                "description": "Integration test: full git_add_or_commit ready-phase dispatch produces zero delta on .st3/state.json in commit diff AND rendered response contains exclusion message",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_git_add_commit_ready_phase_c3.py",
+                  "text": "test_ready_phase_commit_excludes_state_json"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/managers/test_enforcement_runner_unit.py tests/mcp_server/integration/test_git_add_commit_ready_phase_c3.py \u2192 all pass; _augment_text_with_error_metadata absent from server.py"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "C4.1",
+                "description": "MCPError.hints field absent from exceptions.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/exceptions.py",
+                  "text": "hints: list"
+                }
+              },
+              {
+                "id": "C4.2",
+                "description": "ToolResult.hints field absent from tool_result.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/tool_result.py",
+                  "text": "hints"
+                }
+              },
+              {
+                "id": "C4.3",
+                "description": "tool_error_handler contains no hints variable or exc.hints reference",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/error_handling.py",
+                  "text": "hints"
+                }
+              },
+              {
+                "id": "C4.4",
+                "description": "hints= kwarg absent from mcp_server/tools/git_tools.py (structural test test_no_hints_kwarg_on_mcp_error_callsites GREEN)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "hints="
+                }
+              },
+              {
+                "id": "C4.5",
+                "description": "blockers= kwarg absent from mcp_server/tools/git_tools.py (structural test test_no_blockers_or_recovery_kwargs_on_exception_callsites GREEN)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "blockers="
+                }
+              },
+              {
+                "id": "C4.6",
+                "description": "Integration test: BlockerNote written at raise-site renders as TextContent block in dispatch response",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_blocker_recovery_note_dispatch.py",
+                  "text": "test_blocker_note_rendered_in_dispatch"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/config/test_c_loader_structural.py \u2192 test_no_hints_kwarg and test_no_blockers_or_recovery both GREEN; pytest tests/mcp_server/unit/core/test_tool_error_handler_c4.py \u2192 all pass"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "C5.1",
+                "description": "ScopeDecoder.__init__ accepts workphases_config: WorkphasesConfig; workphases_path: Path constructor param absent",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/phase_detection.py",
+                  "text": "workphases_path: Path"
+                }
+              },
+              {
+                "id": "C5.2",
+                "description": "GitManager.__init__ accepts workphases_config: WorkphasesConfig; commit_with_scope performs no file I/O",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/git_manager.py",
+                  "text": "workphases_path"
+                }
+              },
+              {
+                "id": "C5.3",
+                "description": "PhaseDetection.__init__ CWD-sensitive fallback Path('.st3/config/workphases.yaml') absent",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/phase_detection.py",
+                  "text": ".st3/config/workphases.yaml"
+                }
+              },
+              {
+                "id": "C5.4",
+                "description": "PhaseStateEngine file-existence check absent; operates on injected WorkphasesConfig",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "workphases_path"
+                }
+              },
+              {
+                "id": "C5.5",
+                "description": "server.py both ScopeDecoder callsites use workphases_config= kwarg",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "ScopeDecoder(workphases_config="
+                }
+              },
+              {
+                "id": "C5.6",
+                "description": "Hard-coded .st3/config/workphases.yaml absent from phase_detection.py (structural test test_no_raw_st3_config_paths_in_production GREEN)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/phase_detection.py",
+                  "text": ".st3/config/workphases.yaml"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/config/test_c_loader_structural.py::test_no_raw_st3_config_paths_in_production \u2192 GREEN; unit test commit_with_scope executes without open() call \u2192 pass"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "C6.1",
+                "description": "_has_net_diff_for_path helper in enforcement_runner.py uses git diff --name-only merge_base..HEAD",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_has_net_diff_for_path"
+                }
+              },
+              {
+                "id": "C6.2",
+                "description": "_handle_check_merge_readiness does not reference _git_is_tracked",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_git_is_tracked"
+                }
+              },
+              {
+                "id": "C6.3",
+                "description": "Integration test: full git_add_or_commit ready-phase dispatch \u2192 no delta for .st3/state.json AND rendered exclusion message",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_git_add_commit_regression_c6.py",
+                  "text": "test_ready_phase_full_dispatch_no_delta_rendered_exclusion"
+                }
+              },
+              {
+                "id": "C6.4",
+                "description": "Integration test: create_pr with clean branch (artifact never committed) \u2192 not blocked",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
+                  "text": "test_create_pr_not_blocked_on_clean_branch"
+                }
+              },
+              {
+                "id": "C6.5",
+                "description": "Integration test: create_pr with artifact directly committed \u2192 blocked; response contains contamination error",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
+                  "text": "test_create_pr_blocked_on_contaminated_branch"
+                }
+              },
+              {
+                "id": "C6.6",
+                "description": "test_enforcement_runner_c3.py contains zero direct calls to _handle_exclude_branch_local_artifacts",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/mcp_server/unit/managers/test_enforcement_runner_c3.py",
+                  "text": "_handle_exclude_branch_local_artifacts"
+                }
+              },
+              {
+                "id": "C6.7",
+                "description": "_augment_text_with_error_metadata absent from server.py; full test suite pytest tests/mcp_server/ \u2192 0 failures, 0 errors",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/server.py",
+                  "text": "_augment_text_with_error_metadata"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/ \u2192 0 failures, 0 errors; all three structural tests GREEN; grep -r '_handle_exclude_branch_local_artifacts' tests/ \u2192 0 matches"
+          }
+        ]
+      }
+    },
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 6,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "C1.1",
+                "description": "mcp_server/core/operation_notes.py exists with all six NoteEntry variants, NoteEntry union, Renderable protocol, and NoteContext",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/core/operation_notes.py"
+                }
+              },
+              {
+                "id": "C1.2",
+                "description": "NoteContext.render_to_response returns base unchanged when no Renderable entries present",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+                  "text": "test_render_empty_returns_base_unchanged"
+                }
+              },
+              {
+                "id": "C1.3",
+                "description": "NoteContext.render_to_response appends TextContent block with all Renderable entries in insertion order",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+                  "text": "test_render_renderable_appends_text_content"
+                }
+              },
+              {
+                "id": "C1.4",
+                "description": "Structural test test_no_raw_st3_config_paths_in_production committed to test_c_loader_structural.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_raw_st3_config_paths_in_production"
+                }
+              },
+              {
+                "id": "C1.5",
+                "description": "Structural test test_no_hints_kwarg_on_mcp_error_callsites committed to test_c_loader_structural.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_hints_kwarg_on_mcp_error_callsites"
+                }
+              },
+              {
+                "id": "C1.6",
+                "description": "Structural test test_no_blockers_or_recovery_kwargs_on_exception_callsites committed to test_c_loader_structural.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/config/test_c_loader_structural.py",
+                  "text": "test_no_blockers_or_recovery_kwargs_on_exception_callsites"
+                }
+              },
+              {
+                "id": "C1.7",
+                "description": "CommitNote has no to_message() method: render_to_response with only CommitNote returns base unchanged",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/core/test_note_context_unit.py",
+                  "text": "test_commit_note_not_renderable"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/core/test_note_context_unit.py \u2192 all pass; test_c_loader_structural.py importable; Pyright clean on operation_notes.py"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "C2.1",
+                "description": "GitAdapter.commit() accepts skip_paths: frozenset[str] parameter with postcondition",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "skip_paths: frozenset[str]"
+                }
+              },
+              {
+                "id": "C2.2",
+                "description": "GitAdapter.commit() calls git restore --staged for each path in skip_paths after all staging",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "restore"
+                }
+              },
+              {
+                "id": "C2.3",
+                "description": "GitManager.commit_with_scope() accepts and forwards skip_paths parameter",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/git_manager.py",
+                  "text": "skip_paths: frozenset[str]"
+                }
+              },
+              {
+                "id": "C2.4",
+                "description": "Unit test: skip_paths path absent from commit diff when files=None (stage-all route)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py",
+                  "text": "test_commit_with_skip_paths_files_none_no_delta"
+                }
+              },
+              {
+                "id": "C2.5",
+                "description": "Unit test: skip_paths path absent from commit diff when explicit files= list supplied",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py",
+                  "text": "test_commit_with_skip_paths_explicit_files_no_delta"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py \u2192 all pass"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "C3.1",
+                "description": "EnforcementRunner.run() return type is None; no git rm --cached calls in body",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "git rm"
+                }
+              },
+              {
+                "id": "C3.2",
+                "description": "EnforcementRunner.run() writes ExclusionNote to note_context for each excluded file",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "ExclusionNote"
+                }
+              },
+              {
+                "id": "C3.3",
+                "description": "BaseTool.execute abstract method signature includes context: NoteContext parameter",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/base.py",
+                  "text": "context: NoteContext"
+                }
+              },
+              {
+                "id": "C3.4",
+                "description": "GitCommitTool.execute reads ExclusionNote entries and passes skip_paths to commit_with_scope",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "of_type(ExclusionNote)"
+                }
+              },
+              {
+                "id": "C3.5",
+                "description": "MCPServer.handle_call_tool calls context.render_to_response unconditionally on success and error paths",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "render_to_response"
+                }
+              },
+              {
+                "id": "C3.6",
+                "description": "Integration test: full git_add_or_commit ready-phase dispatch produces zero delta on .st3/state.json in commit diff AND rendered response contains exclusion message",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_git_add_commit_ready_phase_c3.py",
+                  "text": "test_ready_phase_commit_excludes_state_json"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/managers/test_enforcement_runner_unit.py tests/mcp_server/integration/test_git_add_commit_ready_phase_c3.py \u2192 all pass; _augment_text_with_error_metadata absent from server.py"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "C4.1",
+                "description": "MCPError.hints field absent from exceptions.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/exceptions.py",
+                  "text": "hints: list"
+                }
+              },
+              {
+                "id": "C4.2",
+                "description": "ToolResult.hints field absent from tool_result.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/tool_result.py",
+                  "text": "hints"
+                }
+              },
+              {
+                "id": "C4.3",
+                "description": "tool_error_handler contains no hints variable or exc.hints reference",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/error_handling.py",
+                  "text": "hints"
+                }
+              },
+              {
+                "id": "C4.4",
+                "description": "hints= kwarg absent from mcp_server/tools/git_tools.py (structural test test_no_hints_kwarg_on_mcp_error_callsites GREEN)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "hints="
+                }
+              },
+              {
+                "id": "C4.5",
+                "description": "blockers= kwarg absent from mcp_server/tools/git_tools.py (structural test test_no_blockers_or_recovery_kwargs_on_exception_callsites GREEN)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "blockers="
+                }
+              },
+              {
+                "id": "C4.6",
+                "description": "Integration test: BlockerNote written at raise-site renders as TextContent block in dispatch response",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_blocker_recovery_note_dispatch.py",
+                  "text": "test_blocker_note_rendered_in_dispatch"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/config/test_c_loader_structural.py \u2192 test_no_hints_kwarg and test_no_blockers_or_recovery both GREEN; pytest tests/mcp_server/unit/core/test_tool_error_handler_c4.py \u2192 all pass"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "C5.1",
+                "description": "ScopeDecoder.__init__ accepts workphases_config: WorkphasesConfig; workphases_path: Path constructor param absent",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/phase_detection.py",
+                  "text": "workphases_path: Path"
+                }
+              },
+              {
+                "id": "C5.2",
+                "description": "GitManager.__init__ accepts workphases_config: WorkphasesConfig; commit_with_scope performs no file I/O",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/git_manager.py",
+                  "text": "workphases_path"
+                }
+              },
+              {
+                "id": "C5.3",
+                "description": "PhaseDetection.__init__ CWD-sensitive fallback Path('.st3/config/workphases.yaml') absent",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/phase_detection.py",
+                  "text": ".st3/config/workphases.yaml"
+                }
+              },
+              {
+                "id": "C5.4",
+                "description": "PhaseStateEngine file-existence check absent; operates on injected WorkphasesConfig",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "workphases_path"
+                }
+              },
+              {
+                "id": "C5.5",
+                "description": "server.py both ScopeDecoder callsites use workphases_config= kwarg",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "ScopeDecoder(workphases_config="
+                }
+              },
+              {
+                "id": "C5.6",
+                "description": "Hard-coded .st3/config/workphases.yaml absent from phase_detection.py (structural test test_no_raw_st3_config_paths_in_production GREEN)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/core/phase_detection.py",
+                  "text": ".st3/config/workphases.yaml"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/unit/config/test_c_loader_structural.py::test_no_raw_st3_config_paths_in_production \u2192 GREEN; unit test commit_with_scope executes without open() call \u2192 pass"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "C6.1",
+                "description": "_has_net_diff_for_path helper in enforcement_runner.py uses git diff --name-only merge_base..HEAD",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_has_net_diff_for_path"
+                }
+              },
+              {
+                "id": "C6.2",
+                "description": "_handle_check_merge_readiness does not reference _git_is_tracked",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_git_is_tracked"
+                }
+              },
+              {
+                "id": "C6.3",
+                "description": "Integration test: full git_add_or_commit ready-phase dispatch \u2192 no delta for .st3/state.json AND rendered exclusion message",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_git_add_commit_regression_c6.py",
+                  "text": "test_ready_phase_full_dispatch_no_delta_rendered_exclusion"
+                }
+              },
+              {
+                "id": "C6.4",
+                "description": "Integration test: create_pr with clean branch (artifact never committed) \u2192 not blocked",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
+                  "text": "test_create_pr_not_blocked_on_clean_branch"
+                }
+              },
+              {
+                "id": "C6.5",
+                "description": "Integration test: create_pr with artifact directly committed \u2192 blocked; response contains contamination error",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
+                  "text": "test_create_pr_blocked_on_contaminated_branch"
+                }
+              },
+              {
+                "id": "C6.6",
+                "description": "test_enforcement_runner_c3.py contains zero direct calls to _handle_exclude_branch_local_artifacts",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/mcp_server/unit/managers/test_enforcement_runner_c3.py",
+                  "text": "_handle_exclude_branch_local_artifacts"
+                }
+              },
+              {
+                "id": "C6.7",
+                "description": "_augment_text_with_error_metadata absent from server.py; full test suite pytest tests/mcp_server/ \u2192 0 failures, 0 errors",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/server.py",
+                  "text": "_augment_text_with_error_metadata"
+                }
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/ \u2192 0 failures, 0 errors; all three structural tests GREEN; grep -r '_handle_exclude_branch_local_artifacts' tests/ \u2192 0 matches"
           }
         ]
       }
