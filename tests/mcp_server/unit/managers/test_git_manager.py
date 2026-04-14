@@ -3,8 +3,8 @@
 @layer: Tests (Unit)
 @dependencies: pytest, mcp_server.managers.git_manager, mcp_server.config.schemas
 """
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
-# Suppress Pydantic FieldInfo false positives
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false, reportPrivateUsage=false
+# Suppress Pydantic false positives; reportPrivateUsage allows protected member access in test setup
 
 # Standard library
 from pathlib import Path
@@ -260,7 +260,7 @@ version: "1.0"
 
         assert result == "abc123"
         mock_adapter.commit.assert_called_once_with(
-            "docs(P_RESEARCH): investigate alternatives", files=None
+            "docs(P_RESEARCH): investigate alternatives", files=None, skip_paths=frozenset()
         )
 
     def test_commit_with_scope_phase_and_subphase(
@@ -278,7 +278,7 @@ version: "1.0"
 
         assert result == "def456"
         mock_adapter.commit.assert_called_once_with(
-            "test(P_IMPLEMENTATION_SP_RED): add failing test", files=None
+            "test(P_IMPLEMENTATION_SP_RED): add failing test", files=None, skip_paths=frozenset()
         )
 
     def test_commit_with_scope_with_cycle_number(
@@ -297,7 +297,9 @@ version: "1.0"
 
         assert result == "ghi789"
         mock_adapter.commit.assert_called_once_with(
-            "feat(P_IMPLEMENTATION_SP_C1_GREEN): implement feature", files=None
+            "feat(P_IMPLEMENTATION_SP_C1_GREEN): implement feature",
+            files=None,
+            skip_paths=frozenset(),
         )
 
     def test_commit_with_scope_coordination_phase(
@@ -314,7 +316,9 @@ version: "1.0"
 
         assert result == "jkl012"
         mock_adapter.commit.assert_called_once_with(
-            "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
+            "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues",
+            files=None,
+            skip_paths=frozenset(),
         )
 
     def test_commit_with_scope_with_files(
@@ -335,6 +339,7 @@ version: "1.0"
         mock_adapter.commit.assert_called_once_with(
             "refactor(P_IMPLEMENTATION_SP_REFACTOR): clean up code",
             files=["src/app.py", "tests/test_app.py"],
+            skip_paths=frozenset(),
         )
 
     def test_commit_with_scope_with_commit_type_override(
@@ -354,6 +359,7 @@ version: "1.0"
         mock_adapter.commit.assert_called_once_with(
             "fix(P_IMPLEMENTATION_SP_RED): fix failing test",
             files=None,
+            skip_paths=frozenset(),
         )
 
     def test_commit_with_scope_invalid_phase_raises_error(self, manager: GitManager) -> None:
