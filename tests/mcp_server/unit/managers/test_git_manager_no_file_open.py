@@ -18,9 +18,6 @@ object.
 # Standard library
 from unittest.mock import MagicMock, patch
 
-# Third-party
-import pytest
-
 # Project modules
 from mcp_server.config.schemas.workphases import PhaseDefinition, WorkphasesConfig
 from mcp_server.core.operation_notes import NoteContext

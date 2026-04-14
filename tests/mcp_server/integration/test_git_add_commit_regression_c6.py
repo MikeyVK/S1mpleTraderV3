@@ -26,15 +26,19 @@ Scenarios:
 # Standard library
 import json
 from pathlib import Path
+from shutil import copytree
+from unittest.mock import patch
 
 # Third-party
 import pytest
 from git import Repo as GitRepo
+from mcp.types import CallToolRequest, CallToolRequestParams
 
 # Project modules
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
+from mcp_server.config.settings import ServerSettings, Settings
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementContext,
@@ -42,7 +46,13 @@ from mcp_server.managers.enforcement_runner import (
 )
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
-from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
+from mcp_server.server import MCPServer
+from mcp_server.tools.git_tools import (
+    GitCommitInput,
+    GitCommitTool,
+    build_commit_type_resolver,
+    build_phase_guard,
+)
 from mcp_server.tools.tool_result import ToolResult
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
@@ -224,4 +234,96 @@ class TestGitAddCommitRegressionC6:
         all_text = " ".join(c["text"] for c in rendered.content if c.get("type") == "text")
         assert _STATE_JSON in all_text, (
             f"Expected '{_STATE_JSON}' in rendered response. Got: {all_text!r}"
+        )
+
+
+class TestGitAddCommitRegressionC6ServerDispatch:
+    """C6 server-dispatch regression: explicit ``files=`` path via MCPServer dispatch.
+
+    Proves that the C6 NoteContext wiring holds when a real MCP client passes an
+    explicit ``files`` list that includes ``.st3/state.json``.  The MCPServer must
+    suppress state.json via the ExclusionNote → skip_paths wire-through even in
+    that code path.
+    """
+
+    @pytest.mark.asyncio
+    async def test_server_dispatch_explicit_files_excludes_state_json(self, tmp_path: Path) -> None:
+        """Full MCPServer dispatch with files=[state.json, normal.py]: zero-delta on state.json.
+
+        Mirrors the C3 server-dispatch proof but exercises the explicit-files
+        staging route introduced in C6.  The test:
+          1. Sets up a real git repo (state.json + normal.py committed on initial).
+          2. Modifies both files to simulate pre-ready-phase commit state.
+          3. Instantiates MCPServer with workspace_root=tmp_path.
+          4. Dispatches git_add_or_commit with files=['state.json path','normal.py'].
+          5. Asserts zero-delta on state.json and exclusion message in response.
+        """
+        repo = _init_repo(tmp_path)
+        _modify_files(tmp_path)
+
+        # Copy .st3/config from real workspace so MCPServer can initialise
+        config_dir = tmp_path / ".st3" / "config"
+        copytree(_REPO_ROOT / ".st3" / "config", config_dir, dirs_exist_ok=True)
+
+        settings = Settings(
+            server=ServerSettings(
+                workspace_root=str(tmp_path),
+                config_root=str(config_dir),
+            )
+        )
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value = settings
+            server = MCPServer()
+
+        # Re-register GitCommitTool to operate on tmp_path
+        git_commit_tool = GitCommitTool(
+            manager=GitManager(
+                git_config=server.git_manager.git_config,
+                adapter=GitAdapter(str(tmp_path)),
+                workphases_config=ConfigLoader(config_root=config_dir).load_workphases_config(),
+            ),
+            phase_guard=build_phase_guard(tmp_path),
+            commit_type_resolver=build_commit_type_resolver(
+                server.phase_state_engine,
+                server.phase_contract_resolver,
+            ),
+            state_engine=server.phase_state_engine,
+        )
+        server.tools = [
+            t if t.name != "git_add_or_commit" else git_commit_tool for t in server.tools
+        ]
+
+        handler = server.server.request_handlers[CallToolRequest]
+        req = CallToolRequest(
+            params=CallToolRequestParams(
+                name="git_add_or_commit",
+                arguments={
+                    "message": "c6 server dispatch: explicit files",
+                    "workflow_phase": "documentation",
+                    "commit_type": "docs",
+                    "files": [_STATE_JSON, "normal.py"],
+                },
+            )
+        )
+        response = await handler(req)
+
+        content_texts = [c.text for c in response.root.content if hasattr(c, "text")]
+        all_text = " ".join(content_texts)
+
+        assert not response.root.isError, f"Expected success but got error: {all_text!r}"
+
+        # Zero-delta: state.json must NOT appear in commit diff
+        last_commit = list(repo.iter_commits(max_count=1))[0]
+        diff_paths = {d.a_path for d in last_commit.diff(last_commit.parents[0])}
+        assert _STATE_JSON not in diff_paths, (
+            f"Non-zero delta on '{_STATE_JSON}' via server dispatch (explicit files). "
+            f"Commit contained: {sorted(diff_paths)}"
+        )
+        assert "normal.py" in diff_paths, (
+            "normal.py missing from commit diff — test setup integrity failure"
+        )
+
+        # ExclusionNote rendered in response
+        assert _STATE_JSON in all_text, (
+            f"Expected '{_STATE_JSON}' in rendered server response. Got: {all_text!r}"
         )

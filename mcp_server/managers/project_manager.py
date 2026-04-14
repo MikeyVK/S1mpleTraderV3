@@ -23,10 +23,9 @@ from pathlib import Path
 from typing import Any
 
 # Project modules
-from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.schemas import WorkflowConfig
+from mcp_server.schemas import WorkflowConfig, WorkphasesConfig
 from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
 
 # Per-phase keys recognised in planning_deliverables (C8/GAP-15)
