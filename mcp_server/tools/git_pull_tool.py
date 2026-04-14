@@ -83,7 +83,7 @@ class GitPullTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitPullInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GitPullInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             pull_result = await anyio.to_thread.run_sync(
                 lambda: self.manager.pull(remote=params.remote, rebase=params.rebase)

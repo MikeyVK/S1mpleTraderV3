@@ -48,7 +48,7 @@ class SearchDocumentationTool(BaseTool):
         super().__init__()
         self._settings = settings
 
-    async def execute(self, params: SearchDocumentationInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: SearchDocumentationInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute documentation search using DocumentIndexer + SearchService."""
         # Build index from docs directory
         docs_dir = Path(self._settings.server.workspace_root) / "docs"
@@ -125,7 +125,7 @@ class GetWorkContextTool(BaseTool):
         self._state_engine = state_engine
         self._github_manager = github_manager
 
-    async def execute(self, params: GetWorkContextInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GetWorkContextInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute work context aggregation."""
         context: dict[str, Any] = {}
 

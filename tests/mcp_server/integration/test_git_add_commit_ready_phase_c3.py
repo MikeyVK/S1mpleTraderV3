@@ -35,7 +35,6 @@ from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.enforcement_runner import (
-    EnforcementConfig,
     EnforcementContext,
     EnforcementRunner,
 )
@@ -210,9 +209,7 @@ class TestGitAddCommitReadyPhaseC3:
         base = ToolResult.text("committed")
         rendered = note_context.render_to_response(base)
 
-        all_text = " ".join(
-            c["text"] for c in rendered.content if c.get("type") == "text"
-        )
+        all_text = " ".join(c["text"] for c in rendered.content if c.get("type") == "text")
         assert _STATE_JSON in all_text, (
             f"Expected '{_STATE_JSON}' in rendered response text but got: {all_text!r}"
         )

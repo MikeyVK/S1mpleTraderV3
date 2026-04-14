@@ -179,7 +179,7 @@ class InitializeProjectTool(BaseTool):
             cancellable=True,
         )
 
-    async def execute(self, params: InitializeProjectInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: InitializeProjectInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute project initialization with atomic state creation.
 
         Issue #39: Creates both deliverables.json AND state.json atomically.
@@ -313,7 +313,7 @@ class GetProjectPlanTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return GetProjectPlanInput.model_json_schema()
 
-    async def execute(self, params: GetProjectPlanInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GetProjectPlanInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute project plan retrieval.
 
         Args:
@@ -412,7 +412,7 @@ class SavePlanningDeliverablesTool(BaseTool):
         del workspace_root
         self._manager = manager
 
-    async def execute(self, params: SavePlanningDeliverablesInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: SavePlanningDeliverablesInput, _context: NoteContext | None = None) -> ToolResult:
         """Persist planning deliverables with Layer 2 schema validation.
 
         Args:
@@ -503,7 +503,7 @@ class UpdatePlanningDeliverablesTool(BaseTool):
         del workspace_root
         self._manager = manager
 
-    async def execute(self, params: UpdatePlanningDeliverablesInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: UpdatePlanningDeliverablesInput, _context: NoteContext | None = None) -> ToolResult:
         """Merge planning deliverables with Layer 2 schema validation.
 
         Args:

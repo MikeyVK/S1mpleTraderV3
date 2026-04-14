@@ -18,10 +18,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import NoteContext
 
 
 class ScaffoldArtifactInput(BaseModel):
@@ -64,7 +64,9 @@ class ScaffoldArtifactTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: ScaffoldArtifactInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: ScaffoldArtifactInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         """Execute artifact scaffolding.
 
         All exceptions are handled by tool_error_handler decorator,
@@ -76,7 +78,7 @@ class ScaffoldArtifactTool(BaseTool):
         Returns:
             ToolResult with success message
         """
-        del context  # NoteContext not used by this tool
+        del _context  # NoteContext not used by this tool
         # Prepare kwargs from template context
         template_ctx = params.context or {}
         kwargs = {"name": params.name, **template_ctx}

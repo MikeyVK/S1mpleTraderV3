@@ -37,6 +37,8 @@ from mcp_server.managers.enforcement_runner import (
     EnforcementRunner,
 )
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
+from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
+from mcp_server.tools.tool_result import ToolResult
 
 _STATE_JSON = ".st3/state.json"
 _DELIVERABLES_JSON = ".st3/deliverables.json"
@@ -172,9 +174,7 @@ class TestEnforcementRunnerC3:
                 "mcp_server.managers.enforcement_runner._git_is_tracked",
                 return_value=True,
             ),
-            patch(
-                "mcp_server.managers.enforcement_runner._git_rm_cached"
-            ) as mock_rm,
+            patch("mcp_server.managers.enforcement_runner._git_rm_cached") as mock_rm,
         ):
             runner.run(
                 event="git_add_or_commit",
@@ -192,8 +192,6 @@ class TestGitCommitToolC3:
     @pytest.mark.asyncio
     async def test_git_commit_tool_execute_accepts_context(self) -> None:
         """execute(params, context) accepted as new public contract."""
-        from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
-
         mock_manager = MagicMock()
         mock_manager.git_config.commit_types = ["feat", "fix", "chore", "refactor", "test", "docs"]
         mock_manager.adapter.get_current_branch.return_value = "refactor/283"
@@ -207,8 +205,6 @@ class TestGitCommitToolC3:
     @pytest.mark.asyncio
     async def test_git_commit_tool_reads_exclusion_note(self) -> None:
         """GitCommitTool must read ExclusionNote entries and pass as skip_paths."""
-        from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
-
         mock_manager = MagicMock()
         mock_manager.git_config.commit_types = ["feat", "fix", "chore", "refactor", "test", "docs"]
         mock_manager.adapter.get_current_branch.return_value = "refactor/283"
@@ -222,9 +218,7 @@ class TestGitCommitToolC3:
 
         await tool.execute(params, note_context)
 
-        skip_paths = mock_manager.commit_with_scope.call_args.kwargs.get(
-            "skip_paths", frozenset()
-        )
+        skip_paths = mock_manager.commit_with_scope.call_args.kwargs.get("skip_paths", frozenset())
         assert _STATE_JSON in skip_paths, (
             f"Expected '{_STATE_JSON}' in skip_paths but got: {skip_paths}"
         )
@@ -235,17 +229,13 @@ class TestGitCommitToolC3:
     @pytest.mark.asyncio
     async def test_server_renders_exclusion_note_in_response(self) -> None:
         """NoteContext.render_to_response must include ExclusionNote text in the result."""
-        from mcp_server.tools.tool_result import ToolResult
-
         note_context = NoteContext()
         note_context.produce(ExclusionNote(file_path=_STATE_JSON))
         base = ToolResult.text("abc1234")
 
         rendered = note_context.render_to_response(base)
 
-        all_text = " ".join(
-            c["text"] for c in rendered.content if c.get("type") == "text"
-        )
+        all_text = " ".join(c["text"] for c in rendered.content if c.get("type") == "text")
         assert _STATE_JSON in all_text, (
             f"Expected '{_STATE_JSON}' in rendered content but got: {all_text!r}"
         )

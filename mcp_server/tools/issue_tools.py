@@ -241,7 +241,7 @@ class CreateIssueTool(BaseTool):
 
         return labels
 
-    async def execute(self, params: CreateIssueInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: CreateIssueInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             self.manager.validate_issue_params(
                 issue_type=params.issue_type,
@@ -309,7 +309,7 @@ class GetIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: GetIssueInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GetIssueInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             issue = self.manager.get_issue(params.issue_number)
 
@@ -351,7 +351,7 @@ class ListIssuesTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: ListIssuesInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: ListIssuesInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             state_str = params.state
             issues = self.manager.list_issues(state=state_str or "open", labels=params.labels)
@@ -394,7 +394,7 @@ class UpdateIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: UpdateIssueInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: UpdateIssueInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             self.manager.update_issue(
                 issue_number=params.issue_number,
@@ -431,7 +431,7 @@ class CloseIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: CloseIssueInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: CloseIssueInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             self.manager.close_issue(params.issue_number, comment=params.comment)
             return ToolResult.text(f"Closed issue #{params.issue_number}")

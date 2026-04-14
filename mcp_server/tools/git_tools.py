@@ -11,13 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import CommitNote, ExclusionNote, NoteContext
 from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_contract_resolver import PhaseContractResolver
 from mcp_server.schemas import GitConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.operation_notes import CommitNote, ExclusionNote, NoteContext
 
 logger = get_logger("tools.git")
 
@@ -141,7 +141,9 @@ class CreateBranchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: CreateBranchInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: CreateBranchInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         logger.info(
             "Branch creation requested",
             extra={
@@ -195,7 +197,11 @@ class GitStatusTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitStatusInput, context: NoteContext | None = None) -> ToolResult:  # noqa: ARG002
+    async def execute(
+        self,
+        params: GitStatusInput,  # noqa: ARG002
+        _context: NoteContext | None = None,
+    ) -> ToolResult:
         status = self.manager.get_status()
 
         text = f"Branch: {status['branch']}\n"
@@ -302,7 +308,9 @@ class GitCommitTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitCommitInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitCommitInput, context: NoteContext | None = None
+    ) -> ToolResult:
         workflow_phase = params.workflow_phase
         current_branch = self.manager.adapter.get_current_branch()
 
@@ -391,7 +399,9 @@ class GitRestoreTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitRestoreInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitRestoreInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         self.manager.restore(files=params.files, source=params.source)
         return ToolResult.text(f"Restored {len(params.files)} file(s) from {params.source}")
 
@@ -432,7 +442,9 @@ class GitCheckoutTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitCheckoutInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitCheckoutInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         try:
             # GitPython operations can block; run them in a worker thread.
             await anyio.to_thread.run_sync(self.manager.checkout, params.branch)
@@ -497,7 +509,9 @@ class GitPushTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitPushInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitPushInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         status = self.manager.get_status()
         self.manager.push(set_upstream=params.set_upstream)
         return ToolResult.text(f"Pushed branch: {status['branch']}")
@@ -535,7 +549,9 @@ class GitMergeTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitMergeInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitMergeInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         status = self.manager.get_status()
         self.manager.merge(params.branch)
         return ToolResult.text(f"Merged {params.branch} into {status['branch']}")
@@ -574,7 +590,9 @@ class GitDeleteBranchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitDeleteBranchInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitDeleteBranchInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         self.manager.delete_branch(params.branch, force=params.force)
         return ToolResult.text(f"Deleted branch: {params.branch}")
 
@@ -621,7 +639,9 @@ class GitStashTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitStashInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitStashInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         if params.action == "push":
             self.manager.stash(message=params.message, include_untracked=params.include_untracked)
             if params.message:
@@ -675,7 +695,9 @@ class GetParentBranchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GetParentBranchInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(
+        self, params: GetParentBranchInput, _context: NoteContext | None = None
+    ) -> ToolResult:
         if self._state_engine is None:
             return ToolResult.error("PhaseStateEngine must be injected")
 

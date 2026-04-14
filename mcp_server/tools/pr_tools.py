@@ -57,7 +57,7 @@ class CreatePRTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: CreatePRInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: CreatePRInput, _context: NoteContext | None = None) -> ToolResult:
         result = self.manager.create_pr(
             title=params.title,
             body=params.body,
@@ -95,7 +95,7 @@ class ListPRsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: ListPRsInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: ListPRsInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             prs = self.manager.list_prs(state=params.state, base=params.base, head=params.head)
         except ExecutionError as e:
@@ -142,7 +142,7 @@ class MergePRTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: MergePRInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: MergePRInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             result = self.manager.merge_pr(
                 pr_number=params.pr_number,

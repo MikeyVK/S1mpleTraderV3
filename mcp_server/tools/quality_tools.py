@@ -79,7 +79,7 @@ class RunQualityGatesTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: RunQualityGatesInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: RunQualityGatesInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute quality gates and return contract-compliant response.
 
         Returns exactly two content items (design.md §4.8, planning.md C27):

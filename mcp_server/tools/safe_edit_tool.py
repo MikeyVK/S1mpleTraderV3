@@ -222,7 +222,7 @@ class SafeEditTool(BaseTool):
         """Return the input schema for the tool."""
         return SafeEditInput.model_json_schema()
 
-    async def execute(self, params: SafeEditInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: SafeEditInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute the safe edit with validation.
 
         Uses file-level locking to prevent concurrent edits on the same file.

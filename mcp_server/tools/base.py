@@ -37,7 +37,7 @@ class BaseTool(ABC):
         cls.execute = tool_error_handler(original_execute)  # type: ignore[assignment]
 
     @abstractmethod
-    async def execute(self, params: Any, context: NoteContext | None = None) -> ToolResult:  # noqa: ANN401
+    async def execute(self, params: Any, _context: NoteContext | None = None) -> ToolResult:  # noqa: ANN401
         """Execute the tool.
 
         Args:

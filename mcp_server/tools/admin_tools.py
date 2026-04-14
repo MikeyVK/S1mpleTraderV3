@@ -109,7 +109,7 @@ class RestartServerTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: RestartServerInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: RestartServerInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute server restart.
 
         **Workflow:**

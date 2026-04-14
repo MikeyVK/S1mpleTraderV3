@@ -24,5 +24,5 @@ class HealthCheckTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, _params: HealthCheckInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, _params: HealthCheckInput, _context: NoteContext | None = None) -> ToolResult:
         return ToolResult.text("OK")

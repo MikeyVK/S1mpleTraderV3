@@ -187,7 +187,7 @@ class RunTestsTool(BaseTool):
             cmd.extend(["-m", params.markers])
         return cmd
 
-    async def execute(self, params: RunTestsInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: RunTestsInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute the tool."""
         cmd = self._build_cmd(params)
 

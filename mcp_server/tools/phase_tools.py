@@ -97,7 +97,7 @@ class TransitionPhaseTool(_BaseTransitionTool):
     args_model = TransitionPhaseInput
     enforcement_event = "transition_phase"
 
-    async def execute(self, params: TransitionPhaseInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: TransitionPhaseInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute standard phase transition.
 
         Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
@@ -141,7 +141,7 @@ class ForcePhaseTransitionTool(_BaseTransitionTool):
     args_model = ForcePhaseTransitionInput
     enforcement_event = "transition_phase"
 
-    async def execute(self, params: ForcePhaseTransitionInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: ForcePhaseTransitionInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute forced phase transition.
 
         Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based

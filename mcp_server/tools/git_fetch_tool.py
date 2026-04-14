@@ -71,7 +71,7 @@ class GitFetchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitFetchInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GitFetchInput, _context: NoteContext | None = None) -> ToolResult:
         try:
             result = await anyio.to_thread.run_sync(
                 lambda: self.manager.fetch(remote=params.remote, prune=params.prune)

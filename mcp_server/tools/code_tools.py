@@ -52,7 +52,7 @@ class CreateFileTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: CreateFileInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: CreateFileInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute the tool."""
         warnings.warn(
             "create_file is deprecated. Use scaffold_artifact instead.",

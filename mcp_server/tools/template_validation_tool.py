@@ -32,7 +32,7 @@ class TemplateValidationTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: TemplateValidationInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: TemplateValidationInput, _context: NoteContext | None = None) -> ToolResult:
         """Execute template validation."""
         try:
             validator = TemplateValidator(params.template_type)

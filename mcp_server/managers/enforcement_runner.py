@@ -9,6 +9,7 @@ Dispatch-level enforcement runner for tool events configured in
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 from collections.abc import Callable
@@ -25,6 +26,7 @@ from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
 _GIT_TIMEOUT_SECONDS = 2
+logger = logging.getLogger(__name__)
 
 
 def _read_current_phase(workspace_root: Path) -> str | None:
@@ -50,15 +52,24 @@ def _run_git_command(
     workspace_root: Path,
     args: list[str],
     failure_context: str,
-) -> subprocess.CompletedProcess[bytes]:
+) -> subprocess.CompletedProcess[str]:
     """Run a git subcommand non-interactively and return the CompletedProcess."""
-    return subprocess.run(
-        ["git", *args],
-        cwd=workspace_root,
-        env=_git_command_env(),
-        capture_output=True,
-        timeout=_GIT_TIMEOUT_SECONDS,
-    )
+    try:
+        return subprocess.run(
+            ["git", *args],
+            cwd=workspace_root,
+            env=_git_command_env(),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("git command failed (%s): %s", failure_context, exc)
+        return subprocess.CompletedProcess(
+            args=["git", *args], returncode=1, stdout="", stderr=str(exc)
+        )
 
 
 def _git_is_tracked(workspace_root: Path, path: str) -> bool:

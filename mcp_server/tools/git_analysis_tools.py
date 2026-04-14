@@ -31,7 +31,7 @@ class GitListBranchesTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: GitListBranchesInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GitListBranchesInput, _context: NoteContext | None = None) -> ToolResult:
         branches = self.manager.list_branches(verbose=params.verbose, remote=params.remote)
         if not branches:
             return ToolResult.text("No branches found")
@@ -59,7 +59,7 @@ class GitDiffTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: GitDiffInput, context: NoteContext | None = None) -> ToolResult:
+    async def execute(self, params: GitDiffInput, _context: NoteContext | None = None) -> ToolResult:
         stats = self.manager.compare_branches(params.target_branch, params.source_branch)
         if not stats:
             return ToolResult.text("No differences found")
