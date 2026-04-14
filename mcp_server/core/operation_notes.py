@@ -1,3 +1,21 @@
+# mcp_server/core/operation_notes.py
+"""
+NoteEntry typed notes protocol and NoteContext.
+
+Defines all six NoteEntry variants (ExclusionNote, CommitNote, SuggestionNote,
+BlockerNote, RecoveryNote, InfoNote), the Renderable protocol, the NoteEntry
+union type, and NoteContext — the bidirectional per-call notes bus.
+
+@layer: Core
+@dependencies: [collections.abc, dataclasses, typing, mcp_server.tools.tool_result]
+@responsibilities:
+    - Define the Renderable protocol (runtime_checkable) for user-visible notes
+    - Define six typed NoteEntry variants as frozen dataclasses
+    - Provide NoteEntry union type for exhaustive pattern matching
+    - Implement NoteContext: per-call notes bus with produce, of_type,
+      render_to_response
+"""
+
 from __future__ import annotations
 
 # Standard library

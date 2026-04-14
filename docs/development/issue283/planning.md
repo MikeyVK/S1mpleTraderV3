@@ -3,8 +3,8 @@
 # git_add_or_commit regression fix — NoteContext protocol, config-boundary closure
 
 **Status:** DRAFT
-**Version:** 1.0
-**Last Updated:** 2026-04-13
+**Version:** 1.1
+**Last Updated:** 2026-04-14
 **Design reference:** [design-git-add-commit-regression-fix.md](design-git-add-commit-regression-fix.md) v11.0
 **Research reference:** [research-git-add-or-commit-regression.md](research-git-add-or-commit-regression.md) v1.5
 
@@ -195,7 +195,22 @@ The exception migration (C4) is safe to perform as a single flat sweep in one cy
 - Pyright clean on `operation_notes.py`
 - `pytest tests/mcp_server/unit/core/test_note_context_unit.py` → all pass
 
-**Gate Proof:** `pytest tests/mcp_server/unit/core/test_note_context_unit.py -v` → all pass; `pytest tests/mcp_server/unit/config/test_c_loader_structural.py` → structural tests exist and are importable
+**Gate Proof:** `pytest tests/mcp_server/unit/core/test_note_context_unit.py -v` → 5 passed; `pytest tests/mcp_server/unit/config/test_c_loader_structural.py` → 3 failed (expected, by design)
+
+**Cycle 1 — Structural Red State (recorded 2026-04-14)**
+
+The three structural regression guards in `test_c_loader_structural.py` are intentionally
+failing in Cycle 1 and must remain red until their designated resolution cycles:
+
+| Test | Why failing in C1 | Resolved in |
+|------|-------------------|-------------|
+| `test_no_raw_st3_config_paths_in_production` | `phase_detection.py`, `phase_state_engine.py`, `git_manager.py`, and `server.py` still contain raw `.st3/config/` string literals. These are removed via `WorkphasesConfig` injection. | **C5** |
+| `test_no_hints_kwarg_on_mcp_error_callsites` | Exception constructor callsites throughout `mcp_server/` still pass `hints=` kwargs to `MCPError` subclasses. Removal is part of the exception flag-day migration. | **C4** |
+| `test_no_blockers_or_recovery_kwargs_on_exception_callsites` | `PreflightError(blockers=...)` and `ExecutionError(recovery=...)` callsites still exist. These constructor params are removed via the C4 raise-site rewrite. | **C4** |
+
+These tests are **not regressions**. They must not be fixed prematurely outside their
+respective cycles. Their permanent presence acts as a mechanical gate ensuring C4 and C5
+close the violations they guard.
 
 **Dependencies:** None (this is the foundational cycle)
 
