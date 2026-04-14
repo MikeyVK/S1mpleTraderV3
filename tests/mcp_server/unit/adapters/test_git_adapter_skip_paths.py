@@ -7,9 +7,7 @@ All tests in this file MUST FAIL before the C2 GREEN changes are implemented.
 They become the permanent regression guard for the skip_paths postcondition.
 """
 
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from mcp_server.adapters.git_adapter import GitAdapter
 
@@ -109,9 +107,11 @@ class TestGitAdapterSkipPaths:
 
         adapter.commit(message="multi skip commit", skip_paths=skip)
 
-        actual_calls = set(mock_repo.git.restore.call_args_list)
-        expected_calls = {
-            call("--staged", ".st3/state.json"),
-            call("--staged", ".st3/deliverables.json"),
-        }
-        assert actual_calls == expected_calls
+        restore_calls = mock_repo.git.restore.call_args_list
+        assert len(restore_calls) == 2, f"Expected 2 restore calls, got {len(restore_calls)}"
+        # Each call is restore("--staged", path) — extract path args
+        actual_paths = {c.args[1] for c in restore_calls}
+        expected_paths = {".st3/state.json", ".st3/deliverables.json"}
+        assert actual_paths == expected_paths
+        # All calls must use --staged flag
+        assert all(c.args[0] == "--staged" for c in restore_calls)

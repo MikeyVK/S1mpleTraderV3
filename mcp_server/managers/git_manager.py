@@ -105,6 +105,7 @@ class GitManager:
         cycle_number: int | None = None,
         commit_type: str | None = None,
         files: list[str] | None = None,
+        skip_paths: frozenset[str] = frozenset(),
     ) -> str:
         """Commit changes with workflow phase scope.
 
@@ -116,6 +117,9 @@ class GitManager:
             commit_type: Optional commit type override (test, feat, refactor, docs, chore, fix).
                         Auto-determined from workphases.yaml if omitted.
             files: Optional list of file paths to stage + commit.
+            skip_paths: Paths forwarded to GitAdapter.commit() as a postcondition.
+                Each path is removed from the staging index after all staging,
+                producing zero delta in the commit. Defaults to frozenset().
 
         Returns:
             Commit hash.
@@ -166,7 +170,7 @@ class GitManager:
 
         # Format: type(scope): message
         full_message = f"{commit_type}({scope}): {message}"
-        return self.adapter.commit(full_message, files=files)
+        return self.adapter.commit(full_message, files=files, skip_paths=skip_paths)
 
     def restore(self, files: list[str], source: str = "HEAD") -> None:
         """Restore files to a given source ref.

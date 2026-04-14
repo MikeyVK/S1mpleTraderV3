@@ -114,19 +114,30 @@ class GitAdapter:
             )
             raise ExecutionError(f"Failed to create branch {branch_name}: {e}") from e
 
-    def commit(self, message: str, files: list[str] | None = None) -> str:
+    def commit(
+        self,
+        message: str,
+        files: list[str] | None = None,
+        skip_paths: frozenset[str] = frozenset(),
+    ) -> str:
         """Commit changes.
 
         Args:
             message: Commit message.
             files: Optional list of file paths to stage and commit. When omitted,
                 stages all changes (equivalent to `git add .`).
+            skip_paths: Paths to remove from the staging index after all staging.
+                Applied unconditionally as a postcondition regardless of the
+                `files=` route used. Produces zero delta for these paths in the
+                resulting commit. Defaults to frozenset() — no-op.
         """
         try:
             if files is None:
                 self.repo.git.add(".")
             else:
                 self.repo.git.add(*files)
+            for path in skip_paths:
+                self.repo.git.restore("--staged", path)
             commit = self.repo.index.commit(message)
             return commit.hexsha
         except Exception as e:

@@ -8,12 +8,10 @@ GitAdapter.commit(). All tests MUST FAIL before the C2 GREEN changes.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.schemas import GitConfig
 
 
 def _make_manager() -> tuple["GitManager", "MagicMock"]:
@@ -21,12 +19,7 @@ def _make_manager() -> tuple["GitManager", "MagicMock"]:
     mock_adapter = MagicMock()
     mock_adapter.commit.return_value = "def5678"
 
-    git_config = GitConfig(
-        branch_types=["feature", "fix", "refactor", "docs", "epic", "hotfix"],
-        branch_name_pattern=r"^\d+-[a-z0-9-]+$",
-        protected_branches=["main"],
-    )
-
+    git_config = ConfigLoader(Path(".st3/config")).load_git_config()
     manager = GitManager(git_config=git_config, adapter=mock_adapter)
     return manager, mock_adapter
 
@@ -48,19 +41,13 @@ class TestGitManagerSkipPaths:
 
         skip = frozenset({".st3/state.json"})
 
-        with patch("builtins.open"), patch("yaml.safe_load") as mock_yaml:
-            mock_yaml.return_value = {
-                "phases": {
-                    "implementation": {"commit_type_hint": "feat"},
-                }
-            }
-            manager.commit_with_scope(
-                workflow_phase="implementation",
-                message="add feature",
-                sub_phase="green",
-                cycle_number=2,
-                skip_paths=skip,
-            )
+        manager.commit_with_scope(
+            workflow_phase="implementation",
+            message="add feature",
+            sub_phase="green",
+            cycle_number=2,
+            skip_paths=skip,
+        )
 
         # The adapter must have received skip_paths
         _call_kwargs = mock_adapter.commit.call_args
@@ -79,27 +66,20 @@ class TestGitManagerSkipPaths:
     def test_commit_with_scope_skip_paths_default_is_empty_frozenset(self) -> None:
         """When skip_paths is omitted, GitAdapter.commit() receives frozenset().
 
-        This verifies backward compatibility: existing callers without skip_paths
+        Verifies backward compatibility: existing callers without skip_paths
         produce no side-effects from the postcondition.
         """
         manager, mock_adapter = _make_manager()
 
-        with patch("builtins.open"), patch("yaml.safe_load") as mock_yaml:
-            mock_yaml.return_value = {
-                "phases": {
-                    "implementation": {"commit_type_hint": "feat"},
-                }
-            }
-            manager.commit_with_scope(
-                workflow_phase="implementation",
-                message="normal commit",
-                sub_phase="green",
-                cycle_number=2,
-            )
+        manager.commit_with_scope(
+            workflow_phase="implementation",
+            message="normal commit",
+            sub_phase="green",
+            cycle_number=2,
+        )
 
         _call_kwargs = mock_adapter.commit.call_args
         assert _call_kwargs is not None
         _, kwargs = _call_kwargs
-        # Either skip_paths is absent (pre-C2) or it is frozenset()
         # After GREEN: skip_paths MUST be present and equal frozenset()
         assert kwargs.get("skip_paths", frozenset()) == frozenset()
