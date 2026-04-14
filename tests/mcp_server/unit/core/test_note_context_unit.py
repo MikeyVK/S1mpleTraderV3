@@ -17,8 +17,6 @@ import importlib
 from types import ModuleType
 from typing import Any
 
-# Third-party
-
 # Project modules
 from mcp_server.tools.tool_result import ToolResult
 
@@ -28,7 +26,7 @@ def _load_operation_notes_module() -> ModuleType:
     return importlib.import_module("mcp_server.core.operation_notes")
 
 
-def _get_attr(module: ModuleType, name: str) -> Any:
+def _get_attr(module: ModuleType, name: str) -> Any:  # noqa: ANN401
     """Return a named attribute from the imported module."""
     return getattr(module, name)
 
@@ -88,8 +86,7 @@ def test_render_renderable_appends_text_content() -> None:
     assert result.content[0] == {"type": "text", "text": "ok"}
     assert result.content[1]["type"] == "text"
     assert result.content[1]["text"] == (
-        "Excluded from commit index: .st3/state.json\n"
-        "Suggestion: Verify phase names"
+        "Excluded from commit index: .st3/state.json\nSuggestion: Verify phase names"
     )
 
 

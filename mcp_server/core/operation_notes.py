@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 # Standard library
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal, Protocol, Sequence, TypeVar, runtime_checkable
+from typing import Literal, Protocol, TypeVar, runtime_checkable
 
 # Project modules
 from mcp_server.tools.tool_result import ToolResult
@@ -23,7 +24,9 @@ class Renderable(Protocol):
 
 @dataclass(frozen=True)
 class ExclusionNote:
-    """Written by EnforcementRunner when a file is confirmed tracked and identified for exclusion from the commit index."""
+    """Written by EnforcementRunner when a file is confirmed tracked
+    and identified for exclusion from the commit index.
+    """
 
     kind: Literal["exclusion"] = field(default="exclusion", init=False)
     file_path: str  # workspace-relative path

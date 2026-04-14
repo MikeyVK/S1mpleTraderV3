@@ -17,21 +17,13 @@ production violations.
 import ast
 from pathlib import Path
 
-# Third-party
-
-# Project modules
-
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
 PRODUCTION_ROOT = WORKSPACE_ROOT / "mcp_server"
 
 
 def _iter_production_python_files() -> list[Path]:
     """Return all production Python files under mcp_server/."""
-    return sorted(
-        path
-        for path in PRODUCTION_ROOT.rglob("*.py")
-        if "__pycache__" not in path.parts
-    )
+    return sorted(path for path in PRODUCTION_ROOT.rglob("*.py") if "__pycache__" not in path.parts)
 
 
 def _parse_python_file(path: Path) -> ast.AST:
@@ -77,8 +69,8 @@ def test_no_raw_st3_config_paths_in_production() -> None:
         if literals:
             offenders.append(f"{_relative_path(path)}: {literals[0]}")
 
-    assert not offenders, (
-        "Raw .st3/config/ literals remain in production code:\n" + "\n".join(offenders)
+    assert not offenders, "Raw .st3/config/ literals remain in production code:\n" + "\n".join(
+        offenders
     )
 
 
@@ -91,9 +83,7 @@ def test_no_hints_kwarg_on_mcp_error_callsites() -> None:
         if _keyword_matches(tree, "hints"):
             offenders.append(_relative_path(path))
 
-    assert not offenders, (
-        "Legacy hints= kwargs remain in production code:\n" + "\n".join(offenders)
-    )
+    assert not offenders, "Legacy hints= kwargs remain in production code:\n" + "\n".join(offenders)
 
 
 def test_no_blockers_or_recovery_kwargs_on_exception_callsites() -> None:
@@ -106,6 +96,5 @@ def test_no_blockers_or_recovery_kwargs_on_exception_callsites() -> None:
             offenders.append(_relative_path(path))
 
     assert not offenders, (
-        "Legacy blockers=/recovery= kwargs remain in production code:\n"
-        + "\n".join(offenders)
+        "Legacy blockers=/recovery= kwargs remain in production code:\n" + "\n".join(offenders)
     )
