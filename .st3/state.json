@@ -3,8 +3,8 @@
   "issue_number": 283,
   "workflow_name": "refactor",
   "current_phase": "implementation",
-  "current_cycle": 5,
-  "last_cycle": 4,
+  "current_cycle": 6,
+  "last_cycle": 5,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -53,6 +53,12 @@
       "name": "Unknown",
       "forced": false,
       "entered": "2026-04-14T19:50:08.066008+00:00"
+    },
+    {
+      "cycle_number": 6,
+      "name": "Unknown",
+      "forced": false,
+      "entered": "2026-04-14T19:57:49.502694+00:00"
     }
   ],
   "required_phases": [
