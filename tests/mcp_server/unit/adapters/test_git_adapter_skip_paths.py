@@ -18,7 +18,7 @@ proof are provided:
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from git import Repo as GitRepo
 
@@ -58,12 +58,18 @@ class TestGitAdapterSkipPaths:
             )
 
         assert result == "abc1234"
-        # Zero-delta proof: restore between staging and the index snapshot.
-        assert mock_repo.method_calls == [
-            call.git.add("."),
-            call.git.restore("--staged", ".st3/state.json"),
-            call.index.commit("test commit"),
-        ]
+        # Ordering proof: add → restore --staged → index.commit.
+        # Position-based comparison avoids call.index (conflicts with tuple.index
+        # in Pyright — _Call inherits tuple, so call.index is tuple.index).
+        method_calls = mock_repo.method_calls
+        add_pos = next(i for i, c in enumerate(method_calls) if "git.add" in str(c))
+        restore_pos = next(i for i, c in enumerate(method_calls) if "git.restore" in str(c))
+        commit_pos = next(i for i, c in enumerate(method_calls) if "index.commit" in str(c))
+        assert add_pos < restore_pos < commit_pos
+        mock_repo.git.add.assert_called_once_with(".")
+        mock_repo.git.restore.assert_called_once_with("--staged", ".st3/state.json")
+        commit_calls = [str(c) for c in method_calls if "index.commit" in str(c)]
+        assert len(commit_calls) == 1 and "'test commit'" in commit_calls[0]
 
     # ------------------------------------------------------------------
     # Mandatory — zero-delta proof, explicit files= route
@@ -85,11 +91,17 @@ class TestGitAdapterSkipPaths:
             )
 
         assert result == "abc1234"
-        assert mock_repo.method_calls == [
-            call.git.add("src/main.py", "src/utils.py"),
-            call.git.restore("--staged", ".st3/state.json"),
-            call.index.commit("explicit files commit"),
-        ]
+        # Ordering proof: add → restore --staged → index.commit.
+        # Position-based comparison avoids call.index (conflicts with tuple.index).
+        method_calls = mock_repo.method_calls
+        add_pos = next(i for i, c in enumerate(method_calls) if "git.add" in str(c))
+        restore_pos = next(i for i, c in enumerate(method_calls) if "git.restore" in str(c))
+        commit_pos = next(i for i, c in enumerate(method_calls) if "index.commit" in str(c))
+        assert add_pos < restore_pos < commit_pos
+        mock_repo.git.add.assert_called_once_with("src/main.py", "src/utils.py")
+        mock_repo.git.restore.assert_called_once_with("--staged", ".st3/state.json")
+        commit_calls = [str(c) for c in method_calls if "index.commit" in str(c)]
+        assert len(commit_calls) == 1 and "'explicit files commit'" in commit_calls[0]
 
     # ------------------------------------------------------------------
     # Acceptable secondary — no-op guard for empty skip_paths
