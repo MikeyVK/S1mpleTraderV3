@@ -189,3 +189,77 @@ class TestDefaultBaseBranchInjection:
             pytest.raises(ValidationError),
         ):
             runner.run("create_pr", "pre", ctx, note_ctx)
+
+
+# ---------------------------------------------------------------------------
+# C9 — remediation messaging (D3c contract)
+# ---------------------------------------------------------------------------
+
+
+class TestRemediationMessaging:
+    """Remediation SuggestionNotes must reflect Model 1 neutralize-based guidance (D3c)."""
+
+    def _get_suggestion_messages(
+        self,
+        tmp_path: Path,
+        base: str | None = None,
+        default_base_branch: str = "main",
+    ) -> list[str]:
+        """Run enforcement with a blocked artifact, return all SuggestionNote messages."""
+        runner = _make_runner(tmp_path, default_base_branch=default_base_branch)
+        ctx = _enforcement_context(base=base)
+        note_ctx = NoteContext()
+
+        with (
+            patch(
+                "mcp_server.managers.enforcement_runner._read_current_phase",
+                return_value=_PR_ALLOWED_PHASE,
+            ),
+            patch(
+                "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
+                return_value=True,
+            ),
+            pytest.raises(ValidationError),
+        ):
+            runner.run("create_pr", "pre", ctx, note_ctx)
+
+        from mcp_server.core.operation_notes import SuggestionNote
+
+        return [n.message for n in note_ctx.of_type(SuggestionNote)]
+
+    def test_remediation_mentions_neutralize_phase(self, tmp_path: Path) -> None:
+        """Remediation message must reference 'neutralize' in the correct phase, not 'auto-exclude'."""
+        messages = self._get_suggestion_messages(tmp_path)
+        combined = "\n".join(messages)
+        assert "auto-exclude" not in combined, (
+            "Old 'auto-exclude' wording must be removed from remediation messages"
+        )
+        assert "neutralize" in combined, (
+            "Remediation messages must mention 'neutralize' (Model 1 D3c contract)"
+        )
+
+    def test_remediation_shows_correct_phase_in_example(self, tmp_path: Path) -> None:
+        """Remediation example must reference the pr_allowed_phase, not a hardcoded phase."""
+        messages = self._get_suggestion_messages(tmp_path)
+        combined = "\n".join(messages)
+        assert _PR_ALLOWED_PHASE in combined, (
+            f"Remediation must reference pr_allowed_phase='{_PR_ALLOWED_PHASE}' in example"
+        )
+
+    def test_error_message_references_resolved_base_not_main(self, tmp_path: Path) -> None:
+        """ValidationError and SuggestionNotes must not hardcode 'main' when base is 'develop'."""
+        messages = self._get_suggestion_messages(
+            tmp_path, base=None, default_base_branch="develop"
+        )
+        combined = "\n".join(messages)
+        assert "develop" in combined, (
+            "Remediation messages must reference the resolved base ('develop'), not 'main'"
+        )
+
+    def test_old_git_add_or_commit_example_removed(self, tmp_path: Path) -> None:
+        """Old chore-commit example must be replaced by neutralize-based example."""
+        messages = self._get_suggestion_messages(tmp_path)
+        combined = "\n".join(messages)
+        assert 'message="chore: prepare branch for PR"' not in combined, (
+            "Old git_add_or_commit chore example must be removed (replaced by neutralize guidance)"
+        )
