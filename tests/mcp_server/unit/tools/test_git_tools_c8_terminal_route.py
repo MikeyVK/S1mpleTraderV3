@@ -18,14 +18,13 @@ Contracts tested:
 @dependencies: [pytest, mcp_server.tools.git_tools, mcp_server.core.operation_notes]
 """
 
-from unittest.mock import ANY, AsyncMock, MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext
 from mcp_server.managers.state_repository import BranchState
 from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -200,7 +199,11 @@ class TestNormalRoute:
         tool = GitCommitTool(manager=manager, state_engine=state_engine)
 
         ctx = NoteContext()  # no ExclusionNotes
-        params = GitCommitInput(workflow_phase="implementation", message="feat: add something", cycle_number=1)
+        params = GitCommitInput(
+            workflow_phase="implementation",
+            message="feat: add something",
+            cycle_number=1,
+        )
 
         await tool.execute(params, ctx)
 
