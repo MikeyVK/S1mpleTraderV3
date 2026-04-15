@@ -28,7 +28,6 @@ from git import Repo as GitRepo
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import ExecutionError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -85,15 +84,13 @@ class TestNeutralizeToBaseAbsentPath:
 
         return repo, base_branch, artifact
 
-    def test_absent_path_removed_from_worktree_after_neutralize(
-        self, tmp_path: Path
-    ) -> None:
+    def test_absent_path_removed_from_worktree_after_neutralize(self, tmp_path: Path) -> None:
         """Path absent from BASE is removed from worktree after neutralize_to_base().
 
         git restore --source=MERGE_BASE --staged --worktree restores to
         'absent' state, which deletes the file from the working tree.
         """
-        repo, base_branch, artifact = self._setup_branch_with_artifact(tmp_path)
+        _, base_branch, artifact = self._setup_branch_with_artifact(tmp_path)
 
         adapter = GitAdapter(str(tmp_path))
         adapter.neutralize_to_base(frozenset({".st3/state.json"}), base_branch)
@@ -102,11 +99,9 @@ class TestNeutralizeToBaseAbsentPath:
             "neutralize_to_base must remove path from worktree when absent from merge-base"
         )
 
-    def test_absent_path_removed_from_index_after_neutralize(
-        self, tmp_path: Path
-    ) -> None:
+    def test_absent_path_removed_from_index_after_neutralize(self, tmp_path: Path) -> None:
         """Path absent from BASE is removed from git index after neutralize_to_base()."""
-        repo, base_branch, artifact = self._setup_branch_with_artifact(tmp_path)
+        repo, base_branch, _ = self._setup_branch_with_artifact(tmp_path)
 
         adapter = GitAdapter(str(tmp_path))
         adapter.neutralize_to_base(frozenset({".st3/state.json"}), base_branch)
@@ -123,11 +118,12 @@ class TestNeutralizeToBaseAbsentPath:
         This is the core contract: after neutralize_to_base() + commit,
         the merge-base diff must be empty for the excluded path.
         """
-        repo, base_branch, artifact = self._setup_branch_with_artifact(tmp_path)
+        repo, base_branch, _ = self._setup_branch_with_artifact(tmp_path)
 
         adapter = GitAdapter(str(tmp_path))
         adapter.neutralize_to_base(frozenset({".st3/state.json"}), base_branch)
-        _commit_staged(repo, f"chore(P_READY): neutralize branch-local artifacts to '{base_branch}'")
+        commit_msg = f"chore(P_READY): neutralize branch-local artifacts to '{base_branch}'"
+        _commit_staged(repo, commit_msg)
 
         merge_base_sha = repo.git.merge_base("HEAD", base_branch)
         diff_output = repo.git.diff(
@@ -140,7 +136,7 @@ class TestNeutralizeToBaseAbsentPath:
 
     def test_normal_file_unaffected_by_neutralize(self, tmp_path: Path) -> None:
         """neutralize_to_base must not touch files outside the paths argument."""
-        repo, base_branch, artifact = self._setup_branch_with_artifact(tmp_path)
+        repo, base_branch, _ = self._setup_branch_with_artifact(tmp_path)
 
         normal = tmp_path / "normal.py"
         normal.write_text("# modified\n", encoding="utf-8")
@@ -164,9 +160,7 @@ class TestNeutralizeToBaseAbsentPath:
 class TestNeutralizeToBasePresentPath:
     """Path present in merge-base tree: must be reset to merge-base version."""
 
-    def _setup_epic_parent_scenario(
-        self, tmp_path: Path
-    ) -> tuple[GitRepo, str, Path, str]:
+    def _setup_epic_parent_scenario(self, tmp_path: Path) -> tuple[GitRepo, str, Path, str]:
         """Return (repo, base_branch, artifact_file, base_content).
 
         BASE branch has its own state.json; child branch overwrites it.
@@ -191,25 +185,20 @@ class TestNeutralizeToBasePresentPath:
 
         return repo, base_branch, artifact, base_content
 
-    def test_present_path_reset_to_base_version_in_worktree(
-        self, tmp_path: Path
-    ) -> None:
+    def test_present_path_reset_to_base_version_in_worktree(self, tmp_path: Path) -> None:
         """Worktree content equals BASE version after neutralize_to_base().
 
         Epic-parent scenario: the child branch modified the artifact. After
         neutralize_to_base(), the worktree must contain the BASE version.
         """
-        repo, base_branch, artifact, base_content = self._setup_epic_parent_scenario(
-            tmp_path
-        )
+        _, base_branch, artifact, base_content = self._setup_epic_parent_scenario(tmp_path)
 
         adapter = GitAdapter(str(tmp_path))
         adapter.neutralize_to_base(frozenset({".st3/state.json"}), base_branch)
 
         actual = artifact.read_text(encoding="utf-8")
         assert actual == base_content, (
-            f"Worktree must be reset to BASE version. "
-            f"Expected: {base_content!r}, got: {actual!r}"
+            f"Worktree must be reset to BASE version. Expected: {base_content!r}, got: {actual!r}"
         )
 
     def test_model1_invariant_present_path(self, tmp_path: Path) -> None:
@@ -218,13 +207,12 @@ class TestNeutralizeToBasePresentPath:
         Epic-parent scenario: after neutralize_to_base() + commit, the
         merge-base diff must be empty for the excluded path.
         """
-        repo, base_branch, artifact, base_content = self._setup_epic_parent_scenario(
-            tmp_path
-        )
+        repo, base_branch, _artifact, _base_content = self._setup_epic_parent_scenario(tmp_path)
 
         adapter = GitAdapter(str(tmp_path))
         adapter.neutralize_to_base(frozenset({".st3/state.json"}), base_branch)
-        _commit_staged(repo, f"chore(P_READY): neutralize branch-local artifacts to '{base_branch}'")
+        commit_msg = f"chore(P_READY): neutralize branch-local artifacts to '{base_branch}'"
+        _commit_staged(repo, commit_msg)
 
         merge_base_sha = repo.git.merge_base("HEAD", base_branch)
         diff_output = repo.git.diff(
@@ -250,7 +238,7 @@ class TestNeutralizeToBaseErrorHandling:
         If the supplied base branch does not exist, git merge-base returns a
         non-zero exit code. neutralize_to_base() must raise ExecutionError.
         """
-        repo, base_branch = _init_repo_with_initial_commit(tmp_path)
+        repo, _ = _init_repo_with_initial_commit(tmp_path)
         repo.create_head("feature/test").checkout()
 
         adapter = GitAdapter(str(tmp_path))

@@ -192,13 +192,9 @@ class GitAdapter:
                             git restore fails for any path.
         """
         try:
-            merge_base_sha = self.repo.git.execute(
-                ["git", "merge-base", "HEAD", base]
-            ).strip()
+            merge_base_sha = str(self.repo.git.merge_base("HEAD", base)).strip()
         except Exception as e:
-            raise ExecutionError(
-                f"git merge-base failed for base='{base}': {e}"
-            ) from e
+            raise ExecutionError(f"git merge-base failed for base='{base}': {e}") from e
 
         for path in paths:
             try:
