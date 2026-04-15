@@ -2,7 +2,7 @@
   "branch": "refactor/283-ready-phase-enforcement",
   "issue_number": 283,
   "workflow_name": "refactor",
-  "current_phase": "validation",
+  "current_phase": "documentation",
   "current_cycle": null,
   "last_cycle": 6,
   "cycle_history": [
@@ -69,7 +69,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "QA GO verdict ontvangen na v11.0 review \u2014 alle eerdere blockers gesloten. Design is stabiel voor planning. Laatste cleanup (stale git log in decision table) is gecommit. Force transition omdat sequential validation al volledig afgerond is via QA-sessies.",
+  "skip_reason": "Terugkeren naar documentation voor reference docs, agent.md review, issue update en PR scaffold \u2014 documentatiewerk hoort niet in ready",
   "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
   "parent_branch": null,
   "created_at": "2026-04-09T11:43:14.613856+00:00",
@@ -193,6 +193,30 @@
       "human_approval": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "documentation",
+      "timestamp": "2026-04-15T05:30:54.407782+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "documentation",
+      "to_phase": "ready",
+      "timestamp": "2026-04-15T05:30:57.482742+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "ready",
+      "to_phase": "documentation",
+      "timestamp": "2026-04-15T05:32:48.842481+00:00",
+      "human_approval": "User approved via chat op 2026-04-15",
+      "forced": true,
+      "skip_reason": "Terugkeren naar documentation voor reference docs, agent.md review, issue update en PR scaffold \u2014 documentatiewerk hoort niet in ready"
     }
   ],
   "reconstructed": false
