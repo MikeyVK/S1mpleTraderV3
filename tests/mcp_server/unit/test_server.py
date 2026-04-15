@@ -325,10 +325,10 @@ class TestServerToolRegistration:
 
         text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
         assert response.root.isError is True
-        assert "Branch-local artifacts are still git-tracked" in text
+        assert "Branch-local artifacts have a net delta against" in text
         assert ".st3/state.json" in text
         assert ".st3/deliverables.json" in text
-        assert 'git_add_or_commit(message="chore: prepare branch for PR")' in text
+        assert "neutralize" in text
         mock_create_pr.assert_not_called()
 
     @pytest.mark.asyncio
