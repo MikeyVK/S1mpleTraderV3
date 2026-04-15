@@ -16,6 +16,6 @@
 class MathHelper:
     """Helper for calculations"""
 
-    def placeholder(self):
+    def placeholder(self) -> None:
         """Placeholder method."""
         pass

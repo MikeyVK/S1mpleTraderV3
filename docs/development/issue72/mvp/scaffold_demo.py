@@ -21,7 +21,7 @@ def scaffold_worker(
     worker_logic: str = None,
     worker_dependencies: str = None,
     output_dir: str = "output",
-):
+) -> Path:
     """Scaffold a worker using 4-tier template architecture.
 
     Args:
@@ -124,7 +124,7 @@ def scaffold_worker(
     return output_file
 
 
-def demo_successful_scaffold():
+def demo_successful_scaffold() -> Path:
     """Demonstrate successful scaffolding with all required fields."""
     print("\n" + "=" * 70)
     print("DEMO 1: Successful Scaffolding (All Required Fields)")
@@ -180,7 +180,7 @@ def demo_validation_failure() -> None:
         print(f"\n[OK] Validation correctly failed: {e}")
 
 
-def demo_minimal_scaffold():
+def demo_minimal_scaffold() -> Path:
     """Demonstrate scaffolding with only required fields (no optional)."""
     print("\n" + "=" * 70)
     print("DEMO 3: Minimal Scaffolding (Required Fields Only)")

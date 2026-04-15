@@ -72,7 +72,9 @@ def test_git_manager_invalid_name(mock_git_adapter: Mock, git_config: GitConfig)
 def test_git_manager_commit_tdd(mock_git_adapter: Mock, git_config: GitConfig) -> None:
     """Test implementation-phase commit through workflow scope."""
     workphases_config = ConfigLoader(Path(".st3/config")).load_workphases_config()
-    manager = GitManager(git_config=git_config, adapter=mock_git_adapter, workphases_config=workphases_config)
+    manager = GitManager(
+        git_config=git_config, adapter=mock_git_adapter, workphases_config=workphases_config
+    )
     manager.commit_with_scope(
         "implementation",
         "Added test",

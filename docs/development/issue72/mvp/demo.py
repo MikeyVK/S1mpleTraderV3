@@ -63,7 +63,7 @@ def demo_introspection_comparison() -> None:
     print("\n📍 Method 1: Single-Template Introspection (CURRENT)")
     print("-" * 70)
 
-    source, _, _ = env.loader.get_source(env, "concrete_worker.py.jinja2")
+    source, _, _ = env.loader.get_source(env, "concrete_worker.py.jinja2")  # type: ignore[reportOptionalMemberAccess]
     ast = env.parse(source)
     vars_single = meta.find_undeclared_variables(ast)
 
@@ -125,7 +125,7 @@ def demo_tier_contribution() -> None:
 
     tier_vars = {}
     for tier in tiers:
-        source, _, _ = env.loader.get_source(env, tier)
+        source, _, _ = env.loader.get_source(env, tier)  # type: ignore[reportOptionalMemberAccess]
         ast = env.parse(source)
         vars_set = meta.find_undeclared_variables(ast)
         tier_vars[tier] = vars_set

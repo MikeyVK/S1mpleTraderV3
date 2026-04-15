@@ -228,7 +228,7 @@ def extract_id_type(typed_id: str) -> str:
     if "_" not in typed_id:
         raise ValueError(f"Invalid typed ID format: {typed_id}")
 
-    prefix = typed_id.split("_")[0]
+    prefix = typed_id.split("_", maxsplit=1)[0]
     valid_prefixes = [
         "TCK",
         "SCH",
@@ -283,7 +283,6 @@ def extract_id_timestamp(typed_id: str) -> datetime:
     try:
         # Parse YYYYMMDD_HHMMSS
         dt_str = f"{date_str}_{time_str}"
-        dt = datetime.strptime(dt_str, "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
-        return dt
+        return datetime.strptime(dt_str, "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
     except ValueError as e:
         raise ValueError(f"Invalid timestamp in ID {typed_id}: {date_str}_{time_str}") from e

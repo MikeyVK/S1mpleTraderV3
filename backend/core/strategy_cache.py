@@ -55,7 +55,7 @@ class StrategyCache:
             raise NoActiveRunError("No active strategy run. Call start_new_strategy_run() first.")
         return self._current_anchor
 
-    def get_required_dtos(self, requesting_worker) -> dict[type[BaseModel], BaseModel]:
+    def get_required_dtos(self, _requesting_worker: object) -> dict[type[BaseModel], BaseModel]:
         """
         Retrieve DTOs required by worker from cache.
 
@@ -67,7 +67,7 @@ class StrategyCache:
 
         return dict(self._current_cache)
 
-    def set_result_dto(self, producing_worker, result_dto: BaseModel) -> None:
+    def set_result_dto(self, _producing_worker: object, result_dto: BaseModel) -> None:
         """
         Add worker-produced DTO to cache.
 

@@ -30,7 +30,7 @@ Strategy layer connector-agnostic, ExecutionWorker handles specifics via connect
 from decimal import Decimal
 
 # Third-Party Imports
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 # Our Application Imports
 from backend.core.enums import ExecutionAction
@@ -180,7 +180,7 @@ class ExecutionPlan(BaseModel):
 
     @field_validator("execution_urgency", "visibility_preference")
     @classmethod
-    def validate_trade_off_range(cls, v: Decimal, info) -> Decimal:
+    def validate_trade_off_range(cls, v: Decimal, info: ValidationInfo) -> Decimal:
         """Ensure trade-off fields are within 0.0-1.0 range."""
         field_name = info.field_name
 

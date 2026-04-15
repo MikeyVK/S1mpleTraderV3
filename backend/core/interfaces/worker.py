@@ -110,7 +110,9 @@ class IWorkerLifecycle(Protocol):
     See: docs/development/IWORKERLIFECYCLE_DESIGN.md
     """
 
-    def initialize(self, strategy_cache: "IStrategyCache | None" = None, **capabilities) -> None:
+    def initialize(
+        self, strategy_cache: "IStrategyCache | None" = None, **capabilities: object
+    ) -> None:
         """
         Initialize worker with runtime dependencies.
 

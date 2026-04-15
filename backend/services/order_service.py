@@ -11,7 +11,6 @@
 """
 
 # Standard library
-from typing import Any
 
 # Third-party
 
@@ -24,7 +23,7 @@ class OrderService:
     Service command following execute pattern.
     """
 
-    async def execute(self) -> Any:
+    async def execute(self) -> None:
         """Execute service command.
         Returns:
             Any

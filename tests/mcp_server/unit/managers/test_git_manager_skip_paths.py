@@ -25,7 +25,9 @@ def _make_manager() -> tuple[GitManager, MagicMock]:
     loader = ConfigLoader(Path(".st3/config"))
     git_config = loader.load_git_config()
     workphases_config = loader.load_workphases_config()
-    manager = GitManager(git_config=git_config, adapter=mock_adapter, workphases_config=workphases_config)
+    manager = GitManager(
+        git_config=git_config, adapter=mock_adapter, workphases_config=workphases_config
+    )
     return manager, mock_adapter
 
 

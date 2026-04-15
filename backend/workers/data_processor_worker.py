@@ -10,7 +10,6 @@
 """
 
 # Standard library
-from typing import Any
 
 # Third-party
 
@@ -23,12 +22,12 @@ class DataProcessor:
     Async worker for background task processing.
     """
 
-    def __init__(self, event_bus: EventBus, logger: Logger):
+    def __init__(self, event_bus: object, logger: object) -> None:
         """Initialize DataProcessor."""
         self.event_bus = event_bus
         self.logger = logger
 
-    async def execute(self, **kwargs: Any) -> Any:
+    async def execute(self, **kwargs: object) -> None:
         """Execute worker task.
 
         Args:

@@ -29,7 +29,9 @@ _TEST_WORKPHASES = WorkphasesConfig(
         "research": PhaseDefinition(commit_type_hint="docs"),
         "planning": PhaseDefinition(commit_type_hint="docs"),
         "design": PhaseDefinition(commit_type_hint="docs"),
-        "implementation": PhaseDefinition(commit_type_hint=None, subphases=["red", "green", "refactor"]),
+        "implementation": PhaseDefinition(
+            commit_type_hint=None, subphases=["red", "green", "refactor"]
+        ),
         "validation": PhaseDefinition(commit_type_hint="test"),
         "documentation": PhaseDefinition(commit_type_hint="docs"),
         "coordination": PhaseDefinition(commit_type_hint="chore"),

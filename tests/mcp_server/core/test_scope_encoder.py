@@ -14,11 +14,9 @@ Validation:
 @dependencies: pytest, mcp_server.core.scope_encoder
 """
 
-from pathlib import Path
-
 import pytest
 
-from mcp_server.config.schemas.workphases import PhaseDefinition, WorkphasesConfig
+from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.core.scope_encoder import ScopeEncoder
 
 _TEST_WORKPHASES = WorkphasesConfig.model_validate(
@@ -156,7 +154,7 @@ class TestScopeEncoderValidation:
 class TestScopeEncoderEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_scope_encoder_has_no_file_io(self, tmp_path: Path) -> None:
+    def test_scope_encoder_has_no_file_io(self) -> None:
         """ScopeEncoder works without any file on disk (C5: config in memory)."""
         encoder = ScopeEncoder(_TEST_WORKPHASES)
         # No files created in tmp_path — encoder works purely from injected config

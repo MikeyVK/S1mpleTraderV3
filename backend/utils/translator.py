@@ -37,7 +37,7 @@ class Translator:
     to retrieve translated strings using a dot-notation key.
     """
 
-    def __init__(self, platform_config: PlatformConfig, project_root: Path):
+    def __init__(self, platform_config: PlatformConfig, project_root: Path) -> None:
         """Initializes the Translator by loading the appropriate language file.
 
         Args:

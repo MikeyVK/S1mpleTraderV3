@@ -407,7 +407,9 @@ async def test_git_commit_integration_workflow_phases() -> None:
     result1 = await tool.execute(params1, NoteContext())
 
     assert "Committed: integration123" in result1.content[0]["text"]
-    mock_adapter.commit.assert_called_with("docs(P_RESEARCH): investigate alternatives", files=None, skip_paths=frozenset())
+    mock_adapter.commit.assert_called_with(
+        "docs(P_RESEARCH): investigate alternatives", files=None, skip_paths=frozenset()
+    )
 
     # Test 2: TDD with subphase
     params2 = GitCommitInput(
@@ -433,7 +435,9 @@ async def test_git_commit_integration_workflow_phases() -> None:
 
     assert "Committed: integration123" in result3.content[0]["text"]
     mock_adapter.commit.assert_called_with(
-        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None, skip_paths=frozenset()
+        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues",
+        files=None,
+        skip_paths=frozenset(),
     )
 
 

@@ -59,7 +59,7 @@ def introspect_template_with_inheritance(env: Environment, template_name: str) -
 
     while current_name:
         # Load template source
-        source, _, _ = env.loader.get_source(env, current_name)
+        source, _, _ = env.loader.get_source(env, current_name)  # type: ignore[reportOptionalMemberAccess]
         ast = env.parse(source)
 
         inheritance_chain.append(current_name)
@@ -97,7 +97,9 @@ def introspect_template_with_inheritance(env: Environment, template_name: str) -
             required.append(var)
 
     return TemplateSchema(
-        required=sorted(required), optional=sorted(optional), inheritance_chain=inheritance_chain
+        required=sorted(required),
+        optional=sorted(optional),
+        inheritance_chain=inheritance_chain,
     )
 
 
@@ -118,10 +120,12 @@ def _is_variable_optional(var_name: str, asts: list[tuple[str, nodes.Template]])
     for _template_name, ast in asts:
         # Check for |default filter usage
         for filter_node in ast.find_all(nodes.Filter):
-            if filter_node.name == "default":
-                # Check if this filter is applied to our variable
-                if isinstance(filter_node.node, nodes.Name) and filter_node.node.name == var_name:
-                    return True
+            if (
+                filter_node.name == "default"
+                and isinstance(filter_node.node, nodes.Name)
+                and filter_node.node.name == var_name
+            ):
+                return True
 
         # Check for conditional usage
         for if_node in ast.find_all(nodes.If):
@@ -136,7 +140,7 @@ def _is_variable_optional(var_name: str, asts: list[tuple[str, nodes.Template]])
     return False
 
 
-def demo_introspection(template_name: str):
+def demo_introspection(template_name: str) -> TemplateSchema:
     """Demonstrate introspection on a template.
 
     Args:

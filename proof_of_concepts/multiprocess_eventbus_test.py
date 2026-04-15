@@ -171,7 +171,7 @@ class AsyncEventBus:
         elapsed = time.perf_counter() - start_time
         print(f"[{elapsed:.3f}s] EventBus: All sources completed")
 
-    def get_stats(self):
+    def get_stats(self):  # noqa: ANN201
         """Get statistics."""
         events_by_source = {}
         for event in self._received_events:
@@ -214,11 +214,11 @@ class SlowConsumer:
         start_time = time.perf_counter()
 
         # Wait for EventBus to finish receiving
-        while self._event_bus._sources_completed < self._event_bus._total_sources:
+        while self._event_bus._sources_completed < self._event_bus._total_sources:  # type: ignore[reportPrivateUsage]
             await asyncio.sleep(0.1)
 
         # Process all received events
-        events = self._event_bus._received_events
+        events = self._event_bus._received_events  # type: ignore[reportPrivateUsage]
 
         for event in events:
             elapsed = time.perf_counter() - start_time
@@ -238,7 +238,7 @@ class SlowConsumer:
 # ============================================================================
 
 
-async def async_main():
+async def async_main():  # noqa: ANN201
     """Main async test runner."""
 
     # Create shared queue (large enough to hold all events)
@@ -356,7 +356,7 @@ def main() -> None:
     # Check for event loss
     fast_loss = fast_expected - fast_actual
     slow_loss = slow_expected - slow_actual
-    total_loss = total_expected - stats["total_received"]
+    total_loss = total_expected - stats["total_received"]  # type: ignore[reportOperatorIssue]
 
     print("Event loss:")
     print(f"  FastSource: {fast_loss:.0f} ({(fast_loss / fast_expected) * 100:.1f}%)")

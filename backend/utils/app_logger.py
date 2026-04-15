@@ -48,7 +48,7 @@ class LogFormatter(logging.Formatter):
         datefmt: str | None = None,
         style: Literal["%", "{", "$"] = "%",
         translator: Translator | None = None,
-    ):
+    ) -> None:
         """Initializes the LogFormatter.
 
         Args:
@@ -107,7 +107,7 @@ class LogEnricher(logging.LoggerAdapter[logging.Logger]):
     LogFormatter. It also provides convenience methods for custom log levels.
     """
 
-    def __init__(self, logger: logging.Logger, indent: int = 0):
+    def __init__(self, logger: logging.Logger, indent: int = 0) -> None:
         """Initializes the LogEnricher adapter.
 
         Args:
@@ -117,7 +117,9 @@ class LogEnricher(logging.LoggerAdapter[logging.Logger]):
         super().__init__(logger, {"indent": indent})
 
     def process(
-        self, msg: Any, kwargs: MutableMapping[str, Any]
+        self,
+        msg: Any,  # noqa: ANN401
+        kwargs: MutableMapping[str, Any],
     ) -> tuple[Any, MutableMapping[str, Any]]:
         """Merges the adapter's contextual information into the kwargs.
 
@@ -139,27 +141,27 @@ class LogEnricher(logging.LoggerAdapter[logging.Logger]):
         return msg, kwargs
 
     # --- Convenience methods for custom levels ---
-    def setup(self, key: str, **values: Any) -> None:
+    def setup(self, key: str, **values: Any) -> None:  # noqa: ANN401
         """Logs a message with the SETUP level (15)."""
         self.log(15, key, values=values)
 
-    def match(self, key: str, **values: Any) -> None:
+    def match(self, key: str, **values: Any) -> None:  # noqa: ANN401
         """Logs a message with the MATCH level (22)."""
         self.log(22, key, values=values)
 
-    def filter(self, key: str, **values: Any) -> None:
+    def filter(self, key: str, **values: Any) -> None:  # noqa: ANN401
         """Logs a message with the FILTER level (23)."""
         self.log(23, key, values=values)
 
-    def policy(self, key: str, **values: Any) -> None:
+    def policy(self, key: str, **values: Any) -> None:  # noqa: ANN401
         """Logs a message with the POLICY level (24)."""
         self.log(24, key, values=values)
 
-    def result(self, key: str, **values: Any) -> None:
+    def result(self, key: str, **values: Any) -> None:  # noqa: ANN401
         """Logs a message with the RESULT level (25)."""
         self.log(25, key, values=values)
 
-    def trade(self, key: str, **values: Any) -> None:
+    def trade(self, key: str, **values: Any) -> None:  # noqa: ANN401
         """Logs a message with the TRADE level (26)."""
         self.log(26, key, values=values)
 
@@ -171,7 +173,7 @@ class LogProfiler(logging.Filter):  # pylint: disable=too-few-public-methods
     which is the standard interface for logging.Filter.
     """
 
-    def __init__(self, profile: str, profile_definitions: dict[str, list[str]]):
+    def __init__(self, profile: str, profile_definitions: dict[str, list[str]]) -> None:
         """Initializes the filter.
 
         Args:

@@ -9,6 +9,7 @@ Immutable Pydantic model representing UserDTO data.
 """
 
 # Standard library
+import re
 from datetime import UTC, datetime
 
 # Third-party
@@ -51,8 +52,6 @@ class UserDTO(BaseModel):
     @classmethod
     def validate_id_format(cls, v: str) -> str:
         """Validate userdto_id follows military datetime format."""
-        import re
-
         pattern = r"^USE_\d{8}_\d{6}_[a-f0-9]+$"
         if not re.match(pattern, v):
             raise ValueError(f"userdto_id must match USE_YYYYMMDD_HHMMSS_hash format, got: {v}")

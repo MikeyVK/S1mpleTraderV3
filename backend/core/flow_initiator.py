@@ -18,13 +18,17 @@ FlowInitiator is a Platform-within-Strategy worker that:
 # Standard library
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 # Third-party
 from pydantic import BaseModel
 
 # Project modules
-from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
+from backend.core.interfaces.worker import (
+    IWorker,
+    IWorkerLifecycle,
+    WorkerInitializationError,
+)
 from backend.dtos.shared.disposition_envelope import DispositionEnvelope
 
 if TYPE_CHECKING:
@@ -70,7 +74,9 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
         """Get worker name (IWorker requirement)."""
         return self._name
 
-    def initialize(self, strategy_cache: IStrategyCache | None = None, **capabilities: Any) -> None:
+    def initialize(
+        self, strategy_cache: IStrategyCache | None = None, **capabilities: object
+    ) -> None:
         """
         Initialize with runtime dependencies.
 

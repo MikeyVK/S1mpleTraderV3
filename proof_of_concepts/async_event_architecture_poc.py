@@ -24,7 +24,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 # ============================================================================
 # Event DTOs
@@ -85,7 +85,7 @@ class SignalDetectedEvent:
 # ============================================================================
 
 
-class ScopeLevel(str, Enum):
+class ScopeLevel(StrEnum):
     """Event scope levels."""
 
     PLATFORM = "PLATFORM"
@@ -289,7 +289,7 @@ class OhlcvProvider:
 
             # Create candle event
             candle = CandleCloseEvent(
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=datetime.UTC),
                 symbol=self._symbol,
                 close=50000 + random.uniform(-1000, 1000),
                 volume=random.uniform(100, 1000),
@@ -297,7 +297,9 @@ class OhlcvProvider:
 
             # Publish (non-blocking!)
             await self._event_bus.publish(
-                event_name="APL_CANDLE_CLOSE_1H", payload=candle, scope=ScopeLevel.PLATFORM
+                event_name="APL_CANDLE_CLOSE_1H",
+                payload=candle,
+                scope=ScopeLevel.PLATFORM,
             )
 
     def stop(self) -> None:
@@ -334,7 +336,7 @@ class NewsProvider:
 
             # Create news event
             news = NewsEvent(
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=datetime.UTC),
                 headline=random.choice(self._headlines),
                 sentiment=random.choice(["positive", "negative", "neutral"]),
             )
@@ -369,11 +371,15 @@ class Scheduler:
             await asyncio.sleep(3.0)
 
             # Create schedule event
-            schedule = ScheduleEvent(timestamp=datetime.now(), schedule_type="HOURLY_SCHEDULE")
+            schedule = ScheduleEvent(
+                timestamp=datetime.now(tz=datetime.UTC), schedule_type="HOURLY_SCHEDULE"
+            )
 
             # Publish
             await self._event_bus.publish(
-                event_name="APL_HOURLY_SCHEDULE", payload=schedule, scope=ScopeLevel.PLATFORM
+                event_name="APL_HOURLY_SCHEDULE",
+                payload=schedule,
+                scope=ScopeLevel.PLATFORM,
             )
 
     def stop(self) -> None:
@@ -394,7 +400,10 @@ class FlowInitiator:
     """
 
     def __init__(
-        self, strategy_id: str, event_bus: AsyncEventBus, queue_manager: EventQueueManager
+        self,
+        strategy_id: str,
+        event_bus: AsyncEventBus,
+        queue_manager: EventQueueManager,
     ) -> None:
         self._strategy_id = strategy_id
         self._event_bus = event_bus
@@ -475,7 +484,7 @@ class StrategyWorker:
                     strategy_instance_id=self._strategy_id,
                 )
 
-    async def _process_event(self, event: object) -> SignalDetectedEvent | None:
+    async def _process_event(self, _event: object) -> SignalDetectedEvent | None:
         """
         Process event (simulates CPU-intensive work).
 
@@ -489,7 +498,7 @@ class StrategyWorker:
         # Simulate signal detection (20% chance)
         if random.random() < 0.2:
             return SignalDetectedEvent(
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=datetime.UTC),
                 strategy_id=self._strategy_id,
                 signal_type="BUY" if random.random() > 0.5 else "SELL",
                 confidence=random.uniform(0.6, 0.95),
@@ -692,7 +701,7 @@ async def main() -> None:
     print()
 
     print("Event Bus:")
-    print(f"  Total events published: {event_bus._event_count}")
+    print(f"  Total events published: {event_bus._event_count}")  # type: ignore[reportPrivateUsage]
     print()
 
     print("Queue Statistics:")

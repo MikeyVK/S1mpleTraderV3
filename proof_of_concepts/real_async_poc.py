@@ -73,7 +73,7 @@ class EventSource:
         """Publish single event."""
         event = {
             "event_id": self.events_published,
-            "timestamp": datetime.now(),
+            "timestamp": datetime.now(tz=datetime.UTC),
             "data": f"Event_{self.events_published}",
         }
 
@@ -88,7 +88,7 @@ class EventSource:
 # ============================================================================
 
 
-def scenario_1_synchronous():
+def scenario_1_synchronous():  # noqa: ANN201
     """
     Synchronous event processing.
 
@@ -144,7 +144,7 @@ def scenario_1_synchronous():
 # ============================================================================
 
 
-async def scenario_2_async_naive():
+async def scenario_2_async_naive():  # noqa: ANN201
     """
     Async event processing with CPU-bound work.
 
@@ -230,7 +230,7 @@ async def scenario_2_async_naive():
 # ============================================================================
 
 
-async def scenario_3_async_processpool():
+async def scenario_3_async_processpool():  # noqa: ANN201
     """
     Async event processing with ProcessPoolExecutor.
 

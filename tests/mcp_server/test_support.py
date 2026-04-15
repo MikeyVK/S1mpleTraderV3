@@ -192,7 +192,6 @@ def make_state_reconstructor(
     scope_decoder: object | None = None,
 ) -> StateReconstructor:
     """Build a StateReconstructor with explicit dependency injection."""
-    workspace_path = Path(workspace_root)
     manager = project_manager or make_project_manager(workspace_root)
     resolved_git_config = git_config or cast(
         GitConfig,
