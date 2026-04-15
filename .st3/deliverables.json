@@ -1623,7 +1623,7 @@
     },
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 6,
+        "total": 10,
         "cycles": [
           {
             "cycle_number": 1,
@@ -1992,6 +1992,185 @@
               }
             ],
             "exit_criteria": "pytest tests/mcp_server/ \u2192 0 failures, 0 errors; all three structural tests GREEN; grep -r '_handle_exclude_branch_local_artifacts' tests/ \u2192 0 matches"
+          },
+          {
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "description": "test_git_adapter_neutralize_to_base.py exists (real-git unit tests)",
+                "id": "C7.test_file",
+                "validates": {
+                  "file": "tests/mcp_server/unit/adapters/test_git_adapter_neutralize_to_base.py",
+                  "type": "file_exists"
+                }
+              },
+              {
+                "description": "GitAdapter.neutralize_to_base() defined in git_adapter.py",
+                "id": "C7.method_exists",
+                "validates": {
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "def neutralize_to_base",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Method computes merge-base via git merge-base (not git ls-tree conditional)",
+                "id": "C7.uses_merge_base",
+                "validates": {
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "merge-base",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "No per-path git rm --cached in git_adapter.py (merge-base restore covers both cases)",
+                "id": "C7.no_git_rm_cached",
+                "validates": {
+                  "file": "mcp_server/adapters/git_adapter.py",
+                  "text": "git rm --cached",
+                  "type": "absent_text"
+                }
+              }
+            ],
+            "label": "GitAdapter.neutralize_to_base()",
+            "scope": "mcp_server/adapters/git_adapter.py"
+          },
+          {
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "description": "GitCommitInput has base: str | None field",
+                "id": "C8.base_field",
+                "validates": {
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "base: str | None",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "execute() calls neutralize_to_base() when ExclusionNote entries present",
+                "id": "C8.neutralize_call",
+                "validates": {
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "neutralize_to_base",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Terminal-phase route passes files=None to commit_with_scope",
+                "id": "C8.files_none_terminal",
+                "validates": {
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "files=None",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Terminal-phase route passes skip_paths=frozenset() (not excluded_paths variable)",
+                "id": "C8.skip_paths_empty_terminal",
+                "validates": {
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "skip_paths=frozenset()",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "label": "GitCommitInput.base + terminal-phase route in GitCommitTool.execute()",
+            "scope": "mcp_server/tools/git_tools.py"
+          },
+          {
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "description": "EnforcementRunner.__init__ accepts default_base_branch: str parameter",
+                "id": "C9.default_base_param",
+                "validates": {
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "default_base_branch: str",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Hardcoded fallback 'or \"main\"' removed from _handle_check_merge_readiness",
+                "id": "C9.no_hardcoded_main",
+                "validates": {
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "or \"main\"",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "server.py passes default_base_branch=git_config.default_base_branch to EnforcementRunner",
+                "id": "C9.server_wiring",
+                "validates": {
+                  "file": "mcp_server/server.py",
+                  "text": "default_base_branch=git_config.default_base_branch",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Remediation suggestion in _handle_check_merge_readiness refers to neutralize, not skip_paths exclusion",
+                "id": "C9.remediation_message",
+                "validates": {
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "neutralize",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "label": "EnforcementRunner default_base_branch injection + server.py wiring",
+            "scope": "mcp_server/managers/enforcement_runner.py, mcp_server/server.py"
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "description": "TestGitAdapterSkipPaths mock-ordering class removed from test_git_adapter_skip_paths.py (arch-debt 14)",
+                "id": "C10.skip_paths_mock_class_absent",
+                "validates": {
+                  "file": "tests/mcp_server/unit/adapters/test_git_adapter_skip_paths.py",
+                  "text": "class TestGitAdapterSkipPaths(",
+                  "type": "absent_text"
+                }
+              },
+              {
+                "description": "Model 1 integration test file exists (replaces c3 + c6 integration tests)",
+                "id": "C10.model1_integration_test",
+                "validates": {
+                  "file": "tests/mcp_server/integration/test_model1_branch_tip_neutralization.py",
+                  "type": "file_exists"
+                }
+              },
+              {
+                "description": "Model 1 test covers Scenario A (path absent from BASE)",
+                "id": "C10.scenario_a",
+                "validates": {
+                  "file": "tests/mcp_server/integration/test_model1_branch_tip_neutralization.py",
+                  "text": "scenario_a",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Model 1 test covers Scenario B (path present on BASE - epic-parent scenario)",
+                "id": "C10.scenario_b",
+                "validates": {
+                  "file": "tests/mcp_server/integration/test_model1_branch_tip_neutralization.py",
+                  "text": "scenario_b",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Model 1 test covers Scenario C (non-terminal phase - no neutralize_to_base call)",
+                "id": "C10.scenario_c",
+                "validates": {
+                  "file": "tests/mcp_server/integration/test_model1_branch_tip_neutralization.py",
+                  "text": "scenario_c",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "label": "Test cleanup + Model 1 contract tests",
+            "scope": "tests/"
           }
         ]
       }

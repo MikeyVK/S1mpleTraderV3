@@ -2,7 +2,7 @@
 <!-- template=research version=manual created=2026-04-15T00:00Z updated=2026-04-15 -->
 # Research — Model 1 branch-tip neutralization gap (Issue #283)
 
-**Status:** DRAFT  
+**Status:** FINAL  
 **Version:** 2.0  
 **Last Updated:** 2026-04-15
 
@@ -120,21 +120,22 @@ commit". `skip_paths` satisfies the weaker condition; Model 1 requires the stron
 
 ## Required Operation — Branch-Tip Neutralization
 
-To satisfy the Model 1 invariant, the ready-commit must explicitly align the branch tip to BASE
-for each excluded path. The operation is determined by whether the path exists on BASE:
+To satisfy the Model 1 invariant, the ready-commit must neutralize the branch tip against the
+merge-base of HEAD and BASE. A single command handles both cases (path absent from or present
+on the merge-base tree):
 
-| Condition | Required operation | Result |
-|-----------|-------------------|--------|
-| `git ls-tree BASE -- path` empty (path absent from BASE) | `git rm -- path` | Path removed from tree; merge brings nothing |
-| `git ls-tree BASE -- path` non-empty (path present on BASE) | `git restore --source=BASE --staged --worktree -- path` | Path in tree equals BASE version; merge is a no-op |
+    git restore --source=<MERGE_BASE_SHA> --staged --worktree -- <path>
 
-After either operation, `git diff --name-only MERGE_BASE(HEAD,BASE)..HEAD -- path` is empty.
+- Path **absent** from the merge-base tree → removed from index and working tree.
+- Path **present** in the merge-base tree → index and working tree reset to merge-base version.
+
+In both cases, `git diff --name-only MERGE_BASE(HEAD,BASE)..HEAD -- path` is empty after the
+operation. No `git ls-tree` precondition check is needed; the merge-base variant eliminates
+the two-branch conditional entirely. This logic is encapsulated in
+`GitAdapter.neutralize_to_base(paths, base)` (see D1).
 
 This is the operation that the ready-commit must perform instead of (not in addition to) the
 `skip_paths` mechanism for the terminal-phase route.
-
-`GitAdapter.restore(files, source)` is already the correct building block for the second case.
-The first case (`git rm`) is not currently wrapped by `GitAdapter`.
 
 ---
 
@@ -156,10 +157,11 @@ commit_hash = self.manager.commit_with_scope(
 **Gap:** when `ExclusionNote` entries are present (i.e., terminal-phase enforcement ran), the
 tool performs staging exclusion. It must instead perform branch-tip neutralization:
 1. Resolve `BASE` (see Gap 2).
-2. For each excluded path: determine whether it exists on `BASE` via `git ls-tree BASE -- path`.
-3. If absent from `BASE`: `git rm -- path`.
-4. If present on `BASE`: `git restore --source=BASE --staged --worktree -- path`.
-5. Then commit (no `skip_paths` for these paths — the neutralization IS the commit content).
+2. Call `GitAdapter.neutralize_to_base(excluded_paths, resolved_base)` (see D1).
+   One command per path: `git restore --source=<merge_base_sha> --staged --worktree -- path`.
+   Handles both "absent from BASE" and "present on BASE" — no `git ls-tree` check needed.
+3. Then commit with `files=None` and `skip_paths=frozenset()` (see D2c).
+   The neutralization IS the commit content; staging is correct after step 2.
 
 **Trigger:** presence of `ExclusionNote` entries in `NoteContext` is the correct branch-point.
 No additional phase detection is needed in `execute()`.
