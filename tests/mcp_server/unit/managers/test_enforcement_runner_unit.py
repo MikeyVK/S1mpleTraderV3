@@ -205,26 +205,42 @@ class TestGitCommitToolC3:
 
     @pytest.mark.asyncio
     async def test_git_commit_tool_reads_exclusion_note(self) -> None:
-        """GitCommitTool must read ExclusionNote entries and pass as skip_paths."""
+        """GitCommitTool with ExclusionNotes must call neutralize_to_base (C8 Model 1 contract).
+
+        Under C8, when ExclusionNote entries are present:
+          - adapter.neutralize_to_base() is called with the excluded paths
+          - skip_paths passed to commit_with_scope must be frozenset() (empty)
+            because neutralize_to_base() owns the exclusion, not skip_paths
+        """
         mock_manager = MagicMock()
         mock_manager.git_config.commit_types = ["feat", "fix", "chore", "refactor", "test", "docs"]
+        mock_manager.git_config.default_base_branch = "main"
         mock_manager.adapter.get_current_branch.return_value = "refactor/283"
         mock_manager.commit_with_scope.return_value = "def5678"
 
         tool = GitCommitTool(manager=mock_manager)
-        params = GitCommitInput(message="ready", workflow_phase="documentation")
+        params = GitCommitInput(message="ready", workflow_phase="ready")
         note_context = NoteContext()
         note_context.produce(ExclusionNote(file_path=_STATE_JSON))
         note_context.produce(ExclusionNote(file_path=_DELIVERABLES_JSON))
 
         await tool.execute(params, note_context)
 
-        skip_paths = mock_manager.commit_with_scope.call_args.kwargs.get("skip_paths", frozenset())
-        assert _STATE_JSON in skip_paths, (
-            f"Expected '{_STATE_JSON}' in skip_paths but got: {skip_paths}"
+        # C8 contract: neutralize_to_base called with the excluded paths
+        mock_manager.adapter.neutralize_to_base.assert_called_once()
+        call_paths = mock_manager.adapter.neutralize_to_base.call_args.args[0]
+        assert _STATE_JSON in call_paths, (
+            f"Expected '{_STATE_JSON}' in neutralize_to_base paths but got: {call_paths}"
         )
-        assert _DELIVERABLES_JSON in skip_paths, (
-            f"Expected '{_DELIVERABLES_JSON}' in skip_paths but got: {skip_paths}"
+        assert _DELIVERABLES_JSON in call_paths, (
+            f"Expected '{_DELIVERABLES_JSON}' in neutralize_to_base paths but got: {call_paths}"
+        )
+
+        # C8 contract: skip_paths must be frozenset() — neutralize owns the exclusion
+        skip_paths = mock_manager.commit_with_scope.call_args.kwargs.get("skip_paths")
+        assert skip_paths == frozenset(), (
+            "Terminal route must pass skip_paths=frozenset() to commit_with_scope,"
+            f" got: {skip_paths}"
         )
 
     @pytest.mark.asyncio

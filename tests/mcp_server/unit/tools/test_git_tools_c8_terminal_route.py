@@ -183,6 +183,31 @@ class TestTerminalRoute:
             "develop",
         )
 
+    @pytest.mark.asyncio
+    async def test_base_resolution_no_state_engine_falls_back_to_default(self) -> None:
+        """When state_engine is None, base falls back to git_config.default_base_branch (Tier 3).
+
+        Covers the _state_engine is None branch in the 3-tier resolution chain:
+            params.base (None) → "" (no state_engine) → git_config.default_base_branch
+        """
+        manager = MagicMock()
+        manager.git_config.commit_types = ["feat", "fix", "docs", "chore", "test", "refactor"]
+        manager.git_config.default_base_branch = "main"
+        manager.adapter.get_current_branch.return_value = "refactor/283"
+        manager.commit_with_scope.return_value = "abc1234"
+
+        tool = GitCommitTool(manager=manager)  # no state_engine injected
+
+        ctx = _context_with_exclusions(".st3/state.json")
+        params = GitCommitInput(workflow_phase="ready", message="msg")  # no base
+
+        await tool.execute(params, ctx)
+
+        manager.adapter.neutralize_to_base.assert_called_once_with(
+            ANY,
+            "main",
+        )
+
 
 # ---------------------------------------------------------------------------
 # C8 — normal route: neutralize_to_base NOT called
