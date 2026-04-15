@@ -200,7 +200,7 @@ class EnforcementRunner:
         self.workspace_root = Path(workspace_root)
         self._config = config
         self._merge_readiness_context = merge_readiness_context
-        self._default_base_branch = default_base_branch
+        self.default_base_branch = default_base_branch
         if registry is None:
             self._registry = self._build_default_registry()
         elif isinstance(registry, EnforcementRegistry):
@@ -342,7 +342,7 @@ class EnforcementRunner:
             return
         ctx = self._merge_readiness_context
 
-        base = str(context.get_param("base") or self._default_base_branch)
+        base = str(context.get_param("base") or self.default_base_branch)
 
         # Check 1 — Phase gate (read live from state.json)
         current_phase = _read_current_phase(workspace_root)

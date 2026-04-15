@@ -98,17 +98,15 @@ class TestDefaultBaseBranchInjection:
     def test_constructor_accepts_default_base_branch(self, tmp_path: Path) -> None:
         """EnforcementRunner constructor must accept default_base_branch without error."""
         runner = _make_runner(tmp_path, default_base_branch="develop")
-        assert runner._default_base_branch == "develop"
+        assert runner.default_base_branch == "develop"
 
     def test_constructor_defaults_to_main(self, tmp_path: Path) -> None:
         """When default_base_branch not supplied, must default to 'main' (backward compat)."""
         runner = _make_runner(tmp_path)
-        assert runner._default_base_branch == "main"
+        assert runner.default_base_branch == "main"
 
-    def test_default_base_branch_used_when_context_base_is_none(
-        self, tmp_path: Path
-    ) -> None:
-        """_handle_check_merge_readiness uses default_base_branch when context.get_param('base') is None."""
+    def test_default_base_branch_used_when_context_base_is_none(self, tmp_path: Path) -> None:
+        """Uses default_base_branch when context.get_param('base') is None."""
         runner = _make_runner(tmp_path, default_base_branch="develop")
         ctx = _enforcement_context(base=None)
         note_ctx = NoteContext()
@@ -129,9 +127,7 @@ class TestDefaultBaseBranchInjection:
         # base passed to _has_net_diff_for_path must be the injected default, not "main"
         mock_diff.assert_called_once_with(tmp_path, _ARTIFACT_PATH, "develop")
 
-    def test_context_base_overrides_default_base_branch(
-        self, tmp_path: Path
-    ) -> None:
+    def test_context_base_overrides_default_base_branch(self, tmp_path: Path) -> None:
         """When context.get_param('base') is set, it takes precedence over default_base_branch."""
         runner = _make_runner(tmp_path, default_base_branch="develop")
         ctx = _enforcement_context(base="feature/custom-base")
@@ -175,9 +171,7 @@ class TestDefaultBaseBranchInjection:
             f"Expected 'master' but got '{base_used}': hardcoded 'main' fallback not removed"
         )
 
-    def test_merge_readiness_raises_when_artifact_has_net_diff(
-        self, tmp_path: Path
-    ) -> None:
+    def test_merge_readiness_raises_when_artifact_has_net_diff(self, tmp_path: Path) -> None:
         """Artifact with net diff blocks PR — base read from default_base_branch not 'main'."""
         runner = _make_runner(tmp_path, default_base_branch="develop")
         ctx = _enforcement_context(base=None)
@@ -192,6 +186,6 @@ class TestDefaultBaseBranchInjection:
                 "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
                 return_value=True,
             ),
+            pytest.raises(ValidationError),
         ):
-            with pytest.raises(ValidationError):
-                runner.run("create_pr", "pre", ctx, note_ctx)
+            runner.run("create_pr", "pre", ctx, note_ctx)
