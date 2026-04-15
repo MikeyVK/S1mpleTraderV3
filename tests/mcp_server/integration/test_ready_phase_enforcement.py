@@ -175,7 +175,7 @@ class TestReadyPhaseEnforcement:
                 "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
                 return_value=True,
             ),
-            pytest.raises(ValidationError, match="git-tracked"),
+            pytest.raises(ValidationError, match="net delta"),
         ):
             runner.run(
                 event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]

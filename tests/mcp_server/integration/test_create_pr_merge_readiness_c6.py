@@ -212,7 +212,7 @@ class TestCreatePRMergeReadinessC6:
             params=SimpleNamespace(base="main"),
         )
 
-        with pytest.raises(ValidationError, match="git-tracked"):
+        with pytest.raises(ValidationError, match="net delta"):
             runner.run(
                 event="create_pr",
                 timing="pre",
@@ -394,7 +394,5 @@ class TestCreatePRMergeReadinessC6ServerDispatch:
         assert response.root.isError is True, (
             f"Contaminated branch was NOT blocked — enforcement gate failed. Response: {all_text!r}"
         )
-        assert "git-tracked" in all_text, (
-            f"Expected 'git-tracked' in error response. Got: {all_text!r}"
-        )
+        assert "net delta" in all_text, f"Expected 'net delta' in error response. Got: {all_text!r}"
         mock_create_pr.assert_not_called()
