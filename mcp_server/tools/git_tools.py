@@ -260,6 +260,14 @@ class GitCommitInput(BaseModel):
             "Auto-determined from workphases.yaml if omitted."
         ),
     )
+    base: str | None = Field(
+        default=None,
+        description=(
+            "Target base branch for ready-phase neutralization. "
+            "Resolved from state.json parent_branch when omitted, "
+            "then falls back to git_config.default_base_branch."
+        ),
+    )
 
     @field_validator("commit_type")
     @classmethod
@@ -350,16 +358,41 @@ class GitCommitTool(BaseTool):
 
         ctx = context
         excluded_paths = frozenset(n.file_path for n in ctx.of_type(ExclusionNote))
-        commit_hash = self.manager.commit_with_scope(
-            workflow_phase=workflow_phase,
-            message=params.message,
-            note_context=ctx,
-            sub_phase=params.sub_phase,
-            cycle_number=params.cycle_number,
-            commit_type=commit_type,
-            files=params.files,
-            skip_paths=excluded_paths,
-        )
+
+        if excluded_paths:
+            # Terminal-phase route: neutralize branch tip to merge-base, then commit.
+            # params.message is intentionally ignored — the neutralization commit has
+            # a fixed semantic meaning expressed in the generated message.
+            resolved_base: str = (
+                params.base
+                or (
+                    (self._state_engine.get_state(current_branch).parent_branch or "")
+                    if self._state_engine is not None
+                    else ""
+                )
+                or self.manager.git_config.default_base_branch
+            )
+            self.manager.adapter.neutralize_to_base(excluded_paths, resolved_base)
+            commit_hash = self.manager.commit_with_scope(
+                workflow_phase=workflow_phase,
+                message=f"neutralize branch-local artifacts to '{resolved_base}'",
+                note_context=ctx,
+                commit_type="chore",
+                files=None,
+                skip_paths=frozenset(),
+            )
+        else:
+            # Normal route: commit as requested.
+            commit_hash = self.manager.commit_with_scope(
+                workflow_phase=workflow_phase,
+                message=params.message,
+                note_context=ctx,
+                sub_phase=params.sub_phase,
+                cycle_number=params.cycle_number,
+                commit_type=commit_type,
+                files=params.files,
+                skip_paths=frozenset(),
+            )
         ctx.produce(CommitNote(commit_hash=commit_hash))
         return ToolResult.text(f"Committed: {commit_hash}")
 
