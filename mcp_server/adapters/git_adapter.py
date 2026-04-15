@@ -168,6 +168,52 @@ class GitAdapter:
         except Exception as e:
             raise ExecutionError(f"Failed to restore files: {e}") from e
 
+    def neutralize_to_base(self, paths: frozenset[str], base: str) -> None:
+        """Align each path in `paths` to the state at the merge-base of HEAD and `base`.
+
+        Computes the merge-base of HEAD and `base` once, then for each path:
+            git restore --source=<merge_base_sha> --staged --worktree -- <path>
+
+        Behaviour per path:
+          - Path absent in merge-base tree → removed from index and working tree.
+          - Path present in merge-base tree → index and working tree set to
+            merge-base version.
+
+        Postcondition (after caller commits the staged changes):
+            git diff --name-only <merge_base_sha>..HEAD -- <path>
+            produces no output for any path in `paths`.
+
+        Args:
+            paths: Set of workspace-relative paths to neutralize.
+            base:  Base branch name (e.g. "main", "epic/76-...").
+
+        Raises:
+            ExecutionError: if git merge-base fails (e.g. base not found) or
+                            git restore fails for any path.
+        """
+        try:
+            merge_base_sha = self.repo.git.execute(
+                ["git", "merge-base", "HEAD", base]
+            ).strip()
+        except Exception as e:
+            raise ExecutionError(
+                f"git merge-base failed for base='{base}': {e}"
+            ) from e
+
+        for path in paths:
+            try:
+                self.repo.git.restore(
+                    f"--source={merge_base_sha}",
+                    "--staged",
+                    "--worktree",
+                    "--",
+                    path,
+                )
+            except Exception as e:
+                raise ExecutionError(
+                    f"git restore --source={merge_base_sha} failed for '{path}': {e}"
+                ) from e
+
     def checkout(self, branch_name: str) -> None:
         """Checkout branch (local or remote-tracking)."""
         try:
