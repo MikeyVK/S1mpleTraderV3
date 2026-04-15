@@ -1,9 +1,9 @@
 <!-- docs\development\issue283\research-model1-branch-tip-neutralization.md -->
-<!-- template=research version=manual created=2026-04-15T00:00Z updated= -->
+<!-- template=research version=manual created=2026-04-15T00:00Z updated=2026-04-15 -->
 # Research — Model 1 branch-tip neutralization gap (Issue #283)
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 2.0  
 **Last Updated:** 2026-04-15
 
 ---
@@ -24,7 +24,7 @@ Capture the verified post-C6 gap between the current implementation and the acce
 **Out of Scope:**
 - Full C1–C6 design history (see `design-git-add-commit-regression-fix.md` v11.0)
 - Any question already answered by C1–C6: `NoteContext`, `EnforcementRunner`, `BaseTool`, `skip_paths` primitive, `_has_net_diff_for_path`, config-boundary closure
-- Implementation proposal or cycle shapes (design phase)
+- Implementation cycle shapes (planning phase)
 
 ## Prerequisites
 
@@ -215,35 +215,271 @@ The following C1–C6 elements are correct and must not be modified:
 
 ---
 
-## Open Questions (for design)
+## Decisions
 
-1. Should `GitAdapter` grow a `neutralize_to_base(paths, base)` method that handles both the
-   `git rm` and `git restore --source=BASE` cases, or should `GitCommitTool` call existing
-   `GitAdapter` methods directly?
-2. Should `git ls-tree BASE -- path` (per-path existence check) live in `GitAdapter` or be
-   an inline subprocess call in `GitCommitTool.execute()`?
-3. Should `EnforcementRunner.__init__` receive `default_base_branch: str` or the full
-   `GitConfig` object? The former is minimal; the latter opens the door to future config-aware
-   enforcement without further injection.
-4. What is the correct commit message format for the neutralization commit?
-   (e.g., `chore(P_READY): neutralize branch-local artifacts to base`)
-5. Are the existing `skip_paths` integration tests (`test_git_adapter_skip_paths.py`,
-   `test_git_add_commit_regression_c6.py`) to be retained as coverage for the generic
-   primitive, or replaced by Model 1 contract tests?
+All open questions answered 2026-04-15 (user + architectural principles review).
+
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| 1 | `neutralize_to_base` in `GitAdapter` vs. direct calls | **Optie A — `GitAdapter.neutralize_to_base(paths, base)`** | All git subprocesses route through `GitAdapter` (§10 Cohesion). The per-path existence check is eliminated entirely: `git restore --source=MERGE_BASE --staged --worktree -- path` handles both "absent from base" (removes from index+worktree) and "present on base" (restores to base version) in one command. |
+| 2 | Where does `git ls-tree BASE -- path` live? | **Eliminated** | The merge-base approach (V1) makes the per-path existence check unnecessary. `git restore --source=MERGE_BASE` is a single command that covers both cases without a precondition check. |
+| 3 | `EnforcementRunner` injectie: `default_base_branch: str` vs. `GitConfig` | **`default_base_branch: str`** | §1.4 ISP: inject only what is used. §9 YAGNI: no abstraction for a concern with one implementation today. `EnforcementRunner` needs one scalar value, not the full config. |
+| 4 | Commit message formaat neutralisatie-commit | **Optie C — vaste template, dynamische BASE** | `chore(P_READY): neutralize branch-local artifacts to '{resolved_base}'`. Scope (`P_READY`) maakt de commit herkenbaar in history. `resolved_base` is dynamisch. `params.message` van de caller wordt in de terminal-phase route genegeerd — de neutralisatie-commit heeft een vaste semantische betekenis. |
+| 5 | Bestaande `skip_paths` tests bewaren of vervangen? | **Optie B + §14-correctie** | `test_git_adapter_skip_paths.py`: klasse `TestGitAdapterSkipPaths` (mock-ordering) verwijderen — architectuurschuld per §14 (test koppelt aan implementatiemechanisme, niet aan contract). Klasse `TestGitAdapterSkipPathsIntegration` (real-git, zero-delta bewijs) bewaren. Beide integratie-testbestanden (`test_git_add_commit_ready_phase_c3.py`, `test_git_add_commit_regression_c6.py`) worden vervangen door Model 1 contracttests. |
 
 ---
 
-## Test Contract (binding — must appear in design)
+## Design
 
-The following behaviors must be covered by the new integration tests:
+### D1 — `GitAdapter.neutralize_to_base(paths, base)`
 
-1. Setup: branch commits `.st3/state.json` / `.st3/deliverables.json` in one or more commits.
-2. Ready-commit: `git_add_or_commit` in terminal phase.
-3. Assert: `git diff --name-only MERGE_BASE(HEAD,BASE)..HEAD -- path` is empty for each excluded path.
-4. Assert: `create_pr` is NOT blocked after the ready-commit.
-5. Assert: commit history before the ready-commit still contains the working-state versions.
-6. Assert (scenario: path absent from BASE): path is absent from HEAD tree after ready-commit.
-7. Assert (scenario: path present on BASE): HEAD tree version of path equals BASE version.
+**Bestand:** `mcp_server/adapters/git_adapter.py`
+
+Nieuwe publieke methode naast de bestaande `restore()` en `commit()`:
+
+```python
+def neutralize_to_base(self, paths: frozenset[str], base: str) -> None:
+    """Align each path in `paths` to the state at the merge-base of HEAD and `base`.
+
+    Runs git merge-base HEAD <base> once, then for each path:
+        git restore --source=<merge_base_sha> --staged --worktree -- <path>
+
+    Behaviour per path:
+    - Path absent in merge-base tree  → removed from index and working tree.
+    - Path present in merge-base tree → index and working tree set to merge-base version.
+
+    Postcondition: git diff --name-only <merge_base_sha>..HEAD -- <path>
+    produces no output for any path in `paths`.
+
+    Raises:
+        ExecutionError: if git merge-base or git restore fails.
+    """
+    merge_base_result = _run_git_command(  # reuse existing helper pattern
+        ...["merge-base", "HEAD", base]...
+    )
+    if merge_base_result.returncode != 0:
+        raise ExecutionError(
+            f"git merge-base failed for base='{base}': {merge_base_result.stderr.strip()}"
+        )
+    merge_base_sha = merge_base_result.stdout.strip()
+
+    for path in paths:
+        try:
+            self.repo.git.restore(f"--source={merge_base_sha}", "--staged", "--worktree", "--", path)
+        except Exception as e:
+            raise ExecutionError(
+                f"git restore --source={merge_base_sha} failed for '{path}': {e}"
+            ) from e
+```
+
+**Noot:** `_run_git_command` is gedefinieerd in `enforcement_runner.py`, niet in `git_adapter.py`.
+`GitAdapter` gebruikt `self.repo.git.*` (GitPython). De `merge-base` aanroep wordt via
+`self.repo.git.execute(["git", "merge-base", "HEAD", base])` of `self.repo.git.merge_base("HEAD", base)`
+aangeroepen — exacte aanroep conform bestaande patronen in `git_adapter.py`.
+
+---
+
+### D2 — `GitCommitInput` en `GitCommitTool.execute()`
+
+**Bestand:** `mcp_server/tools/git_tools.py`
+
+**D2a — `GitCommitInput`:** voeg één veld toe:
+
+```python
+base: str | None = Field(
+    default=None,
+    description=(
+        "Target base branch for ready-phase neutralization. "
+        "Resolved from state.json parent_branch when omitted, "
+        "then falls back to git_config.default_base_branch."
+    ),
+)
+```
+
+**D2b — `GitCommitTool.execute()` — base resolutie:**
+
+```python
+# 3-tier base resolution (terminal-phase route only)
+resolved_base: str = (
+    params.base
+    or (
+        self._state_engine.get_state(current_branch).parent_branch
+        if self._state_engine is not None
+        else None
+    )
+    or self.manager.git_config.default_base_branch
+)
+```
+
+**D2c — `GitCommitTool.execute()` — route-selectie:**
+
+```python
+excluded_paths = frozenset(n.file_path for n in ctx.of_type(ExclusionNote))
+
+if excluded_paths:
+    # Terminal-phase route: neutralize branch tip to merge-base, then commit.
+    # params.message is intentionally ignored — the neutralization commit has
+    # a fixed semantic meaning expressed in the generated message.
+    self.manager.adapter.neutralize_to_base(excluded_paths, resolved_base)
+    commit_hash = self.manager.commit_with_scope(
+        workflow_phase=workflow_phase,
+        message=f"neutralize branch-local artifacts to '{resolved_base}'",
+        note_context=ctx,
+        commit_type="chore",
+        files=None,          # git add . — neutralized paths already staged correctly
+        skip_paths=frozenset(),
+    )
+else:
+    # Normal route: commit as requested.
+    commit_hash = self.manager.commit_with_scope(
+        workflow_phase=workflow_phase,
+        message=params.message,
+        note_context=ctx,
+        sub_phase=params.sub_phase,
+        cycle_number=params.cycle_number,
+        commit_type=commit_type,
+        files=params.files,
+        skip_paths=frozenset(),
+    )
+```
+
+**Toelichting `files=None` in terminal route:** na `neutralize_to_base` staan de
+uitgesloten paden correct in de staging area (merge-base versie, of verwijderd).
+`git add .` staged vervolgens alle overige werkdirectory-wijzigingen. Dit is het juiste
+gedrag: de ready-commit is een complete snapshot-commit, niet een selectieve commit.
+
+---
+
+### D3 — `EnforcementRunner.__init__` + `_handle_check_merge_readiness`
+
+**Bestand:** `mcp_server/managers/enforcement_runner.py`
+
+**D3a — constructor:**
+
+```python
+def __init__(
+    self,
+    workspace_root: Path,
+    config: EnforcementConfig,
+    registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
+    merge_readiness_context: MergeReadinessContext | None = None,
+    default_base_branch: str = "main",  # injected from git_config at composition root
+) -> None:
+    ...
+    self._default_base_branch = default_base_branch
+```
+
+**D3b — `_handle_check_merge_readiness` — base fallback:**
+
+```python
+# VOOR:
+base = str(context.get_param("base") or "main")
+# NA:
+base = str(context.get_param("base") or self._default_base_branch)
+```
+
+**D3c — remediation messaging (Gap 4):**
+
+```python
+# VOOR (beschrijft skip_paths als fix):
+note_context.produce(SuggestionNote(
+    message="Commit first in the ready phase to auto-exclude them:"
+))
+note_context.produce(SuggestionNote(
+    message='  git_add_or_commit(message="chore: prepare branch for PR")'
+))
+
+# NA (beschrijft Model 1 neutralisatie als fix):
+note_context.produce(SuggestionNote(
+    message=f"Run git_add_or_commit in phase '{ctx.pr_allowed_phase}' to neutralize these paths:"
+))
+note_context.produce(SuggestionNote(
+    message=f'  git_add_or_commit(workflow_phase="{ctx.pr_allowed_phase}", message="...")'
+))
+note_context.produce(SuggestionNote(
+    message=f"  This commit will align the branch tip to '{base}' for the excluded paths."
+))
+```
+
+---
+
+### D4 — `server.py` wiring
+
+**Bestand:** `mcp_server/server.py`
+
+```python
+# VOOR:
+self.enforcement_runner = EnforcementRunner(
+    workspace_root=workspace_root,
+    config=enforcement_config,
+    merge_readiness_context=_merge_readiness_context,
+)
+
+# NA:
+self.enforcement_runner = EnforcementRunner(
+    workspace_root=workspace_root,
+    config=enforcement_config,
+    merge_readiness_context=_merge_readiness_context,
+    default_base_branch=git_config.default_base_branch,
+)
+```
+
+---
+
+### D5 — Test strategie
+
+**Verwijderen (architectuurschuld §14):**
+- `TestGitAdapterSkipPaths` klasse in `test_git_adapter_skip_paths.py`  
+  (mock-ordering tests: koppelen aan implementatiemechanisme, niet aan contract)
+
+**Bewaren:**
+- `TestGitAdapterSkipPathsIntegration` klasse in `test_git_adapter_skip_paths.py`  
+  (real-git zero-delta bewijs — correct contract test)
+
+**Vervangen:**
+- `tests/mcp_server/integration/test_git_add_commit_ready_phase_c3.py` → verwijderen
+- `tests/mcp_server/integration/test_git_add_commit_regression_c6.py` → verwijderen
+- Vervangen door: `tests/mcp_server/integration/test_model1_branch_tip_neutralization.py`
+
+**Toevoegen (GitAdapter unit):**
+- `tests/mcp_server/unit/adapters/test_git_adapter_neutralize_to_base.py`  
+  Real-git tests (geen mocks): bewijst dat `neutralize_to_base()` na afloop een leeg
+  `git diff merge_base..HEAD -- path` oplevert voor zowel het "absent from base"- als
+  het "present on base"-scenario.
+
+---
+
+## Test Contract
+
+De volgende gedragingen moeten worden afgedekt in `test_model1_branch_tip_neutralization.py`:
+
+**Scenario A — path absent from BASE (hoofd-scenario voor deze branch):**
+1. Setup: branch commit voegt `.st3/state.json` toe (aanwezig in HEAD tree, afwezig op BASE).
+2. `git_add_or_commit` aangeroepen in terminal phase (`workflow_phase="ready"`).
+3. Assert: `git diff --name-only MERGE_BASE(HEAD,BASE)..HEAD -- .st3/state.json` is leeg.
+4. Assert: `.st3/state.json` afwezig in HEAD tree na de neutralisatie-commit.
+5. Assert: `create_pr` enforcement gate passeert (geen `ValidationError`).
+6. Assert: commit history vóór de neutralisatie-commit bevat nog de werkversie.
+7. Assert: commit message is `chore(P_READY): neutralize branch-local artifacts to '<BASE>'`.
+
+**Scenario B — path present on BASE (epic-parent scenario):**
+1. Setup: BASE heeft eigen versie van `.st3/state.json`; branch wijzigt die versie.
+2. `git_add_or_commit` aangeroepen in terminal phase.
+3. Assert: HEAD tree versie van `.st3/state.json` is gelijk aan BASE versie.
+4. Assert: `git diff MERGE_BASE..HEAD -- .st3/state.json` is leeg.
+5. Assert: `create_pr` gate passeert.
+
+**Scenario C — geen ExclusionNotes (niet-terminal phase):**
+1. `git_add_or_commit` in niet-terminal phase.
+2. Assert: `neutralize_to_base` wordt NIET aangeroepen.
+3. Assert: `params.message` wordt gebruikt als commit message.
+4. Assert: `skip_paths=frozenset()` — geen `git restore --staged` aanroepen.
+
+**GitAdapter unit (test_git_adapter_neutralize_to_base.py):**
+1. `neutralize_to_base({path}, base)` op een real-git repo → `git diff merge_base..HEAD -- path` leeg.
+2. Path absent from base → pad afwezig in worktree + index na aanroep.
+3. Path present on base → worktree + index bevatten base-versie na aanroep.
+4. Niet-nul exitcode van `git merge-base` → `ExecutionError` raised.
 
 ---
 
