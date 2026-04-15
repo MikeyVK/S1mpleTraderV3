@@ -1,10 +1,10 @@
 <!-- docs\development\issue283\research-git-add-or-commit-regression.md -->
-<!-- template=research version=8b7bb3ab created=2026-04-10T16:26Z updated=2026-04-11 -->
+<!-- template=research version=8b7bb3ab created=2026-04-10T16:26Z updated=2026-04-15 -->
 # Research — git_add_or_commit branch-local artifact regression (Issue #283)
 
 **Status:** DRAFT  
-**Version:** 1.5  
-**Last Updated:** 2026-04-11
+**Version:** 2.0  
+**Last Updated:** 2026-04-15
 
 ---
 
@@ -232,13 +232,217 @@ The following questions were raised during research but are **already answered**
 - **Phase-aware consumers must receive typed config objects, not raw `Path` values.** Constructor injection is the normative pattern (Config-First / DI principles). `ScopeDecoder`, `GitManager`, and `PhaseStateEngine` accepting `workphases_path: Path` is a violation, not a design choice. This also applies after the flag-day refactor: no production callsite may reconstruct `.st3/config/...` paths independently of the composition root.
 - **The five hardcoded `workphases.yaml` callsites (server.py:211, server.py:222, phase_detection.py:85, phase_state_engine.py:91, git_manager.py:26) must be eliminated as part of this issue.** The root cause is a `Path`-accepting interface — replacing that interface eliminates all five simultaneously. These violations are explicitly in scope for issue #283 and must not remain in the codebase when this issue closes.
 
-## Open Questions
+## Open Questions (v1.5 — answered by C1–C6)
 
-- Should ready-phase commit execution preserve the post-enforcement index state rather than re-stage the entire working tree when `files=None`?
-- Which layer should own the explicit inter-layer contract for index-state preservation: should the server enforce it via pre-conditions, or should the adapter/manager expose a targeted staging API that makes stage-all the non-default?
-- Should successful enforcement notes be surfaced via `ToolResult.hints` or does the use case require a richer per-entry structure — and if so, what is the minimum machine-readable shape that avoids duplicating `ToolResult`?
-- What full-path regression tests are required to guarantee that branch-local artifacts stay out of ready-phase commits and that the user receives a non-silent success message?
+> These questions were open at v1.5 and are now answered by the C1-C6 implementation.
+> They are preserved here for traceability.
 
+- ~~Should ready-phase commit execution preserve the post-enforcement index state rather than re-stage the entire working tree when `files=None`?~~ → **Answered:** `skip_paths` postcondition in `GitAdapter.commit()` carries forward the `ExclusionNote` entries set by pre-enforcement.
+- ~~Which layer should own the explicit inter-layer contract for index-state preservation?~~ → **Answered:** `GitAdapter.commit(skip_paths=)` owns the postcondition; `GitCommitTool.execute()` reads `ExclusionNote` entries and builds `skip_paths`.
+- ~~Should successful enforcement notes be surfaced via `ToolResult.hints` or richer structure?~~ → **Answered:** typed `NoteEntry` variants in `mcp_server/core/operation_notes.py`; surfaced via `NoteContext.render_to_response()`.
+- ~~What full-path regression tests are required?~~ → **Answered:** C6 added integration tests for both `git_add_or_commit` and `create_pr` dispatch paths.
+
+---
+
+## Post-C6 Status — What C1–C6 Fixed
+
+C1–C6 resolved all five original defects documented in this research:
+
+| Defect | Fix | Cycle |
+|--------|-----|-------|
+| A — re-staging via `git add .` after `git rm --cached` | `skip_paths: frozenset[str]` postcondition in `GitAdapter.commit()` via `git restore --staged` | C2 |
+| B — successful enforcement notes discarded | `NoteContext` wired through server dispatch; `render_to_response()` appends all `Renderable` entries to the final response | C3 |
+| C — five `.st3/config/workphases.yaml` raw-path violations | `WorkphasesConfig` constructor injection for `ScopeDecoder`, `GitManager`, `PhaseStateEngine`; structural guardrail test added | C5 |
+| D — `ToolResult.hints` / untyped recovery kwargs | Replaced with typed `NoteEntry` variants (`ExclusionNote`, `CommitNote`, `SuggestionNote`, `BlockerNote`, `RecoveryNote`, `InfoNote`) | C3 |
+| E — wrong `create_pr` proxy (`git log merge_base..HEAD`) | Replaced with `_has_net_diff_for_path()` using `git diff --name-only merge_base..HEAD -- path` | C6 |
+
+2762 tests pass on the branch tip after C6. `_run_tool_enforcement` correctly propagates `NoteContext` through pre-enforcement, tool execution, and post-enforcement, then renders notes into the final response via `note_context.render_to_response(raw_result)`.
+
+### Residual situation at C6
+
+Despite C6 being complete, [`create_pr`](mcp_server/tools/pr_tools.py) is still blocked for this branch. The gate correctly detects a net diff:
+
+```
+git diff --name-only <merge-base>..HEAD -- .st3/state.json .st3/deliverables.json
+# output:
+.st3/deliverables.json
+.st3/state.json
+```
+
+Both paths show in `git ls-tree HEAD` (branch tree contains these files) and both are absent from `git ls-tree main` (main does not have them). The `skip_paths` + `git restore --staged` mechanism prevented these files from appearing in the *delta of the most recent commit*, but they remain in the *branch tree* from earlier commits. The `create_pr` gate checks the branch tree against the merge-base, not the most recent commit delta — so the gate still fires correctly.
+
+This is not a gate defect. The gate is right. The problem is that the ready-commit mechanism does not neutralize the branch tip.
+
+---
+
+## Residual Gap — Model 1: Branch-Tip Neutralization
+
+### Accepted invariant (binding product decision — 2026-04-15)
+
+> **For every `artifact.path` in `MergeReadinessContext.branch_local_artifacts`:**
+> After the ready-phase cleanup commit, merging the child branch into the base branch
+> must not change the base's state for these paths.
+>
+> Practically: `git diff --name-only MERGE_BASE(HEAD, BASE)..HEAD -- artifact.path`
+> must be empty immediately after the ready-phase cleanup commit.
+
+This was accepted as "Model 1" on 2026-04-15 and is not open for reconsideration in design.
+
+**Corollary:** the child branch may retain the real history of these files in its commit log.
+The history is preserved. Only the branch-tip state is neutralized before PR merge.
+
+### Why `skip_paths` + `git restore --staged` does NOT satisfy this invariant
+
+`git restore --staged path` operates on the staging area only. Its effect:
+
+- Removes pending changes for `path` from the index relative to HEAD.
+- Does **not** change the working tree.
+- Does **not** change the branch tree. The file is still tracked from previous commits.
+
+After a `git add . && git restore --staged .st3/state.json && git commit`:
+
+```
+# The new commit C has no delta for .st3/state.json relative to its parent.
+# But .st3/state.json is still present in C's tree (inherited from parent tree).
+# git diff --name-only MERGE_BASE(C, main)..C -- .st3/state.json → .st3/state.json
+```
+
+The `create_pr` gate sees the file in the branch tree and the merge-base tree doesn't have it,
+so the diff is non-empty. Gate fires. **The `skip_paths` mechanism is commit-level exclusion,
+not branch-tip neutralization.**
+
+### What Model 1 requires
+
+The ready-phase commit must perform an explicit structural alignment of the branch tip to the
+base on each excluded path. The operation differs based on whether the path exists on `BASE`:
+
+| Case | Required git operation |
+|------|------------------------|
+| `git ls-tree BASE -- path` is empty (path absent from base) | `git rm -- path` (removes from index AND worktree) |
+| `git ls-tree BASE -- path` is non-empty (path present on base) | `git restore --source=BASE --staged --worktree -- path` |
+
+After this commit, `HEAD` tree for `path` equals `BASE` tree for `path`, making the net diff
+for that path empty.
+
+**Live branch evidence:**
+
+```
+git ls-tree main -- .st3/state.json .st3/deliverables.json   # empty (not on main)
+git diff --name-only <merge-base>..HEAD -- .st3/state.json   # .st3/state.json (non-empty)
+```
+
+Both artifacts are absent from `main`. The correct neutralization is `git rm` for both.
+After the neutralization commit, both diffs would be empty and `create_pr` would pass.
+
+---
+
+## Precise Code-Gap Map (post-C6)
+
+### Gap 1 — Ready-commit performs staging-level exclusion instead of branch-tip neutralization
+
+**File:** `mcp_server/tools/git_tools.py`  
+**Location:** `GitCommitTool.execute()` lines ~352–361  
+**Current behavior:**
+```python
+excluded_paths = frozenset(n.file_path for n in ctx.of_type(ExclusionNote))
+commit_hash = self.manager.commit_with_scope(
+    ...
+    skip_paths=excluded_paths,
+)
+```
+**What this does:** the `skip_paths` postcondition in `GitAdapter.commit()` runs
+`git restore --staged path` after staging. The path delta is absent from the new commit.
+The path remains in the branch tree.
+
+**What Model 1 requires:** when `ExclusionNote` entries are present (terminal phase), run
+branch-tip neutralization instead of staging-level exclusion:
+1. For each `ExclusionNote.file_path`, determine whether the path exists on `BASE`.
+2. If absent from `BASE`: `git rm -- path` (remove from index and worktree).
+3. If present on `BASE`: `git restore --source=BASE --staged --worktree -- path`.
+4. Commit the resulting tree change. This commit is the "readiness commit".
+5. Do NOT use `skip_paths` for the excluded paths in this route — they become part of the commit.
+
+**Signal:** The presence of `ExclusionNote` entries in `NoteContext` is the session-level
+signal that terminal-phase enforcement has run. This is the correct trigger for route selection.
+
+### Gap 2 — GitCommitTool has no base-branch knowledge
+
+**File:** `mcp_server/tools/git_tools.py`  
+**Location:** `GitCommitInput` model (lines ~218–281); `GitCommitTool.execute()` (line ~312)  
+**Current state:** `GitCommitInput` has no `base` field. `GitCommitTool` has no base-branch
+resolution logic.
+
+**Required:** resolve `BASE` in `execute()` using the three-tier chain:
+1. `params.base` — explicit caller override (requires adding `base: str | None` to `GitCommitInput`).
+2. `_state_engine.get_state(current_branch).parent_branch` — from `BranchState` in state.json.
+3. `git_config.default_base_branch` — from injected `GitConfig`.
+
+This chain is consistent with the resolution used by `GetParentBranchTool.execute()` (lines ~692-710)
+and compatible with the fallback in `CreatePRInput.apply_default_base_branch()`.
+
+**Note:** `PhaseStateEngine.get_state()` is already available in `GitCommitTool` via the injected
+`_state_engine`. The `BranchState.parent_branch` field is populated by `initialize_branch`.
+
+### Gap 3 — EnforcementRunner hardcodes `"main"` as base fallback
+
+**File:** `mcp_server/managers/enforcement_runner.py`  
+**Location:** `_handle_check_merge_readiness()`, line ~330:
+```python
+base = str(context.get_param("base") or "main")
+```
+**Gap:** `"main"` is a hardcoded literal. For a non-`main` default base (e.g., epic-parent),
+the check computes the wrong merge-base. The enforcement runner does not receive `GitConfig`
+and cannot access `git_config.default_base_branch`.
+
+**Required:** inject `git_config.default_base_branch` (or the full value) into
+`EnforcementRunner.__init__` so the fallback aligns with the PR tool and the ready-commit.
+The `"main"` literal must be replaced.
+
+### Gap 4 — Remediation messaging in `create_pr` guard refers to obsolete mechanism
+
+**File:** `mcp_server/managers/enforcement_runner.py`  
+**Location:** `_handle_check_merge_readiness()` suggestion notes (lines ~358–368)  
+**Current messages** imply `skip_paths` auto-exclusion is the fix:
+> "Commit first in the ready phase to auto-exclude them"
+
+**Model 1 meaning:** a ready-phase `git_add_or_commit` call will now neutralize these paths
+to the base branch via `git rm` or `git restore --source=BASE`. The suggestion notes must
+direct the user to that operation, not to the obsolete staging-exclusion mechanism.
+
+---
+
+## Updated Conclusions (v2.0)
+
+1. C1–C6 fully resolved the original five defects. The `NoteContext` architecture, `skip_paths`
+   postcondition, and `_has_net_diff_for_path` proxy are correct foundations for the Model 1 fix.
+2. The `create_pr` gate using `git diff --name-only merge_base..HEAD` is the correct invariant
+   check and must not be changed.
+3. The ready-commit mechanism needs to be replaced (not extended) for the terminal phase:
+   `skip_paths` (staging exclusion) → branch-tip neutralization (`git rm` or `git restore --source=BASE`).
+4. Base-branch resolution must be consistent across `GitCommitTool`, `CreatePRTool`, and
+   `EnforcementRunner`. A three-tier chain (explicit → state.json → git_config) satisfies all cases.
+5. The neutralization operations are surgical. No new abstraction layer is required; `GitAdapter`
+   already has a `restore(files, source)` method. The missing piece is a pre-commit step that
+   handles the "path absent from base → delete" case.
+6. The `ExclusionNote` signal in `NoteContext` is the correct branch-point for route selection
+   in `GitCommitTool.execute()`. No additional phase detection is needed at the tool level.
+
+## Open Questions (v2.0)
+
+- Should `GitAdapter.restore()` be extended to accept `delete_if_absent: bool` to handle the
+  "path absent from base → delete from index and worktree" case, or should this be a new
+  `neutralize_to_base(paths, base)` method?
+- Should `git ls-tree BASE -- path` be called per-path inside `GitCommitTool.execute()` or
+  delegated to `GitAdapter` / `GitManager` as a pre-commit operation?
+- Should `EnforcementRunner.__init__` receive `default_base_branch: str` directly, or the full
+  `GitConfig` object? The former is simpler; the latter opens the door to future config-aware
+  enforcement without further injection.
+- Are the existing skip_paths integration tests (`test_git_adapter_skip_paths.py`,
+  `test_git_add_commit_regression_c6.py`) to be retained as regression coverage for the generic
+  `skip_paths` primitive, or replaced entirely by Model 1 contract tests?
+- What is the exact message contract for the readiness commit? Should the commit message be
+  driven by `workphases.yaml` scope (e.g., `chore(P_READY): neutralize branch-local artifacts`)
+  or left to the caller?
 
 ## Related Documentation
 - **[tests/mcp_server/integration/test_ready_phase_enforcement.py][related-1]**
