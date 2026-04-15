@@ -251,6 +251,7 @@ class MCPServer:
             workspace_root=workspace_root,
             config=enforcement_config,
             merge_readiness_context=_merge_readiness_context,
+            default_base_branch=git_config.default_base_branch,
         )
 
         self.server = Server(server_name)
