@@ -12,6 +12,11 @@ D1 invariant (from research-model1-branch-tip-neutralization.md):
     git diff --name-only MERGE_BASE(HEAD, BASE)..HEAD -- <path>
     must be empty for every excluded path.
 
+Three scenarios (D5 test contract):
+    Scenario A: excluded path absent from BASE → zero net-diff AND absent from HEAD tree.
+    Scenario B: excluded path present on BASE (epic-parent) → restored to BASE version.
+    Scenario C: no ExclusionNotes (non-terminal phase) → all files in net-diff normally.
+
 @layer: Tests (Integration)
 @dependencies: [json, pathlib, pytest, pytest-asyncio, git (GitPython),
     mcp_server.adapters.git_adapter, mcp_server.config.loader,
@@ -44,16 +49,49 @@ _DELIVERABLES_JSON = ".st3/deliverables.json"
 # ---------------------------------------------------------------------------
 
 
-def _init_repo(repo_dir: Path) -> GitRepo:
-    """Create a real git repo with a base commit tracking excluded + normal files.
+def _init_repo_scenario_a(repo_dir: Path) -> GitRepo:
+    """Create a repo where BASE (main) does NOT have the excluded path.
 
     Branch layout after setup:
-        main (initial commit M) ← feature/test (current HEAD, no extra commits yet)
+        main   (commit M: normal.py only)
+        └─ feature/test (commit F: + .st3/state.json added)
 
-    Files committed on main (and inherited by feature):
-        normal.py          → "# v1\\n"
-        .st3/state.json    → {"cycle": 1}
-        .st3/deliverables.json → {}
+    The excluded path (.st3/state.json) exists on feature/test but NOT on main.
+    Simulates: developer created a branch-local artifact that was never on BASE.
+    After neutralize_to_base the artifact must be absent from HEAD tree.
+    """
+    repo = GitRepo.init(str(repo_dir))
+    with repo.config_writer() as cw:
+        cw.set_value("user", "name", "Test")
+        cw.set_value("user", "email", "test@example.com")
+
+    repo.git.checkout("-b", "main")
+    (repo_dir / "normal.py").write_text("# v1\n", encoding="utf-8")
+    repo.index.add(["normal.py"])
+    repo.index.commit("initial commit")
+
+    repo.git.checkout("-b", "feature/test")
+
+    # Commit state.json on the feature branch (absent from main)
+    state_dir = repo_dir / ".st3"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "state.json").write_text('{"cycle": 1}', encoding="utf-8")
+    repo.index.add([_STATE_JSON])
+    repo.index.commit("add branch-local state artifact")
+
+    return repo
+
+
+def _init_repo_scenario_b(repo_dir: Path) -> GitRepo:
+    """Create a repo where BASE (main) already has the excluded path at v1.
+
+    Branch layout after setup:
+        main   (commit M: normal.py + .st3/state.json at v1)
+        └─ feature/test (forked from M, inherits v1)
+
+    The test must modify .st3/state.json to v2 on the feature branch. After
+    neutralize_to_base the file must be restored to the BASE (v1) version.
+    Covers the epic-parent scenario where main itself carries the artifact.
     """
     repo = GitRepo.init(str(repo_dir))
     with repo.config_writer() as cw:
@@ -62,18 +100,13 @@ def _init_repo(repo_dir: Path) -> GitRepo:
 
     repo.git.checkout("-b", "main")
 
-    normal = repo_dir / "normal.py"
     state_dir = repo_dir / ".st3"
     state_dir.mkdir(parents=True, exist_ok=True)
-
-    normal.write_text("# v1\n", encoding="utf-8")
+    (repo_dir / "normal.py").write_text("# v1\n", encoding="utf-8")
     (state_dir / "state.json").write_text('{"cycle": 1}', encoding="utf-8")
-    (state_dir / "deliverables.json").write_text("{}", encoding="utf-8")
-
-    repo.index.add(["normal.py", _STATE_JSON, _DELIVERABLES_JSON])
+    repo.index.add(["normal.py", _STATE_JSON])
     repo.index.commit("initial commit")
 
-    # Fork a feature branch from this base commit
     repo.git.checkout("-b", "feature/test")
     return repo
 
@@ -100,6 +133,15 @@ def _has_net_diff(repo: GitRepo, path: str, base: str) -> bool:
     return bool(diff_output.strip())
 
 
+def _path_in_head_tree(repo: GitRepo, path: str) -> bool:
+    """Return True if path exists in the HEAD commit tree."""
+    try:
+        repo.git.show(f"HEAD:{path}")
+        return True
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------------------
 # C10 — Model 1 D1 invariant: end-to-end integration proof
 # ---------------------------------------------------------------------------
@@ -114,21 +156,20 @@ class TestModel1BranchTipNeutralization:
     """
 
     @pytest.mark.asyncio
-    async def test_excluded_path_has_zero_net_diff_after_commit(self, tmp_path: Path) -> None:
-        """D1 invariant: excluded path absent from git diff merge_base..HEAD after commit.
+    async def test_scenario_a_path_absent_from_base_zero_net_diff(self, tmp_path: Path) -> None:
+        """Scenario A: excluded path absent from BASE → zero net-diff and absent from HEAD tree.
 
         Setup:
-            - feature/test branched from main (initial commit = merge base)
-            - state.json modified on feature branch
+            - main has no .st3/state.json (artifact never existed on BASE)
+            - feature/test added state.json in a prior commit (branch-local artifact)
             - normal.py modified on feature branch
-        Proof:
-            - GitCommitTool with ExclusionNote for state.json
-            - After commit: git diff merge_base..HEAD -- .st3/state.json is empty
-            - After commit: normal.py IS in git diff merge_base..HEAD (sanity guard)
+        Proof (D5 contract):
+            - After ready-phase commit with ExclusionNote: zero net-diff against main
+            - .st3/state.json absent from HEAD tree (neutralized away entirely)
         """
-        repo = _init_repo(tmp_path)
+        repo = _init_repo_scenario_a(tmp_path)
 
-        # Simulate work: modify both the excluded path and a normal file
+        # Simulate further work: update both the excluded path and a normal file
         (tmp_path / "normal.py").write_text("# v2\n", encoding="utf-8")
         (tmp_path / _STATE_JSON).write_text(
             json.dumps({"cycle": 2, "current_phase": "ready"}), encoding="utf-8"
@@ -147,63 +188,75 @@ class TestModel1BranchTipNeutralization:
 
         assert not result.is_error, f"Expected commit success but got: {result}"
         assert not _has_net_diff(repo, _STATE_JSON, "main"), (
-            f"D1 invariant violated: '{_STATE_JSON}' still has net delta against 'main'"
+            f"D1 invariant violated (Scenario A): '{_STATE_JSON}' has net delta against 'main'"
+        )
+        assert not _path_in_head_tree(repo, _STATE_JSON), (
+            f"Scenario A: '{_STATE_JSON}' must be absent from HEAD tree after neutralization "
+            "(path was not on BASE — neutralize must remove it entirely)"
         )
         assert _has_net_diff(repo, "normal.py", "main"), (
-            "Sanity guard failed: 'normal.py' should have net delta against 'main'"
+            "Sanity guard: 'normal.py' must have net delta against 'main'"
         )
 
     @pytest.mark.asyncio
-    async def test_multiple_excluded_paths_all_zero_net_diff(self, tmp_path: Path) -> None:
-        """D1 invariant holds for multiple excluded paths simultaneously.
-
-        Both state.json and deliverables.json are excluded via ExclusionNote.
-        Neither must appear in git diff merge_base..HEAD after the commit.
-        """
-        repo = _init_repo(tmp_path)
-
-        (tmp_path / "normal.py").write_text("# v2\n", encoding="utf-8")
-        (tmp_path / _STATE_JSON).write_text(
-            json.dumps({"cycle": 2, "current_phase": "ready"}), encoding="utf-8"
-        )
-        (tmp_path / _DELIVERABLES_JSON).write_text(
-            json.dumps({"deliverable": "test"}), encoding="utf-8"
-        )
-
-        tool = _make_commit_tool(tmp_path)
-        note_ctx = NoteContext()
-        note_ctx.produce(ExclusionNote(file_path=_STATE_JSON))
-        note_ctx.produce(ExclusionNote(file_path=_DELIVERABLES_JSON))
-
-        params = GitCommitInput(
-            message="ready phase commit",
-            workflow_phase="ready",
-            base="main",
-        )
-        result = await tool.execute(params, note_ctx)
-
-        assert not result.is_error, f"Expected commit success but got: {result}"
-        assert not _has_net_diff(repo, _STATE_JSON, "main"), (
-            f"D1 invariant violated: '{_STATE_JSON}' still has net delta against 'main'"
-        )
-        assert not _has_net_diff(repo, _DELIVERABLES_JSON, "main"), (
-            f"D1 invariant violated: '{_DELIVERABLES_JSON}' still has net delta against 'main'"
-        )
-        assert _has_net_diff(repo, "normal.py", "main"), (
-            "Sanity guard failed: 'normal.py' should have net delta against 'main'"
-        )
-
-    @pytest.mark.asyncio
-    async def test_without_exclusion_notes_normal_commit_includes_all_files(
+    async def test_scenario_b_path_present_on_base_restored_to_base_version(
         self, tmp_path: Path
     ) -> None:
-        """Without ExclusionNotes, all changed files appear in the commit diff.
+        """Scenario B (epic-parent): path present on BASE is restored to BASE version.
+
+        Setup:
+            - main has .st3/state.json at v1 ({"cycle": 1})
+            - feature/test modifies it to v2 ({"cycle": 2, "current_phase": "ready"})
+            - normal.py also modified
+        Proof (D5 contract):
+            - After ready-phase commit with ExclusionNote: zero net-diff against main
+            - HEAD tree version of .st3/state.json equals BASE version (v1)
+        """
+        repo = _init_repo_scenario_b(tmp_path)
+
+        # Scenario B: modify the excluded path on the feature branch (v1 → v2)
+        (tmp_path / "normal.py").write_text("# v2\n", encoding="utf-8")
+        (tmp_path / _STATE_JSON).write_text(
+            json.dumps({"cycle": 2, "current_phase": "ready"}), encoding="utf-8"
+        )
+
+        tool = _make_commit_tool(tmp_path)
+        note_ctx = NoteContext()
+        note_ctx.produce(ExclusionNote(file_path=_STATE_JSON))
+
+        params = GitCommitInput(
+            message="ready phase commit",
+            workflow_phase="ready",
+            base="main",
+        )
+        result = await tool.execute(params, note_ctx)
+
+        assert not result.is_error, f"Expected commit success but got: {result}"
+        assert not _has_net_diff(repo, _STATE_JSON, "main"), (
+            f"D1 invariant violated (Scenario B): '{_STATE_JSON}' has net delta against 'main'"
+        )
+        # HEAD tree must contain the BASE version (v1), not the feature version (v2)
+        head_content = repo.git.show(f"HEAD:{_STATE_JSON}")
+        base_content = repo.git.show(f"main:{_STATE_JSON}")
+        assert head_content == base_content, (
+            f"Scenario B: HEAD tree '{_STATE_JSON}' must equal BASE version after neutralization. "
+            f"HEAD: {head_content!r}, BASE: {base_content!r}"
+        )
+        assert _has_net_diff(repo, "normal.py", "main"), (
+            "Sanity guard: 'normal.py' must have net delta against 'main'"
+        )
+
+    @pytest.mark.asyncio
+    async def test_scenario_c_without_exclusion_notes_normal_commit_includes_all_files(
+        self, tmp_path: Path
+    ) -> None:
+        """Scenario C: without ExclusionNotes, all changed files appear in the commit diff.
 
         Regression guard: the neutralize route must NOT fire on a normal commit.
-        Normal files including state.json must appear in git diff when no
-        ExclusionNotes are present.
+        All modified files including .st3/state.json must appear in the net-diff
+        when no ExclusionNotes are present.
         """
-        repo = _init_repo(tmp_path)
+        repo = _init_repo_scenario_b(tmp_path)  # base has state.json — convenient setup
 
         (tmp_path / "normal.py").write_text("# v2\n", encoding="utf-8")
         (tmp_path / _STATE_JSON).write_text(json.dumps({"cycle": 2}), encoding="utf-8")
