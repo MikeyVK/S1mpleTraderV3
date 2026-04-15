@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mcp_server.core.exceptions import ValidationError
-from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.operation_notes import NoteContext, SuggestionNote
 from mcp_server.managers.enforcement_runner import (
     EnforcementAction,
     EnforcementConfig,
@@ -223,12 +223,10 @@ class TestRemediationMessaging:
         ):
             runner.run("create_pr", "pre", ctx, note_ctx)
 
-        from mcp_server.core.operation_notes import SuggestionNote
-
         return [n.message for n in note_ctx.of_type(SuggestionNote)]
 
     def test_remediation_mentions_neutralize_phase(self, tmp_path: Path) -> None:
-        """Remediation message must reference 'neutralize' in the correct phase, not 'auto-exclude'."""
+        """Remediation must reference 'neutralize', not old 'auto-exclude' wording."""
         messages = self._get_suggestion_messages(tmp_path)
         combined = "\n".join(messages)
         assert "auto-exclude" not in combined, (
@@ -248,9 +246,7 @@ class TestRemediationMessaging:
 
     def test_error_message_references_resolved_base_not_main(self, tmp_path: Path) -> None:
         """ValidationError and SuggestionNotes must not hardcode 'main' when base is 'develop'."""
-        messages = self._get_suggestion_messages(
-            tmp_path, base=None, default_base_branch="develop"
-        )
+        messages = self._get_suggestion_messages(tmp_path, base=None, default_base_branch="develop")
         combined = "\n".join(messages)
         assert "develop" in combined, (
             "Remediation messages must reference the resolved base ('develop'), not 'main'"

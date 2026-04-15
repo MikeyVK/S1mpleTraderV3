@@ -367,19 +367,24 @@ class EnforcementRunner:
                     SuggestionNote(message=f"  - {a.path}\n    Reason: {a.reason}")
                 )
             note_context.produce(
-                SuggestionNote(message="Commit first in the ready phase to auto-exclude them:")
-            )
-            note_context.produce(
                 SuggestionNote(
-                    message='  git_add_or_commit(message="chore: prepare branch for PR")'
+                    message=f"Run git_add_or_commit in phase '{ctx.pr_allowed_phase}'"
+                    f" to neutralize these paths:"
                 )
             )
             note_context.produce(
                 SuggestionNote(
-                    message="Source: .st3/config/phase_contracts.yaml"
-                    " → merge_policy.branch_local_artifacts"
+                    message=f'  git_add_or_commit(workflow_phase="{ctx.pr_allowed_phase}",'
+                    ' message="...")'
+                )
+            )
+            note_context.produce(
+                SuggestionNote(
+                    message=f"  This commit will align the branch tip to '{base}'"
+                    " for the excluded paths."
                 )
             )
             raise ValidationError(
-                "Branch-local artifacts are still git-tracked and would contaminate main:",
+                f"Branch-local artifacts have a net delta against '{base}' and"
+                " would contaminate the merge target:",
             )
