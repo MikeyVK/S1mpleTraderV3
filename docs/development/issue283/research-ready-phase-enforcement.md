@@ -2,7 +2,7 @@
 <!-- template=research version=8b7bb3ab created=2026-04-09T12:30Z updated= -->
 # Ready Phase Enforcement — Preventing Branch-Local Artifacts from Reaching Main
 
-**Status:** FINAL
+**Status:** SUPERSEDED — See [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md)
 **Version:** 1.0
 **Last Updated:** 2026-04-09
 

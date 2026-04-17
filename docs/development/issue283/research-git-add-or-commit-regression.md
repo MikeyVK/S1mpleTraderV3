@@ -2,7 +2,7 @@
 <!-- template=research version=8b7bb3ab created=2026-04-10T16:26Z updated=2026-04-11 -->
 # Research — git_add_or_commit branch-local artifact regression (Issue #283)
 
-**Status:** DRAFT  
+**Status:** SUPERSEDED — See [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md)  
 **Version:** 1.5  
 **Last Updated:** 2026-04-11
 

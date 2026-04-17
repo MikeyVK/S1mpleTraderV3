@@ -2,7 +2,7 @@
 <!-- template=design version=5827e841 created=2026-04-09T12:19Z updated= -->
 # Ready Phase Enforcement — Design
 
-**Status:** FINAL
+**Status:** SUPERSEDED — See [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md)
 **Version:** 2.0
 **Last Updated:** 2026-04-09
 

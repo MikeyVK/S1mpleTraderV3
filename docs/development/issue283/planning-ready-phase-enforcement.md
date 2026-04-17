@@ -2,7 +2,7 @@
 <!-- template=planning version=130ac5ea created=2026-04-09T16:25Z updated= -->
 # Ready Phase Enforcement — Implementation Planning
 
-**Status:** DRAFT  
+**Status:** SUPERSEDED — See [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md)  
 **Version:** 1.0  
 **Last Updated:** 2026-04-09
 

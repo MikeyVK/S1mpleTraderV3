@@ -2,7 +2,7 @@
 <!-- template=design version=5827e841 created=2026-04-11T18:58Z updated= -->
 # git_add_or_commit regression fix — NoteContext protocol, config-boundary closure
 
-**Status:** DRAFT  
+**Status:** SUPERSEDED — See [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md)  
 **Version:** 11.0  
 **Last Updated:** 2026-04-13
 

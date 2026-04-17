@@ -2,7 +2,7 @@
 <!-- template=research version=manual created=2026-04-15T00:00Z updated=2026-04-15 -->
 # Research — Model 1 branch-tip neutralization gap (Issue #283)
 
-**Status:** FINAL  
+**Status:** SUPERSEDED — See [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md)  
 **Version:** 2.0  
 **Last Updated:** 2026-04-15
 
