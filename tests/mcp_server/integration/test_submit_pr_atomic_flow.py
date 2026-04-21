@@ -31,17 +31,17 @@ Also verifies:
 
 from __future__ import annotations
 
+import asyncio
 import inspect
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import MagicMock
 
-import pytest
-
+import mcp_server.server as server_module
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IPRStatusWriter, PRStatus
 from mcp_server.core.operation_notes import ExclusionNote, NoteContext, RecoveryNote
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.tools import git_tools
 from mcp_server.tools.pr_tools import CreatePRTool, SubmitPRInput, SubmitPRTool
 
 
@@ -70,7 +70,7 @@ def _make_params(
 class TestSubmitPRHappyPath:
     """SubmitPRTool happy path: atomic flow executes in correct order."""
 
-    def test_submit_pr_happy_path(self, tmp_path: Path) -> None:
+    def test_submit_pr_happy_path(self) -> None:
         """Full atomic flow: neutralize → commit → push → create_pr → set_pr_status(OPEN)."""
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
@@ -78,7 +78,10 @@ class TestSubmitPRHappyPath:
         git_manager.commit_with_scope.return_value = "abc1234"
 
         github_manager = MagicMock(spec=GitHubManager)
-        github_manager.create_pr.return_value = {"number": 42, "url": "https://github.com/x/y/pull/42"}
+        github_manager.create_pr.return_value = {
+            "number": 42,
+            "url": "https://github.com/x/y/pull/42",
+        }
 
         pr_status_writer = MagicMock(spec=IPRStatusWriter)
 
@@ -88,10 +91,7 @@ class TestSubmitPRHappyPath:
         # Inject an ExclusionNote so neutralize_to_base is triggered
         context.produce(ExclusionNote(file_path=".st3/state.json"))
 
-        import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
-            tool.execute(_make_params(), context)
-        )
+        result = asyncio.get_event_loop().run_until_complete(tool.execute(_make_params(), context))
 
         assert not result.is_error
         git_manager.adapter.neutralize_to_base.assert_called_once()
@@ -100,7 +100,7 @@ class TestSubmitPRHappyPath:
         github_manager.create_pr.assert_called_once()
         pr_status_writer.set_pr_status.assert_called_once_with("feature/42-test", PRStatus.OPEN)
 
-    def test_submit_pr_skips_neutralize_when_no_exclusions(self, tmp_path: Path) -> None:
+    def test_submit_pr_skips_neutralize_when_no_exclusions(self) -> None:
         """When no ExclusionNotes are present, neutralize_to_base must not be called."""
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
@@ -108,13 +108,15 @@ class TestSubmitPRHappyPath:
         git_manager.commit_with_scope.return_value = "abc1234"
 
         github_manager = MagicMock(spec=GitHubManager)
-        github_manager.create_pr.return_value = {"number": 42, "url": "https://github.com/x/y/pull/42"}
+        github_manager.create_pr.return_value = {
+            "number": 42,
+            "url": "https://github.com/x/y/pull/42",
+        }
 
         pr_status_writer = MagicMock(spec=IPRStatusWriter)
 
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
 
-        import asyncio
         result = asyncio.get_event_loop().run_until_complete(
             tool.execute(_make_params(), NoteContext())
         )
@@ -123,7 +125,7 @@ class TestSubmitPRHappyPath:
         git_manager.adapter.neutralize_to_base.assert_not_called()
         pr_status_writer.set_pr_status.assert_called_once_with("feature/42-test", PRStatus.OPEN)
 
-    def test_submit_pr_pr_status_written_open(self, tmp_path: Path) -> None:
+    def test_submit_pr_pr_status_written_open(self) -> None:
         """PRStatus.OPEN is written to the cache after successful PR creation."""
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
@@ -131,13 +133,15 @@ class TestSubmitPRHappyPath:
         git_manager.commit_with_scope.return_value = "deadbeef"
 
         github_manager = MagicMock(spec=GitHubManager)
-        github_manager.create_pr.return_value = {"number": 99, "url": "https://github.com/x/y/pull/99"}
+        github_manager.create_pr.return_value = {
+            "number": 99,
+            "url": "https://github.com/x/y/pull/99",
+        }
 
         pr_status_writer = MagicMock(spec=IPRStatusWriter)
 
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
 
-        import asyncio
         asyncio.get_event_loop().run_until_complete(
             tool.execute(_make_params(head="refactor/283-test"), NoteContext())
         )
@@ -148,7 +152,7 @@ class TestSubmitPRHappyPath:
 class TestSubmitPRPartialFailure:
     """SubmitPRTool produces RecoveryNote on failure after neutralize."""
 
-    def test_push_failure_produces_recovery_note(self, tmp_path: Path) -> None:
+    def test_push_failure_produces_recovery_note(self) -> None:
         """When push raises ExecutionError, a RecoveryNote is produced and error returned."""
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
@@ -164,17 +168,14 @@ class TestSubmitPRPartialFailure:
         context = NoteContext()
         context.produce(ExclusionNote(file_path=".st3/state.json"))
 
-        import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
-            tool.execute(_make_params(), context)
-        )
+        result = asyncio.get_event_loop().run_until_complete(tool.execute(_make_params(), context))
 
         assert result.is_error
         assert len(context.of_type(RecoveryNote)) > 0
         # PRStatus must NOT be written when push failed
         pr_status_writer.set_pr_status.assert_not_called()
 
-    def test_create_pr_failure_produces_recovery_note(self, tmp_path: Path) -> None:
+    def test_create_pr_failure_produces_recovery_note(self) -> None:
         """When create_pr raises ExecutionError, a RecoveryNote is produced and error returned."""
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
@@ -188,7 +189,6 @@ class TestSubmitPRPartialFailure:
 
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
 
-        import asyncio
         result = asyncio.get_event_loop().run_until_complete(
             tool.execute(_make_params(), NoteContext())
         )
@@ -202,8 +202,6 @@ class TestCompositionRootContracts:
 
     def test_create_pr_tool_not_instantiated_in_server(self) -> None:
         """server.py must not contain CreatePRTool() instantiation (design D2)."""
-        import mcp_server.server as server_module
-
         source = inspect.getsource(server_module)
         assert "CreatePRTool(" not in source, (
             "CreatePRTool must not be instantiated in server.py. "
@@ -212,8 +210,6 @@ class TestCompositionRootContracts:
 
     def test_git_commit_tool_has_no_neutralize_path(self) -> None:
         """GitCommitTool.execute() must not contain neutralize_to_base (moved to SubmitPRTool)."""
-        from mcp_server.tools import git_tools
-
         source = inspect.getsource(git_tools.GitCommitTool.execute)
         assert "neutralize_to_base" not in source, (
             "GitCommitTool must not contain neutralize_to_base path in C3+. "

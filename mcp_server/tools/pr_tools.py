@@ -34,7 +34,7 @@ class CreatePRInput(BaseModel):
     draft: bool = Field(default=False, description="Create as draft")
 
     @model_validator(mode="after")
-    def apply_default_base_branch(self) -> "CreatePRInput":
+    def apply_default_base_branch(self) -> CreatePRInput:
         if self.base is not None:
             return self
 
@@ -192,7 +192,7 @@ class SubmitPRTool(BranchMutatingTool):
 
     def __init__(
         self,
-        git_manager: "GitManager",
+        git_manager: GitManager,
         github_manager: GitHubManager,
         pr_status_writer: IPRStatusWriter,
     ) -> None:
