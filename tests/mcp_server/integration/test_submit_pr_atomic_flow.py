@@ -33,7 +33,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from pathlib import Path
 from unittest.mock import MagicMock
+
+import yaml
 
 import mcp_server.server as server_module
 from mcp_server.core.exceptions import ExecutionError
@@ -220,3 +223,43 @@ class TestCompositionRootContracts:
         """CreatePRTool class must still exist in pr_tools.py as internal utility (design D2)."""
         assert CreatePRTool is not None
         assert CreatePRTool.__name__ == "CreatePRTool"
+
+    def test_submit_pr_tool_declares_enforcement_event(self) -> None:
+        """SubmitPRTool.enforcement_event must be 'submit_pr' so phase-readiness gate fires.
+
+        Finding C3-QA-1: without this, check_phase_readiness in enforcement.yaml
+        is never dispatched (server routes via tool.enforcement_event == None → skip).
+        """
+        assert SubmitPRTool.enforcement_event == "submit_pr", (
+            "SubmitPRTool must declare enforcement_event = 'submit_pr'. "
+            "Without it, check_phase_readiness in enforcement.yaml is never dispatched."
+        )
+
+    def test_enforcement_yaml_has_exclude_artifacts_and_phase_readiness_for_submit_pr(
+        self,
+    ) -> None:
+        """enforcement.yaml must include both exclude_branch_local_artifacts and
+        check_phase_readiness as pre-actions for submit_pr.
+
+        Finding C3-QA-2: without exclude_branch_local_artifacts on submit_pr,
+        ExclusionNotes are never populated before execute() runs — neutralization
+        is silently skipped in production even when branch-local artifacts exist.
+        """
+        workspace_root = Path(__file__).parents[4]
+        config_path = workspace_root / ".st3" / "config" / "enforcement.yaml"
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+
+        submit_pr_actions = [
+            action["type"]
+            for rule in config["enforcement"]
+            if rule.get("tool") == "submit_pr" and rule.get("timing") == "pre"
+            for action in rule.get("actions", [])
+        ]
+
+        assert "exclude_branch_local_artifacts" in submit_pr_actions, (
+            "submit_pr pre rule must include exclude_branch_local_artifacts so "
+            "ExclusionNotes are populated before execute() reads them."
+        )
+        assert "check_phase_readiness" in submit_pr_actions, (
+            "submit_pr pre rule must include check_phase_readiness."
+        )
