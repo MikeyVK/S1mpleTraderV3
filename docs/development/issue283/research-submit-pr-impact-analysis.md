@@ -16,7 +16,14 @@ submit_pr tool design rationale, production code impact, test inventory impact, 
 **Out of Scope:**
 GitHub branch protection rules, full audit trail for non-agent actors, hot-reload proxy internals
 
-
+**Implementation constraint — FLAG DAY:**
+Deze implementatie is een clean break. Er worden géén backward-compat shims, transitielagen of deprecated code-paden achtergelaten. Concreet:
+- `create_pr` als geregistreerde MCP tool wordt verwijderd (klasse blijft als interne utility)
+- De terminal-route in `GitCommitTool.execute()` (~regels 370-395) wordt verwijderd
+- De `exclude_branch_local_artifacts` enforcement rule wordt verwijderd uit enforcement.yaml
+- De `create_pr → check_merge_readiness` enforcement rule wordt verwijderd
+- Alle tests die het oude sequentiële `git_add_or_commit → create_pr` gedrag afdekken worden herschreven of verwijderd — nooit commented out of skipped gelaten
+- Na merge van deze PR mag er géén code of test meer in de codebase staan die het pre-#283 ready-phase gedrag représenteert
 ---
 
 ## Problem Statement
@@ -324,6 +331,8 @@ Nieuwe handler `_handle_check_pr_status` in `EnforcementRunner` roept `IPRStatus
 6. **Infrastructure already exists** — `BaseTool` is already an ABC with `enforcement_event` as class variable. `EnforcementRunner` already does tool-name dispatch. `tool_category` is a minimal, consistent extension of the existing mechanism.
 
 7. **Superseded documents** — all prior research, design, and planning documents for issue #283 are superseded by this analysis. New design and planning docs must be scaffolded for the `submit_pr` + PRStatusCache + BranchMutatingTool approach.
+
+8. **FLAG DAY — no legacy survives this PR** — this is a clean break. No backward-compat shims, no transitional code paths, no skipped or commented-out tests. Every piece of code and every test that represents the pre-#283 sequential ready-phase flow (`git_add_or_commit → create_pr`) must be removed or fully rewritten in the same PR. Leaving any legacy artifact behind is a defect, not a trade-off.
 
 ---
 

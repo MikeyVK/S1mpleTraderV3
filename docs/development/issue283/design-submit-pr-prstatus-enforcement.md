@@ -57,12 +57,12 @@ The two-step ready-phase flow (git_add_or_commit → create_pr) has a chicken-an
 
 ### 1.3. Constraints
 
+- **FLAG DAY — clean break, geen backward compat:** Er worden géén transitielagen, compatibility shims, of deprecated code-paden achtergelaten. Alle legacy-functionaliteit (`create_pr` als MCP tool, terminal-route in `GitCommitTool`, `exclude_branch_local_artifacts` enforcement rule) wordt in dezelfde PR verwijderd. Elke test die het oude gedrag afdekt wordt herschreven of verwijderd — nooit commented out of conditionally skipped gelaten.
 - `enforcement_event` en `tool_category` zijn orthogonaal: een tool kan beide hebben
 - `PRStatusCache` is in-memory only; de cache is leidend tijdens een actieve sessie — GitHub API wordt alleen geraadpleegd bij cold start (lege cache)
 - `EnforcementRule` heeft `extra='forbid'` (Pydantic): toevoeging van `tool_category` vereist schema-migratie-testupdate
 - `MergePRTool` mag `set_pr_status(ABSENT)` alleen aanroepen bij succesvolle merge, niet bij fout
 - `BaseTool.__init_subclass__` wraps `execute()` automatisch — geen aanpassing nodig voor `BranchMutatingTool`
-
 
 ## 2. Design Options
 
