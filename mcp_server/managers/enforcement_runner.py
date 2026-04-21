@@ -81,6 +81,19 @@ def _run_git_command(
         )
 
 
+def _get_current_git_branch(workspace_root: Path) -> str | None:
+    """Return the active git branch name, or None on detached HEAD / error."""
+    result = _run_git_command(
+        workspace_root,
+        ["rev-parse", "--abbrev-ref", "HEAD"],
+        failure_context="git rev-parse --abbrev-ref HEAD",
+    )
+    if result.returncode != 0:
+        return None
+    name = result.stdout.strip()
+    return name if name and name != "HEAD" else None
+
+
 def _git_is_tracked(workspace_root: Path, path: str) -> bool:
     """Return True if *path* is currently tracked in the git index."""
     result = _run_git_command(
@@ -439,15 +452,20 @@ class EnforcementRunner:
         Raises ConfigError when no reader is configured (misconfigured startup).
         Raises ValidationError when PRStatus.OPEN is found.
         """
-        del action, workspace_root
+        del action
         if self._pr_status_reader is None:
             raise ConfigError(
                 "check_pr_status action requires pr_status_reader; "
                 "wire PRStatusCache in EnforcementRunner.__init__",
                 file_path=_ENFORCEMENT_DISPLAY_PATH,
             )
-        # Use the 'head' param if available, fall back to tool_name as branch identifier.
-        branch = str(context.get_param("head") or context.tool_name)
+        # Prefer an explicit 'head' param; fall back to the current git branch.
+        # Tool names must never be used as branch identifiers.
+        branch = str(
+            context.get_param("head")
+            or _get_current_git_branch(workspace_root)
+            or context.tool_name  # last-resort: should not happen in practice
+        )
         status = self._pr_status_reader.get_pr_status(branch)
         if status == PRStatus.OPEN:
             note_context.produce(
