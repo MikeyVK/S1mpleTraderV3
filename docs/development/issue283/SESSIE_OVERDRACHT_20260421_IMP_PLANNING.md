@@ -29,7 +29,7 @@ worden volledig verwijderd (in C5). Geen deprecated-paden bewaard.
 | Cyclus | Naam | Kernbestanden | Exit-criteria |
 |--------|------|---------------|---------------|
 | C1 | Contract Surface | `tools/base.py`, `config/schemas/enforcement_config.py`, `state/pr_status_cache.py`, `tools/pr_tools.py` | ABC + cache + SubmitPRTool-scaffold groen |
-| C2 | Enforcement Pipeline | `core/enforcement_runner.py`, `server.py` (composition root) | EnforcementRunner + BranchMutatingTool DI groen |
+| C2 | Enforcement Pipeline | `mcp_server/managers/enforcement_runner.py`, `server.py` (composition root) | EnforcementRunner + BranchMutatingTool DI groen |
 | C3 | submit_pr Atomic Flow | `tools/pr_tools.py` (volledige implementatie) | Atomische PR-flow incl. status-registratie groen |
 | C4 | Branch Lockdown Rollout | 18 tools erven van `BranchMutatingTool` | Alle 18 tools geblokkeerd zonder actieve branch groen |
 | C5 | Flag-Day Cleanup | Legacy-regels, tests, `create_pr` verwijderd | Geen legacy-paden meer aanwezig, alle gates groen |
@@ -41,7 +41,7 @@ worden volledig verwijderd (in C5). Geen deprecated-paden bewaard.
 Schrijf tests voor:
 1. `BranchMutatingTool` ABC in `mcp_server/tools/base.py`
 2. `EnforcementRule.tool_category` in `mcp_server/config/schemas/enforcement_config.py`
-3. `IPRStatusCache` interface in `mcp_server/core/interfaces/__init__.py`
+3. `IPRStatusReader` en `IPRStatusWriter` interfaces in `mcp_server/core/interfaces/__init__.py`
 4. `PRStatusCache` implementatie in `mcp_server/state/pr_status_cache.py`
 5. `SubmitPRTool` scaffold (skeleton) in `mcp_server/tools/pr_tools.py`
 

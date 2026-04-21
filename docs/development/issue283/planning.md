@@ -3,7 +3,7 @@
 # submit_pr + PRStatusCache + BranchMutatingTool - Planning
 
 **Status:** READY FOR IMPLEMENTATION
-**Version:** 1.0
+**Version:** 1.1
 **Last Updated:** 2026-04-21
 **Design reference:** [design-submit-pr-prstatus-enforcement.md](design-submit-pr-prstatus-enforcement.md) v1.2
 **Research reference:** [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md) v2.0
@@ -86,8 +86,9 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 **Deliverables:**
 1. `BaseTool` supports `tool_category`; `BranchMutatingTool` exists as a zero-method ABC.
 2. `EnforcementRule` accepts `tool_category` and validates `tool` OR `tool_category` for tool events.
-3. `PRStatus`, `IPRStatusReader`, `IPRStatusWriter`, and `PRStatusCache` exist.
+3. `IPRStatusReader`, `IPRStatusWriter`, and `PRStatus` enum exist in `core/interfaces/__init__.py`.
 4. `SubmitPRInput` and `SubmitPRTool` scaffolding exist; `CreatePRTool` remains internal-only by design.
+5. `PRStatusCache` implementation exists in `state/pr_status_cache.py`.
 
 **Exit criteria:**
 - Unit tests for schema/interface surface pass.
@@ -123,9 +124,10 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 
 **Deliverables:**
 1. `SubmitPRTool.execute()` performs phase read, net-diff check, neutralize, commit, push, create PR, cache OPEN.
-2. `CreatePRTool` is no longer registered as a public MCP tool.
+2. `CreatePRTool` is no longer instantiated in `server.py` (the composition root); the class remains in `pr_tools.py` as internal utility used by `SubmitPRTool` (per design decision D2).
 3. The terminal-route neutralization code is removed from `GitCommitTool`.
 4. `git_add_or_commit` in ready phase is blocked; ready-phase completion is exclusive to `submit_pr`.
+5. `CreatePRTool` class still exists in `pr_tools.py`; `SubmitPRTool` delegates PR creation to it internally.
 
 **Exit criteria:**
 - Integration tests prove `submit_pr` happy path and partial-failure recovery behavior.
@@ -141,13 +143,13 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 - `mcp_server/tools/pr_tools.py`
 
 **Deliverables:**
-1. All 18 targeted mutating tools inherit from `BranchMutatingTool`.
+1. All 18 targeted mutating tools inherit from `BranchMutatingTool`; a dedicated test in the lockdown suite inventories all 18 by name.
 2. `MergePRTool` stays explicitly exempt and writes `PRStatus.ABSENT` only after successful merge.
 3. Integration coverage proves mutating tools are blocked after `submit_pr` while `merge_pr` remains allowed.
-4. Save/update planning deliverables tools are included in the blocked mutating set.
+4. Save/update planning deliverables tools are included in the blocked mutating set; this is proven via integration test coverage in `test_pr_status_lockdown.py`, not via design document reference.
 
 **Exit criteria:**
-- Tool inventory matches the design's 18-tool set exactly.
+- Tool inventory matches the design's 18-tool set exactly (verified by name in integration test).
 - Integration tests prove post-PR lockdown and merge escape hatch semantics.
 
 ### Cycle 5 - Flag-Day Cleanup
@@ -155,13 +157,14 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 **Goal:** Finish the clean break and remove every legacy artifact of the old workflow.
 
 **Files likely touched:**
-- legacy tests for sequential ready-phase flow
+- `tests/mcp_server/integration/test_ready_phase_enforcement.py` (rewrite for new submit_pr flow)
+- `tests/mcp_server/unit/integration/test_all_tools.py` (remove CreatePRTool public-tool registration)
 - documentation refs to `create_pr`
 - any old enforcement/config leftovers
 
 **Deliverables:**
 1. Legacy enforcement rules (`exclude_branch_local_artifacts`, `create_pr -> check_merge_readiness`) are deleted.
-2. All tests that model the old sequential ready-phase flow are removed or fully rewritten.
+2. Tests that model the old sequential ready-phase public flow are removed or fully rewritten; this covers both `test_ready_phase_enforcement.py` (integration) and the public-tool registration in `test_all_tools.py`.
 3. Documentation references are updated from public `create_pr` workflow to `submit_pr` workflow.
 4. Full suite + quality gates pass with no legacy compatibility path left in production code.
 
@@ -174,9 +177,9 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 ## 7. Risks and Controls
 
 - **Risk:** Half-migrated tool inventory leaves gaps in post-PR enforcement.
-  **Control:** C4 explicitly validates the full 18-tool set.
+  **Control:** C4 explicitly validates the full 18-tool set by name in an integration test.
 - **Risk:** Old tests keep passing against internal `CreatePRTool` and hide legacy workflow residue.
-  **Control:** C5 is a mandatory flag-day cleanup cycle, not an optional polish pass.
+  **Control:** C5 is a mandatory flag-day cleanup cycle, not an optional polish pass. Note that unit tests for `CreatePRTool` as an internal class may legitimately remain — only tests that model the old public workflow must be removed.
 - **Risk:** `planning_deliverables` cannot be saved because an older live entry still exists.
   **Control:** Legacy-mark the current live entry before calling `save_planning_deliverables`.
 
@@ -214,10 +217,11 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           },
           {
             "id": "C1.3",
-            "description": "PRStatus interfaces and cache implementation exist",
+            "description": "IPRStatusReader, IPRStatusWriter, and PRStatus enum exist in core/interfaces/__init__.py",
             "validates": {
-              "type": "file_exists",
-              "file": "mcp_server/state/pr_status_cache.py"
+              "type": "contains_text",
+              "file": "mcp_server/core/interfaces/__init__.py",
+              "text": "IPRStatusReader"
             }
           },
           {
@@ -227,6 +231,15 @@ This appendix is the compact payload model for `save_planning_deliverables`.
               "type": "contains_text",
               "file": "mcp_server/tools/pr_tools.py",
               "text": "class SubmitPRTool"
+            }
+          },
+          {
+            "id": "C1.5",
+            "description": "PRStatusCache implementation exists in state/pr_status_cache.py",
+            "validates": {
+              "type": "contains_text",
+              "file": "mcp_server/state/pr_status_cache.py",
+              "text": "class PRStatusCache"
             }
           }
         ],
@@ -288,7 +301,7 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           },
           {
             "id": "C3.2",
-            "description": "CreatePRTool is no longer registered as a public MCP tool in server.py",
+            "description": "server.py composition root no longer instantiates CreatePRTool; SubmitPRTool replaces it in the public tool list (per design D2: CreatePRTool class remains in pr_tools.py as internal utility)",
             "validates": {
               "type": "absent_text",
               "file": "mcp_server/server.py",
@@ -312,20 +325,29 @@ This appendix is the compact payload model for `save_planning_deliverables`.
               "file": "tests/mcp_server/integration/test_submit_pr_atomic_flow.py",
               "text": "test_submit_pr_happy_path"
             }
+          },
+          {
+            "id": "C3.5",
+            "description": "CreatePRTool class still exists in pr_tools.py as internal utility; SubmitPRTool delegates PR creation to it",
+            "validates": {
+              "type": "contains_text",
+              "file": "mcp_server/tools/pr_tools.py",
+              "text": "class CreatePRTool"
+            }
           }
         ],
-        "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists"
+        "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists; CreatePRTool class remains as internal utility"
       },
       {
         "cycle_number": 4,
         "deliverables": [
           {
             "id": "C4.1",
-            "description": "All 18 mutating tools inherit from BranchMutatingTool",
+            "description": "Integration test inventories all 18 mutating tools by name, proving complete rollout",
             "validates": {
               "type": "contains_text",
-              "file": "mcp_server/tools/base.py",
-              "text": "branch_mutating"
+              "file": "tests/mcp_server/integration/test_pr_status_lockdown.py",
+              "text": "test_all_18_mutating_tools_inherit_BranchMutatingTool"
             }
           },
           {
@@ -348,15 +370,15 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           },
           {
             "id": "C4.4",
-            "description": "Planning deliverables tools are part of the blocked mutating set",
+            "description": "SavePlanningDeliverablesTool is verified as part of the blocked mutating set in the lockdown integration test",
             "validates": {
               "type": "contains_text",
-              "file": "docs/development/issue283/design-submit-pr-prstatus-enforcement.md",
+              "file": "tests/mcp_server/integration/test_pr_status_lockdown.py",
               "text": "SavePlanningDeliverablesTool"
             }
           }
         ],
-        "exit_criteria": "Inventory matches the 18-tool design set and lockdown integration tests pass, including merge escape hatch"
+        "exit_criteria": "Inventory matches the 18-tool design set (by name, in test) and lockdown integration tests pass, including merge escape hatch"
       },
       {
         "cycle_number": 5,
@@ -381,11 +403,11 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           },
           {
             "id": "C5.3",
-            "description": "Legacy sequential-flow tests are removed or rewritten",
+            "description": "test_ready_phase_enforcement.py no longer models the old create_pr check_merge_readiness flow",
             "validates": {
               "type": "absent_text",
-              "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
-              "text": "create_pr"
+              "file": "tests/mcp_server/integration/test_ready_phase_enforcement.py",
+              "text": "check_merge_readiness"
             }
           },
           {
@@ -395,6 +417,15 @@ This appendix is the compact payload model for `save_planning_deliverables`.
               "type": "contains_text",
               "file": "agent.md",
               "text": "submit_pr"
+            }
+          },
+          {
+            "id": "C5.5",
+            "description": "test_all_tools.py no longer registers CreatePRTool as a public MCP tool",
+            "validates": {
+              "type": "absent_text",
+              "file": "tests/mcp_server/unit/integration/test_all_tools.py",
+              "text": "make_create_pr_tool"
             }
           }
         ],
@@ -419,4 +450,5 @@ This appendix is the compact payload model for `save_planning_deliverables`.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-04-21 | Agent | QA corrections: C1.3 → validates interfaces file; C1.5 added for cache; C3.2 description clarified; C3.5 added for CreatePRTool class survival; C4.1/C4.4 validates moved from base.py/design-doc to integration test; C5.3 → test_ready_phase_enforcement.py; C5.5 added for test_all_tools.py |
 | 1.0 | 2026-04-21 | Agent | New compact planning for submit_pr + PRStatusCache + BranchMutatingTool implementation |

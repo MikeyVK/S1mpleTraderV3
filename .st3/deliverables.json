@@ -2202,10 +2202,11 @@
               },
               {
                 "id": "C1.3",
-                "description": "PRStatus interfaces and cache implementation exist",
+                "description": "IPRStatusReader, IPRStatusWriter, and PRStatus enum exist in core/interfaces/__init__.py",
                 "validates": {
-                  "type": "file_exists",
-                  "file": "mcp_server/state/pr_status_cache.py"
+                  "type": "contains_text",
+                  "file": "mcp_server/core/interfaces/__init__.py",
+                  "text": "IPRStatusReader"
                 }
               },
               {
@@ -2215,6 +2216,15 @@
                   "type": "contains_text",
                   "file": "mcp_server/tools/pr_tools.py",
                   "text": "class SubmitPRTool"
+                }
+              },
+              {
+                "id": "C1.5",
+                "description": "PRStatusCache implementation exists in state/pr_status_cache.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/state/pr_status_cache.py",
+                  "text": "class PRStatusCache"
                 }
               }
             ],
@@ -2276,7 +2286,7 @@
               },
               {
                 "id": "C3.2",
-                "description": "CreatePRTool is no longer registered as a public MCP tool in server.py",
+                "description": "server.py composition root no longer instantiates CreatePRTool; SubmitPRTool replaces it in the public tool list (per design D2: CreatePRTool class remains in pr_tools.py as internal utility)",
                 "validates": {
                   "type": "absent_text",
                   "file": "mcp_server/server.py",
@@ -2300,20 +2310,29 @@
                   "file": "tests/mcp_server/integration/test_submit_pr_atomic_flow.py",
                   "text": "test_submit_pr_happy_path"
                 }
+              },
+              {
+                "id": "C3.5",
+                "description": "CreatePRTool class still exists in pr_tools.py as internal utility; SubmitPRTool delegates PR creation to it",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/pr_tools.py",
+                  "text": "class CreatePRTool"
+                }
               }
             ],
-            "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists"
+            "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists; CreatePRTool class remains as internal utility"
           },
           {
             "cycle_number": 4,
             "deliverables": [
               {
                 "id": "C4.1",
-                "description": "All 18 mutating tools inherit from BranchMutatingTool",
+                "description": "Integration test inventories all 18 mutating tools by name, proving complete rollout",
                 "validates": {
                   "type": "contains_text",
-                  "file": "mcp_server/tools/base.py",
-                  "text": "branch_mutating"
+                  "file": "tests/mcp_server/integration/test_pr_status_lockdown.py",
+                  "text": "test_all_18_mutating_tools_inherit_BranchMutatingTool"
                 }
               },
               {
@@ -2336,15 +2355,15 @@
               },
               {
                 "id": "C4.4",
-                "description": "Planning deliverables tools are part of the blocked mutating set",
+                "description": "SavePlanningDeliverablesTool is verified as part of the blocked mutating set in the lockdown integration test",
                 "validates": {
                   "type": "contains_text",
-                  "file": "docs/development/issue283/design-submit-pr-prstatus-enforcement.md",
+                  "file": "tests/mcp_server/integration/test_pr_status_lockdown.py",
                   "text": "SavePlanningDeliverablesTool"
                 }
               }
             ],
-            "exit_criteria": "Inventory matches the 18-tool design set and lockdown integration tests pass, including merge escape hatch"
+            "exit_criteria": "Inventory matches the 18-tool design set (by name, in test) and lockdown integration tests pass, including merge escape hatch"
           },
           {
             "cycle_number": 5,
@@ -2369,11 +2388,11 @@
               },
               {
                 "id": "C5.3",
-                "description": "Legacy sequential-flow tests are removed or rewritten",
+                "description": "test_ready_phase_enforcement.py no longer models the old create_pr check_merge_readiness flow",
                 "validates": {
                   "type": "absent_text",
-                  "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
-                  "text": "create_pr"
+                  "file": "tests/mcp_server/integration/test_ready_phase_enforcement.py",
+                  "text": "check_merge_readiness"
                 }
               },
               {
@@ -2383,6 +2402,15 @@
                   "type": "contains_text",
                   "file": "agent.md",
                   "text": "submit_pr"
+                }
+              },
+              {
+                "id": "C5.5",
+                "description": "test_all_tools.py no longer registers CreatePRTool as a public MCP tool",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/mcp_server/unit/integration/test_all_tools.py",
+                  "text": "make_create_pr_tool"
                 }
               }
             ],
