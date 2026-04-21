@@ -23,6 +23,7 @@ class BaseTool(ABC):
     description: str
     args_model: type[BaseModel] | None = None
     enforcement_event: str | None = None
+    tool_category: str | None = None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401
         """Automatically wrap execute() with error handler on subclass creation."""
@@ -70,4 +71,4 @@ class BranchMutatingTool(BaseTool):
     clears PRStatus.OPEN and would cause a deadlock if blocked by that rule.
     """
 
-    tool_category: str = "branch_mutating"
+    tool_category: str | None = "branch_mutating"

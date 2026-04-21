@@ -11,8 +11,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 from mcp_server.core.interfaces import IPRStatusReader, IPRStatusWriter, PRStatus
 from mcp_server.managers.github_manager import GitHubManager
 
@@ -42,5 +40,4 @@ class PRStatusCache(IPRStatusReader, IPRStatusWriter):
 
     def _fetch_from_api(self, branch: str) -> PRStatus:
         """Query GitHub API for the current PR status of *branch*."""
-        # GitHubManager.get_pr_status added in C4; ignore until then
-        return cast(PRStatus, self._github.get_pr_status(branch))  # type: ignore[attr-defined]
+        return self._github.get_pr_status(branch)

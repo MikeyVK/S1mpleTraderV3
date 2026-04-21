@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from github.Milestone import Milestone
     from github.PullRequest import PullRequest
 
+    from mcp_server.core.interfaces import PRStatus
+
 
 class GitHubManager:
     """Manager for GitHub operations."""
@@ -235,3 +237,11 @@ class GitHubManager:
             commit_message=commit_message,
             merge_method=merge_method,
         )
+
+    def get_pr_status(self, branch: str) -> "PRStatus":
+        """Return current PR status for *branch* by querying the GitHub API.
+
+        Stub — full implementation in C4 (branch lockdown rollout).
+        PRStatusCache calls this on cold start (cache miss).
+        """
+        raise NotImplementedError("GitHubManager.get_pr_status() implemented in C4")

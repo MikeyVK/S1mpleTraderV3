@@ -42,6 +42,6 @@ class TestBranchMutatingTool:
         }
         assert branch_abstracts == base_abstracts
 
-    def test_base_tool_has_no_tool_category(self) -> None:
-        """BaseTool itself must not define tool_category — that is BranchMutatingTool's concern."""
-        assert not hasattr(BaseTool, "tool_category") or BaseTool.tool_category is None  # type: ignore[attr-defined]
+    def test_base_tool_tool_category_defaults_to_none(self) -> None:
+        """BaseTool.tool_category is None by default; BranchMutatingTool overrides it."""
+        assert BaseTool.tool_category is None
