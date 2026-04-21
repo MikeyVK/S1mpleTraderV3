@@ -1,4 +1,4 @@
-﻿# tests/mcp_server/integration/test_ready_phase_enforcement.py
+# tests/mcp_server/integration/test_ready_phase_enforcement.py
 # template=unit_test version= created=2026-04-09T00:00Z updated=
 """
 Integration tests for ready-phase enforcement (issue #283).
@@ -100,7 +100,7 @@ def _make_runner(tmp_path: Path, ctx: MergeReadinessContext) -> EnforcementRunne
 class TestReadyPhaseEnforcement:
     """Integration tests for the ready-phase enforcement path (issue #283)."""
 
-    # â”€â”€ Class variable declarations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # â”€â”€ Class variable declarations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â
 
     def test_git_commit_tool_enforcement_event(self) -> None:
         """GitCommitTool.enforcement_event matches the tool name in enforcement.yaml."""
@@ -110,7 +110,7 @@ class TestReadyPhaseEnforcement:
         """SubmitPRTool.enforcement_event matches the tool name in enforcement.yaml."""
         assert SubmitPRTool.enforcement_event == "submit_pr"
 
-    # â”€â”€ Integration: git_add_or_commit pre-enforcement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # â”€â”€ Integration: git_add_or_commit pre-enforcement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_git_commit_blocked_when_branch_local_artifact_staged(self, tmp_path: Path) -> None:
         """git_add_or_commit pre-enforcement excludes tracked artifacts in the ready phase."""
@@ -138,7 +138,7 @@ class TestReadyPhaseEnforcement:
         assert len(notes) > 0
         assert any(_STATE_JSON in n.file_path for n in notes)
 
-    # â”€â”€ Integration: submit_pr pre-enforcement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # â”€â”€ Integration: submit_pr pre-enforcement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 
     def test_submit_pr_blocked_outside_pr_allowed_phase(self, tmp_path: Path) -> None:
         """submit_pr pre-enforcement raises ValidationError when phase != pr_allowed_phase."""
@@ -170,20 +170,22 @@ class TestReadyPhaseEnforcement:
         )
 
         note_context = NoteContext()
-        with patch(
-            "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
-            return_value=False,
-        ):
-            with patch(
+        with (
+            patch(
+                "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
+                return_value=False,
+            ),
+            patch(
                 "mcp_server.managers.enforcement_runner._git_is_tracked",
                 return_value=False,
-            ):
-                runner.run(
-                    event=SubmitPRTool.enforcement_event,  # type: ignore[arg-type]
-                    timing="pre",
-                    enforcement_ctx=ctx,
-                    note_context=note_context,
-                )
+            ),
+        ):
+            runner.run(
+                event=SubmitPRTool.enforcement_event,  # type: ignore[arg-type]
+                timing="pre",
+                enforcement_ctx=ctx,
+                note_context=note_context,
+            )
 
 
 @pytest.fixture

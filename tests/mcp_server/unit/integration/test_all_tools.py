@@ -42,7 +42,6 @@ from mcp_server.tools.health_tools import HealthCheckInput, HealthCheckTool
 # GitHub Tools (imported here for availability, require manager injection)
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
-from mcp_server.tools.pr_tools import ListPRsInput, ListPRsTool, MergePRInput, MergePRTool
 
 # Quality Tools
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool

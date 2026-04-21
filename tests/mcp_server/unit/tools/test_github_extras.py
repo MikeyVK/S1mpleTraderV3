@@ -6,7 +6,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -99,7 +99,8 @@ def test_merge_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
     mock_adapter.merge_pr.return_value = {"merged": True, "sha": "abc123", "message": "Merged"}
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = MergePRTool(manager=manager, git_config=mock_git_config)
+    pr_status_writer = MagicMock()
+    tool = MergePRTool(manager=manager, git_config=mock_git_config, pr_status_writer=pr_status_writer)
 
     result = asyncio.run(
         tool.execute(MergePRInput(pr_number=8, merge_method="merge"), NoteContext())

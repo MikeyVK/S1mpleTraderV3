@@ -12,6 +12,7 @@ GitHubManager.get_pr_status() real implementation, MergePRTool pr_status_writer.
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -19,7 +20,9 @@ from unittest.mock import MagicMock
 import yaml
 
 import mcp_server.tools.pr_tools as pr_tools_module
+from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IPRStatusWriter, PRStatus
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import GitConfig
 from mcp_server.tools.pr_tools import MergePRInput, MergePRTool
@@ -112,10 +115,6 @@ class TestMergePRToolPRStatusWriter:
 
     def test_merge_pr_sets_pr_status_absent_on_success(self) -> None:
         """PRStatus.ABSENT must be written after a successful merge."""
-        import asyncio
-
-        from mcp_server.core.operation_notes import NoteContext
-
         manager = MagicMock(spec=GitHubManager)
         manager.merge_pr.return_value = {
             "merged": True,
@@ -127,9 +126,7 @@ class TestMergePRToolPRStatusWriter:
         tool = self._make_merge_tool(manager, pr_status_writer)
         params = MergePRInput(pr_number=42)
 
-        result = asyncio.get_event_loop().run_until_complete(
-            tool.execute(params, NoteContext())
-        )
+        result = asyncio.get_event_loop().run_until_complete(tool.execute(params, NoteContext()))
 
         assert not result.is_error
         pr_status_writer.set_pr_status.assert_called_once()
@@ -138,11 +135,6 @@ class TestMergePRToolPRStatusWriter:
 
     def test_merge_pr_does_not_set_pr_status_on_failure(self) -> None:
         """PRStatus must NOT be written when merge fails."""
-        import asyncio
-
-        from mcp_server.core.exceptions import ExecutionError
-        from mcp_server.core.operation_notes import NoteContext
-
         manager = MagicMock(spec=GitHubManager)
         manager.merge_pr.side_effect = ExecutionError("Merge conflict")
 
@@ -150,9 +142,7 @@ class TestMergePRToolPRStatusWriter:
         tool = self._make_merge_tool(manager, pr_status_writer)
         params = MergePRInput(pr_number=42)
 
-        result = asyncio.get_event_loop().run_until_complete(
-            tool.execute(params, NoteContext())
-        )
+        result = asyncio.get_event_loop().run_until_complete(tool.execute(params, NoteContext()))
 
         assert result.is_error
         pr_status_writer.set_pr_status.assert_not_called()

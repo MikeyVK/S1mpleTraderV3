@@ -31,13 +31,12 @@ Structural check: test_enforcement_runner_c3.py must have zero private-method ca
 # Standard library
 import json
 from pathlib import Path
-from shutil import copytree
 from types import SimpleNamespace
-from unittest.mock import patch
 
 # Third-party
 import pytest
 from git import Repo as GitRepo
+
 from mcp_server.config.schemas.enforcement_config import (
     EnforcementAction,
     EnforcementConfig,
@@ -48,7 +47,6 @@ from mcp_server.core.exceptions import ValidationError
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
-from mcp_server.server import MCPServer
 
 _STATE_JSON = ".st3/state.json"
 
@@ -243,5 +241,3 @@ def test_enforcement_runner_c3_has_no_private_method_calls() -> None:
         "Principle 14 violation: test_enforcement_runner_c3.py accesses private attribute "
         "_merge_readiness_context directly. Replace with behavioral assertion via run() API."
     )
-
-

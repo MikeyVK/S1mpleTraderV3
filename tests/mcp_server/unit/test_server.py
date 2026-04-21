@@ -99,10 +99,10 @@ def _track_branch_local_artifacts(workspace_root: Path) -> None:
     _run_git(workspace_root, "add", ".st3/state.json", ".st3/deliverables.json")
 
 
-def _make_create_pr_request() -> CallToolRequest:
+def _make_submit_pr_request() -> CallToolRequest:
     return CallToolRequest(
         params=CallToolRequestParams(
-            name="create_pr",
+            name="submit_pr",
             arguments={
                 "title": "Test PR",
                 "body": "Test body",
@@ -150,7 +150,6 @@ class TestServerToolRegistration:
             assert "list_issues" in tool_names
             assert "get_issue" in tool_names
             assert "close_issue" in tool_names
-            assert "create_pr" in tool_names
             assert "add_labels" in tool_names
 
     @pytest.mark.asyncio
@@ -258,7 +257,7 @@ class TestServerToolRegistration:
         manager.create_branch.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_call_tool_pre_enforcement_blocks_create_pr_outside_ready_phase(
+    async def test_call_tool_pre_enforcement_blocks_submit_pr_outside_ready_phase(
         self,
         tmp_path: Path,
     ) -> None:
@@ -281,7 +280,7 @@ class TestServerToolRegistration:
                 "create_pr",
                 side_effect=AssertionError("create_pr should not be called"),
             ) as mock_create_pr:
-                response = await handler(_make_create_pr_request())
+                response = await handler(_make_submit_pr_request())
 
         text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
         assert response.root.isError is True
@@ -291,11 +290,11 @@ class TestServerToolRegistration:
         mock_create_pr.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_call_tool_pre_enforcement_blocks_create_pr_with_tracked_artifacts(
+    async def test_call_tool_pre_enforcement_blocks_submit_pr_with_tracked_artifacts(
         self,
         tmp_path: Path,
     ) -> None:
-        """Dispatch pre-hook should stop create_pr when branch-local artifacts remain tracked."""
+        """Dispatch pre-hook should stop submit_pr when branch-local artifacts remain tracked."""
         _bootstrap_workspace_configs(tmp_path)
         _write_phase_state(tmp_path, "ready")
         _track_branch_local_artifacts(tmp_path)
@@ -321,7 +320,7 @@ class TestServerToolRegistration:
                     side_effect=AssertionError("create_pr should not be called"),
                 ) as mock_create_pr,
             ):
-                response = await handler(_make_create_pr_request())
+                response = await handler(_make_submit_pr_request())
 
         text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
         assert response.root.isError is True
