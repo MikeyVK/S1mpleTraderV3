@@ -1,8 +1,10 @@
 """GitHub Manager for business logic."""
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from mcp_server.adapters.github_adapter import GitHubAdapter
+from mcp_server.core.interfaces import PRStatus
 from mcp_server.schemas import (
     ContributorConfig,
     GitConfig,
@@ -18,7 +20,8 @@ if TYPE_CHECKING:
     from github.Milestone import Milestone
     from github.PullRequest import PullRequest
 
-    from mcp_server.core.interfaces import PRStatus
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubManager:
@@ -238,10 +241,16 @@ class GitHubManager:
             merge_method=merge_method,
         )
 
-    def get_pr_status(self, branch: str) -> "PRStatus":
+    def get_pr_status(self, branch: str) -> PRStatus:
         """Return current PR status for *branch* by querying the GitHub API.
 
-        Stub — full implementation in C4 (branch lockdown rollout).
-        PRStatusCache calls this on cold start (cache miss).
+        C4 stub — real GitHub API query implemented in C4 (branch lockdown rollout).
+        Until then returns PRStatus.ABSENT so cold-start cache misses fail-open
+        without raising, keeping the enforcement path executable.
         """
-        raise NotImplementedError("GitHubManager.get_pr_status() implemented in C4")
+        logger.debug(
+            "GitHubManager.get_pr_status() stub called for branch '%s'; "
+            "returning ABSENT until C4 implementation lands.",
+            branch,
+        )
+        return PRStatus.ABSENT

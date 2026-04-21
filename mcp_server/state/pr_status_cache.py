@@ -11,12 +11,8 @@
 
 from __future__ import annotations
 
-import logging
-
 from mcp_server.core.interfaces import IPRStatusReader, IPRStatusWriter, PRStatus
 from mcp_server.managers.github_manager import GitHubManager
-
-logger = logging.getLogger(__name__)
 
 
 class PRStatusCache(IPRStatusReader, IPRStatusWriter):
@@ -43,18 +39,5 @@ class PRStatusCache(IPRStatusReader, IPRStatusWriter):
         self._cache[branch] = status
 
     def _fetch_from_api(self, branch: str) -> PRStatus:
-        """Query GitHub API for the current PR status of *branch*.
-
-        Falls back to PRStatus.ABSENT when the API is not yet available
-        (GitHubManager.get_pr_status stub until C4). This prevents cold-start
-        crashes from propagating as unhandled NotImplementedError.
-        """
-        try:
-            return self._github.get_pr_status(branch)
-        except NotImplementedError:
-            logger.debug(
-                "GitHubManager.get_pr_status() not yet implemented (C4); "
-                "defaulting to PRStatus.ABSENT for branch '%s'",
-                branch,
-            )
-            return PRStatus.ABSENT
+        """Query GitHub API for the current PR status of *branch*."""
+        return self._github.get_pr_status(branch)

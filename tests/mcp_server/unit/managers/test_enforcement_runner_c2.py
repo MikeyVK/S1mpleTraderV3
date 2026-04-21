@@ -25,6 +25,8 @@ from mcp_server.managers.enforcement_runner import (
     EnforcementRule,
     EnforcementRunner,
 )
+from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.state.pr_status_cache import PRStatusCache
 
 
 def _make_ctx(tmp_path: Path, tool_name: str = "any_tool") -> EnforcementContext:
@@ -387,3 +389,80 @@ class TestCheckPhaseReadinessHandler:
                 enforcement_ctx=_make_ctx(tmp_path),
                 note_context=_make_note_context(),
             )
+
+
+class TestColdStartWiring:
+    """Verify the composition-root wiring is executable without mocking IPRStatusReader.
+
+    These tests use the real PRStatusCache backed by a mocked GitHubManager
+    to prove the cold-start path is genuinely runnable in C2 (not just through
+    mock-only paths in TestCheckPRStatusHandler).
+    """
+
+    def _make_github_manager(self, pr_status: PRStatus) -> GitHubManager:
+        """Return a GitHubManager mock whose get_pr_status returns *pr_status*."""
+        manager = MagicMock(spec=GitHubManager)
+        manager.get_pr_status.return_value = pr_status
+        return manager
+
+    def test_cold_start_absent_passes(self, tmp_path: Path) -> None:
+        """Cold-start cache miss returning ABSENT must not block the tool."""
+        github_manager = self._make_github_manager(PRStatus.ABSENT)
+        cache = PRStatusCache(github_manager=github_manager)
+
+        config = EnforcementConfig(
+            enforcement=[
+                EnforcementRule(
+                    event_source="tool",
+                    timing="pre",
+                    tool_category="branch_mutating",
+                    actions=[EnforcementAction(type="check_pr_status")],
+                )
+            ]
+        )
+        runner = EnforcementRunner(
+            workspace_root=tmp_path,
+            config=config,
+            pr_status_reader=cache,
+        )
+
+        # Must not raise; github_manager.get_pr_status called on cache miss
+        runner.run(
+            event="git_commit",
+            timing="pre",
+            tool_category="branch_mutating",
+            enforcement_ctx=_make_ctx(tmp_path),
+            note_context=_make_note_context(),
+        )
+        github_manager.get_pr_status.assert_called_once()
+
+    def test_cold_start_open_pr_blocks(self, tmp_path: Path) -> None:
+        """Cold-start cache miss returning OPEN must raise ValidationError."""
+        github_manager = self._make_github_manager(PRStatus.OPEN)
+        cache = PRStatusCache(github_manager=github_manager)
+
+        config = EnforcementConfig(
+            enforcement=[
+                EnforcementRule(
+                    event_source="tool",
+                    timing="pre",
+                    tool_category="branch_mutating",
+                    actions=[EnforcementAction(type="check_pr_status")],
+                )
+            ]
+        )
+        runner = EnforcementRunner(
+            workspace_root=tmp_path,
+            config=config,
+            pr_status_reader=cache,
+        )
+
+        with pytest.raises(ValidationError):
+            runner.run(
+                event="git_commit",
+                timing="pre",
+                tool_category="branch_mutating",
+                enforcement_ctx=_make_ctx(tmp_path),
+                note_context=_make_note_context(),
+            )
+        github_manager.get_pr_status.assert_called_once()
