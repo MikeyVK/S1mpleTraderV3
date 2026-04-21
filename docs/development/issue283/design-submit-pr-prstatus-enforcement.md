@@ -97,10 +97,10 @@ Na neutralize slaat `git_add_or_commit` een marker op in het commit bericht. `cr
 | # | Beslissing | Keuze | Reden |
 |---|-----------|-------|-------|
 | D1 | Policy gate vs operation logic | **Fase-check in enforcement.yaml; execution logic in tool** | Policy gates (mag deze tool draaien?) horen in enforcement/config. Operation invariants (hoe voer ik dit technisch correct uit?) horen in de tool. Neutralize, commit, push en PR-aanmaak zijn execution logic. De readiness-check is een policy gate. |
-| D2 | `CreatePRTool` bewaren? | **Ja** als interne utility | `SubmitPRTool` delegeert PR-aanmaak aan `CreatePRTool`; klasse niet als MCP tool geregistreerd |
+| D2 | `CreatePRTool` bewaren? | **Nee, verwijderd in C5** | Delegatie-argument verviel: `SubmitPRTool` roept `github_manager.create_pr()` direct aan (§3.2 execution flow). `CreatePRTool` en `CreatePRInput` zijn dode code zonder hergebruik. Bijbehorende enforcement rule (`create_pr` pre: `check_merge_readiness`) ook verwijderd. |
 | D3 | Terminal-route in `GitCommitTool` | **Verwijderen** | Neutralisatie verplaatst naar `submit_pr`; terminal-route is dode code |
 | D4 | `git_add_or_commit` in ready-fase | **Blokkeren** | Ready-phase commits zijn exclusief aan `submit_pr` |
-| D5 | `exclude_branch_local_artifacts` rule | **Verwijderen** uit enforcement.yaml | Neutralisatie is nu intern aan `submit_pr` |
+| D5 | `exclude_branch_local_artifacts` rule | **Bijgesteld (C4 QA)** | Regel blijft op `git_add_or_commit` (normale commits). Ook toegevoegd aan `submit_pr` pre: enforcement hook produceert `ExclusionNote`s vóórdat `execute()` ze leest; zonder deze regel wordt neutralisatie in productie stilzwijgend overgeslagen. |
 | D6 | Post-PR gap enforcement | **In-scope** via `PRStatusCache` | Bounded, helder gedefinieerd; samen met D7 één coherent pakket |
 | D7 | Tool-categorie enforcement (DRY) | **`BranchMutatingTool` ABC** + `tool_category` | Één yaml-regel dekt 18 tools; nieuwe tools kiezen simpelweg de juiste ABC. `merge_pr` is expliciet geen `BranchMutatingTool` — zie sectie 3.4. |
 | D8 | `EnforcementRule` schema-uitbreiding | **`tool_category` veld toevoegen** | Optioneel veld, validator enforceert `tool` OR `tool_category` bij `event_source == "tool"` |
