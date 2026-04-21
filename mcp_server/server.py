@@ -101,7 +101,7 @@ from mcp_server.tools.milestone_tools import (
     ListMilestonesTool,
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
-from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool, SubmitPRTool
+from mcp_server.tools.pr_tools import ListPRsTool, MergePRTool, SubmitPRTool
 from mcp_server.tools.project_tools import (
     GetProjectPlanTool,
     InitializeProjectTool,
@@ -370,10 +370,13 @@ class MCPServer:
                     CloseIssueTool(manager=self.github_manager),
                     UpdateIssueTool(manager=self.github_manager),
                     # PR and Label tools (require token at init time)
-                    CreatePRTool(manager=self.github_manager, git_config=git_config),
                     ListPRsTool(manager=self.github_manager, git_config=git_config),
                     MergePRTool(manager=self.github_manager, git_config=git_config),
-                    SubmitPRTool(pr_status_writer=self.pr_status_cache),
+                    SubmitPRTool(
+                        git_manager=self.git_manager,
+                        github_manager=self.github_manager,
+                        pr_status_writer=self.pr_status_cache,
+                    ),
                     AddLabelsTool(manager=self.github_manager, label_config=label_config),
                     ListLabelsTool(manager=self.github_manager, label_config=label_config),
                     CreateLabelTool(manager=self.github_manager, label_config=label_config),

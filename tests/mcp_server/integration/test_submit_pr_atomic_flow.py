@@ -170,7 +170,7 @@ class TestSubmitPRPartialFailure:
         )
 
         assert result.is_error
-        assert any(isinstance(n, RecoveryNote) for n in context.notes)
+        assert len(context.of_type(RecoveryNote)) > 0
         # PRStatus must NOT be written when push failed
         pr_status_writer.set_pr_status.assert_not_called()
 

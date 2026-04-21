@@ -1,16 +1,21 @@
 """GitHub PR tools."""
 
-from typing import Any, ClassVar
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.core.exceptions import ExecutionError
-from mcp_server.core.interfaces import IPRStatusWriter
-from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.interfaces import IPRStatusWriter, PRStatus
+from mcp_server.core.operation_notes import ExclusionNote, NoteContext, RecoveryNote
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import GitConfig
 from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
+
+if TYPE_CHECKING:
+    from mcp_server.managers.git_manager import GitManager
 
 
 class CreatePRInput(BaseModel):
@@ -185,7 +190,14 @@ class SubmitPRTool(BranchMutatingTool):
     description = "Atomically neutralize, commit, push, and create a PR for the current branch"
     args_model = SubmitPRInput
 
-    def __init__(self, pr_status_writer: IPRStatusWriter) -> None:
+    def __init__(
+        self,
+        git_manager: "GitManager",
+        github_manager: GitHubManager,
+        pr_status_writer: IPRStatusWriter,
+    ) -> None:
+        self._git_manager = git_manager
+        self._github_manager = github_manager
         self._pr_status_writer = pr_status_writer
 
     @property
@@ -193,5 +205,39 @@ class SubmitPRTool(BranchMutatingTool):
         return super().input_schema
 
     async def execute(self, params: SubmitPRInput, context: NoteContext) -> ToolResult:
-        del params, context
-        raise NotImplementedError("SubmitPRTool.execute() will be implemented in C3")
+        """Atomic: neutralize → commit → push → create_pr → set_pr_status(OPEN)."""
+        branch = self._git_manager.adapter.get_current_branch()
+        base = params.base or self._git_manager.git_config.default_base_branch
+
+        # Step 1-3: neutralize branch-local artifacts if ExclusionNotes present
+        excluded_paths = frozenset(n.file_path for n in context.of_type(ExclusionNote))
+        if excluded_paths:
+            self._git_manager.adapter.neutralize_to_base(excluded_paths, base)
+
+        # Step 4-7: commit → push → create_pr → write OPEN status
+        try:
+            self._git_manager.commit_with_scope(
+                workflow_phase="ready",
+                message=f"neutralize branch-local artifacts to '{base}'",
+                note_context=context,
+                commit_type="chore",
+            )
+            self._git_manager.adapter.push()
+            result = self._github_manager.create_pr(
+                title=params.title,
+                body=params.body or "",
+                head=params.head,
+                base=base,
+                draft=params.draft,
+            )
+        except ExecutionError as exc:
+            context.produce(
+                RecoveryNote(
+                    message=f"submit_pr failed after neutralize: {exc}. "
+                    "Branch tip may have been modified. Run git status to inspect."
+                )
+            )
+            return ToolResult.error(str(exc))
+
+        self._pr_status_writer.set_pr_status(branch, PRStatus.OPEN)
+        return ToolResult.text(f"Created PR #{result['number']}: {result['url']}")
