@@ -244,13 +244,8 @@ class GitHubManager:
     def get_pr_status(self, branch: str) -> PRStatus:
         """Return current PR status for *branch* by querying the GitHub API.
 
-        C4 stub — real GitHub API query implemented in C4 (branch lockdown rollout).
-        Until then returns PRStatus.ABSENT so cold-start cache misses fail-open
-        without raising, keeping the enforcement path executable.
+        Queries open PRs with head=branch. Returns OPEN if at least one open PR
+        exists; ABSENT otherwise.
         """
-        logger.debug(
-            "GitHubManager.get_pr_status() stub called for branch '%s'; "
-            "returning ABSENT until C4 implementation lands.",
-            branch,
-        )
-        return PRStatus.ABSENT
+        prs = self.adapter.list_prs(state="open", head=branch)
+        return PRStatus.OPEN if prs else PRStatus.ABSENT

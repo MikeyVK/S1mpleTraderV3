@@ -45,7 +45,7 @@ from mcp_server.core.operation_notes import ExclusionNote, NoteContext, Recovery
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools import git_tools
-from mcp_server.tools.pr_tools import CreatePRTool, SubmitPRInput, SubmitPRTool
+from mcp_server.tools.pr_tools import SubmitPRInput, SubmitPRTool
 
 
 def _make_submit_pr_tool(
@@ -218,11 +218,6 @@ class TestCompositionRootContracts:
             "GitCommitTool must not contain neutralize_to_base path in C3+. "
             "Neutralization is owned by SubmitPRTool."
         )
-
-    def test_create_pr_tool_class_still_exists(self) -> None:
-        """CreatePRTool class must still exist in pr_tools.py as internal utility (design D2)."""
-        assert CreatePRTool is not None
-        assert CreatePRTool.__name__ == "CreatePRTool"
 
     def test_submit_pr_tool_declares_enforcement_event(self) -> None:
         """SubmitPRTool.enforcement_event must be 'submit_pr' so phase-readiness gate fires.

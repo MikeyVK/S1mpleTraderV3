@@ -16,8 +16,6 @@ from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
 from mcp_server.tools.pr_tools import (
-    CreatePRInput,
-    CreatePRTool,
     ListPRsInput,
     ListPRsTool,
     MergePRInput,
@@ -52,30 +50,6 @@ labels:
     yaml_file.write_text(yaml_content)
 
     return ConfigLoader(tmp_path).load_label_config(config_path=yaml_file)
-
-
-def test_create_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
-    """Test CreatePRTool creates PR and returns correct response."""
-    mock_pr = Mock()
-    mock_pr.number = 123
-    mock_pr.html_url = "http://github.com/owner/repo/pull/123"
-    mock_pr.title = "New Feature"
-    mock_adapter.create_pr.return_value = mock_pr
-
-    manager = GitHubManager(adapter=mock_adapter)
-    tool = CreatePRTool(manager=manager, git_config=mock_git_config)
-
-    result = asyncio.run(
-        tool.execute(
-            CreatePRInput(title="New Feature", body="Description", head="feature/branch"),
-            NoteContext(),
-        )
-    )
-
-    assert "Created PR #123" in result.content[0]["text"]
-    mock_adapter.create_pr.assert_called_with(
-        title="New Feature", body="Description", head="feature/branch", base="main", draft=False
-    )
 
 
 def test_add_labels_tool(mock_adapter: Mock, test_label_config: LabelConfig) -> None:

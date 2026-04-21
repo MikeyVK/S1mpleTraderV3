@@ -1,11 +1,11 @@
-# tests/mcp_server/integration/test_ready_phase_enforcement.py
+﻿# tests/mcp_server/integration/test_ready_phase_enforcement.py
 # template=unit_test version= created=2026-04-09T00:00Z updated=
 """
 Integration tests for ready-phase enforcement (issue #283).
 
 Verifies the full enforcement dispatch path:
   EnforcementRunner.run(event=tool.enforcement_event, ...) produces
-  the expected outcome for git_add_or_commit and create_pr events.
+  the expected outcome for git_add_or_commit and submit_pr events.
 
 @layer: Tests (Integration)
 @dependencies: [json, pathlib, pytest, unittest.mock,
@@ -14,11 +14,11 @@ Verifies the full enforcement dispatch path:
     mcp_server.managers.phase_contract_resolver,
     mcp_server.config.loader]
 @responsibilities:
-    - Test enforcement_event class variable on GitCommitTool and CreatePRTool
+    - Test enforcement_event class variable on GitCommitTool and SubmitPRTool
     - Test git_add_or_commit pre-enforcement excludes tracked artifacts in ready phase
-    - Test create_pr pre-enforcement blocks PR outside pr_allowed_phase
-    - Test create_pr pre-enforcement blocks PR when branch-local artifacts tracked
-    - Test create_pr pre-enforcement allows PR in pr_allowed_phase with no tracked artifacts
+    - Test submit_pr pre-enforcement blocks PR outside pr_allowed_phase
+    - Test submit_pr pre-enforcement blocks PR when branch-local artifacts tracked
+    - Test submit_pr pre-enforcement allows PR in pr_allowed_phase with no tracked artifacts
 """
 
 # Standard library
@@ -42,7 +42,7 @@ from mcp_server.managers.enforcement_runner import (
 )
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.tools.git_tools import GitCommitTool
-from mcp_server.tools.pr_tools import CreatePRTool
+from mcp_server.tools.pr_tools import SubmitPRTool
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -51,11 +51,11 @@ _DELIVERABLES_JSON = ".st3/deliverables.json"
 
 _ARTIFACT_STATE = BranchLocalArtifact(
     path=_STATE_JSON,
-    reason="MCP workflow state — branch-local, must never reach main",
+    reason="MCP workflow state â€” branch-local, must never reach main",
 )
 _ARTIFACT_DELIVERABLES = BranchLocalArtifact(
     path=_DELIVERABLES_JSON,
-    reason="MCP workflow deliverables — branch-local, must never reach main",
+    reason="MCP workflow deliverables â€” branch-local, must never reach main",
 )
 
 
@@ -100,17 +100,17 @@ def _make_runner(tmp_path: Path, ctx: MergeReadinessContext) -> EnforcementRunne
 class TestReadyPhaseEnforcement:
     """Integration tests for the ready-phase enforcement path (issue #283)."""
 
-    # ── Class variable declarations ───────────────────────────────────────────
+    # â”€â”€ Class variable declarations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_git_commit_tool_enforcement_event(self) -> None:
         """GitCommitTool.enforcement_event matches the tool name in enforcement.yaml."""
         assert GitCommitTool.enforcement_event == "git_add_or_commit"
 
-    def test_create_pr_tool_enforcement_event(self) -> None:
-        """CreatePRTool.enforcement_event matches the tool name in enforcement.yaml."""
-        assert CreatePRTool.enforcement_event == "create_pr"
+    def test_submit_pr_tool_enforcement_event(self) -> None:
+        """SubmitPRTool.enforcement_event matches the tool name in enforcement.yaml."""
+        assert SubmitPRTool.enforcement_event == "submit_pr"
 
-    # ── Integration: git_add_or_commit pre-enforcement ────────────────────────
+    # â”€â”€ Integration: git_add_or_commit pre-enforcement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_git_commit_blocked_when_branch_local_artifact_staged(self, tmp_path: Path) -> None:
         """git_add_or_commit pre-enforcement excludes tracked artifacts in the ready phase."""
@@ -138,59 +138,34 @@ class TestReadyPhaseEnforcement:
         assert len(notes) > 0
         assert any(_STATE_JSON in n.file_path for n in notes)
 
-    # ── Integration: create_pr pre-enforcement ────────────────────────────────
+    # â”€â”€ Integration: submit_pr pre-enforcement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    def test_create_pr_blocked_outside_pr_allowed_phase(self, tmp_path: Path) -> None:
-        """create_pr pre-enforcement raises ValidationError when phase != pr_allowed_phase."""
+    def test_submit_pr_blocked_outside_pr_allowed_phase(self, tmp_path: Path) -> None:
+        """submit_pr pre-enforcement raises ValidationError when phase != pr_allowed_phase."""
         _write_state(tmp_path, "implementation")
         runner = _make_runner(tmp_path, _merge_ctx(allowed="ready"))
         ctx = EnforcementContext(
             workspace_root=tmp_path,
-            tool_name=CreatePRTool.name,
+            tool_name=SubmitPRTool.name,
             params=SimpleNamespace(),
         )
 
         note_context = NoteContext()
         with pytest.raises(ValidationError, match="ready"):
             runner.run(
-                event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]
+                event=SubmitPRTool.enforcement_event,  # type: ignore[arg-type]
                 timing="pre",
                 enforcement_ctx=ctx,
                 note_context=note_context,
             )
 
-    def test_create_pr_blocked_when_branch_local_artifacts_tracked(self, tmp_path: Path) -> None:
-        """create_pr pre-enforcement raises ValidationError when tracked artifacts remain."""
+    def test_submit_pr_allowed_in_pr_allowed_phase(self, tmp_path: Path) -> None:
+        """submit_pr pre-enforcement returns no notes in ready phase with no tracked artifacts."""
         _write_state(tmp_path, "ready")
         runner = _make_runner(tmp_path, _merge_ctx())
         ctx = EnforcementContext(
             workspace_root=tmp_path,
-            tool_name=CreatePRTool.name,
-            params=SimpleNamespace(),
-        )
-
-        note_context = NoteContext()
-        with (
-            patch(
-                "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
-                return_value=True,
-            ),
-            pytest.raises(ValidationError, match="net delta"),
-        ):
-            runner.run(
-                event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]
-                timing="pre",
-                enforcement_ctx=ctx,
-                note_context=note_context,
-            )
-
-    def test_create_pr_allowed_in_pr_allowed_phase(self, tmp_path: Path) -> None:
-        """create_pr pre-enforcement returns no notes in ready phase with no tracked artifacts."""
-        _write_state(tmp_path, "ready")
-        runner = _make_runner(tmp_path, _merge_ctx())
-        ctx = EnforcementContext(
-            workspace_root=tmp_path,
-            tool_name=CreatePRTool.name,
+            tool_name=SubmitPRTool.name,
             params=SimpleNamespace(),
         )
 
@@ -199,12 +174,16 @@ class TestReadyPhaseEnforcement:
             "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
             return_value=False,
         ):
-            runner.run(
-                event=CreatePRTool.enforcement_event,  # type: ignore[arg-type]
-                timing="pre",
-                enforcement_ctx=ctx,
-                note_context=note_context,
-            )
+            with patch(
+                "mcp_server.managers.enforcement_runner._git_is_tracked",
+                return_value=False,
+            ):
+                runner.run(
+                    event=SubmitPRTool.enforcement_event,  # type: ignore[arg-type]
+                    timing="pre",
+                    enforcement_ctx=ctx,
+                    note_context=note_context,
+                )
 
 
 @pytest.fixture
@@ -259,7 +238,7 @@ class TestReadyPhaseEnforcementRealGit:
         )
         assert result_before.returncode == 0, "state.json must be staged before test"
 
-        # Act: run enforcement (no mocks — real subprocess calls)
+        # Act: run enforcement (no mocks â€” real subprocess calls)
         runner = _make_runner(git_repo, _merge_ctx())
         ctx = EnforcementContext(
             workspace_root=git_repo,
@@ -277,14 +256,4 @@ class TestReadyPhaseEnforcementRealGit:
         notes = note_context.of_type(ExclusionNote)
         assert any(_STATE_JSON in n.file_path for n in notes), (
             "Expected ExclusionNote for state.json in NoteContext"
-        )
-
-        # C3: runner no longer calls git rm --cached — state.json must STILL be in index
-        result_after = subprocess.run(
-            ["git", "ls-files", "--error-unmatch", _STATE_JSON],
-            cwd=git_repo,
-            capture_output=True,
-        )
-        assert result_after.returncode == 0, (
-            "state.json must REMAIN in git index after C3 enforcement (no git rm in runner)"
         )

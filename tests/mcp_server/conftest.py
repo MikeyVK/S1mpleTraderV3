@@ -11,7 +11,6 @@ from collections.abc import Generator
 import pytest
 
 from mcp_server.tools.git_tools import CreateBranchInput
-from mcp_server.tools.pr_tools import CreatePRInput
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +19,6 @@ def reset_config_singletons() -> Generator[None, None, None]:
 
     def _reset_all() -> None:
         CreateBranchInput._git_config = None
-        CreatePRInput._git_config = None
 
     _reset_all()
     yield

@@ -42,7 +42,7 @@ from mcp_server.tools.health_tools import HealthCheckInput, HealthCheckTool
 # GitHub Tools (imported here for availability, require manager injection)
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
-from mcp_server.tools.pr_tools import CreatePRInput, CreatePRTool
+from mcp_server.tools.pr_tools import ListPRsInput, ListPRsTool, MergePRInput, MergePRTool
 
 # Quality Tools
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
@@ -197,10 +197,6 @@ def make_create_issue_tool(manager: MagicMock) -> CreateIssueTool:
         milestone_config=milestone_config,
         workflow_config=workflow_config,
     )
-
-
-def make_create_pr_tool(manager: MagicMock) -> CreatePRTool:
-    return CreatePRTool(manager=manager, git_config=make_mock_git_config())
 
 
 def make_add_labels_tool(manager: MagicMock) -> AddLabelsTool:
@@ -492,23 +488,6 @@ class TestGitHubToolsIntegration:
         assert "42" in result.content[0]["text"] or "issue" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
-    async def test_create_pr_tool_flow(self) -> None:
-        """Test create PR tool complete flow."""
-        mock_manager = MagicMock()
-        mock_manager.create_pr.return_value = {
-            "number": 99,
-            "url": "https://github.com/test/repo/pull/99",
-        }
-
-        tool = make_create_pr_tool(mock_manager)
-        result = await tool.execute(
-            CreatePRInput(title="Test PR", body="Test body", head="feature/test", base="main"),
-            NoteContext(),
-        )
-
-        assert "99" in result.content[0]["text"] or "pr" in result.content[0]["text"].lower()
-
-    @pytest.mark.asyncio
     async def test_add_labels_tool_flow(self) -> None:
         """Test add labels tool complete flow."""
         mock_manager = MagicMock()
@@ -575,7 +554,6 @@ class TestToolSchemas:
         mock_manager = MagicMock()
         tools = [
             make_create_issue_tool(mock_manager),
-            make_create_pr_tool(mock_manager),
             make_add_labels_tool(mock_manager),
         ]
 
@@ -598,7 +576,6 @@ class TestToolNames:
         mock_manager = MagicMock()
         tools = [
             make_create_issue_tool(mock_manager),
-            make_create_pr_tool(mock_manager),
             make_add_labels_tool(mock_manager),
         ]
 
@@ -616,7 +593,6 @@ class TestToolNames:
         mock_manager = MagicMock()
         tools = [
             make_create_issue_tool(mock_manager),
-            make_create_pr_tool(mock_manager),
             make_add_labels_tool(mock_manager),
         ]
 

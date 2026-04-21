@@ -1,8 +1,6 @@
 # tests/mcp_server/unit/tools/test_submit_pr_tool.py
 """Unit tests for SubmitPRTool and SubmitPRInput scaffold.
 
-Also asserts design D2: CreatePRTool class remains in pr_tools.py as internal utility.
-
 @layer: Tests (Unit)
 @dependencies: [pytest, mcp_server.tools.pr_tools, mcp_server.tools.base]
 """
@@ -10,7 +8,7 @@ Also asserts design D2: CreatePRTool class remains in pr_tools.py as internal ut
 from __future__ import annotations
 
 from mcp_server.tools.base import BranchMutatingTool
-from mcp_server.tools.pr_tools import CreatePRTool, SubmitPRInput, SubmitPRTool
+from mcp_server.tools.pr_tools import SubmitPRInput, SubmitPRTool
 
 
 class TestSubmitPRInput:
@@ -47,10 +45,3 @@ class TestSubmitPRTool:
 
     def test_args_model_is_submit_pr_input(self) -> None:
         assert SubmitPRTool.args_model is SubmitPRInput
-
-
-class TestCreatePRToolInternalUtility:
-    """Design D2: CreatePRTool class stays in pr_tools.py as internal utility."""
-
-    def test_class_still_exists(self) -> None:
-        assert CreatePRTool is not None

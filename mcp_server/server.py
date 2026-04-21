@@ -371,7 +371,11 @@ class MCPServer:
                     UpdateIssueTool(manager=self.github_manager),
                     # PR and Label tools (require token at init time)
                     ListPRsTool(manager=self.github_manager, git_config=git_config),
-                    MergePRTool(manager=self.github_manager, git_config=git_config),
+                    MergePRTool(
+                        manager=self.github_manager,
+                        git_config=git_config,
+                        pr_status_writer=self.pr_status_cache,
+                    ),
                     SubmitPRTool(
                         git_manager=self.git_manager,
                         github_manager=self.github_manager,

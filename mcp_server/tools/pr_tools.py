@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IPRStatusWriter, PRStatus
@@ -16,64 +16,6 @@ from mcp_server.tools.tool_result import ToolResult
 
 if TYPE_CHECKING:
     from mcp_server.managers.git_manager import GitManager
-
-
-class CreatePRInput(BaseModel):
-    """Input for CreatePRTool."""
-
-    _git_config: ClassVar[GitConfig | None] = None
-
-    @classmethod
-    def configure(cls, git_config: GitConfig) -> None:
-        cls._git_config = git_config
-
-    title: str = Field(..., description="PR title")
-    body: str = Field(..., description="PR description")
-    head: str = Field(..., description="Source branch")
-    base: str | None = Field(default=None, description="Target branch")
-    draft: bool = Field(default=False, description="Create as draft")
-
-    @model_validator(mode="after")
-    def apply_default_base_branch(self) -> CreatePRInput:
-        if self.base is not None:
-            return self
-
-        git_config = self.__class__._git_config
-        if git_config is None:
-            raise ValueError("GitConfig must be injected before PR input validation")
-
-        self.base = git_config.default_base_branch
-        return self
-
-
-class CreatePRTool(BaseTool):
-    """Tool to create a GitHub Pull Request."""
-
-    name = "create_pr"
-    description = "Create a new GitHub Pull Request"
-    args_model = CreatePRInput
-    enforcement_event: str | None = "create_pr"
-
-    def __init__(self, manager: GitHubManager, git_config: GitConfig) -> None:
-        self.manager = manager
-        self._git_config = git_config
-        CreatePRInput.configure(git_config)
-
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return super().input_schema
-
-    async def execute(self, params: CreatePRInput, context: NoteContext) -> ToolResult:
-        del context  # Not used
-        result = self.manager.create_pr(
-            title=params.title,
-            body=params.body,
-            head=params.head,
-            base=params.base or self._git_config.default_base_branch,
-            draft=params.draft,
-        )
-
-        return ToolResult.text(f"Created PR #{result['number']}: {result['url']}")
 
 
 class ListPRsInput(BaseModel):
@@ -96,7 +38,6 @@ class ListPRsTool(BaseTool):
     def __init__(self, manager: GitHubManager, git_config: GitConfig) -> None:
         self.manager = manager
         self._git_config = git_config
-        CreatePRInput.configure(git_config)
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -141,10 +82,15 @@ class MergePRTool(BaseTool):
     description = "Merge a pull request with optional commit message and method"
     args_model = MergePRInput
 
-    def __init__(self, manager: GitHubManager, git_config: GitConfig) -> None:
+    def __init__(
+        self,
+        manager: GitHubManager,
+        git_config: GitConfig,
+        pr_status_writer: IPRStatusWriter,
+    ) -> None:
         self.manager = manager
         self._git_config = git_config
-        CreatePRInput.configure(git_config)
+        self._pr_status_writer = pr_status_writer
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -153,6 +99,9 @@ class MergePRTool(BaseTool):
     async def execute(self, params: MergePRInput, context: NoteContext) -> ToolResult:
         del context  # Not used
         try:
+            # Resolve head branch before merge so we can clear PRStatus after
+            pr = self.manager.adapter.repo.get_pull(params.pr_number)
+            head_branch = pr.head.ref
             result = self.manager.merge_pr(
                 pr_number=params.pr_number,
                 commit_message=params.commit_message,
@@ -161,6 +110,7 @@ class MergePRTool(BaseTool):
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
+        self._pr_status_writer.set_pr_status(head_branch, PRStatus.ABSENT)
         return ToolResult.text(
             f"Merged PR #{params.pr_number} using {params.merge_method} (SHA {result['sha']})"
         )

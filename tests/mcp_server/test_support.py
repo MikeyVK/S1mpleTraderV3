@@ -48,7 +48,6 @@ from mcp_server.schemas import (
 )
 from mcp_server.tools.git_tools import CreateBranchInput
 from mcp_server.tools.issue_tools import CreateIssueTool
-from mcp_server.tools.pr_tools import CreatePRInput
 
 
 def _candidate_config_roots(workspace_root: Path | str | None = None) -> list[Path]:
@@ -131,16 +130,6 @@ def configure_create_branch_input(workspace_root: Path | str | None = None) -> G
         _load_config(workspace_root, "git.yaml", "load_git_config"),
     )
     CreateBranchInput.configure(git_config)
-    return git_config
-
-
-def configure_create_pr_input(workspace_root: Path | str | None = None) -> GitConfig:
-    """Configure CreatePRInput validators with explicit git config."""
-    git_config = cast(
-        GitConfig,
-        _load_config(workspace_root, "git.yaml", "load_git_config"),
-    )
-    CreatePRInput.configure(git_config)
     return git_config
 
 
