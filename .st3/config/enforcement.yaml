@@ -25,3 +25,14 @@ enforcement:
     timing: pre
     actions:
       - type: check_merge_readiness
+  - event_source: tool
+    tool_category: branch_mutating
+    timing: pre
+    actions:
+      - type: check_pr_status
+  - event_source: tool
+    tool: submit_pr
+    timing: pre
+    actions:
+      - type: check_phase_readiness
+        policy: ready

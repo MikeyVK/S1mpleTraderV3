@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import cast
 
 from mcp_server.core.exceptions import ConfigError, ExecutionError, ValidationError
+from mcp_server.core.interfaces import IPRStatusReader, PRStatus
 from mcp_server.core.operation_notes import (
     ExclusionNote,
     NoteContext,
@@ -32,6 +33,9 @@ from mcp_server.tools.tool_result import ToolResult
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
 _GIT_TIMEOUT_SECONDS = 2
 logger = logging.getLogger(__name__)
+
+# Known tool_category values; config validation fails fast for any unlisted value.
+KNOWN_TOOL_CATEGORIES: frozenset[str] = frozenset({"branch_mutating"})
 
 
 def _read_current_phase(workspace_root: Path) -> str | None:
@@ -196,11 +200,13 @@ class EnforcementRunner:
         registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
         merge_readiness_context: MergeReadinessContext | None = None,
         default_base_branch: str = "main",
+        pr_status_reader: IPRStatusReader | None = None,
     ) -> None:
         self.workspace_root = Path(workspace_root)
         self._config = config
         self._merge_readiness_context = merge_readiness_context
         self.default_base_branch = default_base_branch
+        self._pr_status_reader = pr_status_reader
         if registry is None:
             self._registry = self._build_default_registry()
         elif isinstance(registry, EnforcementRegistry):
@@ -215,15 +221,24 @@ class EnforcementRunner:
         timing: str,
         enforcement_ctx: EnforcementContext,
         note_context: NoteContext,
+        tool_category: str | None = None,
     ) -> None:
         """Execute matching actions for one event and timing pair.
 
         C3: returns None; all results conveyed via note_context.produce().
+        Dispatch matches on rule.tool (tool name) OR rule.tool_category (category).
         """
         for rule in self._config.enforcement:
             if rule.event_source != "tool":
                 continue
-            if rule.tool != event or rule.timing != timing:
+            if rule.timing != timing:
+                continue
+            # Match by tool name or tool_category (mutually exclusive per schema validator)
+            if rule.tool is not None and rule.tool != event:
+                continue
+            if rule.tool_category is not None and rule.tool_category != tool_category:
+                continue
+            if rule.tool is None and rule.tool_category is None:
                 continue
             for action in rule.actions:
                 self._registry.get(action.type)(
@@ -231,8 +246,8 @@ class EnforcementRunner:
                 )
 
     def _validate_registered_actions(self) -> None:
-        """Fail fast when config references unknown action types."""
-        unknown = sorted(
+        """Fail fast when config references unknown action types or tool categories."""
+        unknown_actions = sorted(
             {
                 action.type
                 for rule in self._config.enforcement
@@ -240,9 +255,23 @@ class EnforcementRunner:
                 if not self._registry.has(action.type)
             }
         )
-        if unknown:
+        if unknown_actions:
             raise ConfigError(
-                f"Unknown enforcement action type(s): {', '.join(unknown)}",
+                f"Unknown enforcement action type(s): {', '.join(unknown_actions)}",
+                file_path=_ENFORCEMENT_DISPLAY_PATH,
+            )
+
+        unknown_categories = sorted(
+            {
+                rule.tool_category
+                for rule in self._config.enforcement
+                if rule.tool_category is not None
+                and rule.tool_category not in KNOWN_TOOL_CATEGORIES
+            }
+        )
+        if unknown_categories:
+            raise ConfigError(
+                f"Unknown tool_category value(s): {', '.join(unknown_categories)}",
                 file_path=_ENFORCEMENT_DISPLAY_PATH,
             )
 
@@ -260,6 +289,14 @@ class EnforcementRunner:
         registry.register(
             "check_merge_readiness",
             self._handle_check_merge_readiness,
+        )
+        registry.register(
+            "check_pr_status",
+            self._handle_check_pr_status,
+        )
+        registry.register(
+            "check_phase_readiness",
+            self._handle_check_phase_readiness,
         )
         return registry
 
@@ -387,4 +424,64 @@ class EnforcementRunner:
             raise ValidationError(
                 f"Branch-local artifacts have a net delta against '{base}' and"
                 " would contaminate the merge target:",
+            )
+
+    def _handle_check_pr_status(
+        self,
+        action: EnforcementAction,
+        context: EnforcementContext,
+        workspace_root: Path,
+        note_context: NoteContext,
+    ) -> None:
+        """Block branch-mutating tool calls when an open PR exists for this branch.
+
+        Reads IPRStatusReader (session-leading cache, cold-start API fallback).
+        Raises ConfigError when no reader is configured (misconfigured startup).
+        Raises ValidationError when PRStatus.OPEN is found.
+        """
+        del action, workspace_root
+        if self._pr_status_reader is None:
+            raise ConfigError(
+                "check_pr_status action requires pr_status_reader; "
+                "wire PRStatusCache in EnforcementRunner.__init__",
+                file_path=_ENFORCEMENT_DISPLAY_PATH,
+            )
+        # Use the 'head' param if available, fall back to tool_name as branch identifier.
+        branch = str(context.get_param("head") or context.tool_name)
+        status = self._pr_status_reader.get_pr_status(branch)
+        if status == PRStatus.OPEN:
+            note_context.produce(
+                SuggestionNote(
+                    message="Call merge_pr to close the open PR before continuing branch work."
+                )
+            )
+            raise ValidationError(
+                f"Branch '{branch}' has an open PR. "
+                "Branch-mutating tools are blocked until the PR is merged.",
+            )
+
+    def _handle_check_phase_readiness(
+        self,
+        action: EnforcementAction,
+        context: EnforcementContext,
+        workspace_root: Path,
+        note_context: NoteContext,
+    ) -> None:
+        """Block tool execution when the current workflow phase does not match policy.
+
+        Reads action.policy as the required phase name; compares against
+        live state.json. Raises ValidationError on mismatch or absent state.
+        """
+        del context
+        required_phase = action.policy
+        current_phase = _read_current_phase(workspace_root)
+        if current_phase != required_phase:
+            note_context.produce(
+                SuggestionNote(
+                    message=f'transition_phase(to_phase="{required_phase}")'
+                )
+            )
+            raise ValidationError(
+                f"Tool requires phase '{required_phase}'. "
+                f"Current phase: '{current_phase}'.",
             )

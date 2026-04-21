@@ -47,6 +47,7 @@ from mcp_server.managers.qa_manager import QAManager
 from mcp_server.managers.state_reconstructor import StateReconstructor
 from mcp_server.managers.state_repository import FileStateRepository
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
+from mcp_server.state.pr_status_cache import PRStatusCache
 from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
@@ -100,7 +101,7 @@ from mcp_server.tools.milestone_tools import (
     ListMilestonesTool,
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
-from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
+from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool, SubmitPRTool
 from mcp_server.tools.project_tools import (
     GetProjectPlanTool,
     InitializeProjectTool,
@@ -247,11 +248,13 @@ class MCPServer:
                 phase_contracts_config.merge_policy.branch_local_artifacts
             ),
         )
+        self.pr_status_cache = PRStatusCache(github_manager=self.github_manager)
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,
             config=enforcement_config,
             merge_readiness_context=_merge_readiness_context,
             default_base_branch=git_config.default_base_branch,
+            pr_status_reader=self.pr_status_cache,
         )
 
         self.server = Server(server_name)
@@ -370,6 +373,7 @@ class MCPServer:
                     CreatePRTool(manager=self.github_manager, git_config=git_config),
                     ListPRsTool(manager=self.github_manager, git_config=git_config),
                     MergePRTool(manager=self.github_manager, git_config=git_config),
+                    SubmitPRTool(pr_status_writer=self.pr_status_cache),
                     AddLabelsTool(manager=self.github_manager, label_config=label_config),
                     ListLabelsTool(manager=self.github_manager, label_config=label_config),
                     CreateLabelTool(manager=self.github_manager, label_config=label_config),
@@ -501,7 +505,8 @@ class MCPServer:
     ) -> ToolResult | None:
         """Execute pre/post enforcement for one tool when configured."""
         event = getattr(tool, "enforcement_event", None)
-        if event is None:
+        tool_category = getattr(tool, "tool_category", None)
+        if event is None and tool_category is None:
             return None
 
         enforcement_ctx = EnforcementContext(
@@ -512,8 +517,9 @@ class MCPServer:
         )
         try:
             self.enforcement_runner.run(
-                event=event,
+                event=event or "",
                 timing=timing,
+                tool_category=tool_category,
                 enforcement_ctx=enforcement_ctx,
                 note_context=note_context,
             )
