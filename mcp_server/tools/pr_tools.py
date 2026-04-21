@@ -189,6 +189,7 @@ class SubmitPRTool(BranchMutatingTool):
     name = "submit_pr"
     description = "Atomically neutralize, commit, push, and create a PR for the current branch"
     args_model = SubmitPRInput
+    enforcement_event: str | None = "submit_pr"
 
     def __init__(
         self,

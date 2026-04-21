@@ -34,5 +34,6 @@ enforcement:
     tool: submit_pr
     timing: pre
     actions:
+      - type: exclude_branch_local_artifacts
       - type: check_phase_readiness
         policy: ready

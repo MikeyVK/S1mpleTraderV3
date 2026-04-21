@@ -245,7 +245,7 @@ class TestCompositionRootContracts:
         ExclusionNotes are never populated before execute() runs — neutralization
         is silently skipped in production even when branch-local artifacts exist.
         """
-        workspace_root = Path(__file__).parents[4]
+        workspace_root = Path(__file__).parents[3]
         config_path = workspace_root / ".st3" / "config" / "enforcement.yaml"
         config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
