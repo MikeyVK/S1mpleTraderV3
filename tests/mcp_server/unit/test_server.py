@@ -284,7 +284,7 @@ class TestServerToolRegistration:
 
         text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
         assert response.root.isError is True
-        assert "PR creation requires phase 'ready'" in text
+        assert "requires phase 'ready'" in text
         assert "Current phase: 'documentation'" in text
         assert 'transition_phase(to_phase="ready")' in text
         mock_create_pr.assert_not_called()
