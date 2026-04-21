@@ -1621,7 +1621,7 @@
         ]
       }
     },
-    "planning_deliverables": {
+    "planning_deliverables_legacy_2026_04_21": {
       "tdd_cycles": {
         "total": 10,
         "cycles": [
@@ -2171,6 +2171,222 @@
             ],
             "label": "Test cleanup + Model 1 contract tests",
             "scope": "tests/"
+          }
+        ]
+      }
+    },
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 5,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "C1.1",
+                "description": "BaseTool exposes tool_category and BranchMutatingTool exists as zero-method ABC",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/base.py",
+                  "text": "class BranchMutatingTool"
+                }
+              },
+              {
+                "id": "C1.2",
+                "description": "EnforcementRule schema accepts tool_category and validates tool OR tool_category",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/schemas/enforcement_config.py",
+                  "text": "tool_category"
+                }
+              },
+              {
+                "id": "C1.3",
+                "description": "PRStatus interfaces and cache implementation exist",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/state/pr_status_cache.py"
+                }
+              },
+              {
+                "id": "C1.4",
+                "description": "SubmitPRInput and SubmitPRTool contract surface exists in pr_tools.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/pr_tools.py",
+                  "text": "class SubmitPRTool"
+                }
+              }
+            ],
+            "exit_criteria": "Schema/interface unit tests pass; startup can load tool_category-aware config without fallback hacks"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "C2.1",
+                "description": "EnforcementRunner dispatches on rule.tool_category in addition to rule.tool",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "rule.tool_category"
+                }
+              },
+              {
+                "id": "C2.2",
+                "description": "check_pr_status handler exists and is registered",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "_handle_check_pr_status"
+                }
+              },
+              {
+                "id": "C2.3",
+                "description": "submit_pr readiness gate exists in enforcement.yaml",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "check_phase_readiness"
+                }
+              },
+              {
+                "id": "C2.4",
+                "description": "Composition root wires PRStatusCache into tools and EnforcementRunner",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "PRStatusCache"
+                }
+              }
+            ],
+            "exit_criteria": "tool_category dispatch and both new handlers are covered by unit tests; startup validation rejects invalid rules"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "C3.1",
+                "description": "SubmitPRTool.execute implements the atomic flow and writes OPEN to PRStatusCache",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/pr_tools.py",
+                  "text": "set_pr_status"
+                }
+              },
+              {
+                "id": "C3.2",
+                "description": "CreatePRTool is no longer registered as a public MCP tool in server.py",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/server.py",
+                  "text": "CreatePRTool("
+                }
+              },
+              {
+                "id": "C3.3",
+                "description": "GitCommitTool no longer contains the terminal-route neutralization path",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "neutralize_to_base"
+                }
+              },
+              {
+                "id": "C3.4",
+                "description": "Integration coverage exists for submit_pr atomic execution",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_submit_pr_atomic_flow.py",
+                  "text": "test_submit_pr_happy_path"
+                }
+              }
+            ],
+            "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "C4.1",
+                "description": "All 18 mutating tools inherit from BranchMutatingTool",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/base.py",
+                  "text": "branch_mutating"
+                }
+              },
+              {
+                "id": "C4.2",
+                "description": "MergePRTool writes ABSENT to cache only after successful merge",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/pr_tools.py",
+                  "text": "PRStatus.ABSENT"
+                }
+              },
+              {
+                "id": "C4.3",
+                "description": "Integration coverage proves post-PR lockdown blocks mutating tools",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_pr_status_lockdown.py",
+                  "text": "test_branch_mutating_tools_blocked_when_pr_open"
+                }
+              },
+              {
+                "id": "C4.4",
+                "description": "Planning deliverables tools are part of the blocked mutating set",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue283/design-submit-pr-prstatus-enforcement.md",
+                  "text": "SavePlanningDeliverablesTool"
+                }
+              }
+            ],
+            "exit_criteria": "Inventory matches the 18-tool design set and lockdown integration tests pass, including merge escape hatch"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "C5.1",
+                "description": "Legacy enforcement rules are removed from enforcement.yaml",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "exclude_branch_local_artifacts"
+                }
+              },
+              {
+                "id": "C5.2",
+                "description": "Legacy create_pr merge-readiness rule is removed from enforcement.yaml",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "check_merge_readiness"
+                }
+              },
+              {
+                "id": "C5.3",
+                "description": "Legacy sequential-flow tests are removed or rewritten",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/mcp_server/integration/test_create_pr_merge_readiness_c6.py",
+                  "text": "create_pr"
+                }
+              },
+              {
+                "id": "C5.4",
+                "description": "submit_pr documentation path is present in MCP docs",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "agent.md",
+                  "text": "submit_pr"
+                }
+              }
+            ],
+            "exit_criteria": "Legacy workflow grep closure is clean; full suite and branch quality gates pass"
           }
         ]
       }
