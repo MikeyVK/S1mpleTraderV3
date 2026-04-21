@@ -56,10 +56,8 @@ class TestToolCategoryDispatch:
 
     def test_rule_with_matching_tool_category_is_executed(self, tmp_path: Path) -> None:
         """When tool_category matches the rule, the action handler is invoked."""
-        executed: list[str] = []
-
-        def fake_handler(action: EnforcementAction, ctx: EnforcementContext, ws: Path, nc: NoteContext) -> None:
-            executed.append(action.type)
+        reader = MagicMock(spec=IPRStatusReader)
+        reader.get_pr_status.return_value = PRStatus.ABSENT
 
         config = EnforcementConfig(
             enforcement=[
@@ -71,8 +69,6 @@ class TestToolCategoryDispatch:
                 )
             ]
         )
-        reader = MagicMock(spec=IPRStatusReader)
-        reader.get_pr_status.return_value = PRStatus.ABSENT
         runner = _make_runner(tmp_path, config, pr_status_reader=reader)
 
         runner.run(
@@ -83,7 +79,7 @@ class TestToolCategoryDispatch:
             note_context=_make_note_context(),
         )
 
-        assert executed or reader.get_pr_status.called
+        reader.get_pr_status.assert_called_once()
 
     def test_rule_with_non_matching_tool_category_is_skipped(self, tmp_path: Path) -> None:
         """When tool_category does not match, the rule is not executed."""
@@ -117,7 +113,12 @@ class TestToolCategoryDispatch:
         """Existing tool-name rules remain functional when tool_category is not passed."""
         executed: list[bool] = []
 
-        def fake_handler(action: EnforcementAction, ctx: EnforcementContext, ws: Path, nc: NoteContext) -> None:
+        def fake_handler(
+            _action: EnforcementAction,
+            _ctx: EnforcementContext,
+            _ws: Path,
+            _nc: NoteContext,
+        ) -> None:
             executed.append(True)
 
         config = EnforcementConfig(
@@ -217,7 +218,7 @@ class TestCheckPRStatusHandler:
         )
 
     def test_check_pr_status_reads_branch_from_enforcement_context(self, tmp_path: Path) -> None:
-        """get_pr_status is called with the tool_name from the enforcement context as branch."""
+        """get_pr_status is called with head param or tool_name as branch identifier."""
         reader = MagicMock(spec=IPRStatusReader)
         reader.get_pr_status.return_value = PRStatus.ABSENT
 
@@ -278,9 +279,7 @@ class TestCheckPhaseReadinessHandler:
     def _make_state(self, tmp_path: Path, phase: str) -> None:
         state_dir = tmp_path / ".st3"
         state_dir.mkdir(parents=True, exist_ok=True)
-        (state_dir / "state.json").write_text(
-            f'{{"current_phase": "{phase}"}}', encoding="utf-8"
-        )
+        (state_dir / "state.json").write_text(f'{{"current_phase": "{phase}"}}', encoding="utf-8")
 
     def test_passes_when_phase_matches_policy(self, tmp_path: Path) -> None:
         """No exception when current phase equals the required policy phase."""

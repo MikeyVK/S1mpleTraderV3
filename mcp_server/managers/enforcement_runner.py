@@ -477,11 +477,8 @@ class EnforcementRunner:
         current_phase = _read_current_phase(workspace_root)
         if current_phase != required_phase:
             note_context.produce(
-                SuggestionNote(
-                    message=f'transition_phase(to_phase="{required_phase}")'
-                )
+                SuggestionNote(message=f'transition_phase(to_phase="{required_phase}")')
             )
             raise ValidationError(
-                f"Tool requires phase '{required_phase}'. "
-                f"Current phase: '{current_phase}'.",
+                f"Tool requires phase '{required_phase}'. Current phase: '{current_phase}'.",
             )

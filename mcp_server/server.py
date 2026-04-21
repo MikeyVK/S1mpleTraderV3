@@ -47,7 +47,6 @@ from mcp_server.managers.qa_manager import QAManager
 from mcp_server.managers.state_reconstructor import StateReconstructor
 from mcp_server.managers.state_repository import FileStateRepository
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
-from mcp_server.state.pr_status_cache import PRStatusCache
 from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
@@ -56,6 +55,7 @@ from mcp_server.resources.status import StatusResource
 
 # Scaffolding infrastructure (Issue #72)
 from mcp_server.scaffolding.template_registry import TemplateRegistry
+from mcp_server.state.pr_status_cache import PRStatusCache
 from mcp_server.tools.admin_tools import RestartServerTool
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.code_tools import CreateFileTool
