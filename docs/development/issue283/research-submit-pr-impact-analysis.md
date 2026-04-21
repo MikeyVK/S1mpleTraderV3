@@ -247,9 +247,9 @@ Na `submit_pr` is de branch geneutraliseerd en heeft een open PR. De phase guard
 
 `BaseTool` is al een ABC met `enforcement_event: str | None = None` als class variable. Slechts 5 van ~40 tools gebruiken het. Dit bevestigt dat de enforcement-infrastructuur al tool-declaratie-gedreven is.
 
-`EnforcementRule` matcht momenteel op één toolnaam (`tool: str`). Voor 14 branch-muterende tools apart een `check_pr_status`-entry schrijven is een DRY-schending: de actie is identiek, alleen de toolnaam verschilt.
+`EnforcementRule` matcht momenteel op één toolnaam (`tool: str`). Voor 18 branch-muterende tools apart een `check_pr_status`-entry schrijven is een DRY-schending: de actie is identiek, alleen de toolnaam verschilt.
 
-**Bevinding**: een intermediaire ABC met een gemeenschappelijke `tool_category`-class variable, gecombineerd met een `tool_category`-veld in `EnforcementRule`, elimineert alle 14 afzonderlijke entries tot één config-regel. Bij aanmaken van een nieuwe branch-muterende tool is overerven van die ABC de enige benodigde registratie.
+**Bevinding**: een intermediaire ABC met een gemeenschappelijke `tool_category`-class variable, gecombineerd met een `tool_category`-veld in `EnforcementRule`, elimineert alle 18 afzonderlijke entries tot één config-regel. Bij aanmaken van een nieuwe branch-muterende tool is overerven van die ABC de enige benodigde registratie.
 
 
 ## Expected Results
@@ -281,11 +281,11 @@ Cache miss (cold start) triggert GitHub API lookup. Tijdens een actieve sessie i
 
 ### E4 — BranchMutatingTool ABC (oplost Finding 10)
 
-Een zero-method intermediaire ABC `BranchMutatingTool(BaseTool)` stelt `tool_category = "branch_mutating"` in. Alle 14 branch-muterende tools erven hiervan. Geen andere wijzigingen aan die tools nodig.
+Een zero-method intermediaire ABC `BranchMutatingTool(BaseTool)` stelt `tool_category = "branch_mutating"` in. Alle 18 branch-muterende tools erven hiervan (`merge_pr` is bewust uitgesloten — zie E3). Geen andere wijzigingen aan die tools nodig.
 
 ### E5 — EnforcementRule schema-uitbreiding (oplost Finding 10)
 
-`EnforcementRule` krijgt een optioneel `tool_category: str | None`-veld. De model validator accepteert `tool` OF `tool_category` als geldig target bij `event_source == "tool"`. `EnforcementRunner` dispatcht op beide. Één enforcement.yaml-entry dekt alle 14 tools.
+`EnforcementRule` krijgt een optioneel `tool_category: str | None`-veld. De model validator accepteert `tool` OF `tool_category` als geldig target bij `event_source == "tool"`. `EnforcementRunner` dispatcht op beide. Één enforcement.yaml-entry dekt alle 18 tools.
 
 ### E6 — check_pr_status handler (oplost Finding 6 + 9)
 
@@ -319,7 +319,7 @@ Nieuwe handler `_handle_check_pr_status` in `EnforcementRunner` roept `IPRStatus
 
 4. **Post-submit gap is now in-scope and solved** — `PRStatusCache` + `BranchMutatingTool` ABC provide a clean, bounded solution. The GitHub API is the source of truth; the in-memory cache prevents redundant API calls per session.
 
-5. **DRY violation solved structurally** — `BranchMutatingTool(BaseTool)` sets `tool_category = "branch_mutating"` once. One enforcement.yaml rule covers all 14 branch-mutating tools. Adding a new mutating tool requires only inheriting from `BranchMutatingTool`.
+5. **DRY violation solved structurally** — `BranchMutatingTool(BaseTool)` sets `tool_category = "branch_mutating"` once. One enforcement.yaml rule covers all 18 branch-mutating tools. Adding a new mutating tool requires only inheriting from `BranchMutatingTool`.
 
 6. **Infrastructure already exists** — `BaseTool` is already an ABC with `enforcement_event` as class variable. `EnforcementRunner` already does tool-name dispatch. `tool_category` is a minimal, consistent extension of the existing mechanism.
 
