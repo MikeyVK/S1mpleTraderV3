@@ -1,15 +1,41 @@
 # mcp_server\core\interfaces\__init__.py
 # template=generic version=f35abd82 created=2026-03-12T15:02Z updated=
-"""Protocol interfaces for workflow state and gate orchestration."""
+"""Protocol interfaces for workflow state, gate orchestration, and PR status."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol
+from enum import Enum
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from mcp_server.config.schemas.phase_contracts_config import CheckSpec
     from mcp_server.managers.state_repository import BranchState
+
+
+class PRStatus(Enum):
+    """Lifecycle status of the PR on the current branch."""
+
+    OPEN = "open"
+    ABSENT = "absent"
+
+
+@runtime_checkable
+class IPRStatusReader(Protocol):
+    """Read the cached PR status for a branch."""
+
+    def get_pr_status(self, branch: str) -> PRStatus:
+        """Return the current PR status for *branch*."""
+        ...
+
+
+@runtime_checkable
+class IPRStatusWriter(Protocol):
+    """Write the PR status for a branch into the cache."""
+
+    def set_pr_status(self, branch: str, status: PRStatus) -> None:
+        """Persist *status* for *branch* in the session cache."""
+        ...
 
 
 @dataclass(frozen=True)

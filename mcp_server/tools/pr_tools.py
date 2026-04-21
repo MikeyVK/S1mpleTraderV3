@@ -5,10 +5,11 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.interfaces import IPRStatusWriter
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import GitConfig
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 
@@ -158,3 +159,39 @@ class MergePRTool(BaseTool):
         return ToolResult.text(
             f"Merged PR #{params.pr_number} using {params.merge_method} (SHA {result['sha']})"
         )
+
+
+class SubmitPRInput(BaseModel):
+    """Input for SubmitPRTool — atomic branch submission."""
+
+    head: str = Field(..., description="Source branch name (e.g. feature/42-name)")
+    title: str = Field(..., description="PR title")
+    base: str | None = Field(default=None, description="Target branch (defaults to main)")
+    body: str | None = Field(default=None, description="PR description (markdown)")
+    draft: bool = Field(default=False, description="Create as draft PR")
+
+
+class SubmitPRTool(BranchMutatingTool):
+    """Atomic branch-submission tool.
+
+    Performs: neutralize branch-local artifacts → commit → push → create PR
+    → write PRStatus.OPEN to PRStatusCache in one tool call.
+
+    Readiness gate (phase == ready) is enforced via enforcement.yaml, not here.
+    Blocked when PRStatus.OPEN already exists on this branch (check_pr_status rule).
+    """
+
+    name = "submit_pr"
+    description = "Atomically neutralize, commit, push, and create a PR for the current branch"
+    args_model = SubmitPRInput
+
+    def __init__(self, pr_status_writer: IPRStatusWriter) -> None:
+        self._pr_status_writer = pr_status_writer
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return super().input_schema
+
+    async def execute(self, params: SubmitPRInput, context: NoteContext) -> ToolResult:
+        del params, context
+        raise NotImplementedError("SubmitPRTool.execute() will be implemented in C3")

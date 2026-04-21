@@ -10,20 +10,6 @@ from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.tool_result import ToolResult
 
 
-class BranchMutatingTool(ABC):
-    """Zero-method ABC that marks a tool as branch-mutating.
-
-    Inheriting from this class sets tool_category = "branch_mutating", which
-    allows EnforcementRunner to apply the check_pr_status rule via a single
-    enforcement.yaml entry rather than 18 individual tool entries.
-
-    MergePRTool must NOT inherit from this class — it is the escape hatch that
-    clears PRStatus.OPEN and would cause a deadlock if blocked by that rule.
-    """
-
-    tool_category: str = "branch_mutating"
-
-
 class BaseTool(ABC):
     """Abstract base class for all tools.
 
@@ -71,3 +57,17 @@ class BaseTool(ABC):
             "type": "object",
             "properties": {},
         }
+
+
+class BranchMutatingTool(BaseTool):
+    """Zero-method ABC that marks a tool as branch-mutating.
+
+    Inheriting from this class sets tool_category = "branch_mutating", which
+    allows EnforcementRunner to apply the check_pr_status rule via a single
+    enforcement.yaml entry rather than 18 individual tool entries.
+
+    MergePRTool must NOT inherit from this class — it is the escape hatch that
+    clears PRStatus.OPEN and would cause a deadlock if blocked by that rule.
+    """
+
+    tool_category: str = "branch_mutating"
