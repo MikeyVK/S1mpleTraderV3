@@ -216,9 +216,9 @@ Documentation search, work context aggregation, and server administration.
 
 ```
 1. transition_phase(branch="feature/123-my-feature", to_phase="validation")
-2. git_push(set_upstream=True)
-3. transition_phase(branch="feature/123-my-feature", to_phase="ready")
-4. create_pr(title="...", body="...", head="feature/123-my-feature", base="main")
+2. transition_phase(branch="feature/123-my-feature", to_phase="ready")
+3. submit_pr(title="...", body="...", head="feature/123-my-feature", base="main")
+4. (after human approval)
 5. merge_pr(pr_number=42, merge_method="merge")
 ```
 

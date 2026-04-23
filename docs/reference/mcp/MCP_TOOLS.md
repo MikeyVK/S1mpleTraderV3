@@ -66,15 +66,20 @@ Create, list, and merge PRs with merge strategy options.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **CreatePRTool** | Create new PR | `title`, `body`, `head` (source branch), `base` (default: main), `draft` (optional) | PR number, URL |
+| **SubmitPRTool** | Create PR (atomic flow) | `title`, `head` (source branch), `body` (optional), `base` (default: main), `draft` (optional) | PR number, URL |
 | **ListPRsTool** | List PRs with filters | `state` (open/closed/all), `base` (optional), `head` (optional) | Formatted list with numbers, titles, status |
 | **MergePRTool** | Merge PR | `pr_number`, `commit_message` (optional), `merge_method` (only `"merge"` is supported) | Merge result, SHA, message |
 
+> **Note:** `CreatePRTool` has been deleted (issue #283). Use `submit_pr` — it performs an atomic
+> flow: neutralizes branch-local artifacts, commits, pushes, calls the GitHub API, and writes
+> `PRStatus.OPEN` to cache. Blocked unless `current_phase == "ready"`.
+
 **Usage Example:**
 ```
-1. create_pr title="Add feature X" body="..." head=feature/x
-2. list_prs state=open base=main
-3. merge_pr pr_number=42
+1. transition_phase(to_phase="ready")
+2. submit_pr(title="Add feature X", body="...", head="feature/x")
+3. (after human approval)
+4. merge_pr(pr_number=42)
 ```
 
 ### 4. Label Management Tools (5 tools)

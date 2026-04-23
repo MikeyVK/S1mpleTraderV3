@@ -164,11 +164,13 @@ transition_phase(to_phase="validation")
 **PR Creation & Merge:**
 ```
 1. transition_phase(to_phase="ready")
-2. git_add_or_commit(...)   ← triggers auto-exclude of .st3/state.json + .st3/deliverables.json
-3. create_pr(head="feature/42", base="main", title="...", body="...")
-4. Wait for human approval (ALWAYS REQUIRED)
-5. merge_pr(pr_number=X) - only after human approval
-6. Branch cleanup - discuss with human (context-dependent)
+2. submit_pr(head="feature/42", base="main", title="...", body="...")
+   ← atomic: neutralizes branch-local artifacts → commits → pushes → creates GitHub PR → sets PRStatus.OPEN
+   ← blocked by enforcement unless current_phase == "ready"
+   ← also blocked if the branch already has an open PR (check_pr_status)
+3. Wait for human approval (ALWAYS REQUIRED)
+4. merge_pr(pr_number=X) - only after human approval
+5. Branch cleanup - discuss with human (context-dependent)
    - State cleanup (.st3/state.json) is automatic on git_checkout
 ```
 
@@ -288,7 +290,7 @@ transition_phase(to_phase="validation")
 ### Pull Requests
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
-| Create PR | `create_pr(title, body, head, base, draft)` | `run_in_terminal("gh pr create")` |
+| Create PR (atomic) | `submit_pr(title, body, head, base, draft)` | `create_pr(...)` (internal, deleted as public tool) |
 | List PRs | `list_prs(state, base, head)` | `run_in_terminal("gh pr list")` |
 | Merge PR | `merge_pr(pr_number, commit_message, merge_method)` | `run_in_terminal("gh pr merge")` |
 
@@ -356,7 +358,9 @@ scaffold_artifact(
 
 ### Ready-Phase Enforcement (Issue #283)
 
-`create_pr` is geblokkeerd buiten de `ready` fase. `git_add_or_commit` in `ready` excludet automatisch branch-lokale artifacts uit de commit index.
+`submit_pr` is geblokkeerd buiten de `ready` fase. Alle `branch_mutating` tools zijn geblokkeerd zolang er een open PR bestaat op de huidige branch.
+
+**Branch-local artifacts** worden automatisch geneutraliseerd door `submit_pr` zelf — de enforcement runner doet dit NIET meer:
 
 | Artifact | Pad | Reden |
 |----------|-----|-------|
@@ -366,9 +370,20 @@ scaffold_artifact(
 Configuratie: `.st3/config/enforcement.yaml` + `.st3/config/phase_contracts.yaml`
 
 ```
-create_pr → pre-check: current_phase == "ready" → geblokkeerd als niet ready
-git_add_or_commit → pre: exclude_branch_local_artifacts → git rm --cached automatisch
+submit_pr          → pre: check_phase_readiness(policy=ready)   → geblokkeerd als phase != "ready"
+branch_mutating    → pre: check_pr_status                       → geblokkeerd als open PR bestaat
+create_branch      → pre: check_branch_policy                   → geblokkeerd bij ongeldige base
 ```
+
+**`submit_pr` atomaire flow (self-contained):**
+1. Detecteer branch-local artifacts met netto diff t.o.v. base via `GitManager.has_net_diff_for_path`
+2. Neutraliseer ze met `GitManager.neutralize_to_base` (git restore naar merge-base)
+3. `commit_with_scope(workflow_phase="ready", ...)`
+4. `push()`
+5. `GitHubManager.create_pr(...)` → GitHub API
+6. Schrijf `PRStatus.OPEN` naar cache
+
+**`MergePRTool` is bewust uitgesloten van `BranchMutatingTool`** — het is de escape hatch die `PRStatus.OPEN` wist. Zou het er wel in zitten, ontstaat een deadlock.
 
 ---
 
