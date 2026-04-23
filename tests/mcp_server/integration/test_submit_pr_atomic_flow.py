@@ -233,12 +233,12 @@ class TestCompositionRootContracts:
     def test_enforcement_yaml_has_exclude_artifacts_and_phase_readiness_for_submit_pr(
         self,
     ) -> None:
-        """enforcement.yaml must include both exclude_branch_local_artifacts and
-        check_phase_readiness as pre-actions for submit_pr.
+        """enforcement.yaml must NOT include exclude_branch_local_artifacts for submit_pr.
 
-        Finding C3-QA-2: without exclude_branch_local_artifacts on submit_pr,
-        ExclusionNotes are never populated before execute() runs — neutralization
-        is silently skipped in production even when branch-local artifacts exist.
+        C6 design decision D5 (revised): neutralisation is self-contained inside
+        SubmitPRTool.execute() via injected MergeReadinessContext. The enforcement
+        runner no longer needs to pre-populate ExclusionNotes.
+        check_phase_readiness must still be present.
         """
         workspace_root = Path(__file__).parents[3]
         config_path = workspace_root / ".st3" / "config" / "enforcement.yaml"
@@ -251,9 +251,9 @@ class TestCompositionRootContracts:
             for action in rule.get("actions", [])
         ]
 
-        assert "exclude_branch_local_artifacts" in submit_pr_actions, (
-            "submit_pr pre rule must include exclude_branch_local_artifacts so "
-            "ExclusionNotes are populated before execute() reads them."
+        assert "exclude_branch_local_artifacts" not in submit_pr_actions, (
+            "submit_pr mag geen exclude_branch_local_artifacts enforcement hebben; "
+            "neutralisatie is self-contained in SubmitPRTool.execute()"
         )
         assert "check_phase_readiness" in submit_pr_actions, (
             "submit_pr pre rule must include check_phase_readiness."

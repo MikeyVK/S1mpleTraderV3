@@ -99,8 +99,8 @@ Na neutralize slaat `git_add_or_commit` een marker op in het commit bericht. `cr
 | D1 | Policy gate vs operation logic | **Fase-check in enforcement.yaml; execution logic in tool** | Policy gates (mag deze tool draaien?) horen in enforcement/config. Operation invariants (hoe voer ik dit technisch correct uit?) horen in de tool. Neutralize, commit, push en PR-aanmaak zijn execution logic. De readiness-check is een policy gate. |
 | D2 | `CreatePRTool` bewaren? | **Nee, verwijderd in C5** | Delegatie-argument verviel: `SubmitPRTool` roept `github_manager.create_pr()` direct aan (§3.2 execution flow). `CreatePRTool` en `CreatePRInput` zijn dode code zonder hergebruik. Bijbehorende enforcement rule (`create_pr` pre: `check_merge_readiness`) ook verwijderd. |
 | D3 | Terminal-route in `GitCommitTool` | **Verwijderen** | Neutralisatie verplaatst naar `submit_pr`; terminal-route is dode code |
-| D4 | `git_add_or_commit` in ready-fase | **Blokkeren** | Ready-phase commits zijn exclusief aan `submit_pr` |
-| D5 | `exclude_branch_local_artifacts` rule | **Bijgesteld (C4 QA)** | Regel blijft op `git_add_or_commit` (normale commits). Ook toegevoegd aan `submit_pr` pre: enforcement hook produceert `ExclusionNote`s vóórdat `execute()` ze leest; zonder deze regel wordt neutralisatie in productie stilzwijgend overgeslagen. |
+| D4 | `git_add_or_commit` in ready-fase | **GESCHRAPT** (2026-04-23 QA-sparring) | `git_add_or_commit` draait normaal in alle fasen. Lockdown post-`submit_pr` via `BranchMutatingTool` + `check_pr_status` dekt dit correct af. D4 was inconsistent met het kip-ei probleem dat research beschrijft. |
+| D5 | `exclude_branch_local_artifacts` rule | **HERZIEN** (2026-04-23 QA-sparring) | Beide `exclude_branch_local_artifacts`-regels verwijderd (`git_add_or_commit` én `submit_pr`). Neutralisatie self-contained in `SubmitPRTool.execute()` via geïnjecteerde `MergeReadinessContext`. |
 | D6 | Post-PR gap enforcement | **In-scope** via `PRStatusCache` | Bounded, helder gedefinieerd; samen met D7 één coherent pakket |
 | D7 | Tool-categorie enforcement (DRY) | **`BranchMutatingTool` ABC** + `tool_category` | Één yaml-regel dekt 18 tools; nieuwe tools kiezen simpelweg de juiste ABC. `merge_pr` is expliciet geen `BranchMutatingTool` — zie sectie 3.4. |
 | D8 | `EnforcementRule` schema-uitbreiding | **`tool_category` veld toevoegen** | Optioneel veld, validator enforceert `tool` OR `tool_category` bij `event_source == "tool"` |
@@ -123,16 +123,21 @@ Na neutralize slaat `git_add_or_commit` een marker op in het commit bericht. `cr
 
 ```
 SubmitPRTool.execute()
-  1. _read_current_phase(branch)         ← leest state.json vóór neutralize (puur informatief: voor CommitNote en logging; geen gate — readiness-gate zit in enforcement.yaml)
-  2. _check_net_diff(artifacts, base)    ← conditioneel: heeft branch netto diff in branch-lokale artefacten?
-  3. neutralize_to_base(artifacts)       ← alleen als stap 2 positief is (anders skip)
-  4. commit_with_scope("ready", ...)     ← chore(P_READY): neutralize...
-  5. push(head)                          ← push naar remote
-  6. github.create_pr(head, base, ...)   ← PR aanmaken via API
-  7. pr_status_writer.set_pr_status(     ← OPEN in PRStatusCache
+  1. _read_current_phase(branch)         ← leest state.json vóór neutralize (voor logging/CommitNote; geen gate)
+  2. artifacts = merge_readiness_context.branch_local_artifacts
+  3. paths_to_neutralize = [a.path for a in artifacts
+                             if adapter.has_net_diff_for_path(a.path, base)]
+  4. neutralize_to_base(frozenset(paths_to_neutralize), base)
+           [alleen als stap 3 niet leeg]
+  5. commit_with_scope("ready", ...)     ← chore(P_READY): neutralize...
+  6. push(head)                          ← push naar remote
+  7. github.create_pr(head, base, ...)   ← PR aanmaken via API
+  8. pr_status_writer.set_pr_status(     ← OPEN in PRStatusCache
        branch, PRStatus.OPEN)
 ```
-**Foutafhandeling:** Bij fout in stap 4-7 wordt een `RecoveryNote` geproduceerd. Geen rollback van neutralize (is een content-revert, niet destructief).
+**Constructor-injectie:** `SubmitPRTool.__init__(merge_readiness_context: MergeReadinessContext, ...)`
+
+**Foutafhandeling:** Bij fout in stap 5-8 wordt een `RecoveryNote` geproduceerd. Geen rollback van neutralize (is een content-revert, niet destructief).
 
 **Inheritance:** `SubmitPRTool(BranchMutatingTool)` — geblokkeerd als er al een open PR is op deze branch (check_pr_status enforcement, pre). De readiness-gate (`check_phase_readiness`) is een aparte enforcement rule op `tool: submit_pr, timing: pre`.
 
@@ -191,43 +196,34 @@ BranchMutatingTool(BaseTool) (ABC)         (nieuw)
 - Voeg `tool_category: str | None = None` toe aan `EnforcementRule`
 - Update `validate_target`: accepteer `tool` OF `tool_category` bij `event_source == "tool"`
 
-**`mcp_server/managers/enforcement_runner.py`:**
-- `run()`: dispatch op zowel `rule.tool == event` als `rule.tool_category == tool_category`
-- `_handle_check_pr_status()`: nieuwe handler — leest `IPRStatusReader`, blokkeert bij `OPEN`
-- `_validate_registered_actions()`: uitbreiden met `KNOWN_CATEGORIES`-check voor fail-fast
-- Verwijder: `_handle_exclude_branch_local_artifacts`, `_handle_check_merge_readiness`
-
 **`.st3/config/enforcement.yaml`:**
 
 ```yaml
-# Verwijderen:
+# Verwijderd (C6):
 - event_source: tool
   tool: git_add_or_commit
   timing: pre
   actions: [exclude_branch_local_artifacts]
 
 - event_source: tool
-  tool: create_pr
+  tool: create_pr  # verwijderd in C5
   timing: pre
   actions: [check_merge_readiness]
 
-# Toevoegen:
-- event_source: tool
-  tool_category: branch_mutating
-  timing: pre
-  actions:
-    - type: check_pr_status
+# Eindresultaat enforcement.yaml bevat 3 entries:
+#   create_branch      → check_branch_policy
+#   tool_category: branch_mutating → check_pr_status
+#   submit_pr          → check_phase_readiness: ready
 ```
 
-```yaml
-# Toevoegen (submit_pr readiness gate):
-- event_source: tool
-  tool: submit_pr
-  timing: pre
-  actions:
-    - type: check_phase_readiness
-      policy: ready
-```
+**`mcp_server/managers/enforcement_runner.py`:**
+- `run()`: dispatch op zowel `rule.tool == event` als `rule.tool_category == tool_category`
+- `_handle_check_pr_status()`: nieuwe handler — leest `IPRStatusReader`, blokkeert bij `OPEN`
+- `_validate_registered_actions()`: uitbreiden met `KNOWN_CATEGORIES`-check voor fail-fast
+- Verwijderd (C6): `_handle_exclude_branch_local_artifacts` (inclusief registry-registratie)
+- Verwijderd (C6): `_handle_check_merge_readiness` (inclusief registry-registratie)
+- Verwijderd (C6): `merge_readiness_context` parameter uit `__init__` en bijbehorend attribuut
+- BEWAAR: `_read_current_phase` (nog gebruikt door `_handle_check_phase_readiness`)
 
 ### 3.6. Composition Root (server.py)
 

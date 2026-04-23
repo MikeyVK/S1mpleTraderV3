@@ -48,7 +48,7 @@ The planning is explicitly **FLAG DAY**: no backward-compat shims, no dual paths
 
 ## 4. Summary
 
-Five compact TDD cycles are sufficient for this implementation. The split is intentionally coarse enough to stay human-readable, but still disciplined enough to give each cycle a small, verifiable exit.
+Six TDD cycles are sufficient for this implementation. The split is intentionally coarse enough to stay human-readable, but still disciplined enough to give each cycle a small, verifiable exit.
 
 | Cycle | Focus | Why it stands alone |
 |------|-------|---------------------|
@@ -57,6 +57,7 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 | C3 | submit_pr execution | Delivers the new atomic path and removes the old ready-phase path |
 | C4 | Branch lockdown rollout | Applies the new category model to all mutating tools and merge exit |
 | C5 | Flag-day cleanup | Deletes legacy behavior, rewrites tests/docs, and proves clean break |
+| C6 | BranchMutatingTool rollout + enforcement cleanup | Rolls out remaining 17 tools; removes exclude_branch_local_artifacts; SubmitPRTool self-contained |
 
 ---
 
@@ -66,6 +67,7 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 - C3 depends on C1 + C2.
 - C4 depends on C2 + C3.
 - C5 depends on C1-C4.
+- C6 depends on C1-C5.
 - No safe parallel track is planned; this is a flag-day branch and sequential execution reduces cleanup risk.
 
 ---
@@ -174,6 +176,45 @@ Five compact TDD cycles are sufficient for this implementation. The split is int
 
 ---
 
+### Cycle 6 - BranchMutatingTool Rollout + Enforcement Cleanup
+
+**Goal:** Roll out `BranchMutatingTool` to all 17 remaining tools; remove both `exclude_branch_local_artifacts` rules from `enforcement.yaml`; make `SubmitPRTool` self-contained for neutralisation; delete all legacy test files; pass all quality gates.
+
+**Files likely touched:**
+- `mcp_server/tools/git_tools.py` (6 tools → BranchMutatingTool)
+- `mcp_server/tools/git_pull_tool.py`
+- `mcp_server/tools/safe_edit_tool.py`
+- `mcp_server/tools/code_tools.py`
+- `mcp_server/tools/scaffold_artifact.py`
+- `mcp_server/tools/project_tools.py` (3 tools)
+- `mcp_server/tools/phase_tools.py` (4 tools via `_BaseTransitionTool`)
+- `mcp_server/managers/enforcement_runner.py` (remove handlers + params)
+- `mcp_server/tools/pr_tools.py` (SubmitPRTool self-contained neutralisation)
+- `mcp_server/server.py` (wire MergeReadinessContext to SubmitPRTool)
+- `.st3/config/enforcement.yaml` (remove exclude_branch_local_artifacts entries)
+- `tests/mcp_server/integration/test_pr_status_lockdown.py` (new)
+- legacy test files (delete 4)
+
+**Deliverables:**
+1. All 18 `BranchMutatingTool` subclasses confirmed via `test_pr_status_lockdown.py`.
+2. `enforcement.yaml` contains zero `exclude_branch_local_artifacts` entries.
+3. `_handle_exclude_branch_local_artifacts` and `_handle_check_merge_readiness` removed from `enforcement_runner.py`.
+4. `SubmitPRTool.execute()` uses injected `MergeReadinessContext`; no `ExclusionNote` read.
+5. Four legacy test files deleted (flag-day).
+6. `run_quality_gates(scope="branch")` → 7/7 green.
+7. Full test suite passes with no regressions.
+
+**Exit criteria:**
+- `issubclass(T, BranchMutatingTool)` passes for all 18 tool classes.
+- `enforcement.yaml` contains no `exclude_branch_local_artifacts` text.
+- `enforcement_runner.py` contains neither `_handle_exclude_branch_local_artifacts` nor `_handle_check_merge_readiness`.
+- `SubmitPRTool.execute()` contains no `context.of_type(ExclusionNote)` call.
+- Legacy test files absent from the repository.
+- `run_quality_gates(scope="branch")` → 7/7 green.
+- `run_tests(path="tests/")` → all green, no regressions.
+
+---
+
 ## 7. Risks and Controls
 
 - **Risk:** Half-migrated tool inventory leaves gaps in post-PR enforcement.
@@ -192,7 +233,7 @@ This appendix is the compact payload model for `save_planning_deliverables`.
 ```json
 {
   "tdd_cycles": {
-    "total": 5,
+    "total": 6,
     "cycles": [
       {
         "cycle_number": 1,
@@ -430,6 +471,72 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           }
         ],
         "exit_criteria": "Legacy workflow grep closure is clean; full suite and branch quality gates pass"
+      },
+      {
+        "cycle_number": 6,
+        "deliverables": [
+          {
+            "id": "C6.1",
+            "description": "All 18 BranchMutatingTool subclasses confirmed by test_pr_status_lockdown.py",
+            "validates": {
+              "type": "file_exists",
+              "file": "tests/mcp_server/integration/test_pr_status_lockdown.py"
+            }
+          },
+          {
+            "id": "C6.2",
+            "description": "enforcement.yaml contains no exclude_branch_local_artifacts entries",
+            "validates": {
+              "type": "absent_text",
+              "file": ".st3/config/enforcement.yaml",
+              "text": "exclude_branch_local_artifacts"
+            }
+          },
+          {
+            "id": "C6.3",
+            "description": "_handle_exclude_branch_local_artifacts removed from enforcement_runner.py",
+            "validates": {
+              "type": "absent_text",
+              "file": "mcp_server/managers/enforcement_runner.py",
+              "text": "_handle_exclude_branch_local_artifacts"
+            }
+          },
+          {
+            "id": "C6.4",
+            "description": "_handle_check_merge_readiness removed from enforcement_runner.py",
+            "validates": {
+              "type": "absent_text",
+              "file": "mcp_server/managers/enforcement_runner.py",
+              "text": "_handle_check_merge_readiness"
+            }
+          },
+          {
+            "id": "C6.5",
+            "description": "SubmitPRTool.execute() uses MergeReadinessContext instead of ExclusionNote",
+            "validates": {
+              "type": "absent_text",
+              "file": "mcp_server/tools/pr_tools.py",
+              "text": "of_type(ExclusionNote)"
+            }
+          },
+          {
+            "id": "C6.6",
+            "description": "Legacy test file test_enforcement_runner_c3.py deleted",
+            "validates": {
+              "type": "file_absent",
+              "file": "tests/mcp_server/unit/managers/test_enforcement_runner_c3.py"
+            }
+          },
+          {
+            "id": "C6.7",
+            "description": "Legacy test file test_git_tools_c8_terminal_route.py deleted",
+            "validates": {
+              "type": "file_absent",
+              "file": "tests/mcp_server/unit/tools/test_git_tools_c8_terminal_route.py"
+            }
+          }
+        ],
+        "exit_criteria": "All 18 BranchMutatingTool subclasses confirmed; enforcement cleanup complete; legacy tests deleted; quality gates 7/7 green"
       }
     ]
   }
@@ -450,5 +557,6 @@ This appendix is the compact payload model for `save_planning_deliverables`.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2026-04-23 | Agent | C6 added: summary table (5→6), §5 dependency, §6 Cycle 6 section, §8 C6 deliverables payload |
 | 1.1 | 2026-04-21 | Agent | QA corrections: C1.3 → validates interfaces file; C1.5 added for cache; C3.2 description clarified; C3.5 added for CreatePRTool class survival; C4.1/C4.4 validates moved from base.py/design-doc to integration test; C5.3 → test_ready_phase_enforcement.py; C5.5 added for test_all_tools.py |
 | 1.0 | 2026-04-21 | Agent | New compact planning for submit_pr + PRStatusCache + BranchMutatingTool implementation |

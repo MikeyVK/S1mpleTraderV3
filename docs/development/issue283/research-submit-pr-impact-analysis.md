@@ -87,6 +87,20 @@ Call 2: create_pr(head="feature/42", base="main")
 - `transition_phase` also fails because `state.json` now references a different issue
 - Even `force_phase_transition` fails: "Project plan not found for issue 283"
 
+### R-ADDENDUM-1: `exclude_branch_local_artifacts` was zelf een root cause
+
+**Finding R-ADDENDUM-1** (2026-04-23, post-QA-sparring):
+
+De `exclude_branch_local_artifacts` enforcement rule op `git_add_or_commit` was niet alleen een symptoom maar een **actieve root cause** van het kip-ei probleem. Door `state.json` uit de git-index te verwijderen vóór de commit, laadt `_read_current_phase` daarna de merge-base versie van `state.json`. Hierdoor leest `check_phase_readiness` (en eerder `check_merge_readiness`) de verkeerde fase — niet de fase van de werkende branch.
+
+**Correctie:** Beide `exclude_branch_local_artifacts`-regels worden volledig verwijderd uit `enforcement.yaml`:
+- van `git_add_or_commit` (was de directe trigger van het kip-ei)
+- van `submit_pr` (enforcement-route vervalt; neutralisatie is self-contained in `SubmitPRTool.execute()`)
+
+Neutralisatie is voortaan **self-contained** in `SubmitPRTool.execute()` via een geïnjecteerde `MergeReadinessContext`. Het `ExclusionNote`-leespatroon uit `execute()` verdwijnt volledig.
+
+---
+
 ### 2. Proposed Solution: `submit_pr` Atomic Tool
 
 `submit_pr` performs the entire ready-phase completion in a single tool call:
