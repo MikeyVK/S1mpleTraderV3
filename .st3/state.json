@@ -1,295 +1,37 @@
 {
-  "branch": "refactor/283-ready-phase-enforcement",
-  "issue_number": 283,
-  "workflow_name": "refactor",
+  "branch": "bug/280-gitcommittool-crash-no-state-json",
+  "issue_number": 280,
+  "workflow_name": "bug",
   "current_phase": "documentation",
   "current_cycle": null,
-  "last_cycle": 6,
-  "cycle_history": [
-    {
-      "cycle_number": 2,
-      "name": "ConfigLoader Static Helper + server.py Injection",
-      "forced": false,
-      "entered": "2026-04-09T18:22:29.904840+00:00"
-    },
-    {
-      "cycle_number": 3,
-      "name": "MergeReadinessContext + EnforcementRunner + ConfigValidator",
-      "forced": false,
-      "entered": "2026-04-09T18:46:37.018224+00:00"
-    },
-    {
-      "cycle_number": 4,
-      "name": "Tool Enforcement Event Declarations + Integration",
-      "forced": false,
-      "entered": "2026-04-09T20:20:42.218017+00:00"
-    },
-    {
-      "cycle_number": 5,
-      "name": "Cleanup",
-      "forced": false,
-      "entered": "2026-04-09T20:54:16.075298+00:00"
-    },
-    {
-      "cycle_number": 2,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-14T07:05:36.346754+00:00"
-    },
-    {
-      "cycle_number": 3,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-14T09:04:57.345967+00:00"
-    },
-    {
-      "cycle_number": 4,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-14T16:34:23.870782+00:00"
-    },
-    {
-      "cycle_number": 5,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-14T19:50:08.066008+00:00"
-    },
-    {
-      "cycle_number": 6,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-14T19:57:49.502694+00:00"
-    },
-    {
-      "cycle_number": 7,
-      "name": "Unknown",
-      "entered": "2026-04-15T18:01:18.113445+00:00",
-      "forced": true,
-      "skip_reason": "C1-C6 zijn in eerdere implementatieronden ge\u00efmplementeerd en ge-committed op deze branch. De cycle counter is bij de planning-reset op 1 teruggezet. C7 is de eerste nieuwe cycle in deze implementatieronde.",
-      "human_approval": "User: goedgekeurd op 2026-04-15 via chat \u2014 C1-C6 zijn al ge\u00efmplementeerd, C7 is de eerste nieuwe cycle",
-      "skipped_cycles": [
-        2,
-        3,
-        4,
-        5,
-        6
-      ]
-    },
-    {
-      "cycle_number": 8,
-      "name": "Unknown",
-      "entered": "2026-04-15T18:17:08.006288+00:00",
-      "forced": true,
-      "skip_reason": "C7 deliverables zijn gevalideerd via run_quality_gates (6/6) en run_tests (7/7 groen). Exit criteria zijn aantoonbaar voldaan maar niet formeel als exit_criteria in deliverables geregistreerd.",
-      "human_approval": "User: goedgekeurd op 2026-04-15 via chat",
-      "skipped_cycles": []
-    },
-    {
-      "cycle_number": 9,
-      "name": "Unknown",
-      "entered": "2026-04-15T18:46:37.055892+00:00",
-      "forced": true,
-      "skip_reason": "C8 exit criteria not defined in deliverables (planning gap from earlier sessions). C8 is complete: 17/17 tests green, 5/5 quality gates pass, QA blocker resolved, pushed to remote.",
-      "human_approval": "User approved via chat: 'Door met de volgende cycle' (2026-04-15)",
-      "skipped_cycles": []
-    },
-    {
-      "cycle_number": 10,
-      "name": "Unknown",
-      "entered": "2026-04-15T19:07:56.101960+00:00",
-      "forced": true,
-      "skip_reason": "C9 exit criteria not defined in deliverables. C9 complete: 10/10 tests green, 5/5 quality gates, D3c messaging + default_base_branch injection done, pushed.",
-      "human_approval": "User approved via chat: 'Door met cycle 10' (2026-04-15)",
-      "skipped_cycles": []
-    },
-    {
-      "cycle_number": 2,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-21T15:18:57.210128+00:00"
-    },
-    {
-      "cycle_number": 3,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-21T16:14:43.868661+00:00"
-    },
-    {
-      "cycle_number": 4,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-21T16:56:33.581416+00:00"
-    },
-    {
-      "cycle_number": 5,
-      "name": "Unknown",
-      "forced": false,
-      "entered": "2026-04-21T20:28:05.931038+00:00"
-    },
-    {
-      "cycle_number": 6,
-      "name": "BranchMutatingTool rollout + enforcement cleanup + kwaliteitspoort",
-      "forced": false,
-      "entered": "2026-04-23T09:38:50.313352+00:00"
-    },
-    {
-      "cycle_number": 6,
-      "name": "BranchMutatingTool rollout + enforcement cleanup + kwaliteitspoort",
-      "entered": "2026-04-23T10:57:05.751759+00:00",
-      "forced": true,
-      "skip_reason": "QA blocker requires re-entering C6 REFACTOR; was forced back to implementation from validation",
-      "human_approval": "User directed LoD fix as continuation of C6",
-      "skipped_cycles": [
-        2,
-        3,
-        4,
-        5
-      ]
-    },
-    {
-      "cycle_number": 6,
-      "name": "BranchMutatingTool rollout + enforcement cleanup + kwaliteitspoort",
-      "entered": "2026-04-23T11:03:22.776134+00:00",
-      "forced": true,
-      "skip_reason": "Re-entering C6 REFACTOR to close QA coverage finding on GitManager delegator tests",
-      "human_approval": "User directed continuation of C6 for QA finding resolution",
-      "skipped_cycles": [
-        2,
-        3,
-        4,
-        5
-      ]
-    }
-  ],
+  "last_cycle": 1,
+  "cycle_history": [],
   "required_phases": [
     "research",
     "planning",
+    "design",
     "implementation",
     "validation",
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Terug naar documentation om versiegeschiedenis en session-commits correct te reflecteren in issue283 docs voordat PR wordt aangemaakt",
-  "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
+  "skip_reason": "Single FileNotFoundError catch in execute(). Root cause, fix location and test strategy are all obvious from reading the code.",
+  "issue_title": "GitCommitTool crashes on branches without state.json (e.g. main)",
   "parent_branch": null,
-  "created_at": "2026-04-09T11:43:14.613856+00:00",
+  "created_at": "2026-04-09T05:35:28.724092+00:00",
   "transitions": [
     {
       "from_phase": "research",
-      "to_phase": "design",
-      "timestamp": "2026-04-09T12:05:17.199643+00:00",
-      "human_approval": "User approved on 2026-04-09 \u2014 'laten we voor nu overgang naar design fase forceren'",
-      "forced": true,
-      "skip_reason": "Refactor workflow does not include a design phase by default. Design phase is required for this issue: the Expected Results framework must be elaborated into concrete YAML structures, Pydantic model shape, tool contracts, and loader behavior before implementation cycles can be defined."
-    },
-    {
-      "from_phase": "design",
-      "to_phase": "planning",
-      "timestamp": "2026-04-09T14:15:57.768586+00:00",
-      "human_approval": "User approved on 2026-04-09",
-      "forced": true,
-      "skip_reason": "Design phase is not part of the refactor workflow; design is complete (FINAL status) and planning is the next logical phase."
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "design",
-      "timestamp": "2026-04-09T16:06:03.502968+00:00",
-      "human_approval": "User approved on 2026-04-09",
-      "forced": true,
-      "skip_reason": "QA v2 found 17 violations (8 CRITICAL) including ADR breaches, architectural regressions, and test blast radius. Design must be revised to v2.0 before planning can continue."
-    },
-    {
-      "from_phase": "design",
-      "to_phase": "planning",
-      "timestamp": "2026-04-09T16:25:00.867479+00:00",
-      "human_approval": "User approved on 2026-04-09",
-      "forced": true,
-      "skip_reason": "Design phase not part of refactor workflow; design v2.0 is FINAL after QA GO verdict."
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "tdd",
-      "timestamp": "2026-04-09T17:39:07.674834+00:00",
-      "human_approval": "User approved transition to tdd on 2026-04-09",
-      "forced": true,
-      "skip_reason": "Refactor workflow has no integration phase between planning and tdd; planning artifacts are complete and QA-approved"
-    },
-    {
-      "from_phase": "tdd",
       "to_phase": "implementation",
-      "timestamp": "2026-04-09T17:45:51.900841+00:00",
-      "human_approval": "User approved 2026-04-09: workflow uses tdd phase name, system maps to implementation",
+      "timestamp": "2026-04-09T05:35:36.087155+00:00",
+      "human_approval": "User approved 2026-04-09: trivial one-liner catch, no design required",
       "forced": true,
-      "skip_reason": "State shows tdd but workflow tool requires implementation; names are equivalent in this workflow"
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-10T11:05:08.908622+00:00",
-      "human_approval": "User approved on 2026-04-10",
-      "forced": true,
-      "skip_reason": "Validation phase skipped \u2014 full suite (2708 passed, 0 failed) en quality gates (6/6 groen) zijn voldoende validatie voor deze refactor. QA-review was al uitgevoerd per cycle."
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "ready",
-      "timestamp": "2026-04-10T12:02:18.841831+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "ready",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-10T12:14:29.675506+00:00",
-      "human_approval": "User approved force transition back to documentation for QA fixes \u2014 2026-04-10",
-      "forced": true,
-      "skip_reason": "QA review found 9 blockers (merge_method validation, phase param, tool counts) in README.md, MCP_TOOLS.md, github.md \u2014 must fix before merge"
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "ready",
-      "timestamp": "2026-04-10T12:23:05.077572+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "ready",
-      "to_phase": "research",
-      "timestamp": "2026-04-10T16:25:24.077305+00:00",
-      "human_approval": "User approved force transition to research on 2026-04-10 to document findings before solution design",
-      "forced": true,
-      "skip_reason": "Capture fresh findings for the git_add_or_commit branch-local artifact regression before designing the proper fix. No implementation changes should proceed from ready until research reflects the current runtime and commit-path behavior."
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "design",
-      "timestamp": "2026-04-11T18:28:29.755574+00:00",
-      "human_approval": "User approved in chat op 2026-04-11",
-      "forced": true,
-      "skip_reason": "Research doc v1.5 is QA-approved na twee review rondes. Research fase is inhoudelijk afgesloten. Directe overgang naar design."
-    },
-    {
-      "from_phase": "design",
-      "to_phase": "planning",
-      "timestamp": "2026-04-13T19:27:41.970135+00:00",
-      "human_approval": "User approved: QA GO verdict op v11.0, overgang naar planning geautoriseerd (2026-04-13)",
-      "forced": true,
-      "skip_reason": "QA GO verdict ontvangen na v11.0 review \u2014 alle eerdere blockers gesloten. Design is stabiel voor planning. Laatste cleanup (stale git log in decision table) is gecommit. Force transition omdat sequential validation al volledig afgerond is via QA-sessies."
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-04-13T20:24:44.858180+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
+      "skip_reason": "Single FileNotFoundError catch in execute(). Root cause, fix location and test strategy are all obvious from reading the code."
     },
     {
       "from_phase": "implementation",
       "to_phase": "validation",
-      "timestamp": "2026-04-15T04:39:14.668365+00:00",
+      "timestamp": "2026-04-09T05:46:17.704433+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null
@@ -297,162 +39,10 @@
     {
       "from_phase": "validation",
       "to_phase": "documentation",
-      "timestamp": "2026-04-15T05:30:54.407782+00:00",
+      "timestamp": "2026-04-09T05:46:22.977655+00:00",
       "human_approval": null,
       "forced": false,
       "skip_reason": null
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "ready",
-      "timestamp": "2026-04-15T05:30:57.482742+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "ready",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-15T05:32:48.842481+00:00",
-      "human_approval": "User approved via chat op 2026-04-15",
-      "forced": true,
-      "skip_reason": "Terugkeren naar documentation voor reference docs, agent.md review, issue update en PR scaffold \u2014 documentatiewerk hoort niet in ready"
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "ready",
-      "timestamp": "2026-04-15T05:36:34.503324+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "ready",
-      "to_phase": "research",
-      "timestamp": "2026-04-15T17:16:12.259137+00:00",
-      "human_approval": "User: goedgekeurd op 2026-04-15 via chat",
-      "forced": true,
-      "skip_reason": "Terug naar research zodat QA het Model 1 ontwerp kan reviewen v\u00f3\u00f3r implementatieronde C7\u2013C10 begint"
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "planning",
-      "timestamp": "2026-04-15T17:42:14.484740+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-04-15T17:48:25.428233+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-15T19:52:02.842168+00:00",
-      "human_approval": "User: \"Door naar doc fase met force transition\" \u2014 2026-04-15",
-      "forced": true,
-      "skip_reason": "C10 is het laatste TDD-cycle \u2014 alle D5 test-cleanup compleet (mock class verwijderd, Scenario A/B/C correct gedekt). Validation phase overgeslagen: geen nieuwe productie-code in C10, alleen test-verwijdering en herconfiguratie. Bestaande productie-code is al volledig gevalideerd door C7\u2013C9 QA-sessies."
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "research",
-      "timestamp": "2026-04-16T05:33:45.081670+00:00",
-      "human_approval": "User: \"Draai de ready commit terug en force transitie naar de research fase\" \u2014 2026-04-16",
-      "forced": true,
-      "skip_reason": "Kip-ei probleem ontdekt: neutralize_to_base herstelt state.json naar main-versie, waardoor create_pr de fase niet meer kan verifi\u00ebren. Research nodig voor oplossingsrichting."
-    },
-    {
-      "from_phase": "research",
-      "to_phase": "design",
-      "timestamp": "2026-04-21T10:08:18.800315+00:00",
-      "human_approval": "User: michelevanderheijden heeft de design-beslissingen D1-D8 en de scope van PRStatusCache + BranchMutatingTool ABC goedgekeurd in conversatie van 2026-04-21.",
-      "forced": true,
-      "skip_reason": "Research phase is volledig afgerond. Alle findings zijn gedocumenteerd inclusief PRStatusCache, BranchMutatingTool ABC, en tool_category enforcement. De sequenti\u00eble constraint (research \u2192 design) is inhoudelijk voldaan; de forced transition is puur administratief omdat de state na eerdere force-transitie vanuit documentation startte in research."
-    },
-    {
-      "from_phase": "design",
-      "to_phase": "planning",
-      "timestamp": "2026-04-21T13:55:02.898198+00:00",
-      "human_approval": "User approved on 2026-04-21",
-      "forced": true,
-      "skip_reason": "Research and design are accepted for planning; user approved moving to planning to prepare compact human-readable cycles and refresh planning deliverables."
-    },
-    {
-      "from_phase": "planning",
-      "to_phase": "implementation",
-      "timestamp": "2026-04-21T14:37:31.488446+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "validation",
-      "timestamp": "2026-04-23T10:27:59.293466+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "validation",
-      "to_phase": "implementation",
-      "timestamp": "2026-04-23T10:56:50.504172+00:00",
-      "human_approval": "User directed to fix QA NO-GO (LoD \u00a77) and return to validation",
-      "forced": true,
-      "skip_reason": "QA blocker: Law of Demeter violation in SubmitPRTool \u2014 fix requires single REFACTOR commit to implementation phase"
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "validation",
-      "timestamp": "2026-04-23T10:57:15.918336+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "validation",
-      "to_phase": "implementation",
-      "timestamp": "2026-04-23T11:03:13.501728+00:00",
-      "human_approval": "User directed missing unit test addition per QA finding",
-      "forced": true,
-      "skip_reason": "Adding missing GitManager unit tests per QA finding \u2014 minor test coverage gap, no production code change"
-    },
-    {
-      "from_phase": "implementation",
-      "to_phase": "validation",
-      "timestamp": "2026-04-23T11:03:28.609682+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "validation",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-23T11:08:29.855427+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "documentation",
-      "to_phase": "ready",
-      "timestamp": "2026-04-23T12:24:28.324685+00:00",
-      "human_approval": null,
-      "forced": false,
-      "skip_reason": null
-    },
-    {
-      "from_phase": "ready",
-      "to_phase": "documentation",
-      "timestamp": "2026-04-23T12:26:16.587564+00:00",
-      "human_approval": "User approved op 2026-04-23",
-      "forced": true,
-      "skip_reason": "Terug naar documentation om versiegeschiedenis en session-commits correct te reflecteren in issue283 docs voordat PR wordt aangemaakt"
     }
   ],
   "reconstructed": false
