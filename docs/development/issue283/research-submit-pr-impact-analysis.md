@@ -18,7 +18,7 @@ GitHub branch protection rules, full audit trail for non-agent actors, hot-reloa
 
 **Implementation constraint — FLAG DAY:**
 Deze implementatie is een clean break. Er worden géén backward-compat shims, transitielagen of deprecated code-paden achtergelaten. Concreet:
-- `create_pr` als geregistreerde MCP tool wordt verwijderd (klasse blijft als interne utility)
+- `create_pr` als geregistreerde MCP tool wordt verwijderd (klasse volledig verwijderd — zie D2 actual outcome)
 - De terminal-route in `GitCommitTool.execute()` (~regels 370-395) wordt verwijderd
 - De `exclude_branch_local_artifacts` enforcement rule wordt verwijderd uit enforcement.yaml
 - De `create_pr → check_merge_readiness` enforcement rule wordt verwijderd
@@ -115,13 +115,13 @@ Neutralisatie is voortaan **self-contained** in `SubmitPRTool.execute()` via een
 | 6 | Push to remote | `GitAdapter.push()` |
 | 7 | Create PR via GitHub API | `GitHubManager.create_pr()` |
 
-`create_pr` (the class) stays as production code but is **not registered** as an MCP tool.
+`create_pr` (the class) was **deleted entirely** in the final implementation — `SubmitPRTool` delegates directly to `GitHubManager.create_pr()` instead. *(Earlier plan: keep as internal utility — superseded, see D2)*
 
 ### 3. Production Code Impact
 
 | File | Change Required |
 |------|----------------|
-| `mcp_server/tools/pr_tools.py` | Add `SubmitPRTool` + `SubmitPRInput`. `CreatePRTool` retained for internal use, removed from MCP registration |
+| `mcp_server/tools/pr_tools.py` | Add `SubmitPRTool` + `SubmitPRInput`. `CreatePRTool` **deleted entirely** — `SubmitPRTool` calls `GitHubManager.create_pr()` directly |
 | `mcp_server/server.py` | Register `SubmitPRTool` instead of `CreatePRTool` in tool list |
 | `mcp_server/managers/enforcement_runner.py` | `check_merge_readiness` handler unchanged — called internally by `SubmitPRTool.execute()` |
 | `.st3/config/enforcement.yaml` | `tool: create_pr` → `tool: submit_pr` OR remove rule (enforcement becomes internal) |
@@ -242,9 +242,9 @@ After neutralize: `state.json.branch == "main"` (merge-base version), but `curre
 | # | Decision | Options | Recommendation |
 |---|----------|---------|----------------|
 | D1 | Enforcement: policy gate vs operation logic | A) Fase-check intern in `submit_pr.execute()` B) Fase-check in enforcement.yaml, execution logic in tool | **B** (revised): Policy gates (mag deze tool draaien?) horen in enforcement/config. Operation invariants (hoe voer ik dit technisch correct uit?) horen in de tool. Neutralize, commit, push en PR-aanmaak zijn execution logic. De readiness-check is een policy gate — die hoort in enforcement.yaml als `check_phase_readiness` rule op `tool: submit_pr, timing: pre`. |
-| D2 | `create_pr` class fate | A) Delete entirely B) Keep as internal utility | **B**: Keep for `submit_pr` to delegate PR creation to |
+| D2 | `create_pr` class fate | A) Delete entirely B) Keep as internal utility | ~~B~~ → **ACTUAL: A** — `CreatePRTool` deleted; `SubmitPRTool` delegates to `GitHubManager.create_pr()` directly |
 | D3 | Terminal-route in GitCommitTool | A) Remove entirely B) Keep for backward compat | **A**: No longer needed — neutralize moves to `submit_pr` |
-| D4 | `git_add_or_commit` in ready phase | A) Block ready-phase commits B) Allow but skip neutralize | **A**: Ready-phase commits are now handled by `submit_pr` only |
+| D4 | `git_add_or_commit` in ready phase | A) Block ready-phase commits B) Allow but skip neutralize | ~~A~~ → **ACTUAL: B** — `git_add_or_commit` remains available in ready; post-submit lockdown via `BranchMutatingTool` + `check_pr_status` blocks all branch-mutating tools once PR is open |
 | D5 | `exclude_branch_local_artifacts` enforcement rule | A) Remove from enforcement.yaml B) Keep but repurpose | **A**: Neutralize is now internal to `submit_pr` |
 | D6 | Post-PR gap enforcement | A) PRStatusCache in-scope for #283 B) Separate issue | **A** (revised): PRStatusCache + BranchMutatingTool ABC are in-scope — they solve the DRY problem AND the post-PR gap atomically. The scope is bounded and well-defined. |
 | D7 | Tool-category enforcement (DRY) | A) 18 individual enforcement.yaml entries B) `tool_category` + ABC base class | **B**: `BranchMutatingTool(BaseTool)` sets `tool_category = "branch_mutating"`. One yaml rule covers all 18 tools. `merge_pr` is explicitly not a `BranchMutatingTool` — see Finding 9c. |
@@ -286,11 +286,10 @@ Een nieuwe tool `submit_pr` voert de volledige ready-phase completion atomisch u
 4. Push naar remote
 5. PR aanmaken via GitHub API
 
-`CreatePRTool` blijft als interne utility (klasse bestaat, niet geregistreerd als MCP tool).
-
+`CreatePRTool` is **volledig verwijderd** — geen interne utility meer. `SubmitPRTool` delegeert direct naar `GitHubManager.create_pr()`. *(Oorspronkelijke planning: klasse behouden als interne utility — gewijzigd, zie D2)*
 ### E2 — Terminal-route verwijderen uit GitCommitTool (oplost Finding 3)
 
-De neutralize-logica (regels ~370-395 in `GitCommitTool.execute()`) wordt verwijderd. `git_add_or_commit` in de ready-fase wordt geblokkeerd — neutralisatie is exclusief aan `submit_pr`.
+De neutralize-logica (regels ~370-395 in `GitCommitTool.execute()`) wordt verwijderd. `git_add_or_commit` **blijft beschikbaar** in de ready-fase — post-submit lockdown via `BranchMutatingTool` + `check_pr_status` blokkeert alle branch-muterende tools zodra een PR open is. *(Oorspronkelijke planning: ready-fase blokkeren — gewijzigd, zie D4)*
 
 ### E3 — PRStatusCache (oplost Finding 6 + 9)
 

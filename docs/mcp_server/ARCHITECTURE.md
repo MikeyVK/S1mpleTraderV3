@@ -191,11 +191,11 @@ mcp_server/
 ├── tools/
 │   ├── __init__.py
 │   ├── discovery.py             # search_documentation, get_work_context
-│   ├── documentation.py         # scaffold_document, validate_structure
+│   ├── validation_tools.py      # validate_architecture, validate_dto
 │   ├── github_issues.py         # create_issue, update_issue, close_issue, etc.
 │   ├── scaffold_artifact.py     # scaffold_artifact (unified code/doc scaffolding)
-│   ├── quality.py               # run_quality_gates, fix_whitespace, count_tests
-│   └── git.py                   # create_feature_branch, commit_tdd_phase, etc.
+│   ├── quality_tools.py         # run_quality_gates, run_tests
+│   └── git_tools.py             # create_branch, git_add_or_commit, git_checkout, etc.
 │
 ├── schemas/
 │   ├── __init__.py
@@ -333,10 +333,10 @@ flowchart LR
 | Category | Manager | Tools Count | Side Effects |
 |----------|---------|-------------|--------------|
 | Discovery | DocumentIndexer | 2 | None (read-only) |
-| Documentation | ArtifactManager | 3 | Creates/modifies files |
+| Scaffolding | ArtifactManager | 1 | Creates files (`scaffold_artifact`) |
 | GitHub Issues | GHManager | 7 | Creates/modifies issues, project board |
 | Implementation | ArtifactManager | 2 | Creates files |
-| Quality | ValidationService | 3 | May modify files (auto-fix) |
+| Quality | ValidationService | 3 | Read-only checks |
 | Git | GitManager | 4 | Git operations, pushes |
 | Validation | ValidationService | 3 | Validates structure, strictness, naming |
 
@@ -377,9 +377,9 @@ async def create_issue(
 | `create_issue` | ❌ | ✅ | Returns preview |
 | `update_issue` | ❌ | ✅ | Returns diff |
 | `run_quality_gates` | ✅ | N/A | Read-only check |
-| `fix_whitespace` | ✅ | ✅ | Same result if re-run |
-| `create_feature_branch` | ❌ | ✅ | Returns branch name |
-| `commit_tdd_phase` | ❌ | ✅ | Returns commit message |
+| `create_branch` | ❌ | ✅ | Returns branch name |
+| `git_add_or_commit` | ❌ | ✅ | Returns commit message |
+| `submit_pr` | ❌ | ❌ | Atomic: neutralize → commit → push → PR |
 
 ---
 
@@ -637,7 +637,7 @@ async def my_resource() -> MyResourceData:
 ### 13.3 Adding New Templates
 
 1. Create Jinja2 template in `mcp_server/templates/`
-2. Register in `.st3/artifacts.yaml` registry
+2. Register in `.st3/config/artifacts.yaml` registry
 3. Use via `scaffold_artifact` tool with new artifact_type
 
 ---
