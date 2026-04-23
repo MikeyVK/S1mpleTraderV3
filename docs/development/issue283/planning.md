@@ -2,17 +2,17 @@
 <!-- template=planning version=130ac5ea created=2026-04-21T00:00Z updated= -->
 # submit_pr + PRStatusCache + BranchMutatingTool - Planning
 
-**Status:** READY FOR IMPLEMENTATION
-**Version:** 1.1
-**Last Updated:** 2026-04-21
-**Design reference:** [design-submit-pr-prstatus-enforcement.md](design-submit-pr-prstatus-enforcement.md) v1.2
+**Status:** IMPLEMENTED
+**Version:** 1.2
+**Last Updated:** 2026-04-23
+**Design reference:** [design-submit-pr-prstatus-enforcement.md](design-submit-pr-prstatus-enforcement.md) v1.3
 **Research reference:** [research-submit-pr-impact-analysis.md](research-submit-pr-impact-analysis.md) v2.0
 
 ---
 
 ## 1. Purpose
 
-Executable implementation plan for issue #283 after the submit_pr redesign. This planning document is the active implementation baseline and turns the approved design into a compact 5-cycle sequence that is readable for humans and precise enough for `save_planning_deliverables`.
+Executable implementation plan for issue #283 after the submit_pr redesign. Implementation is complete; this document is retained as the executed planning baseline for auditability and `save_planning_deliverables` history.
 
 The planning is explicitly **FLAG DAY**: no backward-compat shims, no dual paths, and no legacy tests left behind after implementation.
 
@@ -40,8 +40,8 @@ The planning is explicitly **FLAG DAY**: no backward-compat shims, no dual paths
 ## 3. Prerequisites
 
 1. Branch `refactor/283-ready-phase-enforcement` is active.
-2. Workflow phase is `planning`.
-3. Research v2.0 and design v1.2 are the approved inputs.
+2. Workflow implementation is complete; the branch is now in the documentation phase while docs are being synchronized.
+3. Research v2.0 and design v1.3 are the approved inputs reflected in the implemented branch state.
 4. Old issue-283 `planning_deliverables` history is archived as legacy before writing the new plan.
 
 ---
@@ -89,7 +89,7 @@ Six TDD cycles are sufficient for this implementation. The split is intentionall
 1. `BaseTool` supports `tool_category`; `BranchMutatingTool` exists as a zero-method ABC.
 2. `EnforcementRule` accepts `tool_category` and validates `tool` OR `tool_category` for tool events.
 3. `IPRStatusReader`, `IPRStatusWriter`, and `PRStatus` enum exist in `core/interfaces/__init__.py`.
-4. `SubmitPRInput` and `SubmitPRTool` scaffolding exist; `CreatePRTool` remains internal-only by design.
+4. `SubmitPRInput` and `SubmitPRTool` contract surface exists; no public `CreatePRTool` path survives into the implemented design.
 5. `PRStatusCache` implementation exists in `state/pr_status_cache.py`.
 
 **Exit criteria:**
@@ -125,15 +125,16 @@ Six TDD cycles are sufficient for this implementation. The split is intentionall
 - `mcp_server/server.py`
 
 **Deliverables:**
-1. `SubmitPRTool.execute()` performs phase read, net-diff check, neutralize, commit, push, create PR, cache OPEN.
-2. `CreatePRTool` is no longer instantiated in `server.py` (the composition root); the class remains in `pr_tools.py` as internal utility used by `SubmitPRTool` (per design decision D2).
+1. `SubmitPRTool.execute()` performs net-diff check, neutralize, commit, push, create PR, and cache OPEN.
+2. `CreatePRTool` is deleted; `SubmitPRTool` calls `GitHubManager.create_pr()` directly.
 3. The terminal-route neutralization code is removed from `GitCommitTool`.
-4. `git_add_or_commit` in ready phase is blocked; ready-phase completion is exclusive to `submit_pr`.
-5. `CreatePRTool` class still exists in `pr_tools.py`; `SubmitPRTool` delegates PR creation to it internally.
+4. `git_add_or_commit` remains available in `ready`; post-submit lockdown is enforced by `BranchMutatingTool` + `check_pr_status`.
+5. No public tool path remains for the old `git_add_or_commit -> create_pr` sequence.
 
 **Exit criteria:**
 - Integration tests prove `submit_pr` happy path and partial-failure recovery behavior.
 - No public tool path remains for the old `git_add_or_commit -> create_pr` sequence.
+- No `CreatePRTool` class remains in production code.
 
 ### Cycle 4 - Branch Lockdown Rollout
 
@@ -219,8 +220,8 @@ Six TDD cycles are sufficient for this implementation. The split is intentionall
 
 - **Risk:** Half-migrated tool inventory leaves gaps in post-PR enforcement.
   **Control:** C4 explicitly validates the full 18-tool set by name in an integration test.
-- **Risk:** Old tests keep passing against internal `CreatePRTool` and hide legacy workflow residue.
-  **Control:** C5 is a mandatory flag-day cleanup cycle, not an optional polish pass. Note that unit tests for `CreatePRTool` as an internal class may legitimately remain — only tests that model the old public workflow must be removed.
+- **Risk:** Old tests or docs keep prescribing the removed public `create_pr` path and hide legacy workflow residue.
+  **Control:** C5 is a mandatory flag-day cleanup cycle, not an optional polish pass. Legacy workflow tests and docs must be rewritten or superseded, not retained as active guidance.
 - **Risk:** `planning_deliverables` cannot be saved because an older live entry still exists.
   **Control:** Legacy-mark the current live entry before calling `save_planning_deliverables`.
 
@@ -342,7 +343,7 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           },
           {
             "id": "C3.2",
-            "description": "server.py composition root no longer instantiates CreatePRTool; SubmitPRTool replaces it in the public tool list (per design D2: CreatePRTool class remains in pr_tools.py as internal utility)",
+            "description": "server.py composition root no longer instantiates CreatePRTool; SubmitPRTool replaces it in the public tool list and owns the public PR path",
             "validates": {
               "type": "absent_text",
               "file": "mcp_server/server.py",
@@ -369,15 +370,15 @@ This appendix is the compact payload model for `save_planning_deliverables`.
           },
           {
             "id": "C3.5",
-            "description": "CreatePRTool class still exists in pr_tools.py as internal utility; SubmitPRTool delegates PR creation to it",
+            "description": "SubmitPRTool delegates PR creation directly to GitHubManager.create_pr rather than an internal CreatePRTool wrapper",
             "validates": {
               "type": "contains_text",
               "file": "mcp_server/tools/pr_tools.py",
-              "text": "class CreatePRTool"
+              "text": "self._github_manager.create_pr("
             }
           }
         ],
-        "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists; CreatePRTool class remains as internal utility"
+        "exit_criteria": "submit_pr happy path and partial failure tests pass; old ready-phase sequential public path no longer exists; CreatePRTool is absent from production code"
       },
       {
         "cycle_number": 4,

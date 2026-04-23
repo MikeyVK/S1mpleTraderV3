@@ -2,15 +2,17 @@
 <!-- template=design version=5827e841 created=2026-04-21T10:10Z updated= -->
 # submit_pr + PRStatusCache + BranchMutatingTool — Design
 
-**Status:** DRAFT  
-**Version:** 1.2
-**Last Updated:** 2026-04-21
+**Status:** CURRENT  
+**Version:** 1.3
+**Last Updated:** 2026-04-23
 
 ---
 
 ## Purpose
 
 Replace the two-step create_pr flow with an atomic submit_pr tool, add post-PR lockdown via PRStatusCache, and reduce enforcement configuration DRY violations via BranchMutatingTool ABC.
+
+This document reflects the implemented design in the current branch state; older ready-phase docs in this directory are superseded.
 
 ## Scope
 
@@ -47,7 +49,7 @@ The two-step ready-phase flow (git_add_or_commit → create_pr) has a chicken-an
 - [ ] PRStatusCache valt terug op GitHub API bij cold start (lege cache na MCP server restart)
 - [ ] EnforcementRunner dispatcht op tool_category naast tool name
 - [ ] EnforcementRule schema accepteert optioneel tool_category veld
-- [ ] create_pr klasse blijft als interne utility; niet geregistreerd als publiek MCP tool
+- [ ] CreatePRTool is deleted; SubmitPRTool calls `GitHubManager.create_pr()` directly and is the only public PR-creation path
 
 **Non-Functional:**
 - [ ] BranchMutatingTool is a zero-method ABC — only sets tool_category class variable
@@ -123,16 +125,16 @@ Na neutralize slaat `git_add_or_commit` een marker op in het commit bericht. `cr
 
 ```
 SubmitPRTool.execute()
-  1. _read_current_phase(branch)         ← leest state.json vóór neutralize (voor logging/CommitNote; geen gate)
+  1. branch = git_manager.get_current_branch()
   2. artifacts = merge_readiness_context.branch_local_artifacts
   3. paths_to_neutralize = [a.path for a in artifacts
-                             if adapter.has_net_diff_for_path(a.path, base)]
-  4. neutralize_to_base(frozenset(paths_to_neutralize), base)
+                             if git_manager.has_net_diff_for_path(a.path, base)]
+  4. git_manager.neutralize_to_base(frozenset(paths_to_neutralize), base)
            [alleen als stap 3 niet leeg]
-  5. commit_with_scope("ready", ...)     ← chore(P_READY): neutralize...
-  6. push(head)                          ← push naar remote
-  7. github.create_pr(head, base, ...)   ← PR aanmaken via API
-  8. pr_status_writer.set_pr_status(     ← OPEN in PRStatusCache
+  5. git_manager.commit_with_scope("ready", ...)   ← chore(P_READY): neutralize...
+  6. git_manager.push()                             ← push naar remote
+  7. github_manager.create_pr(head, base, ...)      ← PR aanmaken via API
+  8. pr_status_writer.set_pr_status(                ← OPEN in PRStatusCache
        branch, PRStatus.OPEN)
 ```
 **Constructor-injectie:** `SubmitPRTool.__init__(merge_readiness_context: MergeReadinessContext, ...)`
@@ -186,7 +188,7 @@ BranchMutatingTool(BaseTool) (ABC)         (nieuw)
 ```
 
 **18 subklassen (alle overerven van BranchMutatingTool):**
-`GitCommitTool`, `GitPushTool`, `GitPullTool`, `GitMergeTool`, `GitDeleteBranchTool`, `GitRestoreTool`, `SafeEditTool`, `CreateFileTool`, `ScaffoldArtifactTool`, `SavePlanningDeliverablesTool`, `UpdatePlanningDeliverablesTool`, `TransitionPhaseTool`, `ForcePhaseTransitionTool`, `TransitionCycleTool`, `ForceCycleTool`, `InitializeProjectTool`, `CreateBranchTool`, `SubmitPRTool`
+`GitCommitTool`, `GitPushTool`, `GitPullTool`, `GitMergeTool`, `GitDeleteBranchTool`, `GitRestoreTool`, `SafeEditTool`, `CreateFileTool`, `ScaffoldArtifactTool`, `SavePlanningDeliverablesTool`, `UpdatePlanningDeliverablesTool`, `TransitionPhaseTool`, `ForcePhaseTransitionTool`, `TransitionCycleTool`, `ForceCycleTransitionTool`, `InitializeProjectTool`, `CreateBranchTool`, `SubmitPRTool`
 
 **`MergePRTool` is geen `BranchMutatingTool`** — bewuste exemptie. Motivatie: de blokkade-semantiek van `check_pr_status` is "voorkom dat de agent verder werkt aan een branch met open PR". `MergePRTool` werkt de branch niet verder uit — het beëindigt de PR-cyclus. Het is de enige tool die `PRStatus.OPEN` kan opruimen. Als `MergePRTool` ook `BranchMutatingTool` zou zijn, ontstaat een deadlock: de enige uitweg is ook geblokkeerd.
 
@@ -263,3 +265,4 @@ enforcement_runner = EnforcementRunner(
 |---------|------|--------|---------|
 | 1.0 | 2026-04-21 | Agent | Initial draft — scaffold |
 | 1.2 | 2026-04-21 | Agent | QA feedback verwerkt: D1 herformuleerd (policy/operation scheiding), merge_pr exempt expliciet, 14→18 gecorrigeerd, cache-semantiek aangescherpt (γ-model) |
+| 1.3 | 2026-04-23 | Agent | CURRENT gemaakt; execution flow bijgewerkt naar GitManager-facade-methoden; CreatePRTool verwijderd als normatief pad; ForceCycleTransitionTool naam gecorrigeerd |

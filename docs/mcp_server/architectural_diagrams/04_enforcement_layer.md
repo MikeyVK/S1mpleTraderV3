@@ -118,7 +118,7 @@ PR exists — creating a deadlock where the PR can never be merged.
 ## 4. PR Status Lifecycle
 
 `PRStatus` flows through a session-leading cache (`PRStatusCache`) backed by a cold-start
-GitHub API fallback. `SubmitPRTool` writes `OPEN`; `MergePRTool` writes `MERGED`.
+GitHub API fallback. `SubmitPRTool` writes `OPEN`; `MergePRTool` writes `ABSENT`.
 
 ```mermaid
 sequenceDiagram
@@ -148,7 +148,7 @@ sequenceDiagram
     Note over Agent,Cache: Later — after human approval
     Agent->>MergePR: merge_pr(pr_number=45)
     MergePR->>GHM: merge_pr(...)
-    MergePR->>Cache: set_pr_status(branch, MERGED)
+    MergePR->>Cache: set_pr_status(branch, ABSENT)
 ```
 
 ---
@@ -220,7 +220,7 @@ is now handled directly by the transition tools.
 | Registry validation at startup | Fail-fast on unknown action types; prevents silent runtime failures | Lazy validation per event (errors only surface during use) |
 | `BranchMutatingTool` category for bulk rule dispatch | One `enforcement.yaml` entry covers all 18 branch-mutating tools | Individual tool entries (18× more config, easy to miss new tools) |
 | `SubmitPRTool` owns artifact neutralization | Self-contained atomic flow; enforcement runner stays stateless | Enforcement runner pre-populates `ExclusionNote` list (removed in C6 GREEN) |
-| `MergePRTool` excluded from `BranchMutatingTool` | Avoids `check_pr_status` deadlock — MergePR is the escape hatch | Including it → merged to OPEN + locked (deadlock) |
+| `MergePRTool` excluded from `BranchMutatingTool` | Avoids `check_pr_status` deadlock — MergePR is the escape hatch | Including it → blocked while OPEN, so the PR could never be merged (deadlock) |
 | `check_phase_readiness` reads state.json at call time | Always reflects live phase without session coupling | Cache with invalidation (over-engineered for a single file read) |
 
 ---

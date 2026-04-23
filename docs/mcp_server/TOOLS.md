@@ -1,1246 +1,173 @@
-# ST3 Workflow MCP Server - Tools Specification
+# ST3 Workflow MCP Server - Public Tool Surface
 
-**Status:** v1.0 (Foundation)
-**Last Updated:** 2025-01-21
+**Status:** CURRENT
+**Last Updated:** 2026-04-23
+**Derived From:** [mcp_server/server.py](../../mcp_server/server.py)
 
-> **Note:** These tools are currently in the planning/implementation phase. The foundation infrastructure (`BaseTool`) is implemented, but concrete tools are not yet available in the server.
-
----
-
-## 1. Discovery & Planning Tools
-
-Tools for understanding context and planning work.
+> This document is the current public MCP tool surface summary. Detailed per-tool behavior lives in [docs/reference/mcp/MCP_TOOLS.md](../reference/mcp/MCP_TOOLS.md) and the category references under [docs/reference/mcp/tools/](../reference/mcp/tools/README.md).
 
 ---
 
-### 1.1 `search_documentation`
+## Purpose
 
-**Description:** Semantic/fuzzy search across all `docs/` files. Returns ranked results with snippets.
-
-**Category:** `discovery`
-
-```yaml
-parameters:
-  - name: query
-    type: string
-    required: true
-    description: "Search query (e.g., 'how to implement a worker', 'DTO validation rules')"
-  - name: scope
-    type: string
-    required: false
-    default: "all"
-    validation: enum [all, architecture, coding_standards, development, reference, implementation]
-
-returns:
-  success:
-    schema:
-      type: array
-      items:
-        type: object
-        properties:
-          file_path: { type: string }
-          title: { type: string }
-          snippet: { type: string, description: "Context around match (150 chars)" }
-          relevance_score: { type: number, minimum: 0, maximum: 1 }
-          line_number: { type: integer }
-
-implementation:
-  steps:
-    - "Index all .md files in docs/"
-    - "Perform fuzzy/semantic matching against query"
-    - "Rank by relevance"
-    - "Return top 10 results"
-
-idempotency: true
-dry_run_support: false
-offline_capable: true
-```
+Provide an implementation-synchronized summary of the MCP tools currently exposed by the server.
+This replaces older planning-era tool specs that documented tools which never became part of the
+public server surface.
 
 ---
 
-### 1.2 `get_work_context`
+## Registration Model
 
-**Description:** Aggregates context from GitHub Issues, Project board, and current branch to understand what to work on next.
+The server exposes:
 
-**Category:** `planning`
+- **34 always-available tools**
+- **16 GitHub-dependent tools** when `GITHUB_TOKEN` is configured
+- **50 total tools** when GitHub integration is active
 
-```yaml
-parameters:
-  - name: include_closed_recent
-    type: boolean
-    required: false
-    default: false
-    description: "Include recently closed issues (last 7 days) for context"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        active_issue:
-          type: object
-          description: "Issue linked to current branch (if any)"
-          properties:
-            number: { type: integer }
-            title: { type: string }
-            body: { type: string }
-            acceptance_criteria:
-              type: array
-              items: { type: string }
-              description: "Extracted from issue body (checkbox items)"
-        in_progress_issues:
-          type: array
-          items:
-            type: object
-            properties:
-              number: { type: integer }
-              title: { type: string }
-              priority: { type: string }
-        next_up_issues:
-          type: array
-          description: "Issues in 'Todo' column ordered by priority"
-          items:
-            type: object
-            properties:
-              number: { type: integer }
-              title: { type: string }
-              labels: { type: array, items: { type: string } }
-        blockers:
-          type: array
-          items:
-            type: object
-            properties:
-              number: { type: integer }
-              title: { type: string }
-              blocked_by: { type: string, description: "Reason for blocking" }
-
-implementation:
-  steps:
-    - "Get current branch name"
-    - "Extract issue number from branch (feature/42-component-name → #42)"
-    - "Fetch issue details if linked"
-    - "Query GitHub Project for 'In Progress' and 'Todo' items"
-    - "Identify blockers by label"
-    - "Return aggregated context"
-
-idempotency: true
-offline_capable: false
-```
+GitHub issue tools are registered only when GitHub integration is available. `submit_pr`,
+`list_prs`, and `merge_pr` are the public PR tools.
 
 ---
 
-## 2. Documentation Tools
+## Tool Categories
 
-Tools for creating, updating, and maintaining documentation.
+### 1. Git Workflow & Analysis
 
----
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `create_branch` | Create feature/bug/docs/refactor/hotfix/epic branches | `name`, `branch_type`, `base_branch` |
+| `git_status` | Show working tree status | none |
+| `git_add_or_commit` | Commit with workflow-aware prefixing | `message`, `workflow_phase`, `sub_phase`, `cycle_number`, `commit_type` |
+| `git_checkout` | Switch branches and sync state | `branch` |
+| `git_fetch` | Fetch from remote | `remote`, `prune` |
+| `git_pull` | Pull with optional rebase | `remote`, `rebase` |
+| `git_push` | Push to origin | `set_upstream` |
+| `git_merge` | Merge branch into current branch | `branch` |
+| `git_delete_branch` | Delete a branch safely | `branch`, `force` |
+| `git_stash` | Push, pop, or list stash entries | `action`, `message`, `include_untracked` |
+| `git_restore` | Restore files from a git ref | `files`, `source` |
+| `git_list_branches` | List branches with optional verbosity | `verbose`, `remote` |
+| `git_diff_stat` | Compare branches | `target_branch`, `source_branch` |
+| `get_parent_branch` | Detect parent branch | `branch` |
 
-### 2.1 `scaffold_document`
+### 2. GitHub Issues
 
-**Description:** Creates a new documentation file using the appropriate template. Supports all 5 template types.
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `create_issue` | Create issue with workflow-aware labels | `issue_type`, `title`, `priority`, `scope`, `body`, `is_epic`, `parent_issue`, `milestone`, `assignees` |
+| `list_issues` | List issues with filters | `state`, `labels` |
+| `get_issue` | Get issue detail | `issue_number` |
+| `update_issue` | Update title, body, state, labels, milestone, assignees | `issue_number`, optional fields |
+| `close_issue` | Close issue with optional comment | `issue_number`, `comment` |
 
-**Category:** `documentation`
+### 3. Pull Requests
 
-```yaml
-parameters:
-  - name: template_type
-    type: string
-    required: true
-    validation: enum [architecture, design, reference, tracking, base]
-    description: "Template to use (see st3://templates/list for guidance)"
-  - name: document_name
-    type: string
-    required: true
-    description: "Name of the document (e.g., 'MCP_SERVER', 'EVENT_ADAPTER')"
-  - name: target_directory
-    type: string
-    required: false
-    description: "Override default location (default inferred from template_type)"
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `submit_pr` | Atomically neutralize, commit, push, and create a PR | `head`, `title`, `base`, `body`, `draft` |
+| `list_prs` | List PRs with filters | `state`, `base`, `head` |
+| `merge_pr` | Merge PR and clear PR status cache | `pr_number`, `commit_message`, `merge_method` |
 
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        created_path: { type: string }
-        template_used: { type: string }
-        placeholders_remaining:
-          type: array
-          items: { type: string }
-          description: "List of {PLACEHOLDER} strings that need manual replacement"
+#### `submit_pr` Contract
 
-implementation:
-  prerequisites:
-    - "Target file does not already exist"
-  steps:
-    - "Read template from docs/reference/templates/{template_type}_TEMPLATE.md"
-    - "Replace automatic placeholders: {YYYY-MM-DD}, {DOCUMENT_NAME}"
-    - "Determine target directory based on template_type:"
-    - "  architecture → docs/architecture/"
-    - "  design → docs/development/"
-    - "  reference → docs/reference/"
-    - "  tracking → docs/ or docs/implementation/"
-    - "Write file to target location"
-    - "Return list of remaining placeholders"
-  side_effects:
-    - "Creates new file in docs/"
+**Required parameters:**
+- `head: str`
+- `title: str`
 
-idempotency: false
-dry_run_support: true
-offline_capable: true
-```
+**Optional parameters:**
+- `base: str | None` — defaults to the repository default branch
+- `body: str | None`
+- `draft: bool` — defaults to `False`
 
----
+**Execution behavior:**
+1. Computes net branch-local artifact diffs against the merge-base.
+2. Neutralizes `.st3/state.json` and `.st3/deliverables.json` when needed.
+3. Commits the neutralization with `workflow_phase="ready"`.
+4. Pushes the branch.
+5. Creates the GitHub PR.
+6. Writes `PRStatus.OPEN` to cache.
 
-### 2.2 `update_implementation_status`
+**Safeguards:**
+- Blocked unless `.st3/state.json` reports `current_phase == "ready"`
+- Blocked for any branch-mutating tool while the branch already has `PRStatus.OPEN`
+- Returns a `RecoveryNote` when the flow fails after neutralization and the branch tip may have changed
 
-**Description:** Updates `docs/implementation/IMPLEMENTATION_STATUS.md` after completing work. Adds row to appropriate table and updates test counts.
+**Public output:**
+- Success: `Created PR #<number>: <url>`
+- Failure: error result with the underlying execution message
 
-**Category:** `documentation`
+### 4. Labels & Milestones
 
-```yaml
-parameters:
-  - name: component_name
-    type: string
-    required: true
-    description: "Name of the component (e.g., 'signal.py', 'strategy_cache.py')"
-  - name: layer
-    type: string
-    required: true
-    validation: enum [Strategy DTOs, Execution DTOs, Shared DTOs, State DTOs, Core Services, Utilities]
-  - name: tests_passing
-    type: integer
-    required: true
-  - name: tests_total
-    type: integer
-    required: true
-  - name: quality_gates
-    type: string
-    required: true
-    default: "all pass"
-  - name: status
-    type: string
-    required: true
-    validation: enum [Complete, In Progress, Not Started]
-  - name: update_description
-    type: string
-    required: true
-    description: "Brief description for 'Recent Updates' section"
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `list_labels` | List repository labels | none |
+| `create_label` | Create label | `name`, `color`, `description` |
+| `delete_label` | Delete label | `name` |
+| `add_labels` | Add labels to issue or PR | `issue_number`, `labels` |
+| `remove_labels` | Remove labels from issue or PR | `issue_number`, `labels` |
+| `list_milestones` | List milestones | `state` |
+| `create_milestone` | Create milestone | `title`, `description`, `due_on` |
+| `close_milestone` | Close milestone | `milestone_number` |
 
-implementation:
-  prerequisites:
-    - "IMPLEMENTATION_STATUS.md exists"
-    - "Component not already in target table (or update existing row)"
-  steps:
-    - "Find appropriate layer table"
-    - "Add/update row with provided values"
-    - "Update Summary table totals"
-    - "Add entry to 'Recent Updates' section with today's date"
-    - "Update 'Last Updated' header field"
-  side_effects:
-    - "Modifies IMPLEMENTATION_STATUS.md"
+### 5. Project & Phase Management
 
-idempotency: false
-dry_run_support: true
-```
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `initialize_project` | Initialize workflow state for an issue | issue/workflow parameters |
+| `get_project_plan` | Get workflow phase plan | issue/workflow context |
+| `save_planning_deliverables` | Save planning deliverables | `issue_number` |
+| `update_planning_deliverables` | Merge planning deliverables | `issue_number` |
+| `transition_phase` | Sequential phase transition | `branch`, `to_phase` |
+| `force_phase_transition` | Forced phase transition | `branch`, `to_phase`, `skip_reason`, `human_approval` |
+| `transition_cycle` | Sequential TDD cycle transition | `to_cycle` |
+| `force_cycle_transition` | Forced TDD cycle transition | `to_cycle`, `skip_reason`, `human_approval` |
 
----
+### 6. Editing & Scaffolding
 
-### 2.3 `validate_document_structure`
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `safe_edit_file` | Multi-mode file editing with validation | `path`, `content` or edit payload, `mode` |
+| `create_file` | Create a generic file | `path`, `content` |
+| `scaffold_artifact` | Generate code/docs from `.st3/config/artifacts.yaml` | `artifact_type`, `name`, `output_path`, `context` |
 
-**Description:** Validates that a document follows its template structure. Checks required sections, heading levels, and link definitions.
+### 7. Quality & Validation
 
-**Category:** `documentation`
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `run_quality_gates` | Run quality gates | `scope`, `files` |
+| `run_tests` | Run pytest | `path`, `scope`, `markers`, `timeout`, `last_failed_only` |
+| `validate_architecture` | Validate architecture rules | `scope` |
+| `validate_dto` | Validate DTO definitions | `file_path` |
+| `validate_template` | Validate template/file structure | `path`, `template_type` |
 
-```yaml
-parameters:
-  - name: file_path
-    type: string
-    required: true
-    description: "Path to document to validate"
-  - name: template_type
-    type: string
-    required: false
-    description: "Expected template type (auto-detected from path if not provided)"
+### 8. Discovery & Admin
 
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        valid: { type: boolean }
-        template_detected: { type: string }
-        issues:
-          type: array
-          items:
-            type: object
-            properties:
-              severity: { type: string, enum: [error, warning] }
-              message: { type: string }
-              line_number: { type: integer }
-        missing_sections:
-          type: array
-          items: { type: string }
-        line_count: { type: integer }
-        exceeds_limit: { type: boolean }
-        limit: { type: integer }
-
-implementation:
-  steps:
-    - "Read document"
-    - "Detect template type from path or parameter"
-    - "Check required sections per template:"
-    - "  BASE: Header, Purpose, Scope, Content, Related Documentation, Version History"
-    - "  ARCHITECTURE: + numbered sections, Constraints & Decisions"
-    - "  DESIGN: + Context & Requirements, Design Options, Chosen Design, Open Questions"
-    - "  REFERENCE: + Source, Tests, API Reference, Usage Examples"
-    - "  TRACKING: Header (LIVING DOCUMENT), Current Focus, Quick Links, Summary"
-    - "Check line limits: Standard 300, Architecture 1000, Templates 150"
-    - "Check link definitions section exists"
-
-idempotency: true
-dry_run_support: false
-offline_capable: true
-```
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `search_documentation` | Semantic/fuzzy docs search | `query`, `scope` |
+| `get_work_context` | Aggregate current work context | `include_closed_recent` |
+| `health_check` | Report server health | none |
+| `restart_server` | Hot-reload the MCP server | `reason` |
 
 ---
 
-## 3. GitHub Issue Management Tools
+## Removed Or Internal-Only Paths
 
-Tools for managing work items via GitHub Issues and Projects.
+These names should not be used as public tool contracts:
 
----
-
-### 3.1 `create_issue`
-
-**Description:** Creates a new GitHub issue with proper labels, milestone, and project assignment.
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: title
-    type: string
-    required: true
-    description: "Issue title (concise, actionable)"
-  - name: body
-    type: string
-    required: true
-    description: "Issue body in markdown (supports templates)"
-  - name: labels
-    type: array
-    required: false
-    description: "Labels to apply (e.g., ['type:feature', 'priority:high', 'phase:implementation'])"
-  - name: milestone
-    type: string
-    required: false
-    description: "Milestone title to assign (e.g., 'Week 1: Config Schemas')"
-  - name: assignees
-    type: array
-    required: false
-    description: "GitHub usernames to assign"
-  - name: project_column
-    type: string
-    required: false
-    default: "Backlog"
-    validation: enum [Backlog, Todo, In Progress, In Review, Done]
-    description: "Initial column in GitHub Project"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        issue_number: { type: integer }
-        issue_url: { type: string }
-        project_item_id: { type: string }
-
-implementation:
-  steps:
-    - "Validate labels exist in repository"
-    - "Validate milestone exists"
-    - "gh issue create --title '{title}' --body '{body}' --label {labels} --milestone '{milestone}' --assignee {assignees}"
-    - "Add issue to GitHub Project in specified column"
-    - "Return issue details"
-  side_effects:
-    - "Creates GitHub issue"
-    - "Adds to Project board"
-
-idempotency: false
-dry_run_support: true
-```
+- `create_pr` — deleted as a public tool; replaced by `submit_pr`
+- `create_feature_branch` — old alias; use `create_branch`
+- `commit_tdd_phase` — old name; use `git_add_or_commit`
+- `validate_doc` / `validate_document_structure` — not part of the current public server surface
+- `fix_whitespace` — not part of the current public server surface
 
 ---
 
-### 3.2 `update_issue`
-
-**Description:** Updates an existing GitHub issue (title, body, labels, status, assignees).
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: issue_number
-    type: integer
-    required: true
-    description: "Issue number to update"
-  - name: title
-    type: string
-    required: false
-    description: "New title (if changing)"
-  - name: body
-    type: string
-    required: false
-    description: "New body (if changing)"
-  - name: add_labels
-    type: array
-    required: false
-    description: "Labels to add"
-  - name: remove_labels
-    type: array
-    required: false
-    description: "Labels to remove"
-  - name: assignees
-    type: array
-    required: false
-    description: "New assignees (replaces existing)"
-  - name: project_column
-    type: string
-    required: false
-    validation: enum [Backlog, Todo, In Progress, In Review, Done]
-    description: "Move to different Project column"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        issue_number: { type: integer }
-        changes_applied:
-          type: array
-          items: { type: string }
-
-implementation:
-  steps:
-    - "gh issue edit {issue_number} [--title] [--body] [--add-label] [--remove-label] [--assignee]"
-    - "If project_column: Update Project item status"
-  side_effects:
-    - "Modifies GitHub issue"
-    - "May update Project board"
-
-idempotency: false
-```
-
----
-
-### 3.3 `close_issue`
-
-**Description:** Closes a GitHub issue with optional closing comment and linked PR.
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: issue_number
-    type: integer
-    required: true
-    description: "Issue number to close"
-  - name: reason
-    type: string
-    required: false
-    validation: enum [completed, not_planned, duplicate]
-    default: "completed"
-  - name: comment
-    type: string
-    required: false
-    description: "Closing comment (e.g., 'Completed in PR #123')"
-  - name: linked_pr
-    type: integer
-    required: false
-    description: "PR number that resolves this issue"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        issue_number: { type: integer }
-        closed_at: { type: string, format: datetime }
-        project_column: { type: string, description: "Moved to 'Done' automatically" }
-
-implementation:
-  steps:
-    - "If comment: gh issue comment {issue_number} --body '{comment}'"
-    - "gh issue close {issue_number} --reason {reason}"
-    - "Move Project item to 'Done' column"
-  side_effects:
-    - "Closes GitHub issue"
-    - "Updates Project board"
-
-idempotency: false
-```
-
----
-
-### 3.4 `link_issue_to_branch`
-
-**Description:** Links a GitHub issue to the current feature branch. Enables automatic tracking.
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: issue_number
-    type: integer
-    required: true
-    description: "Issue number to link"
-  - name: move_to_in_progress
-    type: boolean
-    required: false
-    default: true
-    description: "Move issue to 'In Progress' column"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        branch_name: { type: string }
-        issue_number: { type: integer }
-        project_status: { type: string }
-
-implementation:
-  prerequisites:
-    - "Current branch is not main"
-    - "Issue exists and is open"
-  steps:
-    - "Add development branch reference to issue"
-    - "If move_to_in_progress: Update Project item status to 'In Progress'"
-    - "Add 'in-progress' label to issue"
-  side_effects:
-    - "Links branch to issue"
-    - "Updates issue labels"
-    - "Updates Project board"
-
-idempotency: true
-```
-
----
-
-### 3.5 `start_work_on_issue`
-
-**Description:** One-command workflow: creates feature branch from issue and links them together.
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: issue_number
-    type: integer
-    required: true
-    description: "Issue number to start work on"
-  - name: branch_type
-    type: string
-    required: false
-    default: "feature"
-    validation: enum [feature, fix, refactor, docs]
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        branch_name: { type: string }
-        issue:
-          type: object
-          properties:
-            number: { type: integer }
-            title: { type: string }
-            acceptance_criteria: { type: array, items: { type: string } }
-
-implementation:
-  steps:
-    - "Fetch issue details"
-    - "Generate branch name: {branch_type}/{issue_number}-{slug-from-title}"
-    - "Call create_feature_branch"
-    - "Call link_issue_to_branch"
-    - "Assign issue to current user if unassigned"
-    - "Return issue context for agent"
-  side_effects:
-    - "Creates and switches to new branch"
-    - "Updates issue status and labels"
-    - "Updates Project board"
-
-idempotency: false
-```
-
----
-
-### 3.6 `add_issue_comment`
-
-**Description:** Adds a comment to a GitHub issue. Useful for progress updates and technical notes.
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: issue_number
-    type: integer
-    required: true
-  - name: body
-    type: string
-    required: true
-    description: "Comment body in markdown"
-  - name: comment_type
-    type: string
-    required: false
-    validation: enum [progress, question, blocker, resolution]
-    description: "Adds emoji prefix based on type"
-
-implementation:
-  steps:
-    - "Format comment with type prefix:"
-    - "  progress → 📝 Progress Update"
-    - "  question → ❓ Question"
-    - "  blocker → 🚫 Blocker"
-    - "  resolution → ✅ Resolution"
-    - "gh issue comment {issue_number} --body '{formatted_body}'"
-  side_effects:
-    - "Adds comment to issue"
-
-idempotency: false
-```
-
----
-
-### 3.7 `create_milestone`
-
-**Description:** Creates a GitHub milestone for tracking a phase or sprint.
-
-**Category:** `github`
-
-```yaml
-parameters:
-  - name: title
-    type: string
-    required: true
-    description: "Milestone title (e.g., 'Week 1: Config Schemas')"
-  - name: description
-    type: string
-    required: false
-    description: "Milestone description"
-  - name: due_date
-    type: string
-    required: false
-    format: date
-    description: "Due date in YYYY-MM-DD format"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        milestone_number: { type: integer }
-        milestone_url: { type: string }
-
-implementation:
-  steps:
-    - "gh api /repos/{owner}/{repo}/milestones --method POST -f title='{title}' -f description='{description}' -f due_on='{due_date}T00:00:00Z'"
-  side_effects:
-    - "Creates GitHub milestone"
-
-idempotency: false
-```
-
----
-
-## 4. Implementation Tools
-
-Tools for generating code structure and scaffolding.
-
----
-
-### 4.1 `scaffold_artifact` (Unified Scaffolding Tool)
-
-**Description:** Unified tool for generating ANY artifact (code or documentation) using templates from `.st3/artifacts.yaml` registry. Replaces legacy `scaffold_component` and `scaffold_design_doc` tools.
-
-**Category:** `implementation`
-
-**Status:** ✅ Active (replaces deprecated scaffold_component/scaffold_design_doc)
-
-```yaml
-parameters:
-  - name: artifact_type
-    type: string
-    required: true
-    description: "Type ID from artifacts.yaml registry"
-    examples: ["dto", "worker", "adapter", "design", "architecture", "tracking"]
-  - name: name
-    type: string
-    required: true
-    description: "Artifact name (PascalCase for code, kebab-case for docs)"
-    examples: ["ExecutionRequest", "momentum-scanner-design"]
-  - name: output_path
-    type: string
-    required: false
-    description: "Optional explicit path (auto-resolved from registry if omitted)"
-  - name: context
-    type: object
-    required: false
-    description: "Template-specific variables (varies by artifact_type)"
-    examples:
-      dto: { category: "strategy", fields: [...] }
-      design: { issue_number: "56", title: "...", author: "..." }
-      worker: { worker_type: "signal_detector", description: "..." }
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        artifact_path:
-          type: string
-          description: "Path where artifact was created"
-        artifact_type:
-          type: string
-          description: "Type from registry"
-        validation_passed:
-          type: boolean
-          description: "Whether artifact passed validation"
-
-implementation:
-  - "Load artifacts.yaml registry configuration"
-  - "Resolve output_path (explicit or from artifact config path_template)"
-  - "Load Jinja2 template from artifact config template_path"
-  - "Render template with context variables"
-  - "Run validation chain: validate_syntax → validate_structure → validate_content"
-  - "Write artifact to disk"
-  - "Return ToolResult with success/error message"
-
-side_effects:
-  - "Creates new file at output_path"
-  - "Validation errors returned in ToolResult (no exception)"
-
-idempotency: false
-dry_run_support: false
-offline_capable: true
-```
-
-**Migration from Legacy Tools:**
-
-```python
-# OLD (deprecated - will fail):
-scaffold_component(
-    component_type="dto",
-    name="execution_request",
-    category="strategy"
-)
-
-# NEW (unified tool):
-scaffold_artifact(
-    artifact_type="dto",
-    name="ExecutionRequest",
-    context={"category": "strategy", "fields": [...]}
-)
-```
-
-```python
-# OLD (deprecated - will fail):
-scaffold_design_doc(
-    component_name="MomentumScanner",
-    component_type="worker",
-    implementation_phase="Week 1"
-)
-
-# NEW (unified tool):
-scaffold_artifact(
-    artifact_type="design",
-    name="momentum-scanner-design",
-    context={
-        "issue_number": "42",
-        "title": "Momentum Scanner Design",
-        "author": "Agent"
-    }
-)
-```
-
-**Common Artifact Types:**
-
-| artifact_type | Output Example | Template |
-|---------------|----------------|----------|
-| `dto` | `mcp_server/dtos/strategy/execution_request.py` | `templates/code/dto.py.jinja2` |
-| `worker` | `mcp_server/workers/signal_detector/momentum_scanner.py` | `templates/code/worker.py.jinja2` |
-| `adapter` | `mcp_server/adapters/ib_adapter.py` | `templates/code/adapter.py.jinja2` |
-| `design` | `docs/development/issue56/design.md` | `templates/docs/DESIGN_TEMPLATE.md.jinja2` |
-| `architecture` | `docs/development/issue56/architecture.md` | `templates/docs/ARCHITECTURE_TEMPLATE.md.jinja2` |
-| `tracking` | `docs/development/issue56/tracking.md` | `templates/docs/TRACKING_TEMPLATE.md.jinja2` |
-
-**Registry Configuration:** `.st3/artifacts.yaml`
-
----
-
-## 5. Quality Tools
-
-Tools for enforcing quality gates and fixing common issues.
-
----
-
-### 5.1 `run_quality_gates`
-
-**Description:** Runs configured quality gates from `.st3/quality.yaml` against specified files. Returns structured v2.0 JSON with pass/fail status, diagnostics, timing, and command metadata.
-
-**Category:** `quality`
-
-```yaml
-parameters:
-  - name: files
-    type: array
-    required: false
-    default: []
-    description: >
-      List of file paths to check. Empty list [] = project-level test validation
-      (pytest/coverage only, Gates 5-6). Populated list = file-specific validation
-      (static analysis Gates 0-4b, skip pytest).
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        version: { type: string, description: "Schema version (2.0)" }
-        mode: { type: string, enum: ["file-specific", "project-level"] }
-        files: { type: array, items: { type: string } }
-        summary:
-          type: object
-          properties:
-            passed: { type: integer }
-            failed: { type: integer }
-            skipped: { type: integer }
-            total_violations: { type: integer }
-            auto_fixable: { type: integer }
-        overall_pass: { type: boolean }
-        gates:
-          type: array
-          items:
-            type: object
-            properties:
-              gate_number: { type: integer }
-              name: { type: string }
-              passed: { type: boolean }
-              status: { type: string, enum: ["passed", "failed", "skipped"] }
-              skip_reason: { type: string, nullable: true }
-              score: { type: string }
-              issues: { type: array }
-              duration_ms: { type: integer }
-              command: { type: object, description: "executable, args, cwd, exit_code, environment" }
-              output: { type: object, description: "stdout, stderr, truncated, details (failures only)" }
-              hints: { type: array, items: { type: string } }
-              artifact_path: { type: string }
-              fields: { type: object, description: "Parsed JSON fields (json_field strategy only)" }
-        timings:
-          type: object
-          description: "Per-gate duration_ms keyed by gate_number, plus total"
-        text_output: { type: string }
-
-implementation:
-  steps:
-    - "Load gate definitions from .st3/quality.yaml"
-    - "Determine mode: file-specific (files provided) or project-level (empty)"
-    - "For each gate in active_gates:"
-    - "  Check skip conditions (mode, scope, file types)"
-    - "  Execute command with timeout"
-    - "  Parse output via configured strategy (exit_code / json_field / text_regex)"
-    - "  Collect environment metadata (python_version, tool_path, tool_version, platform)"
-    - "  Build structured gate result with issues, score, command, output"
-    - "  Log artifacts for failed gates to temp/qa_logs/"
-    - "Build timings aggregate and summary"
-    - "Return structured v2.0 JSON via ToolResult.json_data()"
-
-idempotency: true
-dry_run_support: false
-offline_capable: true
-```
-
----
-
-### 5.2 `fix_whitespace`
-
-**Description:** Auto-fixes trailing whitespace in specified files. Safe, non-destructive operation.
-
-**Category:** `quality`
-
-```yaml
-parameters:
-  - name: files
-    type: array
-    required: true
-    description: "List of file paths to fix"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        files_modified: { type: array, items: { type: string } }
-        lines_fixed: { type: integer }
-
-implementation:
-  command: "(Get-Content {file}) | ForEach-Object { $_.TrimEnd() } | Set-Content {file}"
-  side_effects:
-    - "Modifies files in place"
-
-idempotency: true
-dry_run_support: true
-```
-
----
-
-### 5.3 `count_tests`
-
-**Description:** Counts total tests in the project. Used for tracking progress and updating IMPLEMENTATION_STATUS.md.
-
-**Category:** `quality`
-
-```yaml
-parameters:
-  - name: scope
-    type: string
-    required: false
-    default: "all"
-    validation: enum [all, unit, integration]
-    description: "Which test directories to count"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        total: { type: integer }
-        by_directory:
-          type: object
-          additionalProperties: { type: integer }
-
-implementation:
-  command: "pytest tests/{scope}/ --collect-only -q 2>$null | Select-String '^\\d+ tests'"
-
-idempotency: true
-offline_capable: true
-```
-
----
-
-### 5.4 `check_arch_compliance`
-
-**Description:** Validates code against architectural patterns and rules.
-
-**Category:** `quality`
-
-```yaml
-parameters:
-  - name: scope
-    type: string
-    required: false
-    default: "all"
-    validation: enum [all, dtos, workers, platform]
-
-implementation:
-  steps:
-    - "Scan code for anti-patterns defined in ARCHITECTURE.md"
-    - "Check DTOs for Pydantic usage"
-    - "Check Workers for EventBus pattern validity"
-    - "Return list of violations"
-```
-
----
-
-### 5.5 `validate_dto`
-
-**Description:** Validates a DTO definition against the DTO_TEMPLATE and best practices.
-
-**Category:** `quality`
-
-```yaml
-parameters:
-  - name: file_path
-    type: string
-    required: true
-
-implementation:
-  steps:
-    - "Check for Pydantic BaseModel inheritance"
-    - "Check for ConfigDict(frozen=True)"
-    - "Check for json_schema_extra examples"
-    - "Check for field descriptions"
-```
-
----
-
-## 6. Git Integration Tools
-
-Tools for managing version control workflow.
-
----
-
-### 6.1 `create_feature_branch`
-
-**Description:** Creates a new Git branch enforcing project naming conventions from GIT_WORKFLOW.md.
-
-**Category:** `git`
-
-```yaml
-parameters:
-  - name: branch_type
-    type: string
-    required: true
-    validation: enum [feature, fix, refactor, docs]
-  - name: name
-    type: string
-    required: true
-    description: "Descriptive name in kebab-case (e.g., 'config-schemas-week1')"
-    validation: regex "^[a-z0-9-]+$"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        branch_name: { type: string }
-        created_from: { type: string }
-
-implementation:
-  prerequisites:
-    - "No uncommitted changes (git status clean)"
-    - "On main branch OR user confirms branching from current"
-  steps:
-    - "git checkout main"
-    - "git pull origin main"
-    - "git checkout -b {branch_type}/{name}"
-  side_effects:
-    - "Creates new local branch"
-    - "Switches to new branch"
-
-idempotency: false
-```
-
----
-
-### 6.2 `commit_tdd_phase`
-
-**Description:** Creates a commit with proper Conventional Commits format for each TDD phase.
-
-**Category:** `git`
-
-```yaml
-parameters:
-  - name: phase
-    type: string
-    required: true
-    validation: enum [red, green, refactor, docs]
-    description: "TDD phase determines commit type (red=test, green=feat, refactor=refactor)"
-  - name: component
-    type: string
-    required: true
-    description: "Component being worked on (e.g., 'SizePlan DTO')"
-  - name: details
-    type: array
-    required: false
-    description: "Bullet points for commit body"
-  - name: test_count
-    type: string
-    required: false
-    description: "Test status (e.g., '20/20')"
-  - name: quality_gates
-    type: string
-    required: false
-    description: "Gate status (e.g., 'all pass', '5 passed, 1 failed')"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        commit_hash: { type: string }
-        commit_message: { type: string }
-
-implementation:
-  steps:
-    - "Map phase to commit type:"
-    - "  red → test:"
-    - "  green → feat:"
-    - "  refactor → refactor:"
-    - "  docs → docs:"
-    - "Construct commit message:"
-    - "  {type}: {summary for component}"
-    - "  "
-    - "  - {detail 1}"
-    - "  - {detail 2}"
-    - "  "
-    - "  Status: {RED|GREEN}"
-    - "  Quality gates: {quality_gates}"
-    - "git add ."
-    - "git commit -m '{message}'"
-  side_effects:
-    - "Stages all changes"
-    - "Creates commit"
-
-idempotency: false
-```
-
----
-
-### 6.3 `merge_to_main`
-
-**Description:** Merges current feature branch to main with quality gate verification.
-
-**Category:** `git`
-
-```yaml
-parameters:
-  - name: merge_strategy
-    type: string
-    required: false
-    default: "no-ff"
-    validation: enum [no-ff, squash]
-  - name: delete_branch
-    type: boolean
-    required: false
-    default: true
-    description: "Delete feature branch after merge"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        merged_branch: { type: string }
-        target_branch: { type: string }
-        commit_hash: { type: string }
-
-implementation:
-  prerequisites:
-    - "Current branch is NOT main"
-    - "All quality gates pass (run_quality_gates on changed files)"
-    - "All tests pass"
-  steps:
-    - "Run quality gates on all modified files"
-    - "If any gate fails, abort with error"
-    - "git checkout main"
-    - "git merge {--no-ff|--squash} {current_branch}"
-    - "If squash: git commit -m '{merge message}'"
-    - "If delete_branch: git branch -d {current_branch}"
-  side_effects:
-    - "Merges branch to main"
-    - "May delete local branch"
-
-idempotency: false
-```
-
----
-
-### 6.4 `submit_pr`
-
-**Description:** Pushes current branch and creates a GitHub Pull Request using project template.
-
-**Category:** `git`
-
-```yaml
-parameters:
-  - name: title
-    type: string
-    required: true
-    description: "PR title (follows Conventional Commits: 'feat: implement X')"
-  - name: description
-    type: string
-    required: false
-    description: "Additional context for PR body"
-  - name: labels
-    type: array
-    required: false
-    description: "GitHub labels to add"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        pr_url: { type: string }
-        pr_number: { type: integer }
-
-implementation:
-  prerequisites:
-    - "Branch is not main"
-    - "Changes are committed"
-  steps:
-    - "git push -u origin HEAD"
-    - "gh pr create --title '{title}' --body '{description}' --label {labels}"
-  side_effects:
-    - "Pushes branch to GitHub"
-    - "Creates PR"
-
-idempotency: false
-```
-
----
-
-## 7. Validation & Enforcement Rules
-
-These rules are embedded in tools as pre-flight checks.
-
-| Rule ID | Description | Enforcement Point | Blocking? |
-|---------|-------------|--------------------|-----------|
-| TDD-001 | RED commit contains only test files | `commit_tdd_phase(phase=red)` | ✅ Yes |
-| TDD-002 | Branch naming follows `{type}/{name}` pattern | `create_feature_branch` | ✅ Yes |
-| TDD-003 | Commit message follows Conventional Commits | `commit_tdd_phase` | ✅ Yes |
-| QG-001 | Ruff format + strict lint pass (Gates 0-1) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-002 | No imports inside functions (Gate 2) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-003 | Max line length 100 chars (Gate 3) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-004 | Type checking passes — Mypy/Pyright (Gates 4/4b) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-005 | All tests pass + coverage ≥90% (Gates 5-6) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| DOC-001 | Document line limits respected | `validate_document_structure` | ⚠️ Warning |
-| DOC-002 | Required sections present | `validate_document_structure` | ⚠️ Warning |
-| DOC-003 | Link definitions for all references | `validate_document_structure` | ⚠️ Warning |
-
----
-
-## 8. Error Codes & Recovery
-
-| Code | Tool | Cause | Recovery |
-|------|------|-------|----------|
-| `ERR_UNCOMMITTED_CHANGES` | `create_feature_branch`, `merge_to_main` | Git status not clean | Commit or stash changes first |
-| `ERR_QUALITY_GATE_FAILED` | `merge_to_main` | One or more quality gates failed | Fix violations reported in gate output, re-run gates |
-| `ERR_TESTS_FAILING` | `merge_to_main` | pytest failed | Fix failing tests before merge |
-| `ERR_BRANCH_EXISTS` | `create_feature_branch` | Branch already exists | Use different name or checkout existing |
-| `ERR_FILE_EXISTS` | `scaffold_*` | Target file already exists | Use --overwrite flag or choose different name |
-| `ERR_TEMPLATE_NOT_FOUND` | `scaffold_document` | Invalid template_type | Check `st3://templates/list` for valid types |
-| `ERR_GITHUB_AUTH` | All GitHub tools | GITHUB_TOKEN missing/invalid | Set GITHUB_TOKEN environment variable |
-| `ERR_RATE_LIMIT` | GitHub tools | GitHub API rate limited | Wait and retry, or use cached data |
-| `ERR_ISSUE_NOT_FOUND` | `update_issue`, `close_issue` | Issue number doesn't exist | Verify issue number |
-| `ERR_MILESTONE_NOT_FOUND` | `create_issue` | Milestone doesn't exist | Create milestone first |
-| `ERR_PROJECT_NOT_FOUND` | Project tools | GitHub Project not configured | Set up GitHub Project first |
-
----
-
-## 9. Implementation Notes
-
-### Dependencies
-
-- **Python 3.11+** (consistent with ST3 project)
-- **mcp** package (Python MCP SDK)
-- **GitPython** or subprocess for Git operations
-- **PyGithub** for GitHub API
-- **watchdog** for file system watching
-
-### Cache Strategy
-
-| Source | TTL | Invalidation |
-|--------|-----|--------------|
-| Filesystem (docs/) | 5s | File watcher triggers immediate refresh |
-| Git state | 10s | Git hooks trigger refresh |
-| GitHub API | 60s | Rate limit aware, conditional requests |
-| Derived state | 0s (computed on-demand) | N/A |
-
-### Extensibility
-
-- New tools: Add Python function with `@mcp.tool()` decorator
-- New resources: Add URI route with `@mcp.resource()` decorator
-- New templates: Add to `docs/reference/templates/`, update `st3://templates/list`
+## Canonical References
+
+- [docs/reference/mcp/MCP_TOOLS.md](../reference/mcp/MCP_TOOLS.md)
+- [docs/reference/mcp/tools/README.md](../reference/mcp/tools/README.md)
+- [docs/reference/mcp/tools/github.md](../reference/mcp/tools/github.md)
+- [docs/reference/mcp/tools/git.md](../reference/mcp/tools/git.md)
+- [docs/reference/mcp/tools/project.md](../reference/mcp/tools/project.md)
+- [docs/reference/mcp/tools/quality.md](../reference/mcp/tools/quality.md)

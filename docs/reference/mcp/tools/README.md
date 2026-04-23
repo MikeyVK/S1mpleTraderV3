@@ -79,7 +79,7 @@ Full GitHub API integration for issues, pull requests, labels, and milestones. R
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `create_pr` | Create new pull request | `title`, `body`, `head`, `base`, `draft` |
+| `submit_pr` | Atomically neutralize, commit, push, and create PR | `head`, `title`, `base`, `body`, `draft` |
 | `list_prs` | List PRs with filters | `state`, `head`, `base` |
 | `merge_pr` | Merge PR with strategy | `pr_number`, `merge_method`, `commit_message` |
 
