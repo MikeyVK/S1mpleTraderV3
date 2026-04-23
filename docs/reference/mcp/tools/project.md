@@ -460,11 +460,11 @@ Phase state is **synchronized** with git branch operations:
 ```
 1. transition_phase(branch="feature/123-oauth", to_phase="red")
 2. scaffold_artifact(artifact_type="dto", name="OAuthToken")
-3. git_add_or_commit(phase="red", message="Add failing test for OAuthToken")
+3. git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="Add failing test for OAuthToken")
 4. transition_phase(branch="feature/123-oauth", to_phase="green")
 5. safe_edit_file(...)  # Implement
 6. run_tests(path="tests/test_oauth.py")
-7. git_add_or_commit(phase="green", message="Implement OAuthToken")
+7. git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement OAuthToken")
 ```
 
 ### Emergency Phase Skip (Hotfix)
@@ -477,7 +477,7 @@ Phase state is **synchronized** with git branch operations:
      human_approval="CTO approval (Jane Smith) - immediate production deployment"
    )
 2. git_push(set_upstream=True)
-3. create_pr(title="HOTFIX: Security patch", body="...", head="bugfix/456-security")
+3. submit_pr(title="HOTFIX: Security patch", body="...", head="bugfix/456-security")
 4. merge_pr(pr_number=78, merge_method="merge")
 ```
 

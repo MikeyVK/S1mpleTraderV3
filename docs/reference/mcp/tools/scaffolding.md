@@ -529,7 +529,7 @@ Template provenance tracking (version hashes → tier chains).
      }
    )
 2. run_tests(path="tests/test_order_dto.py") → expect failure
-3. git_add_or_commit(phase="red", message="Add failing test for OrderDTO")
+3. git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="Add failing test for OrderDTO")
 ```
 
 ### Scaffold Worker for Background Processing
