@@ -315,6 +315,20 @@ class GitManager:
         """
         return self.adapter.get_current_branch()
 
+    def has_net_diff_for_path(self, path: str, base: str) -> bool:
+        """Return True if *path* has a net delta between the merge-base and HEAD.
+
+        Delegates to GitAdapter.has_net_diff_for_path.
+        """
+        return self.adapter.has_net_diff_for_path(path, base)
+
+    def neutralize_to_base(self, paths: frozenset[str], base: str) -> None:
+        """Align each path in *paths* to the state at the merge-base of HEAD and *base*.
+
+        Delegates to GitAdapter.neutralize_to_base.
+        """
+        self.adapter.neutralize_to_base(paths, base)
+
     def list_branches(self, verbose: bool = False, remote: bool = False) -> list[str]:
         """List branches with optional details.
 

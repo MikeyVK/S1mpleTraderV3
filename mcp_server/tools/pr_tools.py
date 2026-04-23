@@ -160,17 +160,17 @@ class SubmitPRTool(BranchMutatingTool):
 
     async def execute(self, params: SubmitPRInput, context: NoteContext) -> ToolResult:
         """Atomic: neutralize → commit → push → create_pr → set_pr_status(OPEN)."""
-        branch = self._git_manager.adapter.get_current_branch()
+        branch = self._git_manager.get_current_branch()
         base = params.base or self._git_manager.git_config.default_base_branch
 
         # Step 1-3: neutralize branch-local artifacts that have a net diff against base
         paths_to_neutralize = frozenset(
             artifact.path
             for artifact in self._merge_readiness_context.branch_local_artifacts
-            if self._git_manager.adapter.has_net_diff_for_path(artifact.path, base)
+            if self._git_manager.has_net_diff_for_path(artifact.path, base)
         )
         if paths_to_neutralize:
-            self._git_manager.adapter.neutralize_to_base(paths_to_neutralize, base)
+            self._git_manager.neutralize_to_base(paths_to_neutralize, base)
 
         # Step 4-7: commit → push → create_pr → write OPEN status
         try:
@@ -180,7 +180,7 @@ class SubmitPRTool(BranchMutatingTool):
                 note_context=context,
                 commit_type="chore",
             )
-            self._git_manager.adapter.push()
+            self._git_manager.push()
             result = self._github_manager.create_pr(
                 title=params.title,
                 body=params.body or "",

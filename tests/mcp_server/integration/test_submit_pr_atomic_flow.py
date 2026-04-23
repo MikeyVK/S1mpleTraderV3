@@ -22,11 +22,12 @@ Also verifies:
     mcp_server.managers.github_manager]
 @responsibilities:
     - Prove SubmitPRTool.execute() writes PRStatus.OPEN after successful PR creation
-    - Prove atomic flow: neutralize → commit → push → create_pr → set_pr_status
+    - Prove atomic flow: neutralize -> commit -> push -> create_pr -> set_pr_status
     - Prove skip of neutralize when no branch-local artifacts have net diff
     - Prove partial failure produces RecoveryNote
     - Prove CreatePRTool is not a public MCP tool in server.py
     - Prove GitCommitTool no longer contains neutralize_to_base path
+    - Prove SubmitPRTool uses only GitManager (no adapter bypass)
 """
 
 from __future__ import annotations
@@ -92,11 +93,10 @@ class TestSubmitPRHappyPath:
     """SubmitPRTool happy path: atomic flow executes in correct order."""
 
     def test_submit_pr_happy_path(self) -> None:
-        """Full atomic flow: neutralize → commit → push → create_pr → set_pr_status(OPEN)."""
+        """Full atomic flow: neutralize -> commit -> push -> create_pr -> set_pr_status(OPEN)."""
         git_manager = MagicMock(spec=GitManager)
-        git_manager.adapter = MagicMock()
-        git_manager.adapter.get_current_branch.return_value = "feature/42-test"
-        git_manager.adapter.has_net_diff_for_path.return_value = True
+        git_manager.get_current_branch.return_value = "feature/42-test"
+        git_manager.has_net_diff_for_path.return_value = True
         git_manager.commit_with_scope.return_value = "abc1234"
 
         github_manager = MagicMock(spec=GitHubManager)
@@ -114,17 +114,16 @@ class TestSubmitPRHappyPath:
         )
 
         assert not result.is_error
-        git_manager.adapter.neutralize_to_base.assert_called_once()
+        git_manager.neutralize_to_base.assert_called_once()
         git_manager.commit_with_scope.assert_called_once()
-        git_manager.adapter.push.assert_called_once()
+        git_manager.push.assert_called_once()
         github_manager.create_pr.assert_called_once()
         pr_status_writer.set_pr_status.assert_called_once_with("feature/42-test", PRStatus.OPEN)
 
     def test_submit_pr_skips_neutralize_when_no_exclusions(self) -> None:
         """When no branch-local artifacts are configured, neutralize_to_base must not be called."""
         git_manager = MagicMock(spec=GitManager)
-        git_manager.adapter = MagicMock()
-        git_manager.adapter.get_current_branch.return_value = "feature/42-test"
+        git_manager.get_current_branch.return_value = "feature/42-test"
         git_manager.commit_with_scope.return_value = "abc1234"
 
         github_manager = MagicMock(spec=GitHubManager)
@@ -135,7 +134,7 @@ class TestSubmitPRHappyPath:
 
         pr_status_writer = MagicMock(spec=IPRStatusWriter)
 
-        # No artifacts → neutralize must not be called
+        # No artifacts -> neutralize must not be called
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer, artifacts=())
 
         result = asyncio.get_event_loop().run_until_complete(
@@ -143,15 +142,14 @@ class TestSubmitPRHappyPath:
         )
 
         assert not result.is_error
-        git_manager.adapter.neutralize_to_base.assert_not_called()
+        git_manager.neutralize_to_base.assert_not_called()
         pr_status_writer.set_pr_status.assert_called_once_with("feature/42-test", PRStatus.OPEN)
 
     def test_submit_pr_pr_status_written_open(self) -> None:
         """PRStatus.OPEN is written to the cache after successful PR creation."""
         git_manager = MagicMock(spec=GitManager)
-        git_manager.adapter = MagicMock()
-        git_manager.adapter.get_current_branch.return_value = "refactor/283-test"
-        git_manager.adapter.has_net_diff_for_path.return_value = False
+        git_manager.get_current_branch.return_value = "refactor/283-test"
+        git_manager.has_net_diff_for_path.return_value = False
         git_manager.commit_with_scope.return_value = "deadbeef"
 
         github_manager = MagicMock(spec=GitHubManager)
@@ -177,11 +175,10 @@ class TestSubmitPRPartialFailure:
     def test_push_failure_produces_recovery_note(self) -> None:
         """When push raises ExecutionError, a RecoveryNote is produced and error returned."""
         git_manager = MagicMock(spec=GitManager)
-        git_manager.adapter = MagicMock()
-        git_manager.adapter.get_current_branch.return_value = "feature/42-test"
-        git_manager.adapter.has_net_diff_for_path.return_value = True
+        git_manager.get_current_branch.return_value = "feature/42-test"
+        git_manager.has_net_diff_for_path.return_value = True
         git_manager.commit_with_scope.return_value = "abc1234"
-        git_manager.adapter.push.side_effect = ExecutionError("push failed: remote rejected")
+        git_manager.push.side_effect = ExecutionError("push failed: remote rejected")
 
         github_manager = MagicMock(spec=GitHubManager)
         pr_status_writer = MagicMock(spec=IPRStatusWriter)
@@ -199,8 +196,7 @@ class TestSubmitPRPartialFailure:
     def test_create_pr_failure_produces_recovery_note(self) -> None:
         """When create_pr raises ExecutionError, a RecoveryNote is produced and error returned."""
         git_manager = MagicMock(spec=GitManager)
-        git_manager.adapter = MagicMock()
-        git_manager.adapter.get_current_branch.return_value = "feature/42-test"
+        git_manager.get_current_branch.return_value = "feature/42-test"
         git_manager.commit_with_scope.return_value = "abc1234"
 
         github_manager = MagicMock(spec=GitHubManager)
@@ -216,6 +212,22 @@ class TestSubmitPRPartialFailure:
 
         assert result.is_error
         pr_status_writer.set_pr_status.assert_not_called()
+
+
+class TestSubmitPRNoAdapterBypass:
+    """Structural contract: SubmitPRTool must not access GitAdapter directly."""
+
+    def test_submit_pr_tool_execute_has_no_adapter_calls(self) -> None:
+        """SubmitPRTool.execute() must not contain self._git_manager.adapter references.
+
+        Law of Demeter (ARCHITECTURE_PRINCIPLES §7): SubmitPRTool must only
+        talk to GitManager, never to GitAdapter directly.
+        """
+        source = inspect.getsource(SubmitPRTool.execute)
+        assert "_git_manager.adapter" not in source, (
+            "SubmitPRTool.execute() must not access GitAdapter directly. "
+            "Use GitManager methods instead (Law of Demeter, §7)."
+        )
 
 
 class TestCompositionRootContracts:
@@ -238,11 +250,7 @@ class TestCompositionRootContracts:
         )
 
     def test_submit_pr_tool_declares_enforcement_event(self) -> None:
-        """SubmitPRTool.enforcement_event must be 'submit_pr' so phase-readiness gate fires.
-
-        Finding C3-QA-1: without this, check_phase_readiness in enforcement.yaml
-        is never dispatched (server routes via tool.enforcement_event == None → skip).
-        """
+        """SubmitPRTool.enforcement_event must be 'submit_pr' so phase-readiness gate fires."""
         assert SubmitPRTool.enforcement_event == "submit_pr", (
             "SubmitPRTool must declare enforcement_event = 'submit_pr'. "
             "Without it, check_phase_readiness in enforcement.yaml is never dispatched."
