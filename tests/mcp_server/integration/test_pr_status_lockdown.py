@@ -119,6 +119,7 @@ assert len(BRANCH_MUTATING_TOOLS) == 18, (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pr_reader(status: PRStatus) -> IPRStatusReader:
     reader = MagicMock(spec=IPRStatusReader)
     reader.get_pr_status.return_value = status
@@ -141,6 +142,7 @@ def _make_runner(pr_status: PRStatus, tmp_path: Path) -> EnforcementRunner:
 # 1. Inheritance — must FAIL in RED for 17/18 tools
 # ---------------------------------------------------------------------------
 
+
 class TestBranchMutatingToolInheritance:
     """Each branch-mutating tool must inherit BranchMutatingTool."""
 
@@ -162,6 +164,7 @@ class TestBranchMutatingToolInheritance:
 # 2. Escape hatch — MergePRTool must NOT be a BranchMutatingTool
 # ---------------------------------------------------------------------------
 
+
 class TestMergePREscapeHatch:
     """MergePRTool is the escape hatch — it must NOT inherit BranchMutatingTool."""
 
@@ -175,6 +178,7 @@ class TestMergePREscapeHatch:
 # ---------------------------------------------------------------------------
 # 3. Enforcement: blocked when PRStatus.OPEN
 # ---------------------------------------------------------------------------
+
 
 class TestBranchMutatingToolBlockedWhenPROpen:
     """EnforcementRunner must block every branch-mutating tool when PRStatus.OPEN."""
@@ -202,6 +206,7 @@ class TestBranchMutatingToolBlockedWhenPROpen:
 # ---------------------------------------------------------------------------
 # 4. Enforcement: allowed when PRStatus.ABSENT
 # ---------------------------------------------------------------------------
+
 
 class TestBranchMutatingToolAllowedWhenPRAbsent:
     """EnforcementRunner must NOT block branch-mutating tools when PRStatus.ABSENT."""

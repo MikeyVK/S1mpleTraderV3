@@ -100,7 +100,9 @@ def test_merge_pr_tool(mock_adapter: Mock, mock_git_config: Mock) -> None:
 
     manager = GitHubManager(adapter=mock_adapter)
     pr_status_writer = MagicMock()
-    tool = MergePRTool(manager=manager, git_config=mock_git_config, pr_status_writer=pr_status_writer)
+    tool = MergePRTool(
+        manager=manager, git_config=mock_git_config, pr_status_writer=pr_status_writer
+    )
 
     result = asyncio.run(
         tool.execute(MergePRInput(pr_number=8, merge_method="merge"), NoteContext())

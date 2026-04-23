@@ -14,7 +14,6 @@ GitCommitTool.execute() NoteContext wiring tests.
 """
 
 # Standard library
-from pathlib import Path
 from unittest.mock import MagicMock
 
 # Third-party
@@ -47,7 +46,10 @@ class TestGitCommitToolC3:
 
     @pytest.mark.asyncio
     @pytest.mark.xfail(
-        reason="Pre-existing: neutralize_to_base not yet called by GitCommitTool (C8 contract, separate issue)",
+        reason=(
+            "Pre-existing: neutralize_to_base not yet called by GitCommitTool "
+            "(C8 contract, separate issue)"
+        ),
         strict=False,
     )
     async def test_git_commit_tool_reads_exclusion_note(self) -> None:

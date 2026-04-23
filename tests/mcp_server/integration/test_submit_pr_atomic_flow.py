@@ -109,7 +109,9 @@ class TestSubmitPRHappyPath:
 
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
 
-        result = asyncio.get_event_loop().run_until_complete(tool.execute(_make_params(), NoteContext()))
+        result = asyncio.get_event_loop().run_until_complete(
+            tool.execute(_make_params(), NoteContext())
+        )
 
         assert not result.is_error
         git_manager.adapter.neutralize_to_base.assert_called_once()

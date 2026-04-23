@@ -18,7 +18,7 @@ def reset_config_singletons() -> Generator[None, None, None]:
     """Reset all config singletons before/after each test."""
 
     def _reset_all() -> None:
-        CreateBranchInput._git_config = None
+        CreateBranchInput._git_config = None  # type: ignore[misc]
 
     _reset_all()
     yield
