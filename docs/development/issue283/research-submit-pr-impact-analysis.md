@@ -107,15 +107,14 @@ Neutralisatie is voortaan **self-contained** in `SubmitPRTool.execute()` via een
 
 | Step | Operation | Source |
 |------|-----------|--------|
-| 1 | Read `state.json` (still intact) | `_read_current_phase()` |
-| 2 | Phase gate: `current_phase == pr_allowed_phase` | `_handle_check_phase_readiness` (enforcement runner pre-call, via enforcement.yaml) |
-| 3 | Net-diff check: branch-local artifacts against base | `_has_net_diff_for_path()` |
-| 4 | `neutralize_to_base()` for tracked artifacts | `GitAdapter.neutralize_to_base()` |
-| 5 | Commit with scope `chore(P_READY): neutralize...` | `GitManager.commit_with_scope()` |
-| 6 | Push to remote | `GitAdapter.push()` |
-| 7 | Create PR via GitHub API | `GitHubManager.create_pr()` |
-
-`create_pr` (the class) was **deleted entirely** in the final implementation — `SubmitPRTool` delegates directly to `GitHubManager.create_pr()` instead. *(Earlier plan: keep as internal utility — superseded, see D2)*
+| 1 | Get current branch + read artifact list | `git_manager.get_current_branch()` + `merge_readiness_context.branch_local_artifacts` |
+| 2 | Phase gate: `current_phase == ready` | enforcement pre-call → `_handle_check_phase_readiness` (enforcement.yaml rule on `tool: submit_pr`) |
+| 3 | Net-diff check: branch-local artifacts against base | `git_manager.has_net_diff_for_path(path, base)` |
+| 4 | Neutralize tracked artifacts | `git_manager.neutralize_to_base(paths, base)` |
+| 5 | Commit with scope `chore(P_READY): neutralize...` | `git_manager.commit_with_scope("ready", ...)` |
+| 6 | Push to remote | `git_manager.push()` |
+| 7 | Create PR via GitHub API | `github_manager.create_pr(head, base, ...)` |
+| 8 | Write PR status to cache | `pr_status_writer.set_pr_status(branch, PRStatus.OPEN)` |
 
 ### 3. Production Code Impact
 
