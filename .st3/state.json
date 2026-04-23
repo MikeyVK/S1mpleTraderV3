@@ -2,7 +2,7 @@
   "branch": "refactor/283-ready-phase-enforcement",
   "issue_number": 283,
   "workflow_name": "refactor",
-  "current_phase": "ready",
+  "current_phase": "documentation",
   "current_cycle": null,
   "last_cycle": 6,
   "cycle_history": [
@@ -169,7 +169,7 @@
     "documentation"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Adding missing GitManager unit tests per QA finding \u2014 minor test coverage gap, no production code change",
+  "skip_reason": "Terug naar documentation om versiegeschiedenis en session-commits correct te reflecteren in issue283 docs voordat PR wordt aangemaakt",
   "issue_title": "Ready phase enforcement \u2014 prevent branch-local artifacts from reaching main",
   "parent_branch": null,
   "created_at": "2026-04-09T11:43:14.613856+00:00",
@@ -445,6 +445,14 @@
       "human_approval": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "ready",
+      "to_phase": "documentation",
+      "timestamp": "2026-04-23T12:26:16.587564+00:00",
+      "human_approval": "User approved op 2026-04-23",
+      "forced": true,
+      "skip_reason": "Terug naar documentation om versiegeschiedenis en session-commits correct te reflecteren in issue283 docs voordat PR wordt aangemaakt"
     }
   ],
   "reconstructed": false
