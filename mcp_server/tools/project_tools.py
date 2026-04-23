@@ -19,11 +19,12 @@ from typing import Any
 import anyio
 from pydantic import BaseModel, Field
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 from mcp_server.schemas import WorkflowConfig
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ class InitializeProjectInput(BaseModel):
     skip_reason: str | None = Field(default=None, description="Reason for custom phases")
 
 
-class InitializeProjectTool(BaseTool):
+class InitializeProjectTool(BranchMutatingTool):
     """Tool for initializing projects with atomic state management.
 
     Phase 0.5: Human selects workflow_name → generates project phase plan.
@@ -178,7 +179,7 @@ class InitializeProjectTool(BaseTool):
             cancellable=True,
         )
 
-    async def execute(self, params: InitializeProjectInput) -> ToolResult:
+    async def execute(self, params: InitializeProjectInput, context: NoteContext) -> ToolResult:
         """Execute project initialization with atomic state creation.
 
         Issue #39: Creates both deliverables.json AND state.json atomically.
@@ -193,6 +194,7 @@ class InitializeProjectTool(BaseTool):
         Raises:
             ValueError: If workflow_name invalid or custom_phases missing
         """
+        del context  # Not used
         try:
             start = time.perf_counter()
 
@@ -312,7 +314,7 @@ class GetProjectPlanTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return GetProjectPlanInput.model_json_schema()
 
-    async def execute(self, params: GetProjectPlanInput) -> ToolResult:
+    async def execute(self, params: GetProjectPlanInput, context: NoteContext) -> ToolResult:
         """Execute project plan retrieval.
 
         Args:
@@ -321,6 +323,7 @@ class GetProjectPlanTool(BaseTool):
         Returns:
             ToolResult with project plan or error
         """
+        del context  # Not used
         try:
             plan = self.manager.get_project_plan(issue_number=params.issue_number)
             if plan:
@@ -386,7 +389,7 @@ class SavePlanningDeliverablesInput(BaseModel):
     )
 
 
-class SavePlanningDeliverablesTool(BaseTool):
+class SavePlanningDeliverablesTool(BranchMutatingTool):
     """Tool to persist planning deliverables for an issue to deliverables.json.
 
     Issue #229 Cycle 4 — GAP-04 + GAP-06:
@@ -411,7 +414,9 @@ class SavePlanningDeliverablesTool(BaseTool):
         del workspace_root
         self._manager = manager
 
-    async def execute(self, params: SavePlanningDeliverablesInput) -> ToolResult:
+    async def execute(
+        self, params: SavePlanningDeliverablesInput, context: NoteContext
+    ) -> ToolResult:
         """Persist planning deliverables with Layer 2 schema validation.
 
         Args:
@@ -420,6 +425,7 @@ class SavePlanningDeliverablesTool(BaseTool):
         Returns:
             ToolResult success or structured error.
         """
+        del context  # Not used
         # Layer 2: validate every validates entry before touching disk
         tdd_cycles = params.planning_deliverables.get("tdd_cycles", {})
         for cycle in tdd_cycles.get("cycles", []):
@@ -473,7 +479,7 @@ class UpdatePlanningDeliverablesInput(BaseModel):
     )
 
 
-class UpdatePlanningDeliverablesTool(BaseTool):
+class UpdatePlanningDeliverablesTool(BranchMutatingTool):
     """Tool to merge-update planning deliverables for an issue in deliverables.json.
 
     Issue #229 Cycle 5 — GAP-09:
@@ -502,7 +508,9 @@ class UpdatePlanningDeliverablesTool(BaseTool):
         del workspace_root
         self._manager = manager
 
-    async def execute(self, params: UpdatePlanningDeliverablesInput) -> ToolResult:
+    async def execute(
+        self, params: UpdatePlanningDeliverablesInput, context: NoteContext
+    ) -> ToolResult:
         """Merge planning deliverables with Layer 2 schema validation.
 
         Args:
@@ -511,6 +519,7 @@ class UpdatePlanningDeliverablesTool(BaseTool):
         Returns:
             ToolResult success or structured error.
         """
+        del context  # Not used
         # Layer 2: validate every validates entry before touching disk
         tdd_cycles = params.planning_deliverables.get("tdd_cycles", {})
         for cycle in tdd_cycles.get("cycles", []):

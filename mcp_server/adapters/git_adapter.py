@@ -1,4 +1,22 @@
-"""Git adapter for the MCP server."""
+# mcp_server/adapters/git_adapter.py
+"""
+Git Adapter — local git repository operations.
+
+Wraps GitPython's Repo object with a domain-facing API. All git operations
+performed by the MCP server route through this adapter. Sole owner of all
+git staging and unstaging operations, including the skip_paths zero-delta
+postcondition: every path in skip_paths is removed from the index via
+git restore --staged before index.commit().
+
+@layer: Backend (Adapters)
+@dependencies: [GitPython, mcp_server.config.settings, mcp_server.core.exceptions,
+                mcp_server.core.logging]
+@responsibilities:
+    - Expose git operations (commit, checkout, branch, push, fetch, restore)
+    - Enforce skip_paths postcondition: restore --staged for each path after
+      all staging, before index.commit()
+    - Raise ExecutionError / MCPSystemError on git failures
+"""
 
 from pathlib import Path
 from typing import Any
@@ -114,19 +132,30 @@ class GitAdapter:
             )
             raise ExecutionError(f"Failed to create branch {branch_name}: {e}") from e
 
-    def commit(self, message: str, files: list[str] | None = None) -> str:
+    def commit(
+        self,
+        message: str,
+        files: list[str] | None = None,
+        skip_paths: frozenset[str] = frozenset(),
+    ) -> str:
         """Commit changes.
 
         Args:
             message: Commit message.
             files: Optional list of file paths to stage and commit. When omitted,
                 stages all changes (equivalent to `git add .`).
+            skip_paths: Paths to remove from the staging index after all staging.
+                Applied unconditionally as a postcondition regardless of the
+                `files=` route used. Produces zero delta for these paths in the
+                resulting commit. Defaults to frozenset() — no-op.
         """
         try:
             if files is None:
                 self.repo.git.add(".")
             else:
                 self.repo.git.add(*files)
+            for path in skip_paths:
+                self.repo.git.restore("--staged", path)
             commit = self.repo.index.commit(message)
             return commit.hexsha
         except Exception as e:
@@ -138,6 +167,69 @@ class GitAdapter:
             self.repo.git.restore(f"--source={source}", "--staged", "--worktree", "--", *files)
         except Exception as e:
             raise ExecutionError(f"Failed to restore files: {e}") from e
+
+    def neutralize_to_base(self, paths: frozenset[str], base: str) -> None:
+        """Align each path in `paths` to the state at the merge-base of HEAD and `base`.
+
+        Computes the merge-base of HEAD and `base` once, then for each path:
+            git restore --source=<merge_base_sha> --staged --worktree -- <path>
+
+        Behaviour per path:
+          - Path absent in merge-base tree → removed from index and working tree.
+          - Path present in merge-base tree → index and working tree set to
+            merge-base version.
+
+        Postcondition (after caller commits the staged changes):
+            git diff --name-only <merge_base_sha>..HEAD -- <path>
+            produces no output for any path in `paths`.
+
+        Args:
+            paths: Set of workspace-relative paths to neutralize.
+            base:  Base branch name (e.g. "main", "epic/76-...").
+
+        Raises:
+            ExecutionError: if git merge-base fails (e.g. base not found) or
+                            git restore fails for any path.
+        """
+        try:
+            merge_base_sha = str(self.repo.git.merge_base("HEAD", base)).strip()
+        except Exception as e:
+            raise ExecutionError(f"git merge-base failed for base='{base}': {e}") from e
+
+        for path in paths:
+            try:
+                self.repo.git.restore(
+                    f"--source={merge_base_sha}",
+                    "--staged",
+                    "--worktree",
+                    "--",
+                    path,
+                )
+            except Exception as e:
+                raise ExecutionError(
+                    f"git restore --source={merge_base_sha} failed for '{path}': {e}"
+                ) from e
+
+    def has_net_diff_for_path(self, path: str, base: str) -> bool:
+        """Return True if *path* has a net delta between the merge-base and HEAD.
+
+        Uses ``git diff --name-only <merge_base>..HEAD -- <path>`` to determine
+        whether this branch introduced commits that modified *path* relative to
+        *base*. Raises ExecutionError on non-zero git exit codes.
+        """
+        try:
+            merge_base_sha = str(self.repo.git.merge_base("HEAD", base)).strip()
+        except Exception as e:
+            raise ExecutionError(f"git merge-base failed for base='{base}': {e}") from e
+
+        try:
+            diff_output = str(
+                self.repo.git.diff("--name-only", f"{merge_base_sha}..HEAD", "--", path)
+            )
+        except Exception as e:
+            raise ExecutionError(f"git diff failed for path='{path}': {e}") from e
+
+        return path in diff_output.splitlines()
 
     def checkout(self, branch_name: str) -> None:
         """Checkout branch (local or remote-tracking)."""
@@ -200,13 +292,7 @@ class GitAdapter:
             fetch_info = remote_obj.fetch(prune=prune)
             return f"Fetched from {remote}: {len(fetch_info)} ref(s)"
         except ValueError as e:
-            raise ExecutionError(
-                f"Remote '{remote}' is not configured",
-                recovery=[
-                    "Configure a remote (e.g. 'origin')",
-                    "Check remotes via 'git remote -v'",
-                ],
-            ) from e
+            raise ExecutionError(f"Remote '{remote}' is not configured") from e
         except Exception as e:
             raise ExecutionError(f"Failed to fetch from remote '{remote}': {e}") from e
 
@@ -240,13 +326,7 @@ class GitAdapter:
                 return output
             return f"Pulled from {remote}"
         except ValueError as e:
-            raise ExecutionError(
-                f"Remote '{remote}' is not configured",
-                recovery=[
-                    "Configure a remote (e.g. 'origin')",
-                    "Check remotes via 'git remote -v'",
-                ],
-            ) from e
+            raise ExecutionError(f"Remote '{remote}' is not configured") from e
         except Exception as e:
             raise ExecutionError(f"Failed to pull from remote '{remote}': {e}") from e
 

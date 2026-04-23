@@ -20,7 +20,25 @@ from pathlib import Path
 
 # Third-party
 # Project modules
+from mcp_server.config.schemas.workphases import PhaseDefinition, WorkphasesConfig
 from mcp_server.core.phase_detection import PhaseDetectionResult, ScopeDecoder
+
+# Minimal WorkphasesConfig for unit tests — covers all phases referenced by test assertions.
+_TEST_WORKPHASES = WorkphasesConfig(
+    phases={
+        "research": PhaseDefinition(commit_type_hint="docs"),
+        "planning": PhaseDefinition(commit_type_hint="docs"),
+        "design": PhaseDefinition(commit_type_hint="docs"),
+        "implementation": PhaseDefinition(
+            commit_type_hint=None, subphases=["red", "green", "refactor"]
+        ),
+        "validation": PhaseDefinition(commit_type_hint="test"),
+        "documentation": PhaseDefinition(commit_type_hint="docs"),
+        "coordination": PhaseDefinition(commit_type_hint="chore"),
+        "integration": PhaseDefinition(commit_type_hint="test"),
+        "ready": PhaseDefinition(commit_type_hint="chore", terminal=True),
+    }
+)
 
 
 class TestPhaseDetectionResult:
@@ -53,7 +71,7 @@ class TestScopeDecoder:
     def test_parse_commit_scope_phase_only(self) -> None:
         """Parse commit scope with P_PHASE format (no subphase)."""
         # Arrange
-        decoder = ScopeDecoder()
+        decoder = ScopeDecoder(_TEST_WORKPHASES)
         commit_message = "docs(P_RESEARCH): complete problem analysis"
 
         # Act
@@ -70,7 +88,7 @@ class TestScopeDecoder:
     def test_parse_commit_scope_phase_and_subphase(self) -> None:
         """Parse commit scope with P_PHASE_SP_SUBPHASE format."""
         # Arrange
-        decoder = ScopeDecoder()
+        decoder = ScopeDecoder(_TEST_WORKPHASES)
         commit_message = "test(P_IMPLEMENTATION_SP_RED): add user validation tests"
 
         # Act
@@ -91,7 +109,7 @@ class TestScopeDecoder:
         state_file.write_text(
             json.dumps({"current_phase": "validation", "workflow_name": "feature"})
         )
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         commit_message = "docs: update README"  # No scope
 
         # Act
@@ -110,7 +128,7 @@ class TestScopeDecoder:
         # Arrange
         state_file = tmp_path / "state.json"
         state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         commit_message = "feat(INVALID_SCOPE): implement feature"  # Invalid format
 
         # Act
@@ -124,7 +142,7 @@ class TestScopeDecoder:
     def test_unknown_fallback_when_all_sources_fail(self) -> None:
         """Return unknown with actionable error when commit-scope and state.json both fail."""
         # Arrange
-        decoder = ScopeDecoder(state_path=Path("/nonexistent/state.json"))
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=Path("/nonexistent/state.json"))
         commit_message = "docs: no scope here"
 
         # Act
@@ -141,7 +159,7 @@ class TestScopeDecoder:
     def test_unknown_error_message_contains_recovery_steps(self) -> None:
         """Verify unknown fallback includes actionable recovery instructions."""
         # Arrange
-        decoder = ScopeDecoder()
+        decoder = ScopeDecoder(_TEST_WORKPHASES)
         commit_message = None  # No commit message
 
         # Act
@@ -161,7 +179,7 @@ class TestScopeDecoder:
         state_file.write_text(
             json.dumps({"current_phase": "implementation", "workflow_name": "feature"})
         )
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         old_commit = "feat: implement user service"  # Legacy format
 
         # Act
@@ -180,8 +198,7 @@ class TestScopeDecoder:
         state_file.write_text(
             json.dumps({"current_phase": "invalid_phase", "workflow_name": "feature"})
         )
-        # Use real workphases.yaml from .st3/
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         commit_message = "docs: no scope"
 
         # Act
@@ -210,7 +227,7 @@ class TestScopeDecoder:
         for phase in valid_phases:
             state_file = tmp_path / f"state_{phase}.json"
             state_file.write_text(json.dumps({"current_phase": phase, "workflow_name": "feature"}))
-            decoder = ScopeDecoder(state_path=state_file)
+            decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
             commit_message = "docs: no scope"
 
             # Act
@@ -228,7 +245,7 @@ class TestScopeDecoder:
         state_file.write_text(
             json.dumps({"current_phase": "implementation", "workflow_name": "feature"})
         )
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         commit_message = "docs(P_INVALID_PHASE): some documentation"
 
         # Act
@@ -252,7 +269,7 @@ class TestScopeDecoder:
             ("chore(P_COORDINATION): coordination", "coordination"),
         ]
 
-        decoder = ScopeDecoder()
+        decoder = ScopeDecoder(_TEST_WORKPHASES)
 
         for commit, expected_phase in valid_commits:
             # Act
@@ -268,7 +285,7 @@ class TestScopeDecoder:
         # Arrange
         state_file = tmp_path / "state.json"
         state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         # commit_message carries a valid phase-scope (P_RESEARCH) from the parent branch
         commit_message = "docs(P_RESEARCH): finalize research doc"
 
@@ -285,7 +302,7 @@ class TestScopeDecoder:
         # Arrange
         state_file = tmp_path / "state.json"
         state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
-        decoder = ScopeDecoder(state_path=state_file)
+        decoder = ScopeDecoder(_TEST_WORKPHASES, state_path=state_file)
         commit_message = "docs(P_RESEARCH): finalize research doc"
 
         # Act

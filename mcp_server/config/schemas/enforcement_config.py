@@ -46,13 +46,17 @@ class EnforcementRule(BaseModel):
     event_source: str
     timing: str
     tool: str | None = None
+    tool_category: str | None = None
     phase: str | None = None
     actions: list[EnforcementAction] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_target(self) -> EnforcementRule:
-        if self.event_source == "tool" and not self.tool:
-            raise ValueError("tool event_source requires tool")
+        if self.event_source == "tool":
+            if self.tool and self.tool_category:
+                raise ValueError("tool and tool_category are mutually exclusive")
+            if not self.tool and not self.tool_category:
+                raise ValueError("tool event_source requires tool or tool_category")
         if self.event_source == "phase" and not self.phase:
             raise ValueError("phase event_source requires phase")
         return self

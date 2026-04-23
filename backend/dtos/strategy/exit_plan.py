@@ -74,15 +74,15 @@ class ExitPlan(BaseModel):
 
     plan_id: str = Field(
         default_factory=generate_exit_plan_id,
-        pattern=r'^EXT_\d{8}_\d{6}_[0-9a-f]{8}$',
-        description="Unique exit plan ID (military datetime format)"
+        pattern=r"^EXT_\d{8}_\d{6}_[0-9a-f]{8}$",
+        description="Unique exit plan ID (military datetime format)",
     )
 
     stop_loss_price: Decimal = Field(
         description="Stop loss price level (required for risk protection)",
         gt=0,
         decimal_places=8,
-        max_digits=20
+        max_digits=20,
     )
 
     take_profit_price: Decimal | None = Field(
@@ -90,7 +90,7 @@ class ExitPlan(BaseModel):
         description="Take profit price level (optional profit target)",
         gt=0,
         decimal_places=8,
-        max_digits=20
+        max_digits=20,
     )
 
     @field_validator("stop_loss_price", "take_profit_price")
@@ -110,21 +110,19 @@ class ExitPlan(BaseModel):
                     "description": "SL and TP exit plan (standard risk/reward)",
                     "plan_id": "EXT_20251027_100530_a1b2c3d4",
                     "stop_loss_price": "95000.00",
-                    "take_profit_price": "105000.00"
+                    "take_profit_price": "105000.00",
                 },
                 {
                     "description": "SL only exit plan (let winners run strategy)",
                     "plan_id": "EXT_20251027_143000_e5f6g7h8",
-                    "stop_loss_price": "98500.00"
+                    "stop_loss_price": "98500.00",
                 },
                 {
-                    "description": (
-                        "Tight SL exit plan (scalping or high volatility)"
-                    ),
+                    "description": ("Tight SL exit plan (scalping or high volatility)"),
                     "plan_id": "EXT_20251027_150500_i9j0k1l2",
                     "stop_loss_price": "99800.00",
-                    "take_profit_price": "100500.00"
-                }
+                    "take_profit_price": "100500.00",
+                },
             ]
-        }
+        },
     }

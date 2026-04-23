@@ -17,6 +17,7 @@ import pytest
 # Local
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import LabelConfig
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.label_tools import (
     AddLabelsInput,
     AddLabelsTool,
@@ -59,7 +60,7 @@ labels:
         tool = CreateLabelTool(manager=Mock(), label_config=label_config)
         params = CreateLabelInput(name="invalid-name", color="FF0000")
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "does not match required pattern" in result.content[0]["text"]
 
     @pytest.mark.asyncio
@@ -75,7 +76,7 @@ labels:
         tool = CreateLabelTool(manager=Mock(), label_config=label_config)
         params = CreateLabelInput(name="type:bug", color="#FF0000")
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "must not include # prefix" in result_text.lower()
         assert "FF0000" in result_text
@@ -96,7 +97,7 @@ labels:
         tool = CreateLabelTool(manager=mock_manager, label_config=label_config)
         params = CreateLabelInput(name="type:bug", color="FF0000")
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "Created label" in result.content[0]["text"]
         mock_manager.create_label.assert_called_once()
 
@@ -120,7 +121,7 @@ labels:
         tool = CreateLabelTool(manager=mock_manager, label_config=label_config)
         params = CreateLabelInput(name="good first issue", color="7057FF")
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "Created label" in result.content[0]["text"]
 
 
@@ -140,7 +141,7 @@ labels:
         tool = AddLabelsTool(manager=Mock(), label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["undefined-label"])
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "not defined in labels.yaml" in result_text
         assert "undefined-label" in result_text
@@ -161,7 +162,7 @@ labels:
         tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["type:feature", "priority:high"])
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "Added labels" in result.content[0]["text"]
         mock_manager.add_labels.assert_called_once_with(1, ["type:feature", "priority:high"])
 
@@ -179,7 +180,7 @@ labels:
         tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["type:feature", "undefined"])
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "not defined in labels.yaml" in result.content[0]["text"]
         mock_manager.add_labels.assert_not_called()
 
@@ -201,7 +202,7 @@ labels:
         tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["good first issue"])
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "Added labels" in result.content[0]["text"]
 
 
@@ -229,7 +230,7 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "drift detected" in result_text.lower()
         assert "GitHub-only labels" in result_text
@@ -255,7 +256,7 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "drift detected" in result_text.lower()
         assert "YAML-only labels" in result_text
@@ -286,7 +287,7 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "drift detected" in result_text.lower()
         assert "Color mismatches" in result_text
@@ -318,7 +319,7 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "drift detected" in result_text.lower()
         assert "Description mismatches" in result_text
@@ -342,7 +343,7 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         assert "no drift detected" in result_text.lower()
         assert "aligned" in result_text.lower()
@@ -368,7 +369,7 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         result_text = result.content[0]["text"]
         # Should contain multiple drift types
         assert "GitHub-only labels" in result_text
@@ -391,5 +392,5 @@ labels:
         tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         assert "Error loading labels" in result.content[0]["text"]

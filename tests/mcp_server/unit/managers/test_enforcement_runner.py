@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 from mcp_server.core.exceptions import ConfigError, ValidationError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementAction,
     EnforcementConfig,
@@ -83,10 +84,10 @@ class TestEnforcementRunner:
             action: EnforcementAction,
             context: EnforcementContext,
             workspace_root: Path,
-        ) -> str:
+            note_context: NoteContext,  # noqa: ARG001
+        ) -> None:
             calls.append((action.type, context.tool_name))
             assert workspace_root == tmp_path
-            return "handled"
 
         runner = _make_runner(
             tmp_path,
@@ -94,17 +95,17 @@ class TestEnforcementRunner:
             registry={"check_branch_policy": fake_handler},
         )
 
-        notes = runner.run(
+        runner.run(
             event="create_branch",
             timing="pre",
-            context=EnforcementContext(
+            enforcement_ctx=EnforcementContext(
                 workspace_root=tmp_path,
                 tool_name="create_branch",
                 params=SimpleNamespace(branch_type="feature", base_branch="main"),
             ),
+            note_context=NoteContext(),
         )
 
-        assert notes == ["handled"]
         assert calls == [("check_branch_policy", "create_branch")]
 
     def test_check_branch_policy_rejects_invalid_base_branch(self, tmp_path: Path) -> None:
@@ -130,7 +131,7 @@ class TestEnforcementRunner:
             runner.run(
                 event="create_branch",
                 timing="pre",
-                context=EnforcementContext(
+                enforcement_ctx=EnforcementContext(
                     workspace_root=tmp_path,
                     tool_name="create_branch",
                     params=SimpleNamespace(
@@ -138,6 +139,7 @@ class TestEnforcementRunner:
                         base_branch="release/1.0",
                     ),
                 ),
+                note_context=NoteContext(),
             )
 
     def test_enforcement_runner_handles_tool_guards_only(self, tmp_path: Path) -> None:
@@ -162,10 +164,10 @@ class TestEnforcementRunner:
             config=config,
         )
 
-        notes = runner.run(
+        runner.run(
             event="create_branch",
             timing="pre",
-            context=EnforcementContext(
+            enforcement_ctx=EnforcementContext(
                 workspace_root=tmp_path,
                 tool_name="create_branch",
                 params=SimpleNamespace(
@@ -173,9 +175,8 @@ class TestEnforcementRunner:
                     base_branch="main",
                 ),
             ),
+            note_context=NoteContext(),
         )
-
-        assert notes == []
 
 
 class TestEnforcementSchemaValidation:

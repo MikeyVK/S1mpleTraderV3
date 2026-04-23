@@ -46,6 +46,9 @@ phases:
     display_name: "Design"
   research:
     display_name: "Research"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
     )
     return tmp_path
@@ -65,6 +68,9 @@ phases:
     display_name: "Planning"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
     )
     return tmp_path

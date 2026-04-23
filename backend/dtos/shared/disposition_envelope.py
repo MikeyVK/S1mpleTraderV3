@@ -70,20 +70,18 @@ class DispositionEnvelope(BaseModel):
     """
 
     disposition: Literal["CONTINUE", "PUBLISH", "STOP"] = Field(
-        default="CONTINUE",
-        description="Flow control instruction for EventAdapter"
+        default="CONTINUE", description="Flow control instruction for EventAdapter"
     )
 
     event_name: str | None = Field(
         default=None,
         min_length=3,
         max_length=100,
-        description="Event name for publication (required when disposition=PUBLISH)"
+        description="Event name for publication (required when disposition=PUBLISH)",
     )
 
     event_payload: BaseModel | None = Field(
-        default=None,
-        description="Optional System DTO as event payload"
+        default=None, description="Optional System DTO as event payload"
     )
 
     @field_validator("event_name")
@@ -118,19 +116,15 @@ class DispositionEnvelope(BaseModel):
         # Check UPPER_SNAKE_CASE pattern
         pattern = r"^[A-Z][A-Z0-9_]*[A-Z0-9]$"
         if not re.match(pattern, v):
-            raise ValueError(
-                f"Event name must follow UPPER_SNAKE_CASE convention: '{v}'"
-            )
+            raise ValueError(f"Event name must follow UPPER_SNAKE_CASE convention: '{v}'")
 
         return v
 
-    @model_validator(mode='after')
-    def validate_publish_requirements(self) -> 'DispositionEnvelope':
+    @model_validator(mode="after")
+    def validate_publish_requirements(self) -> "DispositionEnvelope":
         """Ensure PUBLISH disposition has event_name (payload is optional)."""
-        if self.disposition == 'PUBLISH' and not self.event_name:
-            raise ValueError(
-                "event_name is required when disposition='PUBLISH'"
-            )
+        if self.disposition == "PUBLISH" and not self.event_name:
+            raise ValueError("event_name is required when disposition='PUBLISH'")
         return self
 
     model_config = {
@@ -140,27 +134,23 @@ class DispositionEnvelope(BaseModel):
             "examples": [
                 {
                     "description": "Context worker continues flow (data to StrategyCache)",
-                    "disposition": "CONTINUE"
+                    "disposition": "CONTINUE",
                 },
                 {
-                    "description": (
-                        "Signal detector publishes signal with DTO payload"
-                    ),
+                    "description": ("Signal detector publishes signal with DTO payload"),
                     "disposition": "PUBLISH",
                     "event_name": "SIGNAL_DETECTED",
-                    "event_payload": (
-                        "Signal(signal_id='SIG_...')"
-                    )
+                    "event_payload": ("Signal(signal_id='SIG_...')"),
                 },
                 {
                     "description": "Emergency halt (pure signal event, no payload)",
                     "disposition": "PUBLISH",
-                    "event_name": "EMERGENCY_HALT"
+                    "event_name": "EMERGENCY_HALT",
                 },
                 {
                     "description": "Regime filter stops flow (conditions not met)",
-                    "disposition": "STOP"
-                }
+                    "disposition": "STOP",
+                },
             ]
-        }
+        },
     }

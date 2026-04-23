@@ -17,6 +17,7 @@ import anyio
 from pydantic import BaseModel, Field
 
 from mcp_server.core.interfaces import GateViolation, IWorkflowGateRunner
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
@@ -66,8 +67,9 @@ class TransitionCycleTool(BaseTransitionTool):
     args_model = TransitionCycleInput
     enforcement_event = "transition_cycle"
 
-    async def execute(self, params: TransitionCycleInput) -> ToolResult:
+    async def execute(self, params: TransitionCycleInput, context: NoteContext) -> ToolResult:
         """Execute cycle transition through the shared orchestration path."""
+        del context  # Orchestration tool — context unused
         branch = self._get_current_branch()
         issue_number = params.issue_number or self._extract_issue_number(branch)
         if issue_number is None:
@@ -116,7 +118,7 @@ class TransitionCycleTool(BaseTransitionTool):
         branch: str | None = None
         try:
             branch = self._get_git_manager().get_current_branch()
-        except Exception:
+        except (ValueError, OSError, RuntimeError):  # git unavailable — fall back to state file
             branch = None
 
         state_file = self.workspace_root / ".st3" / "state.json"
@@ -170,8 +172,9 @@ class ForceCycleTransitionTool(BaseTransitionTool):
     args_model = ForceCycleTransitionInput
     enforcement_event = "transition_cycle"
 
-    async def execute(self, params: ForceCycleTransitionInput) -> ToolResult:
+    async def execute(self, params: ForceCycleTransitionInput, context: NoteContext) -> ToolResult:
         """Execute forced cycle transition through the shared inspection path."""
+        del context  # Orchestration tool — context unused
         branch = self._get_current_branch()
         issue_number = params.issue_number or self._extract_issue_number(branch)
         if issue_number is None:
@@ -243,7 +246,7 @@ class ForceCycleTransitionTool(BaseTransitionTool):
         branch: str | None = None
         try:
             branch = self._get_git_manager().get_current_branch()
-        except Exception:
+        except (ValueError, OSError, RuntimeError):  # git unavailable — fall back to state file
             branch = None
 
         state_file = self.workspace_root / ".st3" / "state.json"

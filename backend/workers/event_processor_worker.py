@@ -11,7 +11,6 @@
 """
 
 # Standard library
-from typing import Any
 
 # Third-party
 
@@ -20,20 +19,21 @@ from typing import Any
 
 class EventProcessor:
     """Processes data events
-    
+
     Async worker for background task processing.
     """
-    def __init__(self, eventbus: EventBus, logger: Logger):
+
+    def __init__(self, eventbus: object, logger: object) -> None:
         """Initialize EventProcessor."""
         self.eventbus = eventbus
         self.logger = logger
 
-    async def execute(self, **kwargs: Any) -> Any:
+    async def execute(self, **kwargs: object) -> None:
         """Execute worker task.
-        
+
         Args:
             **kwargs: Task-specific parameters
-            
+
         Returns:
             Task result
         """

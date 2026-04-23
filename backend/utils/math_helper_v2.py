@@ -13,9 +13,10 @@
 # Third-party
 # Project modules
 
+
 class MathHelperV2:
     """Helper for calculations"""
 
-    def placeholder(self):
+    def placeholder(self) -> None:
         """Placeholder method."""
         pass

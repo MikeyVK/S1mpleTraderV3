@@ -11,7 +11,6 @@ from collections.abc import Generator
 import pytest
 
 from mcp_server.tools.git_tools import CreateBranchInput
-from mcp_server.tools.pr_tools import CreatePRInput
 
 
 @pytest.fixture(autouse=True)
@@ -19,8 +18,7 @@ def reset_config_singletons() -> Generator[None, None, None]:
     """Reset all config singletons before/after each test."""
 
     def _reset_all() -> None:
-        CreateBranchInput._git_config = None
-        CreatePRInput._git_config = None
+        CreateBranchInput._git_config = None  # type: ignore[misc]
 
     _reset_all()
     yield

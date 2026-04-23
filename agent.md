@@ -80,14 +80,14 @@ create_issue(
 # → Returns: issue #47: Add Redis caching to strategy loader
 ```
 
-**Workflow Types (from `.st3/workflows.yaml`):**
+**Workflow Types (from `.st3/config/workflows.yaml`):**
 
-| **feature** | 6 phases: research → planning → design → tdd → integration → documentation | New functionality |
-| **bug** | 6 phases: research → planning → design → tdd → integration → documentation | Bug fixes |
+| **feature** | 6 phases: research → design → planning → implementation → validation → documentation | New functionality |
+| **bug** | 6 phases: research → design → planning → implementation → validation → documentation | Bug fixes |
 | **docs** | 2 phases: planning → documentation | Documentation work |
-| **refactor** | 5 phases: research → planning → tdd → integration → documentation | Code improvements |
-| **hotfix** | 3 phases: tdd → integration → documentation | Urgent fixes |
-| **epic** | 5 phases: research → planning → design → tdd → integration | Large multi-issue initiatives |
+| **refactor** | 5 phases: research → planning → implementation → validation → documentation | Code improvements |
+| **hotfix** | 3 phases: implementation → validation → documentation | Urgent fixes |
+| **epic** | 5 phases: research → design → planning → coordination → documentation | Large multi-issue initiatives |
 
 **Epic Support:**
 - Large issues use `type:epic` label
@@ -100,7 +100,7 @@ create_issue(
 **Sequential Transitions (Strict Enforcement):**
 ```python
 transition_phase(branch="feature/42-name", to_phase="design")
-# Validates against workflow definition in .st3/workflows.yaml
+# Validates against workflow definition in .st3/config/workflows.yaml
 # Must follow sequential order defined in workflow
 ```
 
@@ -116,35 +116,35 @@ force_phase_transition(
 # Only use when documented reason exists
 ```
 
-### 2.3 TDD Cycle Within Phase
+### 2.3 Implementation Cycle Within Phase
 
-**RED → GREEN → REFACTOR Loop (Multiple cycles within `tdd` phase):**
+**RED → GREEN → REFACTOR loop, elke cyclus genummerd. `implementation` is de enige fase met subphases.**
 
-1. **RED Phase:**
-   - Write failing test
-   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="add test for X")`
-   - **Auto-detect:** `git_add_or_commit(message="add test for X")` (detects workflow_phase from state.json)
-   - **Legacy:** `git_add_or_commit(phase="red", message="...")` (DEPRECATED but still works)
+| Sub-phase | Commit | Scope format |
+|-----------|--------|--------------|
+| red | `test(P_IMPLEMENTATION_SP_C1_RED): ...` | `git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="...")` |
+| green | `feat(P_IMPLEMENTATION_SP_C1_GREEN): ...` | `git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="...")` |
+| refactor | `refactor(P_IMPLEMENTATION_SP_C1_REFACTOR): ...` | `git_add_or_commit(workflow_phase="implementation", sub_phase="refactor", cycle_number=1, message="...")` |
 
-2. **GREEN Phase:**
-   - Implement minimum code to pass
-   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="implement X")`
+> `cycle_number` is verplicht in `implementation`. Volgende cyclus: `transition_cycle(to_cycle=2)`.
+> `workflow_phase` mag worden weggelaten — auto-detect via `state.json`.
 
-3. **REFACTOR Phase:**
-   - Clean up code
-   - Run quality gates with explicit scope contract:
-     - `run_quality_gates(scope="files", files=["path/to/changed_file.py"])`
-     - `run_quality_gates(scope="branch")` for branch-wide check
-     - `run_quality_gates(scope="auto")` for baseline-aware rerun set
-   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="refactor", message="refactor X")`
+**Andere fasen (geen subphases behalve optioneel):**
+- `git_add_or_commit(workflow_phase="research", message="...")` → `docs(P_RESEARCH): ...`
+- `git_add_or_commit(workflow_phase="documentation", message="...")` → `docs(P_DOCUMENTATION): ...`
 
-4. **Test Execution:**
-   - **During TDD:** `run_tests(path="tests/specific_test.py")` for targeted tests
-   - **End of TDD phase:** `run_tests(path="tests/")` for full suite validation
-   - **Note:** Full suite (1000+ tests) generates significant output - see Issue #103 for enhancements
+**Kwaliteitscontrole (REFACTOR sub-phase):**
+- `run_quality_gates(scope="files", files=["path/to/file.py"])` — gerichte check
+- `run_quality_gates(scope="branch")` — branch-breed
 
-5. **Phase Transition:**
-   - After TDD cycles complete: `transition_phase(to_phase="integration")`
+**Test execution:**
+- Gericht: `run_tests(path="tests/specific_test.py")`
+- Einde fase: `run_tests(path="tests/")`
+
+**Fase-transitie na alle TDD-cycli:**
+```python
+transition_phase(to_phase="validation")
+```
 
 ### 2.4 Documentation Phases
 
@@ -154,11 +154,77 @@ force_phase_transition(
   - Unified tool for ALL artifacts (code + docs)
   - Auto-resolves paths from artifacts.yaml registry
 
-**Documentation Phase (after integration):**
+**Documentation Phase (after validation):**
 - Focus: Reference docs, project documentation updates
 - Tasks: Update issue content, generate PR description, finalize docs
 - Quality gate: `validate_architecture(scope="all")`
 
+### 2.5 Work Completion
+
+**PR Creation & Merge:**
+```
+1. transition_phase(to_phase="ready")
+2. submit_pr(head="feature/42", base="main", title="...", body="...")
+   ← atomic: neutralizes branch-local artifacts → commits → pushes → creates GitHub PR → sets PRStatus.OPEN
+   ← blocked by enforcement unless current_phase == "ready"
+   ← also blocked if the branch already has an open PR (check_pr_status)
+3. Wait for human approval (ALWAYS REQUIRED)
+4. merge_pr(pr_number=X) - only after human approval
+5. Branch cleanup - discuss with human (context-dependent)
+   - State cleanup (.st3/state.json) is automatic on git_checkout
+```
+
+---
+
+## 🛠️ Phase 3: Execution Protocols
+
+**Use the specific protocol for your assigned task. DO NOT perform manual file operations where a tool exists.**
+
+### A. "Implement a New Component" (DTO, Worker, Adapter)
+1.  **Scaffold Code:**
+    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="ComponentName", context={...})`
+    *   Unified tool for generating code and documentation artifacts
+    *   Auto-resolves paths from artifacts.yaml registry
+    *   *Result:* Creates impl file with proper structure.
+2.  **TDD Loop (Strict):**
+    *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
+3.  **Phase Transition:**
+    *   `transition_phase(to_phase="validation")` after implementation cycles complete
+
+### B. "Create Documentation" (Architecture, Design, Plan)
+1.  **Scaffold Document:**
+    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="document-name", context={...})`
+    *   Same unified tool as code artifacts
+    *   Auto-resolves `docs/development/issueXX/` from artifacts.yaml
+    *   *Result:* Creates perfectly structured markdown file.
+2.  **Validate:**
+    *   `validate_architecture(scope="all")` — verifies doc structure against schema
+    *   Manual review: check all required sections are filled in
+
+### C. "Manage Labels & Milestones"
+1.  **Create Label:**
+    *   `create_label(name="type:feature", color="0e8a16", description="...")`
+    *   Labels validated against `.st3/config/labels.yaml`
+2.  **Detect Drift:**
+    *   `list_labels()` → compare against `.st3/config/labels.yaml`
+    *   Missing labels: `create_label(...)` per entry
+    *   Obsolete labels: `delete_label(name)` after confirming no active issues use it
+
+---
+
+## ⚠️ Phase 4: Critical Directives (The "Prime Directives")
+
+1.  **Issue-First Development:** Never work directly on `main`. Always start with `create_issue`.
+2.  **Workflow Enforcement:** Always `initialize_project` before work. Use `transition_phase` for progression.
+3.  **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
+4.  **Tools > Manual:** Never manually create a file if `scaffold_*` exists. Never manually parse status if `st3://status/*` exists.
+5.  **English Artifacts, Dutch Chat:**
+    *   Write Code/Docs/Commits in **English**.
+    *   Talk to the User in **Dutch** (Nederlands).
+6.  **Human-in-the-Loop:** PR merge ALWAYS requires human approval. `force_phase_transition` requires approval + reason.
+7.  **Quality Gates:** Run before phase transitions and before PR creation.
+
+---
 
 ## 🔧 Phase 5: Tool Priority Matrix (MANDATORY)
 
@@ -194,15 +260,7 @@ force_phase_transition(
 | Restore files | `git_restore(files, source)` | `run_in_terminal("git restore")` |
 | Diff statistics | `git_diff_stat(source_branch, target_branch)` | `run_in_terminal("git diff --stat")` |
 
-**Note on git_add_or_commit:**
-- **New (Recommended):** `git_add_or_commit(message, workflow_phase?, sub_phase?, commit_type?)`  
-  - Generates scoped commits: `test(P_TDD_SP_RED): message`
-  - Auto-detects workflow_phase from state.json if omitted
-  - Supports all workflow phases (research, planning, design, tdd, integration, documentation)
-- **Legacy (DEPRECATED):** `git_add_or_commit(phase="red/green/refactor/docs", message)`  
-  - Legacy format: `test: message` (no scope)
-  - Backward compatible but will be removed in future version
-  - Use workflow_phase instead
+**`git_add_or_commit` vereiste parameters:** `workflow_phase` (auto-detect via state.json indien weggelaten), `cycle_number` (verplicht in `implementation`), `sub_phase` (optioneel). Gebruik `commit_type` alleen als override. De `phase` parameter bestaat **niet** — crasht met `extra='forbid'`.
 
 ### GitHub Issues
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -232,7 +290,7 @@ force_phase_transition(
 ### Pull Requests
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
-| Create PR | `create_pr(title, body, head, base, draft)` | `run_in_terminal("gh pr create")` |
+| Create PR (atomic) | `submit_pr(title, body, head, base, draft)` | `create_pr(...)` (internal, deleted as public tool) |
 | List PRs | `list_prs(state, base, head)` | `run_in_terminal("gh pr list")` |
 | Merge PR | `merge_pr(pr_number, commit_message, merge_method)` | `run_in_terminal("gh pr merge")` |
 
@@ -245,68 +303,30 @@ force_phase_transition(
 - **Code:** dto, worker, adapter, interface, tool, resource, schema, service
 - **Docs:** design, architecture, tracking, generic, research, planning
 
-**Registry:** `.st3/artifacts.yaml` defines all artifact types and their templates.
+**Registry:** `.st3/config/artifacts.yaml` (let op: niet `.st3/artifacts.yaml`)
 
-**Template System (Issue #72 - Multi-Tier Architecture):**
-- **5-tier Jinja2 hierarchy:** Tier 0 (universal SCAFFOLD) → Tier 1 (CODE/DOCUMENT/CONFIG format) → Tier 2 (Python/Markdown/YAML language) → Tier 3 (component/data/tool specialization) → Concrete (worker.py, research.md)
-- **Inheritance-aware introspection:** `introspect_template(name, with_inheritance=True)` returns complete variable schema (all tiers)
-- **SCAFFOLD metadata:** Header format depends on artifact type (Issue #239):
-  - **File artifacts** (dto, worker, adapter, …): two-line Python comment — `# path/to/file.py` + `# template=X version=Y created=Z updated=`
-  - **Ephemeral artifacts** (issue, tracking, …): compact HTML comment — `<!-- template=X version=Y -->`
-  - `output_path` **required** for file artifacts — omitting it raises `ERR_VALIDATION`
-  - `output_path` optional for ephemeral artifacts — when provided, artifact is written there instead of `.st3/temp/`
-- **Template registry:** `.st3/template_registry.json` maps version hashes to tier chains
-- **Validation integration:** All generated code passes Issue #52 validation (TEMPLATE_METADATA enforcement)
+**Template System (Issue #72 - 5-tier Jinja2):**
+- Tier 0 (SCAFFOLD) → Tier 1 (CODE/DOC/CONFIG) → Tier 2 (Python/Markdown/YAML) → Tier 3 (component type) → Concrete template
+- `output_path` is **optioneel** — wordt auto-resolved door ArtifactManager via `project_structure.yaml`. Geef het alleen op als override.
+- `generate_test` is een registry-flag per artifact type (`true` voor code, `false` voor docs) — testgeneratie nog **niet geïmplementeerd** in ArtifactManager.
+- `introspect_template` is een **interne Python-functie** in `mcp_server/scaffolding/template_introspector.py`, niet aanroepbaar via MCP.
+- SCAFFOLD-header in gegenereerde bestanden: twee Python-commentaarregels (`# path` + `# template=X version=Y created=Z updated=`)
 
-**Context Requirements:**
-- **Code artifacts:** Variables from all tiers (concrete + Tier 3 + Tier 2 + Tier 1 + Tier 0)
-- **Document artifacts:** Standard sections (purpose, scope, related_docs) + artifact-specific fields
-- **Missing variables:** Scaffolding will fail with clear error listing required fields
-- **System variables:** Auto-populated (timestamp, version_hash, output_path, artifact_type)
-
-**Example:**
+**Context meegeven:**
 ```python
-# Worker scaffolding (Python CODE artifact)
 scaffold_artifact(
     artifact_type="worker",
     name="ProcessWorker",
     context={
-        # Tier 4 (concrete): worker-specific
         "worker_name": "ProcessWorker",
         "worker_description": "Processes incoming events",
         "input_type": "EventDTO",
         "output_type": "ResultDTO",
-        
-        # Tier 3 (component): lifecycle pattern (if IWorkerLifecycle validated)
-        "config_type": "WorkerConfig",
-        "uses_async": True,
-        
-        # Tier 2 (language): Python syntax (often inferred from tier 3)
-        # Tier 1 (format): CODE structure (auto-provided by template)
-        # Tier 0 (universal): SCAFFOLD metadata (auto-generated)
-    }
-)
-
-# Research doc scaffolding (Markdown DOCUMENT artifact)
-scaffold_artifact(
-    artifact_type="research",
-    name="multi-tier-templates",
-    context={
-        # Document-specific
-        "title": "Issue #72 Multi-Tier Template Research",
-        "purpose": "Investigate template hierarchy to eliminate DRY violations",
-        "scope_in": "5-tier architecture, inheritance introspection, registry format",
-        "scope_out": "Implementation details, performance optimization",
-        "prerequisites": ["Research questions defined", "MVP validated"],
-        "related_docs": ["planning.md", "design.md"],
-        
-        # Optional: Custom sections
-        "sections": ["Background", "Alternatives", "Decision Rationale"],
     }
 )
 ```
 
-**Design Reference:** [docs/development/issue72/design.md](docs/development/issue72/design.md) - Complete 5-tier architecture specification
+**Design Reference:** [docs/development/issue72/design.md](docs/development/issue72/design.md)
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -336,6 +356,35 @@ scaffold_artifact(
 
 > **📌 Remember:** The ST3 MCP tools use Jinja2 templates that ensure consistency, correct imports, proper structure, and automatic test file generation. Manual file creation bypasses all these benefits.
 
+### Ready-Phase Enforcement (Issue #283)
+
+`submit_pr` is geblokkeerd buiten de `ready` fase. Alle `branch_mutating` tools zijn geblokkeerd zolang er een open PR bestaat op de huidige branch.
+
+**Branch-local artifacts** worden automatisch geneutraliseerd door `submit_pr` zelf — de enforcement runner doet dit NIET meer:
+
+| Artifact | Pad | Reden |
+|----------|-----|-------|
+| Workflow state | `.st3/state.json` | Branch-local — mag nooit naar main |
+| Deliverables | `.st3/deliverables.json` | Branch-local — mag nooit naar main |
+
+Configuratie: `.st3/config/enforcement.yaml` + `.st3/config/phase_contracts.yaml`
+
+```
+submit_pr          → pre: check_phase_readiness(policy=ready)   → geblokkeerd als phase != "ready"
+branch_mutating    → pre: check_pr_status                       → geblokkeerd als open PR bestaat
+create_branch      → pre: check_branch_policy                   → geblokkeerd bij ongeldige base
+```
+
+**`submit_pr` atomaire flow (self-contained):**
+1. Detecteer branch-local artifacts met netto diff t.o.v. base via `GitManager.has_net_diff_for_path`
+2. Neutraliseer ze met `GitManager.neutralize_to_base` (git restore naar merge-base)
+3. `commit_with_scope(workflow_phase="ready", ...)`
+4. `push()`
+5. `GitHubManager.create_pr(...)` → GitHub API
+6. Schrijf `PRStatus.OPEN` naar cache
+
+**`MergePRTool` is bewust uitgesloten van `BranchMutatingTool`** — het is de escape hatch die `PRStatus.OPEN` wist. Zou het er wel in zitten, ontstaat een deadlock.
+
 ---
 
 ## 🚫 run_in_terminal Restrictions (CRITICAL)
@@ -358,27 +407,7 @@ scaffold_artifact(
 
 **Default rule: If unsure, ask yourself "Is there an MCP tool for this?" If yes → use it. If no → ask user permission first.**
 
-**This restriction prevents bypassing:**
-- Template validation
-- SCAFFOLD metadata tracking
-- Quality gate enforcement
-- Audit trail in MCP workflow
-- Provenance tracking in template registry
-
-**Common mistakes to avoid:**
-```powershell
-# ❌ WRONG
-run_in_terminal("Set-Content file.py ...")
-run_in_terminal("git add .")
-run_in_terminal("pytest tests/")
-run_in_terminal("Copy-Item source.py dest.py")
-
-# ✅ CORRECT
-create_file(path="file.py", content=...)
-git_add_or_commit(phase="red", message="...")
-run_tests(path="tests/")
-# For copy: read original, create new with create_file
-```
+**Restriction prevents bypassing template validation, quality gates, audit trail, and provenance tracking.**
 
 ---
 
@@ -392,60 +421,4 @@ run_tests(path="tests/")
 *   "How do I start work?" → **Follow Phase 2: Issue-First Development Workflow.**
 
 > **Start now by running Phase 1.**
-### 2.5 Work Completion
-
-**PR Creation & Merge:**
-```
-1. create_pr(head="feature/42", base="main", title="...", body="...")
-2. Wait for human approval (ALWAYS REQUIRED)
-3. merge_pr(pr_number=X) - only after human approval
-4. Branch cleanup - discuss with human (context-dependent)
-   - State cleanup (.st3/state.json) is automatic on git_checkout
-```
-
----
-
-## 🛠️ Phase 3: Execution Protocols
-
-**Use the specific protocol for your assigned task. DO NOT perform manual file operations where a tool exists.**
-
-### A. "Implement a New Component" (DTO, Worker, Adapter)
-1.  **Scaffold Code:**
-    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="ComponentName", context={...})`
-    *   Unified tool for generating code and documentation artifacts
-    *   Auto-resolves paths from artifacts.yaml registry
-    *   *Result:* Creates impl file with proper structure.
-2.  **TDD Loop (Strict):**
-    *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
-3.  **Phase Transition:**
-    *   `transition_phase(to_phase="integration")` after TDD complete
-
-### B. "Create Documentation" (Architecture, Design, Plan)
-1.  **Scaffold Document:**
-    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="document-name", context={...})`
-    *   Same unified tool as code artifacts
-    *   Auto-resolves docs/development/issueXX/ from artifacts.yaml
-    *   *Result:* Creates perfectly structured markdown file.
-2.  **Validate:**
-
-### C. "Manage Labels & Milestones"
-1.  **Create Label:**
-    *   `create_label(name="type:feature", color="0e8a16", description="...")`
-    *   Labels validated against `.st3/labels.yaml`
-2.  **Detect Drift:**
-
----
-
-## ⚠️ Phase 4: Critical Directives (The "Prime Directives")
-
-1.  **Issue-First Development:** Never work directly on `main`. Always start with `create_issue`.
-2.  **Workflow Enforcement:** Always `initialize_project` before work. Use `transition_phase` for progression.
-3.  **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
-4.  **Tools > Manual:** Never manually create a file if `scaffold_*` exists. Never manually parse status if `st3://status/*` exists.
-5.  **English Artifacts, Dutch Chat:**
-    *   Write Code/Docs/Commits in **English**.
-    *   Talk to the User in **Dutch** (Nederlands).
-6.  **Human-in-the-Loop:** PR merge ALWAYS requires human approval. `force_phase_transition` requires approval + reason.
-7.  **Quality Gates:** Run before phase transitions and before PR creation.
-
----
+CRITICAL: Read agent.md before any work. Follow Tool Priority Matrix strictly. NEVER use run_in_terminal for file/git/test operations.

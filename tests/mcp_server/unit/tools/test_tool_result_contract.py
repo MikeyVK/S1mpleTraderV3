@@ -18,6 +18,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 
 
@@ -65,7 +66,9 @@ class TestToolResultContentContract:
         mock_manager.run_quality_gates.return_value = _make_qg_result()
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         assert len(result.content) == 2, f"Expected 2 content items, got {len(result.content)}"
 
@@ -76,7 +79,9 @@ class TestToolResultContentContract:
         mock_manager.run_quality_gates.return_value = _make_qg_result()
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         assert result.content[0]["type"] == "text", (
             f"content[0] must be 'text', got '{result.content[0]['type']}'"
@@ -89,7 +94,9 @@ class TestToolResultContentContract:
         mock_manager.run_quality_gates.return_value = _make_qg_result()
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         assert result.content[1]["type"] == "json", (
             f"content[1] must be 'json', got '{result.content[1]['type']}'"
@@ -102,7 +109,9 @@ class TestToolResultContentContract:
         mock_manager.run_quality_gates.return_value = _make_qg_result(passed=1, failed=0, skipped=0)
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         text = result.content[0]["text"]
         assert "✅" in text or "❌" in text or "⚠️" in text, (
@@ -133,7 +142,9 @@ class TestToolResultContentContract:
         }
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         payload = result.content[1]["json"]
         assert isinstance(payload, dict)
@@ -149,7 +160,9 @@ class TestToolResultContentContract:
         mock_manager.run_quality_gates.return_value = result_data
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         gate = result.content[1]["json"]["gates"][0]
         assert "command" not in gate, "command must not appear in compact payload"

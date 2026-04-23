@@ -9,15 +9,14 @@
 - Transaction management
 """
 
-from typing import Any
 
 class UserService:
     """Service for managing user operations
-    
+
     Service command following execute pattern.
     """
 
-    async def execute(self) -> Any:
+    async def execute(self) -> None:
         """Execute service command.
         Returns:
             Any

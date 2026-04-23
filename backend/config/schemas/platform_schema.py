@@ -19,7 +19,6 @@ Pydantic schemas for platform-level configuration.
 
 # Standard library
 from pathlib import Path
-from typing import Dict, List
 
 # Third-party
 from pydantic import BaseModel, Field
@@ -37,7 +36,7 @@ class LoggingConfig(BaseModel):
         default="development",
         description="Active logging profile (development, production, backtest, silent)",
     )
-    profiles: Dict[str, List[str]] = Field(
+    profiles: dict[str, list[str]] = Field(
         default_factory=lambda: {
             "development": [
                 "DEBUG",
@@ -63,9 +62,7 @@ class LoggingConfig(BaseModel):
 class CoreConfig(BaseModel):
     """Core platform settings."""
 
-    language: str = Field(
-        default="en", description="Language code for i18n (en, nl, etc.)"
-    )
+    language: str = Field(default="en", description="Language code for i18n (en, nl, etc.)")
     timezone: str = Field(default="UTC", description="Timezone for timestamps")
     project_root: Path = Field(
         default_factory=_default_project_root,

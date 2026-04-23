@@ -1,0 +1,196 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\temp\st3
+configfile: pyproject.toml
+plugins: anyio-4.12.1, asyncio-1.3.0, cov-7.0.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+created: 8/8 workers
+8 workers [2266 items]
+
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 19%]
+.......................................................s......F..F.F.... [ 22%]
+F.....F......F......F.F.FF..F.F......................................... [ 25%]
+........................................................................ [ 28%]
+........................................................................ [ 31%]
+....................................................s................... [ 34%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+................................................F......................F [ 47%]
+..........................................ssssss.........F.............. [ 50%]
+..F...........................F......................................... [ 54%]
+F...............................F................................F...... [ 57%]
+............F...........................................F............... [ 60%]
+.........................................................F.............. [ 63%]
+..........................................F............................. [ 66%]
+.........F.............F......F......................................... [ 69%]
+s.............x...F.F...............F.......s......x.............F...... [ 73%]
+.......................................F........F....................... [ 76%]
+F.............................F.F......................F................ [ 79%]
+.F.......................FFFFFE.FF..F........E.F.................F.....F [ 82%]
+........................................FEFF..F..FEE.F.F.F......E..EF.F. [ 85%]
+...........................F............EE....F.F.........E.s....F...... [ 88%]
+..........F.....................E...............F.F..................... [ 92%]
+.......................FE.F.....E..F................E..............F...F [ 95%]
+....E...........E.E..F..F.E.........F.F..E.FF....E.F.E.F.F.F.F..F...F..F [ 98%]
+...F.FFF..F...........FFFFF..FFFFF                                       [100%]
+============================== warnings summary ===============================
+tests/mcp_server/unit/managers/test_github_manager.py::TestGitHubManager::test_init_default
+  C:\temp\st3\mcp_server\adapters\github_adapter.py:45: DeprecationWarning: Argument login_or_token is deprecated, please use auth=github.Auth.Token(...) instead
+    self.client = Github(github_settings.token)  # pylint: disable=no-member
+
+tests/mcp_server/integration/test_qa.py::test_qa_manager_run_gates_with_real_file
+  tests\mcp_server\integration\test_qa.py:33: PytestWarning: The test <Function test_qa_manager_run_gates_with_real_file> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_qa_manager_run_gates_with_real_file() -> None:
+
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_atomic_creation_both_files
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_branch_name_auto_detected
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_first_phase_from_workflow
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_all_workflow_types_supported
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_error_handling_state_creation_failure
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_no_breaking_changes_to_projects_json
+tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_state_json_not_in_projects_json
+  C:\temp\st3\mcp_server\tools\project_tools.py:177: DeprecationWarning: The `cancellable=` keyword argument to `anyio.to_thread.run_sync` is deprecated since AnyIO 4.1.0; use `abandon_on_cancel=` instead
+    return await anyio.to_thread.run_sync(
+
+tests/mcp_server/unit/tools/test_code_tools.py::test_create_file_tool_success
+tests/mcp_server/unit/tools/test_code_tools.py::test_create_file_tool_security_error
+tests/mcp_server/unit/tools/test_dev_tools.py::test_create_file_tool
+tests/mcp_server/unit/tools/test_dev_tools.py::test_create_file_security_check
+tests/mcp_server/unit/integration/test_all_tools.py::TestDevelopmentToolsIntegration::test_create_file_tool_flow
+  C:\temp\st3\mcp_server\core\error_handling.py:37: DeprecationWarning: create_file is deprecated. Use scaffold_artifact instead.
+    result: T = await func(*args, **kwargs)
+
+tests/mcp_server/integration/test_qa.py::test_switching_active_gates_changes_execution
+  tests\mcp_server\integration\test_qa.py:72: PytestWarning: The test <Function test_switching_active_gates_changes_execution> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderBasicGeneration::test_phase_only_scope
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderBasicGeneration::test_phase_with_subphase
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderBasicGeneration::test_phase_with_cycle_and_subphase
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderBasicGeneration::test_all_tdd_subphases_valid
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderBasicGeneration::test_coordination_phase_valid
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderValidation::test_invalid_phase_raises_error
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderValidation::test_invalid_subphase_raises_error
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderValidation::test_subphase_on_phase_without_subphases_raises_error
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderValidation::test_missing_subphase_when_optional_is_ok
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderEdgeCases::test_missing_workphases_yaml_raises_error
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderEdgeCases::test_case_insensitive_phase_names
+FAILED tests/mcp_server/core/test_scope_encoder.py::TestScopeEncoderEdgeCases::test_cycle_number_without_subphase_ignored
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine.py::TestTDDPhaseHooks::test_on_enter_implementation_phase_initializes_cycle_1
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_get_workflow_name_from_cache
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine.py::TestTDDPhaseHooks::test_on_enter_implementation_phase_does_not_block_without_planning_deliverables
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_transition_history_includes_forced_flag
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine.py::TestTDDPhaseHooks::test_on_exit_implementation_phase_preserves_last_cycle
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_get_state_unknown_branch
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine.py::TestTDDPhaseHooks::test_on_exit_implementation_phase_validates_completion
+FAILED tests/mcp_server/unit/managers/test_state_repository.py::TestInMemoryStateRepository::test_phase_state_engine_uses_injected_repository
+FAILED tests/mcp_server/unit/managers/test_project_manager.py::TestProjectManagerWorkflows::test_get_project_plan_returns_stored_plan
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine.py::TestTransitionHooksWiring::test_transition_to_tdd_calls_enter_hook
+FAILED tests/mcp_server/unit/managers/test_project_manager.py::TestProjectManagerWorkflows::test_initialize_project_with_parent_branch
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine.py::TestTransitionHooksWiring::test_transition_from_tdd_calls_exit_hook
+FAILED tests/mcp_server/unit/managers/test_project_manager.py::TestProjectManagerWorkflows::test_initialize_project_without_parent_branch
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c2.py::test_transition_phase_raises_when_gate_blocks
+FAILED tests/mcp_server/unit/managers/test_project_manager.py::TestProjectManagerPhaseDetection::test_get_project_plan_includes_current_phase_from_commit_scope
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c2.py::test_force_phase_transition_returns_gate_report_with_blocked_checks
+FAILED tests/mcp_server/unit/managers/test_project_manager.py::TestPlanningDeliverablesSchema::test_planning_deliverables_stored_in_projects_json
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c2.py::test_transition_phase_enforces_contracts_from_phase_contracts_yaml
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3.py::TestForceTransitionSkippedGateWarning::test_force_transition_logs_warning_for_skipped_exit_gate
+FAILED tests/mcp_server/integration/test_issue39_cross_machine.py::TestIssue39CrossMachine::test_complete_cross_machine_flow
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3.py::TestForceTransitionSkippedGateWarning::test_force_transition_logs_warning_for_skipped_entry_expects
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3.py::TestForceTransitionSkippedGateWarning::test_force_transition_without_gates_logs_no_warning
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3.py::TestForceTransitionNoWarningWhenDeliverablesPresent::test_force_transition_no_warning_when_exit_key_present
+FAILED tests/mcp_server/unit/tools/test_discovery_tools.py::TestGetWorkContextTool::test_detect_workflow_phase_variations
+FAILED tests/mcp_server/unit/tools/test_cycle_tools.py::TestCycleTools::test_call_tool_post_enforcement_runs_after_cycle_transition
+FAILED tests/mcp_server/unit/tools/test_git_tools.py::test_git_commit_integration_workflow_phases
+FAILED tests/mcp_server/unit/tools/test_discovery_tools.py::TestGetWorkContextTddCycleInfo::test_tdd_cycle_info_shown_during_tdd_phase
+FAILED tests/mcp_server/integration/test_issue39_cross_machine.py::TestIssue39CrossMachine::test_recovery_with_no_phase_commits
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3.py::TestForceTransitionNoWarningWhenDeliverablesPresent::test_force_transition_no_warning_when_entry_key_present
+FAILED tests/mcp_server/unit/test_server.py::TestServerToolRegistration::test_call_tool_post_enforcement_runs_after_transition
+FAILED tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleExitCriteria::test_transition_blocked_when_current_cycle_missing_exit_criteria
+FAILED tests/mcp_server/unit/tools/test_discovery_tools.py::TestGetWorkContextTddCycleInfo::test_tdd_cycle_info_hidden_outside_tdd_phase
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3_issue257.py::test_transition_reconstructs_state_via_state_reconstructor_when_load_fails
+FAILED tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_atomic_creation_both_files
+FAILED tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleExitCriteria::test_transition_succeeds_when_exit_criteria_present
+FAILED tests/mcp_server/unit/tools/test_discovery_tools.py::TestGetWorkContextTddCycleInfo::test_tdd_cycle_info_graceful_degradation
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3_issue257.py::test_transition_saves_reconstructed_state_before_continuing
+FAILED tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_branch_name_auto_detected
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c3_issue257.py::test_force_transition_loads_state_or_reconstructs_when_missing
+FAILED tests/mcp_server/unit/tools/test_discovery_tools.py::TestTddCycleInfoStatusField::test_tdd_cycle_info_includes_status_field
+FAILED tests/mcp_server/unit/tools/test_project_tools.py::TestInitializeProjectToolParentBranch::test_initialize_with_explicit_parent_branch
+FAILED tests/mcp_server/unit/tools/test_project_tools.py::TestInitializeProjectToolParentBranch::test_initialize_auto_detects_parent_branch
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c4_issue257.py::test_transition_cycle_raises_when_gate_blocks
+FAILED tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_first_phase_from_workflow
+FAILED tests/mcp_server/integration/test_issue39_cross_machine.py::TestIssue39CrossMachine::test_recovery_respects_workflow_phases
+FAILED tests/mcp_server/unit/tools/test_project_tools.py::TestInitializeProjectToolParentBranch::test_initialize_auto_detect_fails_gracefully
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c4_issue257.py::test_force_cycle_transition_returns_gate_inspection_report
+FAILED tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_all_workflow_types_supported
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c4_issue257.py::test_cycle_transition_is_allowed_in_any_cycle_based_phase
+FAILED tests/mcp_server/unit/tools/test_project_tools.py::TestInitializeProjectToolParentBranch::test_explicit_parent_branch_overrides_auto_detect
+FAILED tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_no_breaking_changes_to_projects_json
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_c4_issue257.py::test_cycle_transition_is_blocked_in_non_cycle_based_phase
+FAILED tests/mcp_server/unit/tools/test_project_tools.py::TestSavePlanningDeliverablesTool::test_save_planning_deliverables_tool_persists_to_projects_json
+FAILED tests/mcp_server/unit/integration/test_git.py::test_git_manager_commit_tdd
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestPhaseStateEngineParentBranch::test_initialize_branch_with_explicit_parent_branch
+FAILED tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForcePhaseTransitionToolSkippedGatesResponse::test_force_transition_tool_response_includes_skipped_gates_warning
+FAILED tests/mcp_server/unit/tools/test_initialize_project_tool.py::TestInitializeProjectToolMode1::test_state_json_not_in_projects_json
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestPhaseStateEngineParentBranch::test_initialize_branch_inherits_parent_from_project
+FAILED tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForcePhaseTransitionToolSkippedGatesResponse::test_force_transition_tool_response_no_warning_when_no_gates
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestPhaseStateEngineParentBranch::test_initialize_branch_with_none_parent_branch
+FAILED tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForceTransitionResponseFormat::test_force_phase_transition_response_blocking_gate_appears_before_success
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestPhaseStateEngineParentBranch::test_reconstruct_branch_state_includes_parent_branch
+FAILED tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForceTransitionResponseFormat::test_force_phase_transition_response_passing_gate_appears_after_success
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestPhaseStateEngineParentBranch::test_reconstruct_branch_state_with_none_parent_branch
+FAILED tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForceTransitionResponseFormat::test_force_phase_transition_response_no_gates_no_warning
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestPhaseStateEngineParentBranch::test_initialize_branch_returns_warning_for_uncommitted_state_changes
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestTddCycleTrackingFields::test_initialize_branch_creates_tdd_cycle_fields
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestTddCycleTrackingFields::test_reconstruct_state_includes_tdd_cycle_fields
+FAILED tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleExitCriteria::test_transition_blocked_when_current_cycle_has_empty_exit_criteria
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestCycleValidationLogic::test_validate_cycle_number_range_rejects_zero
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestCycleValidationLogic::test_validate_cycle_number_range_rejects_negative
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestCycleValidationLogic::test_validate_cycle_number_range_rejects_exceeds_total
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestCycleValidationLogic::test_validate_cycle_number_range_accepts_valid_range
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestCycleValidationLogic::test_validate_planning_deliverables_exist_raises_if_missing
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_parent_branch.py::TestCycleValidationLogic::test_validate_planning_deliverables_exist_passes_if_present
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_persistence.py::TestPhaseStateEnginePersistence::test_initialize_branch_writes_single_branch_state
+FAILED tests/mcp_server/integration/test_workflow_cycle_e2e.py::test_full_workflow_cycle_with_scope_detection
+FAILED tests/mcp_server/managers/test_git_manager_config.py::TestGitManagerConfigIntegration::test_commit_with_scope_uses_workflow_and_subphase_validation
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_persistence.py::TestPhaseStateEnginePersistence::test_initializing_second_branch_overwrites_state_json_completely
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_persistence.py::TestPhaseStateEnginePersistence::test_transition_persists_updated_state_immediately
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py::TestStateReconstructor::test_reconstruct_infers_phase_from_git_scopes
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py::TestStateReconstructor::test_reconstruct_maps_implementation_subphases_to_workflow_phase
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py::TestStateReconstructor::test_reconstruct_falls_back_to_first_workflow_phase_when_no_scope_found
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py::TestStateReconstructor::test_reconstruct_handles_git_errors_with_workflow_fallback
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_transition_valid
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_transition_invalid
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_force_transition
+FAILED tests/mcp_server/unit/managers/test_phase_state_engine_workflow.py::TestPhaseStateEngineTransitions::test_phase_state_engine_get_current_phase
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleTool::test_transition_to_next_cycle_succeeds
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleTool::test_transition_blocks_backward_transition
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleTool::test_transition_blocks_non_sequential_jump
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleTool::test_transition_blocks_outside_tdd_phase
+ERROR tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForcePhaseTransitionTool::test_force_phase_transition_tool_success
+ERROR tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForcePhaseTransitionTool::test_force_phase_transition_tool_requires_skip_reason
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleTransitionTool::test_force_backward_transition_succeeds
+ERROR tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForcePhaseTransitionTool::test_force_phase_transition_tool_requires_human_approval
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleTransitionTool::test_force_skip_transition_succeeds
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleTransitionTool::test_force_blocks_without_skip_reason
+ERROR tests/mcp_server/unit/tools/test_force_phase_transition_tool.py::TestForcePhaseTransitionTool::test_force_phase_transition_tool_allows_any_transition
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleTransitionTool::test_force_blocks_without_human_approval
+ERROR tests/mcp_server/unit/tools/test_transition_phase_tool.py::TestTransitionPhaseTool::test_transition_phase_tool_success
+ERROR tests/mcp_server/unit/tools/test_transition_phase_tool.py::TestTransitionPhaseTool::test_transition_phase_tool_invalid_target_phase
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleAuditSchema::test_force_audit_entry_has_cycle_number_not_from_to
+ERROR tests/mcp_server/unit/tools/test_transition_phase_tool.py::TestTransitionPhaseTool::test_transition_phase_tool_validates_sequence
+ERROR tests/mcp_server/unit/tools/test_transition_phase_tool.py::TestTransitionPhaseTool::test_transition_phase_tool_with_human_approval
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleAuditSchema::test_force_audit_entry_has_forced_true
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestForceCycleAuditSchema::test_force_audit_entry_has_skipped_cycles
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleHistory::test_normal_transition_writes_history_entry
+ERROR tests/mcp_server/unit/tools/test_cycle_tools_legacy.py::TestTransitionCycleHistory::test_multiple_transitions_accumulate_history
+= 100 failed, 2132 passed, 11 skipped, 2 xfailed, 15 warnings, 21 errors in 34.15s =

@@ -9,11 +9,13 @@ from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
+from mcp_server.core.operation_notes import NoteContext, RecoveryNote
 from mcp_server.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.schemas import WorkphasesConfig
 from mcp_server.services.document_indexer import DocumentIndexer
 from mcp_server.services.search_service import SearchService
 from mcp_server.tools.base import BaseTool
@@ -47,20 +49,16 @@ class SearchDocumentationTool(BaseTool):
         super().__init__()
         self._settings = settings
 
-    async def execute(self, params: SearchDocumentationInput) -> ToolResult:
+    async def execute(self, params: SearchDocumentationInput, context: NoteContext) -> ToolResult:
         """Execute documentation search using DocumentIndexer + SearchService."""
         # Build index from docs directory
         docs_dir = Path(self._settings.server.workspace_root) / "docs"
 
         if not docs_dir.exists():
-            raise ExecutionError(
-                "Documentation directory not found",
-                recovery=[
-                    f"Expected directory: {docs_dir}",
-                    "Create docs/ directory in workspace root",
-                    "Add markdown files to document project",
-                ],
-            )
+            context.produce(RecoveryNote(message=f"Expected directory: {docs_dir}"))
+            context.produce(RecoveryNote(message="Create docs/ directory in workspace root"))
+            context.produce(RecoveryNote(message="Add markdown files to document project"))
+            raise ExecutionError("Documentation directory not found")
 
         index = DocumentIndexer.build_index(docs_dir)
 
@@ -116,6 +114,7 @@ class GetWorkContextTool(BaseTool):
         project_manager: ProjectManager,
         state_engine: PhaseStateEngine,
         github_manager: GitHubManager | None = None,
+        workphases_config: WorkphasesConfig | None = None,
     ) -> None:
         super().__init__()
         self._settings = settings
@@ -123,39 +122,41 @@ class GetWorkContextTool(BaseTool):
         self._project_manager = project_manager
         self._state_engine = state_engine
         self._github_manager = github_manager
+        self._workphases_config = workphases_config
 
-    async def execute(self, params: GetWorkContextInput) -> ToolResult:
+    async def execute(self, params: GetWorkContextInput, context: NoteContext) -> ToolResult:
         """Execute work context aggregation."""
-        context: dict[str, Any] = {}
+        del context  # NoteContext not used by this read-only tool
+        ctx: dict[str, Any] = {}
 
         # Get Git context
         branch = self._git_manager.get_current_branch()
-        context["current_branch"] = branch
+        ctx["current_branch"] = branch
 
         # Extract issue number from branch
         issue_number = self._extract_issue_number(branch)
-        context["linked_issue_number"] = issue_number
+        ctx["linked_issue_number"] = issue_number
 
         # Detect workflow phase deterministically from commit-scope + state.json
         try:
             recent_commits = self._git_manager.get_recent_commits(limit=5)
             phase_result = self._detect_workflow_phase(recent_commits)
-            context["workflow_phase"] = phase_result["workflow_phase"]
-            context["sub_phase"] = phase_result.get("sub_phase")
-            context["phase_source"] = phase_result["source"]
-            context["phase_confidence"] = phase_result["confidence"]
-            context["phase_error_message"] = phase_result.get("error_message")
-            context["recent_commits"] = recent_commits
+            ctx["workflow_phase"] = phase_result["workflow_phase"]
+            ctx["sub_phase"] = phase_result.get("sub_phase")
+            ctx["phase_source"] = phase_result["source"]
+            ctx["phase_confidence"] = phase_result["confidence"]
+            ctx["phase_error_message"] = phase_result.get("error_message")
+            ctx["recent_commits"] = recent_commits
         except (OSError, ValueError, RuntimeError):
-            context["workflow_phase"] = "unknown"
-            context["sub_phase"] = None
-            context["phase_source"] = "unknown"
-            context["phase_confidence"] = "unknown"
-            context["phase_error_message"] = None
-            context["recent_commits"] = []
+            ctx["workflow_phase"] = "unknown"
+            ctx["sub_phase"] = None
+            ctx["phase_source"] = "unknown"
+            ctx["phase_confidence"] = "unknown"
+            ctx["phase_error_message"] = None
+            ctx["recent_commits"] = []
 
         # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility)
-        if context.get("workflow_phase") == "implementation" and issue_number:
+        if ctx.get("workflow_phase") == "implementation" and issue_number:
             try:
                 state = self._state_engine.get_state(branch)
                 current_cycle = state.current_cycle
@@ -176,7 +177,7 @@ class GetWorkContextTool(BaseTool):
                     )
 
                     if cycle_details:
-                        context["tdd_cycle_info"] = {
+                        ctx["tdd_cycle_info"] = {
                             "current": current_cycle,
                             "total": total,
                             "name": cycle_details.get("name"),
@@ -201,7 +202,7 @@ class GetWorkContextTool(BaseTool):
                     issue = self._github_manager.get_issue(issue_number)
                     if issue:
                         # GitHubManager.get_issue() returns PyGithub Issue object
-                        context["active_issue"] = {
+                        ctx["active_issue"] = {
                             "number": issue.number,
                             "title": issue.title,
                             "body": (issue.body or "")[:500],
@@ -214,14 +215,12 @@ class GetWorkContextTool(BaseTool):
                     # This effectively implements the logic for the formerly unused argument
                     closed_issues = self._github_manager.list_issues(state="closed")
                     # Naively taking top 3 for brevity, assuming list_issues sorts by recent
-                    context["recently_closed"] = [
-                        f"#{i.number} {i.title}" for i in closed_issues[:3]
-                    ]
+                    ctx["recently_closed"] = [f"#{i.number} {i.title}" for i in closed_issues[:3]]
 
             except (OSError, ValueError, RuntimeError, ImportError, MCPError):
                 pass  # GitHub integration optional
 
-        return ToolResult.text(self._format_context(context))
+        return ToolResult.text(self._format_context(ctx))
 
     def _extract_issue_number(self, branch: str) -> int | None:
         """Extract issue number from branch name."""
@@ -265,7 +264,16 @@ class GetWorkContextTool(BaseTool):
         latest_commit = commits[0]
 
         # Deterministic phase detection via ScopeDecoder
-        decoder = ScopeDecoder()
+        if self._workphases_config is None:
+            return {
+                "workflow_phase": "unknown",
+                "sub_phase": None,
+                "source": "unknown",
+                "confidence": "unknown",
+                "raw_scope": None,
+                "error_message": "WorkphasesConfig not injected",
+            }
+        decoder = ScopeDecoder(self._workphases_config)
         return decoder.detect_phase(commit_message=latest_commit, fallback_to_state=True)
 
     def _extract_checklist(self, body: str) -> list[str]:

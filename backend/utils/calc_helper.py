@@ -9,12 +9,13 @@
 - Mathematical operations
 """
 
+
 # Standard library
 # Third-party
 # Project modules
 class CalcHelper:
     """Helper for calculations"""
 
-    def placeholder(self):
+    def placeholder(self) -> None:
         """Placeholder method."""
         pass

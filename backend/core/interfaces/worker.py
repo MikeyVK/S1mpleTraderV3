@@ -111,9 +111,7 @@ class IWorkerLifecycle(Protocol):
     """
 
     def initialize(
-        self,
-        strategy_cache: "IStrategyCache | None" = None,
-        **capabilities
+        self, strategy_cache: "IStrategyCache | None" = None, **capabilities: object
     ) -> None:
         """
         Initialize worker with runtime dependencies.

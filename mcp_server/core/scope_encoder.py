@@ -8,17 +8,15 @@ Generates git commit scopes in format:
 - Phase + cycle + subphase: P_TDD_SP_C1_RED
 
 Validation:
-- Phase must exist in workphases.yaml
-- sub_phase must be in workphases.yaml[phase].subphases (STRICT)
+- Phase must exist in workphases config
+- sub_phase must be in workphases config[phase].subphases (STRICT)
 - Empty subphases list = no subphases allowed
 - Actionable error messages (what failed, valid values, example, recovery)
 """
 
 import logging
-from pathlib import Path
-from typing import Any
 
-import yaml
+from mcp_server.config.schemas.workphases import WorkphasesConfig
 
 logger = logging.getLogger(__name__)
 
@@ -26,31 +24,13 @@ logger = logging.getLogger(__name__)
 class ScopeEncoder:
     """Encode commit scopes with strict phase and subphase validation."""
 
-    def __init__(self, workphases_path: Path) -> None:
-        """Initialize encoder with workphases.yaml path.
+    def __init__(self, workphases_config: WorkphasesConfig) -> None:
+        """Initialize encoder with WorkphasesConfig.
 
         Args:
-            workphases_path: Path to workphases.yaml configuration
+            workphases_config: Parsed WorkphasesConfig instance
         """
-        self.workphases_path = workphases_path
-        self._config: dict[str, Any] | None = None  # Lazy load
-
-    def _load_config(self) -> dict[str, Any]:
-        """Load and cache workphases.yaml.
-
-        Returns:
-            Parsed config dict with phases structure
-
-        Raises:
-            FileNotFoundError: workphases.yaml not found
-        """
-        if self._config is None:
-            with open(self.workphases_path, encoding="utf-8") as f:
-                loaded = yaml.safe_load(f)
-                self._config = loaded if loaded is not None else {}
-
-        assert self._config is not None  # Type narrowing for Pyright
-        return self._config
+        self._workphases_config = workphases_config
 
     def generate_scope(
         self,
@@ -70,7 +50,6 @@ class ScopeEncoder:
 
         Raises:
             ValueError: Invalid phase or sub_phase with actionable message
-            FileNotFoundError: workphases.yaml not found
 
         Examples:
             >>> encoder.generate_scope("research")
@@ -82,9 +61,8 @@ class ScopeEncoder:
             >>> encoder.generate_scope("implementation", "red", cycle_number=1)
             "P_IMPLEMENTATION_SP_C1_RED"
         """
-        # 1. Load config
-        config = self._load_config()
-        phases = config.get("phases", {})
+        # 1. Load phases from injected config
+        phases = self._workphases_config.phases
 
         # 2. Normalize phase (case-insensitive)
         phase_lower = phase.lower()
@@ -104,7 +82,7 @@ class ScopeEncoder:
             )
 
         phase_config = phases[phase_lower]
-        configured_subphases = phase_config.get("subphases", [])
+        configured_subphases = phase_config.subphases
 
         # 4. Validate sub_phase if provided
         if sub_phase is not None:

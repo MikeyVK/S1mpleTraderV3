@@ -107,12 +107,14 @@ class TestConfigValidator:
                 "research": {"display_name": "Research"},
                 "planning": {"display_name": "Planning"},
                 "implementation": {"display_name": "Implementation"},
+                "ready": {"display_name": "Ready", "terminal": True},
             },
         )
 
     @pytest.fixture
     def phase_contracts(self) -> PhaseContractsConfig:
         return PhaseContractsConfig(
+            merge_policy={"pr_allowed_phase": "ready", "branch_local_artifacts": []},
             workflows={
                 "feature": {
                     "implementation": {
@@ -123,7 +125,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
 
     def test_label_startup_deleted(self) -> None:
@@ -170,7 +172,10 @@ class TestConfigValidator:
                 }
             },
         )
-        phase_contracts = PhaseContractsConfig(workflows={})
+        phase_contracts = PhaseContractsConfig(
+            merge_policy={"pr_allowed_phase": "ready", "branch_local_artifacts": []},
+            workflows={},
+        )
 
         with pytest.raises(ConfigError, match="Workflow 'feature' references unknown phases"):
             validator.validate_startup(
@@ -192,6 +197,7 @@ class TestConfigValidator:
         workphases_config: WorkphasesConfig,
     ) -> None:
         phase_contracts = PhaseContractsConfig(
+            merge_policy={"pr_allowed_phase": "ready", "branch_local_artifacts": []},
             workflows={
                 "bug": {
                     "implementation": {
@@ -202,7 +208,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
 
         with pytest.raises(ConfigError, match="unknown workflow"):
@@ -225,6 +231,7 @@ class TestConfigValidator:
         workphases_config: WorkphasesConfig,
     ) -> None:
         phase_contracts = PhaseContractsConfig(
+            merge_policy={"pr_allowed_phase": "ready", "branch_local_artifacts": []},
             workflows={
                 "feature": {
                     "validation": {
@@ -235,7 +242,7 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
 
         with pytest.raises(ConfigError, match="unknown phases"):
@@ -267,6 +274,7 @@ class TestConfigValidator:
             },
         )
         phase_contracts = PhaseContractsConfig(
+            merge_policy={"pr_allowed_phase": "ready", "branch_local_artifacts": []},
             workflows={
                 "feature": {
                     "validation": {
@@ -277,11 +285,14 @@ class TestConfigValidator:
                         "cycle_exit_requires": {},
                     }
                 }
-            }
+            },
         )
         workphases_config = WorkphasesConfig(
             version="1.0",
-            phases={"research": {"display_name": "Research"}},
+            phases={
+                "research": {"display_name": "Research"},
+                "ready": {"display_name": "Ready", "terminal": True},
+            },
         )
 
         with pytest.raises(ConfigError, match="missing from workphases"):

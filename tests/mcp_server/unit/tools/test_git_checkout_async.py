@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.git_tools import GitCheckoutTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -26,7 +27,7 @@ class TestGitCheckoutAsync:
 
         mock_run_sync = AsyncMock(side_effect=RuntimeError("stop"))
         with patch("anyio.to_thread.run_sync", mock_run_sync):
-            result = await tool.execute(params)
+            result = await tool.execute(params, NoteContext())
 
         assert mock_run_sync.await_count >= 1
         assert isinstance(result, ToolResult)

@@ -1,4 +1,5 @@
 # tests/mcp_server/unit/tools/test_discovery_tools.py
+# pyright: reportPrivateUsage=false
 """
 Tests for Discovery Tools (search_documentation, get_work_context).
 
@@ -18,6 +19,7 @@ from mcp_server.config.schemas import GitConfig
 from mcp_server.config.schemas.workflows import WorkflowConfig
 from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.config.settings import Settings
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.discovery_tools import (
     GetWorkContextInput,
     GetWorkContextTool,
@@ -46,6 +48,7 @@ def make_work_context_tool(
         project_manager=MagicMock(),
         state_engine=MagicMock(),
         github_manager=MagicMock(),
+        workphases_config=load_workphases_config(),
     )
 
 
@@ -100,7 +103,7 @@ class TestSearchDocumentationTool:
             test_file.write_text("# Test Document\nContains worker implementation info.")
 
             tool._settings.server.workspace_root = tmpdir
-            result = await tool.execute(SearchDocumentationInput(query="worker"))
+            result = await tool.execute(SearchDocumentationInput(query="worker"), NoteContext())
 
             assert not result.is_error
             assert "test.md" in result.content[0]["text"]
@@ -117,7 +120,7 @@ class TestSearchDocumentationTool:
 
             tool._settings.server.workspace_root = tmpdir
             result = await tool.execute(
-                SearchDocumentationInput(query="design", scope="architecture")
+                SearchDocumentationInput(query="design", scope="architecture"), NoteContext()
             )
 
             assert not result.is_error
@@ -133,7 +136,9 @@ class TestSearchDocumentationTool:
             test_file.write_text("# Test")
 
             tool._settings.server.workspace_root = tmpdir
-            result = await tool.execute(SearchDocumentationInput(query="nonexistent123"))
+            result = await tool.execute(
+                SearchDocumentationInput(query="nonexistent123"), NoteContext()
+            )
 
             assert not result.is_error
             assert "No results" in result.content[0]["text"]
@@ -172,7 +177,7 @@ class TestGetWorkContextTool:
             tool._git_manager = mock_git
 
             tool._settings.github.token = None
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         assert not result.is_error
         assert "main" in result.content[0]["text"]
@@ -188,7 +193,7 @@ class TestGetWorkContextTool:
             tool._git_manager = mock_git
 
             tool._settings.github.token = None
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         assert not result.is_error
         assert "#42" in result.content[0]["text"]
@@ -206,7 +211,7 @@ class TestGetWorkContextTool:
             tool._git_manager = mock_git
 
             tool._settings.github.token = None
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         assert not result.is_error
         assert "#99" in result.content[0]["text"]
@@ -216,9 +221,10 @@ class TestGetWorkContextTool:
         self, tool: GetWorkContextTool
     ) -> None:
         """Should detect workflow phase from commit-scope and display it correctly."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class, patch(
-            "mcp_server.tools.discovery_tools.ScopeDecoder"
-        ) as mock_decoder_class:
+        with (
+            patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
+        ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
             mock_git.get_recent_commits.return_value = [
@@ -239,7 +245,7 @@ class TestGetWorkContextTool:
             mock_decoder_class.return_value = mock_decoder
 
             tool._settings.github.token = None
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         assert not result.is_error
         text = result.content[0]["text"].lower()
@@ -270,7 +276,7 @@ class TestGetWorkContextTool:
 
             for commit, expected_phase, expected_emoji in test_cases:
                 mock_git.get_recent_commits.return_value = [commit]
-                result = await tool.execute(GetWorkContextInput())
+                result = await tool.execute(GetWorkContextInput(), NoteContext())
                 text = result.content[0]["text"].lower()
                 # Check phase name or emoji present
                 assert expected_phase in text or expected_emoji in result.content[0]["text"]
@@ -289,7 +295,7 @@ class TestGetWorkContextTool:
         tool._settings.github.token = "test-token"
 
         # Execute - GitHub code path will fail gracefully
-        result = await tool.execute(GetWorkContextInput())
+        result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         # Should not error even if GitHub fetch fails
         assert not result.is_error
@@ -316,7 +322,7 @@ class TestGetWorkContextTool:
                 tool._github_manager = mock_gh
 
                 tool._settings.github.token = "test-token"
-                result = await tool.execute(GetWorkContextInput())
+                result = await tool.execute(GetWorkContextInput(), NoteContext())
 
             assert not result.is_error
             assert "Test Issue" in result.content[0]["text"]
@@ -353,7 +359,7 @@ class TestGetWorkContextTool:
                 }
                 mock_decoder_class.return_value = mock_decoder
 
-                result = await tool.execute(GetWorkContextInput())
+                result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         assert not result.is_error
         text = result.content[0]["text"]
@@ -455,7 +461,7 @@ class TestGetWorkContextTddCycleInfo:
             }
             mock_decoder_class.return_value = mock_decoder
 
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         # Assert - tdd_cycle_info should be present
         assert not result.is_error, f"Expected success, got error: {result.content}"
@@ -536,7 +542,7 @@ class TestGetWorkContextTddCycleInfo:
             }
             mock_decoder_class.return_value = mock_decoder
 
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         # Assert - NO tdd_cycle_info in design phase
         assert not result.is_error
@@ -601,7 +607,7 @@ class TestGetWorkContextTddCycleInfo:
             }
             mock_decoder_class.return_value = mock_decoder
 
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         # Assert - tool should NOT crash
         assert not result.is_error, f"Tool crashed: {result.content}"
@@ -692,7 +698,7 @@ class TestTddCycleInfoStatusField:
             }
             mock_decoder_class.return_value = mock_decoder
 
-            result = await tool.execute(GetWorkContextInput())
+            result = await tool.execute(GetWorkContextInput(), NoteContext())
 
         assert not result.is_error, f"Tool failed: {result.content}"
         # The status field must appear in the rendered output (in_progress)

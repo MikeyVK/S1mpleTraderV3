@@ -88,15 +88,6 @@ class PhaseStateEngine:
         self.state_file = workspace_path / ".st3" / "state.json"
         self.project_manager = project_manager
 
-        workspace_workphases_path = workspace_path / ".st3" / "config" / "workphases.yaml"
-        if not workspace_workphases_path.exists():
-            relaxed_payload = workphases_config.model_dump()
-            for phase_definition in relaxed_payload.get("phases", {}).values():
-                if isinstance(phase_definition, dict):
-                    phase_definition["exit_requires"] = []
-                    phase_definition["entry_expects"] = []
-            workphases_config = WorkphasesConfig.model_validate(relaxed_payload)
-
         self._workflow_config = workflow_config
         self._git_config = git_config
         self._workphases_config = workphases_config

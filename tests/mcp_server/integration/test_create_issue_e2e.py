@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import MilestoneConfig
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
@@ -65,7 +66,7 @@ async def test_minimal_input_creates_issue_with_correct_labels() -> None:
     tool = make_create_issue_tool(mock_manager)
     params = make_input()
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert not result.is_error, f"Expected success, got error: {result.content}"
     assert "Created issue #42" in result.content[0]["text"]
@@ -100,7 +101,7 @@ async def test_all_options_creates_issue_with_full_label_set() -> None:
         ),
     )
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert not result.is_error, f"Expected success, got error: {result.content}"
 
@@ -117,7 +118,7 @@ async def test_all_options_creates_issue_with_full_label_set() -> None:
 async def test_invalid_issue_type_is_refused_before_api_call() -> None:
     tool, adapter = make_validating_tool()
 
-    result = await tool.execute(make_input(issue_type="invalid_type"))
+    result = await tool.execute(make_input(issue_type="invalid_type"), NoteContext())
 
     assert result.is_error is True
     assert "Unknown issue type" in result.content[0]["text"]
@@ -127,7 +128,7 @@ async def test_invalid_issue_type_is_refused_before_api_call() -> None:
 async def test_invalid_scope_is_refused_before_api_call() -> None:
     tool, adapter = make_validating_tool()
 
-    result = await tool.execute(make_input(scope="nonexistent-scope"))
+    result = await tool.execute(make_input(scope="nonexistent-scope"), NoteContext())
 
     assert result.is_error is True
     assert "Unknown scope" in result.content[0]["text"]
@@ -137,7 +138,7 @@ async def test_invalid_scope_is_refused_before_api_call() -> None:
 async def test_invalid_priority_is_refused_before_api_call() -> None:
     tool, adapter = make_validating_tool()
 
-    result = await tool.execute(make_input(priority="ultra-critical"))
+    result = await tool.execute(make_input(priority="ultra-critical"), NoteContext())
 
     assert result.is_error is True
     assert "Unknown priority" in result.content[0]["text"]
@@ -147,7 +148,7 @@ async def test_invalid_priority_is_refused_before_api_call() -> None:
 async def test_title_too_long_is_refused_before_api_call() -> None:
     tool, adapter = make_validating_tool()
 
-    result = await tool.execute(make_input(title="X" * 200))
+    result = await tool.execute(make_input(title="X" * 200), NoteContext())
 
     assert result.is_error is True
     assert "Title too long" in result.content[0]["text"]
@@ -176,7 +177,7 @@ async def test_milestone_accepted_when_milestones_yaml_is_empty() -> None:
     issue_mock = MagicMock(number=11, title="Milestone ok", html_url="http://x")
     adapter.create_issue.return_value = issue_mock
 
-    result = await tool.execute(make_input(milestone="any-future-milestone"))
+    result = await tool.execute(make_input(milestone="any-future-milestone"), NoteContext())
 
     assert result.is_error is False
     assert "Created issue #11" in result.content[0]["text"]

@@ -12,6 +12,7 @@ import pytest
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import LabelConfig
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.label_tools import (
     AddLabelsInput,
     AddLabelsTool,
@@ -59,7 +60,7 @@ async def test_list_labels_tool(
         MagicMock(name="feat", color="green", description=""),
     ]
 
-    result = await tool.execute(ListLabelsInput())
+    result = await tool.execute(ListLabelsInput(), NoteContext())
 
     mock_github_manager.list_labels.assert_called_once()
     assert "bug" in result.content[0]["text"]
@@ -76,7 +77,7 @@ async def test_create_label_tool(
     mock_github_manager.create_label.return_value = label_mock
 
     params = CreateLabelInput(name="type:hotfix", color="ff0000", description="Hotfix")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_github_manager.create_label.assert_called_with(
         name="type:hotfix", color="ff0000", description="Hotfix"
@@ -91,7 +92,7 @@ async def test_delete_label_tool(
     tool = DeleteLabelTool(manager=mock_github_manager, label_config=test_label_config)
 
     params = DeleteLabelInput(name="old-label")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_github_manager.delete_label.assert_called_with("old-label")
     assert "Deleted label: **old-label**" in result.content[0]["text"]
@@ -103,7 +104,9 @@ async def test_add_labels_tool(
 ) -> None:
     tool = AddLabelsTool(manager=mock_github_manager, label_config=test_label_config)
 
-    result = await tool.execute(AddLabelsInput(issue_number=10, labels=["bug", "p1"]))
+    result = await tool.execute(
+        AddLabelsInput(issue_number=10, labels=["bug", "p1"]), NoteContext()
+    )
 
     mock_github_manager.add_labels.assert_called_with(10, ["bug", "p1"])
     assert "Added labels to #10" in result.content[0]["text"]
@@ -115,7 +118,7 @@ async def test_remove_labels_tool(
 ) -> None:
     tool = RemoveLabelsTool(manager=mock_github_manager, label_config=test_label_config)
 
-    result = await tool.execute(RemoveLabelsInput(issue_number=10, labels=["bug"]))
+    result = await tool.execute(RemoveLabelsInput(issue_number=10, labels=["bug"]), NoteContext())
 
     mock_github_manager.remove_labels.assert_called_with(10, ["bug"])
     assert "Removed labels from #10" in result.content[0]["text"]

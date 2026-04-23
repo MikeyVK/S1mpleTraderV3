@@ -38,6 +38,7 @@ class RunAnchor(BaseModel):
     Attributes:
         timestamp: The point-in-time moment for this run
     """
+
     model_config = ConfigDict(frozen=True)
 
     timestamp: datetime
@@ -62,9 +63,7 @@ class IStrategyCache(Protocol):
     """
 
     def start_new_strategy_run(
-        self,
-        strategy_cache: StrategyCacheType,
-        timestamp: datetime
+        self, strategy_cache: StrategyCacheType, timestamp: datetime
     ) -> None:
         """
         Configure cache for new strategy run.
@@ -102,10 +101,7 @@ class IStrategyCache(Protocol):
         """
         ...
 
-    def get_required_dtos(
-        self,
-        requesting_worker: IWorker
-    ) -> dict[type[BaseModel], BaseModel]:
+    def get_required_dtos(self, requesting_worker: IWorker) -> dict[type[BaseModel], BaseModel]:
         """
         Retrieve DTOs required by worker from cache.
 
@@ -125,11 +121,7 @@ class IStrategyCache(Protocol):
         """
         ...
 
-    def set_result_dto(
-        self,
-        producing_worker: IWorker,
-        result_dto: BaseModel
-    ) -> None:
+    def set_result_dto(self, producing_worker: IWorker, result_dto: BaseModel) -> None:
         """
         Add worker-produced DTO to cache.
 

@@ -14,6 +14,7 @@ import anyio
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
+    CallToolResult,
     EmbeddedResource,
     ImageContent,
     Resource,
@@ -28,13 +29,18 @@ from mcp_server.config.settings import Settings
 from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger, setup_logging
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, PhaseContractResolver
+from mcp_server.managers.phase_contract_resolver import (
+    MergeReadinessContext,
+    PhaseConfigContext,
+    PhaseContractResolver,
+)
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
@@ -49,6 +55,7 @@ from mcp_server.resources.status import StatusResource
 
 # Scaffolding infrastructure (Issue #72)
 from mcp_server.scaffolding.template_registry import TemplateRegistry
+from mcp_server.state.pr_status_cache import PRStatusCache
 from mcp_server.tools.admin_tools import RestartServerTool
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.code_tools import CreateFileTool
@@ -94,7 +101,7 @@ from mcp_server.tools.milestone_tools import (
     ListMilestonesTool,
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
-from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
+from mcp_server.tools.pr_tools import ListPRsTool, MergePRTool, SubmitPRTool
 from mcp_server.tools.project_tools import (
     GetProjectPlanTool,
     InitializeProjectTool,
@@ -155,6 +162,9 @@ class MCPServer:
         git_config = config_loader.load_git_config()
         workflow_config = config_loader.load_workflow_config()
         workphases_config = config_loader.load_workphases_config()
+        workflow_config = ConfigLoader._inject_terminal_phase(  # pyright: ignore[reportPrivateUsage]
+            workflow_config, workphases_config
+        )
         quality_config = config_loader.load_quality_config()
         label_config = config_loader.load_label_config()
         issue_config = config_loader.load_issue_config()
@@ -179,11 +189,12 @@ class MCPServer:
             workphases=workphases_config,
         )
 
-        self.git_manager = GitManager(git_config=git_config)
+        self.git_manager = GitManager(git_config=git_config, workphases_config=workphases_config)
         self.project_manager = ProjectManager(
             workspace_root=workspace_root,
             workflow_config=workflow_config,
             git_manager=self.git_manager,
+            workphases_config=workphases_config,
         )
         self.phase_contract_resolver = PhaseContractResolver(
             PhaseConfigContext(
@@ -199,9 +210,7 @@ class MCPServer:
             workspace_root=workspace_root,
             git_config=git_config,
             project_manager=self.project_manager,
-            scope_decoder=ScopeDecoder(
-                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
-            ),
+            scope_decoder=ScopeDecoder(workphases_config=workphases_config),
         )
         self.phase_state_engine = PhaseStateEngine(
             workspace_root=workspace_root,
@@ -210,9 +219,7 @@ class MCPServer:
             workflow_config=workflow_config,
             workphases_config=workphases_config,
             state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
-            scope_decoder=ScopeDecoder(
-                workphases_path=workspace_root / ".st3" / "config" / "workphases.yaml"
-            ),
+            scope_decoder=ScopeDecoder(workphases_config=workphases_config),
             workflow_gate_runner=self.workflow_gate_runner,
             state_reconstructor=self.state_reconstructor,
         )
@@ -234,9 +241,19 @@ class MCPServer:
             registry=artifact_registry,
             project_structure_config=project_structure_config,
         )
+        _merge_readiness_context = MergeReadinessContext(
+            terminal_phase=workphases_config.get_terminal_phase(),
+            pr_allowed_phase=phase_contracts_config.get_pr_allowed_phase(),
+            branch_local_artifacts=tuple(
+                phase_contracts_config.merge_policy.branch_local_artifacts
+            ),
+        )
+        self.pr_status_cache = PRStatusCache(github_manager=self.github_manager)
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,
             config=enforcement_config,
+            default_base_branch=git_config.default_base_branch,
+            pr_status_reader=self.pr_status_cache,
         )
 
         self.server = Server(server_name)
@@ -330,6 +347,7 @@ class MCPServer:
                 project_manager=self.project_manager,
                 state_engine=self.phase_state_engine,
                 github_manager=self.github_manager,
+                workphases_config=workphases_config,
             ),
         ]
 
@@ -351,9 +369,18 @@ class MCPServer:
                     CloseIssueTool(manager=self.github_manager),
                     UpdateIssueTool(manager=self.github_manager),
                     # PR and Label tools (require token at init time)
-                    CreatePRTool(manager=self.github_manager, git_config=git_config),
                     ListPRsTool(manager=self.github_manager, git_config=git_config),
-                    MergePRTool(manager=self.github_manager, git_config=git_config),
+                    MergePRTool(
+                        manager=self.github_manager,
+                        git_config=git_config,
+                        pr_status_writer=self.pr_status_cache,
+                    ),
+                    SubmitPRTool(
+                        git_manager=self.git_manager,
+                        github_manager=self.github_manager,
+                        pr_status_writer=self.pr_status_cache,
+                        merge_readiness_context=_merge_readiness_context,
+                    ),
                     AddLabelsTool(manager=self.github_manager, label_config=label_config),
                     ListLabelsTool(manager=self.github_manager, label_config=label_config),
                     CreateLabelTool(manager=self.github_manager, label_config=label_config),
@@ -440,20 +467,6 @@ class MCPServer:
             error_details = str(validation_error)
             return [TextContent(type="text", text=f"Invalid input for {name}: {error_details}")]
 
-    @staticmethod
-    def _augment_text_with_error_metadata(text: str, result: ToolResult) -> str:
-        """Add error_code and hints to text when result is error."""
-        if not result.is_error or not hasattr(result, "error_code"):
-            return text
-
-        if result.error_code:
-            text += f"\n\nError code: {result.error_code}"
-        if hasattr(result, "hints") and result.hints:
-            text += "\nHints:"
-            for hint in result.hints:
-                text += f"\n  - {hint}"
-        return text
-
     def _convert_tool_result_to_content(
         self, result: ToolResult
     ) -> list[TextContent | ImageContent | EmbeddedResource]:
@@ -463,7 +476,6 @@ class MCPServer:
         for content in result.content:
             if content.get("type") == "text":
                 text = content["text"]
-                text = self._augment_text_with_error_metadata(text, result)
                 response_content.append(TextContent(type="text", text=text))
             elif content.get("type") == "json":
                 response_content.append(
@@ -483,43 +495,44 @@ class MCPServer:
 
         return response_content
 
-    @staticmethod
-    def _tool_result_from_exception(exc: Exception) -> ToolResult:
-        """Convert one enforcement exception into ToolResult.error()."""
-        if isinstance(exc, MCPError):
-            return ToolResult.error(
-                message=exc.message,
-                error_code=exc.code,
-                hints=exc.hints if exc.hints else None,
-            )
-        if isinstance(exc, ValueError):
-            return ToolResult.error(f"Invalid input: {exc}")
-        if isinstance(exc, FileNotFoundError):
-            return ToolResult.error(f"Configuration error: {exc}")
-        return ToolResult.error(f"Unexpected error: {type(exc).__name__}: {exc}")
+    def _convert_tool_result_to_mcp_result(self, result: ToolResult) -> CallToolResult:
+        """Convert ToolResult to CallToolResult while preserving error semantics."""
+        return CallToolResult(
+            content=self._convert_tool_result_to_content(result),
+            isError=result.is_error,
+        )
 
     def _run_tool_enforcement(
         self,
         tool: BaseTool,
         timing: str,
         params: BaseModel | dict[str, Any],
+        note_context: NoteContext,
         result: ToolResult | None = None,
     ) -> ToolResult | None:
         """Execute pre/post enforcement for one tool when configured."""
         event = getattr(tool, "enforcement_event", None)
-        if event is None:
+        tool_category = getattr(tool, "tool_category", None)
+        if event is None and tool_category is None:
             return None
 
-        context = EnforcementContext(
+        enforcement_ctx = EnforcementContext(
             workspace_root=self._workspace_root,
             tool_name=tool.name,
             params=params,
             tool_result=result,
         )
         try:
-            self.enforcement_runner.run(event=event, timing=timing, context=context)
-        except Exception as exc:  # noqa: BLE001
-            return self._tool_result_from_exception(exc)
+            self.enforcement_runner.run(
+                event=event or "",
+                timing=timing,
+                tool_category=tool_category,
+                enforcement_ctx=enforcement_ctx,
+                note_context=note_context,
+            )
+        except MCPError as exc:
+            base = ToolResult.error(message=exc.message, error_code=exc.code)
+            return note_context.render_to_response(base)
         return None
 
     def setup_handlers(self) -> None:
@@ -554,7 +567,7 @@ class MCPServer:
         @self.server.call_tool()  # type: ignore[untyped-decorator]
         async def handle_call_tool(
             name: str, arguments: dict[str, Any] | None
-        ) -> list[TextContent | ImageContent | EmbeddedResource]:
+        ) -> CallToolResult | list[TextContent | ImageContent | EmbeddedResource]:
             call_id = uuid.uuid4().hex
             start_time = time.perf_counter()
             argument_keys = sorted((arguments or {}).keys())
@@ -579,25 +592,31 @@ class MCPServer:
                         if isinstance(validated, list):
                             return validated
 
-                        pre_result = self._run_tool_enforcement(tool, "pre", validated)
+                        note_context = NoteContext()
+
+                        pre_result = self._run_tool_enforcement(
+                            tool, "pre", validated, note_context=note_context
+                        )
                         if pre_result is not None:
-                            return self._convert_tool_result_to_content(pre_result)
+                            return self._convert_tool_result_to_mcp_result(pre_result)
 
                         # Execute tool
-                        result = await tool.execute(validated)
+                        raw_result = await tool.execute(validated, note_context)
 
-                        if not result.is_error:
+                        if not raw_result.is_error:
                             post_result = self._run_tool_enforcement(
                                 tool,
                                 "post",
                                 validated,
-                                result=result,
+                                note_context=note_context,
+                                result=raw_result,
                             )
                             if post_result is not None:
-                                return self._convert_tool_result_to_content(post_result)
+                                return self._convert_tool_result_to_mcp_result(post_result)
 
-                        # Convert result to MCP content
-                        response_content = self._convert_tool_result_to_content(result)
+                        # Render notes and convert result to MCP content
+                        result = note_context.render_to_response(raw_result)
+                        response_content = self._convert_tool_result_to_mcp_result(result)
 
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
 
@@ -664,15 +683,6 @@ class MCPServer:
                 )
         except KeyboardInterrupt:
             lifecycle_logger.info("MCP server interrupted by user")
-        except Exception as e:
-            lifecycle_logger.error(
-                "MCP server crashed: %s",
-                e,
-                exc_info=True,
-                extra={"props": {"error_type": type(e).__name__, "error_message": str(e)}},
-            )
-            # Re-raise to ensure proper exit code
-            raise
         finally:
             lifecycle_logger.info("MCP server shutting down")
 

@@ -358,54 +358,98 @@ Close an issue with an optional closing comment.
 
 ## Pull Request Tools
 
-### create_pr
+### submit_pr
 
-**MCP Name:** `create_pr`  
-**Class:** `CreatePRTool`  
+**MCP Name:** `submit_pr`
+**Class:** `SubmitPRTool`
 **File:** [mcp_server/tools/pr_tools.py](../../../../mcp_server/tools/pr_tools.py)
 
-Create a new pull request.
+Create a pull request via an **atomic, self-contained flow** that handles branch-local
+artifact neutralization, the final commit, push, GitHub PR creation, and PR-status
+cache update in a single operation.
+
+> **Design note (issue #283):** `CreatePRTool` has been deleted. `SubmitPRTool` is the
+> sole public agent-facing tool for PR creation. It replaces the old multi-step pattern
+> of `git_add_or_commit → create_pr` and owns the full ready-phase transition sequence.
 
 #### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `title` | `str` | **Yes** | PR title (Unicode-safe) |
-| `body` | `str` | **Yes** | PR description (supports Markdown and Unicode) |
+| `body` | `str` | No | PR description (supports Markdown and Unicode) |
 | `head` | `str` | **Yes** | Source branch (e.g., `"feature/123-my-feature"`) |
 | `base` | `str` | No | Target branch (default: `"main"`) |
 | `draft` | `bool` | No | Create as draft PR (default: `False`) |
 
+#### Atomic Execution Flow
+
+`submit_pr` executes the following steps in order, stopping on the first failure:
+
+```
+1. Detect branch-local artifacts with a net diff against base
+   └─ GitManager.has_net_diff_for_path(artifact.path, base)
+2. Neutralize dirty artifacts to the merge-base state
+   └─ GitManager.neutralize_to_base(paths, base)
+3. Commit the neutralization (workflow_phase="ready", commit_type="chore")
+   └─ GitManager.commit_with_scope(...)
+4. Push the branch to origin
+   └─ GitManager.push()
+5. Create the GitHub PR via API
+   └─ GitHubManager.create_pr(...)
+6. Write PRStatus.OPEN to the session cache
+   └─ IPRStatusWriter.set_pr_status(branch, PRStatus.OPEN)
+```
+
+If any step from 3 onwards raises `ExecutionError`, the tool returns an error result
+and produces a `RecoveryNote` explaining the partial state. The branch tip may have
+been modified; run `git status` to inspect.
+
+#### Branch-Local Artifacts
+
+The following files are neutralized to the merge-base before the PR commit so they
+never reach `main`:
+
+| Artifact | Path | Reason |
+|----------|------|--------|
+| Workflow state | `.st3/state.json` | Branch-local TDD phase tracking |
+| Deliverables | `.st3/deliverables.json` | Branch-local planning deliverables |
+
+Configured in `.st3/config/phase_contracts.yaml` → `branch_local_artifacts`.
+
+#### Enforcement Guards
+
+`submit_pr` is subject to two pre-execution enforcement checks (`.st3/config/enforcement.yaml`):
+
+1. **`check_phase_readiness`** — blocks unless `state.json` shows `current_phase == "ready"`.
+   Produces a `SuggestionNote` with `transition_phase(to_phase="ready")`.
+2. **`check_pr_status`** (via `BranchMutatingTool`) — blocks if the branch already has
+   `PRStatus.OPEN` in cache. Produces a `SuggestionNote` to call `merge_pr` first.
+
 #### Returns
 
-```json
-{
-  "success": true,
-  "pr": {
-    "number": 45,
-    "url": "https://github.com/owner/repo/pull/45",
-    "title": "Feature: Add OAuth2 authentication",
-    "head": "feature/123-oauth",
-    "base": "main",
-    "state": "open",
-    "draft": false
-  }
-}
+```
+Created PR #45: https://github.com/owner/repo/pull/45
+```
+
+Error result on failure:
+```
+submit_pr failed after neutralize: <error details>.
+Branch tip may have been modified. Run git status to inspect.
 ```
 
 #### Example Usage
 
-**Create regular PR:**
 ```json
 {
-  "title": "Feature: Add OAuth2 authentication 🔐",
-  "body": "## Changes\n\n- Implemented Google OAuth2\n- Implemented GitHub OAuth2\n- Added token refresh\n\nCloses #123",
+  "title": "feat: Add OAuth2 authentication",
+  "body": "## Changes\n\n- Google OAuth2\n- GitHub OAuth2\n- Token refresh\n\nCloses #123",
   "head": "feature/123-oauth",
   "base": "main"
 }
 ```
 
-**Create draft PR:**
+**Draft PR:**
 ```json
 {
   "title": "WIP: OAuth2 authentication",
@@ -417,11 +461,13 @@ Create a new pull request.
 
 #### Behavior Notes
 
-- **Default Base:** If `base` not specified, defaults to repository's default branch (usually `main`)
-- **Draft PRs:** Draft PRs cannot be merged until marked ready for review
-- **Unicode Support:** Title and body support full Unicode
-- **Branch Validation:** Head branch must exist; base branch must exist
-- **Auto-link Issues:** Use `Closes #123` in body to auto-link issues
+- **Phase Required:** Must be in `ready` phase. Call `transition_phase(to_phase="ready")` first.
+- **Open PR Guard:** Blocked if an open PR already exists for this branch.
+- **Artifact Neutralization:** Skipped if no branch-local artifacts have a net diff (clean branch).
+- **Draft PRs:** Cannot be merged until marked ready for review on GitHub.
+- **Auto-link Issues:** Use `Closes #123` in body to auto-link issues.
+- **`MergePRTool` excluded from BranchMutatingTool:** Intentional — it is the escape hatch
+  that clears `PRStatus.OPEN`. Including it would cause a deadlock.
 
 ---
 
@@ -516,8 +562,8 @@ Merge a pull request with specified merge strategy.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `pr_number` | `int` | **Yes** | Pull request number to merge |
-| `merge_method` | `str` | No | Merge strategy: `"merge"`, `"squash"`, `"rebase"` (default: `"merge"`) |
-| `commit_message` | `str` | No | Optional custom commit message (for merge/squash) |
+| `merge_method` | `str` | No | Merge strategy: only `"merge"` is supported (default: `"merge"`). `"squash"` and `"rebase"` are not supported and will return a validation error. |
+| `commit_message` | `str` | No | Optional custom commit message |
 
 #### Returns
 
@@ -528,44 +574,27 @@ Merge a pull request with specified merge strategy.
   "merge": {
     "sha": "abc123def456",
     "merged": true,
-    "method": "squash"
+    "method": "merge"
   }
 }
 ```
 
 #### Example Usage
 
-**Merge with default strategy:**
+**Merge PR (default strategy):**
 ```json
 {
   "pr_number": 45
 }
 ```
 
-**Squash merge with custom message:**
+**Merge with custom commit message:**
 ```json
 {
   "pr_number": 45,
-  "merge_method": "squash",
   "commit_message": "Feature: Add OAuth2 authentication (#45)\n\nCloses #123"
 }
 ```
-
-**Rebase merge:**
-```json
-{
-  "pr_number": 45,
-  "merge_method": "rebase"
-}
-```
-
-#### Merge Strategies
-
-| Method | Behavior | Commit History | Use Case |
-|--------|----------|----------------|----------|
-| `merge` (default) | Creates merge commit | All commits preserved | Feature branches with meaningful commit history |
-| `squash` | Squashes all commits into one | Single commit | Clean up messy WIP commits |
-| `rebase` | Rebases and fast-forwards | Linear history | Maintain linear history |
 
 #### Behavior Notes
 

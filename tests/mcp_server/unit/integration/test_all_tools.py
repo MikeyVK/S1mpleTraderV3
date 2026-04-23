@@ -7,10 +7,11 @@ These tests use mocks but test the full flow from Tool -> Manager -> Adapter.
 @dependencies: pytest, unittest.mock, mcp_server.tools
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 
 # Git Tools
@@ -41,7 +42,6 @@ from mcp_server.tools.health_tools import HealthCheckInput, HealthCheckTool
 # GitHub Tools (imported here for availability, require manager injection)
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
-from mcp_server.tools.pr_tools import CreatePRInput, CreatePRTool
 
 # Quality Tools
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
@@ -198,10 +198,6 @@ def make_create_issue_tool(manager: MagicMock) -> CreateIssueTool:
     )
 
 
-def make_create_pr_tool(manager: MagicMock) -> CreatePRTool:
-    return CreatePRTool(manager=manager, git_config=make_mock_git_config())
-
-
 def make_add_labels_tool(manager: MagicMock) -> AddLabelsTool:
     return AddLabelsTool(manager=manager, label_config=make_mock_label_config())
 
@@ -237,11 +233,12 @@ class TestGitToolsIntegration:
 
         tool = make_create_branch_tool(mock_manager)
         result = await tool.execute(
-            CreateBranchInput(name="test-feature", branch_type="feature", base_branch="HEAD")
+            CreateBranchInput(name="test-feature", branch_type="feature", base_branch="HEAD"),
+            NoteContext(),
         )
 
         assert "feature/test-feature" in result.content[0]["text"]
-        mock_manager.create_branch.assert_called_once_with("test-feature", "feature", "HEAD")
+        mock_manager.create_branch.assert_called_once_with("test-feature", "feature", "HEAD", ANY)
 
     @pytest.mark.asyncio
     async def test_git_status_tool_flow(self) -> None:
@@ -255,7 +252,7 @@ class TestGitToolsIntegration:
         }
 
         tool = make_git_status_tool(mock_manager)
-        result = await tool.execute(GitStatusInput())
+        result = await tool.execute(GitStatusInput(), NoteContext())
 
         assert "Branch: main" in result.content[0]["text"]
         assert "Clean: True" in result.content[0]["text"]
@@ -274,17 +271,20 @@ class TestGitToolsIntegration:
                 sub_phase="green",
                 commit_type="feat",
                 message="implement feature",
-            )
+            ),
+            NoteContext(),
         )
 
         assert "abc123def" in result.content[0]["text"]
         mock_manager.commit_with_scope.assert_called_once_with(
             workflow_phase="implementation",
             message="implement feature",
+            note_context=ANY,
             sub_phase="green",
             cycle_number=1,
             commit_type="feat",
             files=None,
+            skip_paths=frozenset(),
         )
 
     @pytest.mark.asyncio
@@ -293,10 +293,12 @@ class TestGitToolsIntegration:
         mock_manager = make_mock_git_manager()
 
         tool = make_git_restore_tool(mock_manager)
-        result = await tool.execute(GitRestoreInput(files=["a.py"], source="HEAD"))
+        result = await tool.execute(GitRestoreInput(files=["a.py"], source="HEAD"), NoteContext())
 
         assert "Restored" in result.content[0]["text"]
-        mock_manager.restore.assert_called_once_with(files=["a.py"], source="HEAD")
+        mock_manager.restore.assert_called_once_with(
+            files=["a.py"], note_context=ANY, source="HEAD"
+        )
 
     @pytest.mark.asyncio
     async def test_git_checkout_tool_flow(self) -> None:
@@ -304,7 +306,7 @@ class TestGitToolsIntegration:
         mock_manager = make_mock_git_manager()
 
         tool = make_git_checkout_tool(mock_manager)
-        result = await tool.execute(GitCheckoutInput(branch="feature/test"))
+        result = await tool.execute(GitCheckoutInput(branch="feature/test"), NoteContext())
 
         assert "feature/test" in result.content[0]["text"]
         mock_manager.checkout.assert_called_once_with("feature/test")
@@ -321,7 +323,7 @@ class TestGitToolsIntegration:
         }
 
         tool = make_git_push_tool(mock_manager)
-        result = await tool.execute(GitPushInput())
+        result = await tool.execute(GitPushInput(), NoteContext())
 
         assert "feature/test" in result.content[0]["text"]
         mock_manager.push.assert_called_once_with(set_upstream=False)
@@ -338,10 +340,10 @@ class TestGitToolsIntegration:
         }
 
         tool = make_git_merge_tool(mock_manager)
-        result = await tool.execute(GitMergeInput(branch="feature/test"))
+        result = await tool.execute(GitMergeInput(branch="feature/test"), NoteContext())
 
         assert "feature/test" in result.content[0]["text"]
-        mock_manager.merge.assert_called_once_with("feature/test")
+        mock_manager.merge.assert_called_once_with("feature/test", ANY)
 
     @pytest.mark.asyncio
     async def test_git_delete_branch_tool_flow(self) -> None:
@@ -349,10 +351,10 @@ class TestGitToolsIntegration:
         mock_manager = make_mock_git_manager()
 
         tool = make_git_delete_branch_tool(mock_manager)
-        result = await tool.execute(GitDeleteBranchInput(branch="feature/old"))
+        result = await tool.execute(GitDeleteBranchInput(branch="feature/old"), NoteContext())
 
         assert "feature/old" in result.content[0]["text"]
-        mock_manager.delete_branch.assert_called_once_with("feature/old", force=False)
+        mock_manager.delete_branch.assert_called_once_with("feature/old", ANY, force=False)
 
     @pytest.mark.asyncio
     async def test_git_stash_tool_push_flow(self) -> None:
@@ -360,7 +362,7 @@ class TestGitToolsIntegration:
         mock_manager = make_mock_git_manager()
 
         tool = make_git_stash_tool(mock_manager)
-        result = await tool.execute(GitStashInput(action="push", message="WIP"))
+        result = await tool.execute(GitStashInput(action="push", message="WIP"), NoteContext())
 
         assert "WIP" in result.content[0]["text"]
         mock_manager.stash.assert_called_once_with(message="WIP", include_untracked=False)
@@ -371,7 +373,7 @@ class TestGitToolsIntegration:
         mock_manager = make_mock_git_manager()
 
         tool = make_git_stash_tool(mock_manager)
-        result = await tool.execute(GitStashInput(action="pop"))
+        result = await tool.execute(GitStashInput(action="pop"), NoteContext())
 
         assert "Applied" in result.content[0]["text"]
         mock_manager.stash_pop.assert_called_once_with()
@@ -383,7 +385,7 @@ class TestGitToolsIntegration:
         mock_manager.stash_list.return_value = ["stash@{0}: WIP on main"]
 
         tool = make_git_stash_tool(mock_manager)
-        result = await tool.execute(GitStashInput(action="list"))
+        result = await tool.execute(GitStashInput(action="list"), NoteContext())
 
         assert "stash@{0}" in result.content[0]["text"]
 
@@ -397,7 +399,9 @@ class TestQualityToolsIntegration:
         mock_manager = make_mock_qa_manager()
 
         tool = make_run_quality_gates_tool(mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["test.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["test.py"]), NoteContext()
+        )
 
         assert result.content[0]["type"] == "text"
         data = result.content[1]["json"]
@@ -408,7 +412,7 @@ class TestQualityToolsIntegration:
     async def test_validation_tool_flow(self) -> None:
         """Test architecture validation tool complete flow."""
         tool = make_validation_tool()
-        result = await tool.execute(ValidationInput(scope="all"))
+        result = await tool.execute(ValidationInput(scope="all"), NoteContext())
 
         assert result.content is not None
 
@@ -423,7 +427,9 @@ class TestQualityToolsIntegration:
             patch("pathlib.Path.read_text", return_value=mock_content),
         ):
             tool = ValidateDTOTool()
-            result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"))
+            result = await tool.execute(
+                ValidateDTOInput(file_path="backend/dtos/test.py"), NoteContext()
+            )
 
             assert result.is_error is False
             assert "DTO validation passed" in result.content[0]["text"]
@@ -436,7 +442,7 @@ class TestDevelopmentToolsIntegration:
     async def test_health_check_tool_flow(self) -> None:
         """Test health check tool complete flow."""
         tool = HealthCheckTool()
-        result = await tool.execute(HealthCheckInput())
+        result = await tool.execute(HealthCheckInput(), NoteContext())
 
         result_text = result.content[0]["text"].lower()
         assert "healthy" in result_text or "ok" in result_text
@@ -447,7 +453,7 @@ class TestDevelopmentToolsIntegration:
         with patch("pathlib.Path.mkdir"), patch("builtins.open", MagicMock()):
             tool = CreateFileTool()
             result = await tool.execute(
-                CreateFileInput(path="test/file.py", content="# Test content")
+                CreateFileInput(path="test/file.py", content="# Test content"), NoteContext()
             )
 
             assert result.content is not None
@@ -474,26 +480,11 @@ class TestGitHubToolsIntegration:
                 priority="medium",
                 scope="mcp-server",
                 body=IssueBody(problem="Test body"),
-            )
+            ),
+            NoteContext(),
         )
 
         assert "42" in result.content[0]["text"] or "issue" in result.content[0]["text"].lower()
-
-    @pytest.mark.asyncio
-    async def test_create_pr_tool_flow(self) -> None:
-        """Test create PR tool complete flow."""
-        mock_manager = MagicMock()
-        mock_manager.create_pr.return_value = {
-            "number": 99,
-            "url": "https://github.com/test/repo/pull/99",
-        }
-
-        tool = make_create_pr_tool(mock_manager)
-        result = await tool.execute(
-            CreatePRInput(title="Test PR", body="Test body", head="feature/test", base="main")
-        )
-
-        assert "99" in result.content[0]["text"] or "pr" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
     async def test_add_labels_tool_flow(self) -> None:
@@ -503,7 +494,7 @@ class TestGitHubToolsIntegration:
 
         tool = make_add_labels_tool(mock_manager)
         result = await tool.execute(
-            AddLabelsInput(issue_number=42, labels=["bug", "priority:high"])
+            AddLabelsInput(issue_number=42, labels=["bug", "priority:high"]), NoteContext()
         )
 
         assert result.content is not None
@@ -562,7 +553,6 @@ class TestToolSchemas:
         mock_manager = MagicMock()
         tools = [
             make_create_issue_tool(mock_manager),
-            make_create_pr_tool(mock_manager),
             make_add_labels_tool(mock_manager),
         ]
 
@@ -585,7 +575,6 @@ class TestToolNames:
         mock_manager = MagicMock()
         tools = [
             make_create_issue_tool(mock_manager),
-            make_create_pr_tool(mock_manager),
             make_add_labels_tool(mock_manager),
         ]
 
@@ -603,7 +592,6 @@ class TestToolNames:
         mock_manager = MagicMock()
         tools = [
             make_create_issue_tool(mock_manager),
-            make_create_pr_tool(mock_manager),
             make_add_labels_tool(mock_manager),
         ]
 

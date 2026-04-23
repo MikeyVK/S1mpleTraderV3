@@ -131,15 +131,18 @@ None.
 **Class:** `GitCommitTool`  
 **File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
 
-Stage and commit changes with TDD phase prefix (red/green/refactor/docs).
+Stage and commit changes with auto-generated phase prefix. Integrates with PhaseStateEngine for automatic scope generation.
 
 #### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `phase` | `str` | **Yes** | TDD phase: `"red"` (test), `"green"` (feat), `"refactor"`, `"docs"` |
 | `message` | `str` | **Yes** | Commit message (WITHOUT prefix — prefix is auto-added) |
-| `files` | `list[str]` | No | Optional list of file paths to stage — default: commit all changes |
+| `workflow_phase` | `str` | No | Phase override (e.g. `"implementation"`, `"documentation"`) — auto-detected from `.st3/state.json` if omitted |
+| `sub_phase` | `str` | No | Sub-phase for `implementation`: `"red"`, `"green"`, `"refactor"` |
+| `cycle_number` | `int` | No | **Required when `workflow_phase="implementation"`** — TDD cycle number (e.g. `1`, `2`, `3`) |
+| `commit_type` | `str` | No | Override commit type (e.g. `"feat"`, `"fix"`, `"docs"`) — use only as explicit override |
+| `files` | `list[str]` | No | Specific file paths to stage — default: stage all changed files |
 
 #### Returns
 
@@ -149,49 +152,59 @@ Stage and commit changes with TDD phase prefix (red/green/refactor/docs).
   "message": "Changes committed",
   "commit": {
     "sha": "abc123def456",
-    "message": "test: Add failing test for user authentication"
+    "message": "feat(P_IMPLEMENTATION_SP_C1_GREEN): Implement user authentication"
   }
 }
 ```
 
 #### Example Usage
 
-**Commit all changes:**
+**Implementation cycle — RED (write failing test):**
 ```json
 {
-  "phase": "red",
+  "workflow_phase": "implementation",
+  "sub_phase": "red",
+  "cycle_number": 1,
   "message": "Add failing test for user authentication"
 }
 ```
 
-**Commit specific files:**
+**Implementation cycle — GREEN, specific files:**
 ```json
 {
-  "phase": "green",
+  "workflow_phase": "implementation",
+  "sub_phase": "green",
+  "cycle_number": 1,
   "message": "Implement user authentication logic",
   "files": ["backend/services/auth_service.py", "backend/dtos/user.py"]
 }
 ```
 
-#### TDD Phase Prefixes
+**Documentation phase:**
+```json
+{
+  "workflow_phase": "documentation",
+  "message": "Update API reference docs"
+}
+```
 
-| Phase | Prefix | Description |
-|-------|--------|-------------|
-| `red` | `test:` | Add failing test |
-| `green` | `feat:` | Implement feature to pass test |
-| `refactor` | `refactor:` | Refactor without changing behavior |
-| `docs` | `docs:` | Documentation updates |
+#### Commit Scope Format
 
-**Example Commit Messages:**
-- `phase="red"`, `message="Add user login test"` → `test: Add user login test`
-- `phase="green"`, `message="Implement user login"` → `feat: Implement user login`
+| Phase | Sub-phase | Scope | Prefix |
+|-------|-----------|-------|--------|
+| `implementation` | `red` | `P_IMPLEMENTATION_SP_C1_RED` | `test(...)` |
+| `implementation` | `green` | `P_IMPLEMENTATION_SP_C1_GREEN` | `feat(...)` |
+| `implementation` | `refactor` | `P_IMPLEMENTATION_SP_C1_REFACTOR` | `refactor(...)` |
+| `documentation` | — | `P_DOCUMENTATION` | `docs(...)` |
+| `research` | — | `P_RESEARCH` | `docs(...)` |
 
 #### Behavior Notes
 
 - **Auto-Stage:** If `files` specified, stages those files; otherwise stages all changes
 - **No Changes:** Returns error if no changes to commit
-- **Phase Validation:** Validates `phase` against [.st3/git.yaml](../../../../.st3/git.yaml) definitions
-- **Message Format:** Follows conventional commits (phase prefix + message)
+- **`phase` parameter:** Does NOT exist — `GitCommitInput` uses `extra="forbid"`. Passing `phase` crashes with a validation error.
+- **`cycle_number`:** Required when `workflow_phase="implementation"` — omitting it causes a validation error
+- **Ready-phase auto-exclude (#283):** When in `ready` phase, `.st3/state.json` and `.st3/deliverables.json` are automatically removed from the commit index before committing
 
 ---
 

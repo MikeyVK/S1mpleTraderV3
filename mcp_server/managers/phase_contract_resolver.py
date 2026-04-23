@@ -8,11 +8,29 @@ from pathlib import Path
 from typing import Any
 
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.schemas import CheckSpec, PhaseContractsConfig, WorkphasesConfig
+from mcp_server.schemas import (
+    BranchLocalArtifact,
+    CheckSpec,
+    PhaseContractsConfig,
+    WorkphasesConfig,
+)
 
 _PHASE_CONTRACTS_DISPLAY_PATH = ".st3/config/phase_contracts.yaml"
 _WORKPHASES_DISPLAY_PATH = ".st3/config/workphases.yaml"
 _DELIVERABLES_DISPLAY_PATH = ".st3/deliverables.json"
+
+
+@dataclass(frozen=True)
+class MergeReadinessContext:
+    """Facade bundling merge-readiness data for EnforcementRunner handlers.
+
+    Constructed once at server startup from the loaded config objects.
+    Handlers read current_phase at execution time from StateRepository.
+    """
+
+    terminal_phase: str  # from WorkphasesConfig.get_terminal_phase()
+    pr_allowed_phase: str  # from PhaseContractsConfig.get_pr_allowed_phase()
+    branch_local_artifacts: tuple[BranchLocalArtifact, ...]  # from PhaseContractsConfig
 
 
 @dataclass(frozen=True)

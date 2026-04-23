@@ -16,10 +16,7 @@ def validate_pascal_case(name: str) -> None:
         ValidationError: If not PascalCase
     """
     if not re.match(r"^[A-Z][a-zA-Z0-9]*$", name):
-        raise ValidationError(
-            f"Invalid name: {name}. Must be PascalCase.",
-            hints=["Use PascalCase like 'OrderState' or 'ConfigDTO'"],
-        )
+        raise ValidationError(f"Invalid name: {name}. Must be PascalCase.")
 
 
 def write_scaffold_file(
@@ -44,7 +41,6 @@ def write_scaffold_file(
     if full_path.exists() and not overwrite:
         raise ExecutionError(
             f"File exists: {path}. Use overwrite=True to replace.",
-            recovery=["Set overwrite=True or choose a different path"],
         )
 
     full_path.parent.mkdir(parents=True, exist_ok=True)

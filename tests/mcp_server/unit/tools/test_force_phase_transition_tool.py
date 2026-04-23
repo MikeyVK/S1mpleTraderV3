@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.phase_tools import (
@@ -95,7 +96,7 @@ class TestForcePhaseTransitionTool:
             human_approval="Approved: Skip planning phase",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Check result
         assert "✅" in result.content[0]["text"]
@@ -149,7 +150,7 @@ class TestForcePhaseTransitionTool:
             human_approval="Approved",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Check error message
         assert "❌" in result.content[0]["text"]
@@ -179,7 +180,7 @@ class TestForcePhaseTransitionTool:
             human_approval="Approved: Return to discovery",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         # Check success
         assert "✅" in result.content[0]["text"]
@@ -226,6 +227,9 @@ phases:
         description: "TDD cycle breakdown"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         return tmp_path
@@ -242,6 +246,9 @@ phases:
     display_name: "Planning"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         return tmp_path
@@ -276,7 +283,7 @@ phases:
             human_approval="Michel approved on 2026-02-19",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         text = result.content[0]["text"]
         assert "✅" in text
@@ -307,7 +314,7 @@ phases:
             human_approval="Michel approved on 2026-02-19",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
 
         text = result.content[0]["text"]
         assert "✅" in text
@@ -341,6 +348,9 @@ phases:
         description: "TDD cycle breakdown"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         branch = "feature/42-test"
@@ -381,7 +391,7 @@ phases:
             human_approval="Approved",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         text = result.content[0]["text"]
 
         assert "ACTION REQUIRED" in text, f"Expected ACTION REQUIRED in response: {text}"
@@ -414,7 +424,7 @@ phases:
             human_approval="Approved",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         text = result.content[0]["text"]
 
         assert "✅" in text
@@ -440,6 +450,9 @@ phases:
     display_name: "Planning"
   design:
     display_name: "Design"
+  ready:
+    display_name: "Ready"
+    terminal: true
 """
         )
         branch = "feature/42-test"
@@ -463,7 +476,7 @@ phases:
             human_approval="Approved",
         )
 
-        result = await tool.execute(params)
+        result = await tool.execute(params, NoteContext())
         text = result.content[0]["text"]
 
         assert "✅" in text

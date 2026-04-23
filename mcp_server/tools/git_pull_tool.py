@@ -23,9 +23,10 @@ from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = get_logger("tools.git_pull")
@@ -50,7 +51,7 @@ class GitPullInput(BaseModel):
     )
 
 
-class GitPullTool(BaseTool):
+class GitPullTool(BranchMutatingTool):
     """Pull updates from a remote into the current branch.
 
     Responsibilities:
@@ -82,10 +83,12 @@ class GitPullTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitPullInput) -> ToolResult:
+    async def execute(self, params: GitPullInput, context: NoteContext) -> ToolResult:
         try:
             pull_result = await anyio.to_thread.run_sync(
-                lambda: self.manager.pull(remote=params.remote, rebase=params.rebase)
+                lambda: self.manager.pull(
+                    note_context=context, remote=params.remote, rebase=params.rebase
+                )
             )
         except MCPError as exc:
             logger.error(

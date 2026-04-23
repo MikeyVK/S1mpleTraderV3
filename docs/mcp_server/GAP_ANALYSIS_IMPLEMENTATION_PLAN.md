@@ -1,8 +1,12 @@
 # MCP Server Gap Analysis & Implementation Plan
 
-**Status:** ACTIVE  
+**Status:** SUPERSEDED  
 **Created:** 2025-12-09  
-**Branch:** feature/git-tools-complete (wordt feature/mcp-gap-closure)
+**Branch:** feature/git-tools-complete (historical)  
+**Superseded By:** [docs/reference/mcp/MCP_TOOLS.md](../reference/mcp/MCP_TOOLS.md), [docs/reference/mcp/tools/README.md](../reference/mcp/tools/README.md)
+
+> Historical implementation plan from the pre-public-tool-surface phase. It is retained for project history only.
+> Do not use it as the current MCP tool contract. Public PR creation now uses `submit_pr`, not `create_pr`.
 
 ---
 

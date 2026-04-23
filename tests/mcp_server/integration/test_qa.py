@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.schemas import QualityConfig
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from tests.mcp_server.test_support import make_qa_manager
@@ -46,7 +47,7 @@ async def test_quality_tool_output_format() -> None:
     tool = RunQualityGatesTool(manager=manager)
 
     result = await tool.execute(
-        RunQualityGatesInput(scope="files", files=["backend/core/enums.py"])
+        RunQualityGatesInput(scope="files", files=["backend/core/enums.py"]), NoteContext()
     )
 
     # Text summary first (content[0]), JSON payload second (content[1])

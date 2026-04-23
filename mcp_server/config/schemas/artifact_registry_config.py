@@ -117,11 +117,6 @@ class ArtifactRegistryConfig(BaseModel):
             f"Artifact type '{type_id}' not found in registry. "
             "Available types: "
             f"{available}. Fix: Check spelling or add a matching artifact definition.",
-            hints=[
-                f"Check spelling: '{type_id}' not found",
-                f"Available types: {available}",
-                "Add a matching artifact definition if needed",
-            ],
         )
 
     def list_type_ids(self, artifact_type: ArtifactType | None = None) -> list[str]:

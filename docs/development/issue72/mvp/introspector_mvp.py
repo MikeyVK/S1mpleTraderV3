@@ -36,10 +36,7 @@ SYSTEM_FIELDS: set[str] = {
 }
 
 
-def introspect_template_with_inheritance(
-    env: Environment,
-    template_name: str
-) -> TemplateSchema:
+def introspect_template_with_inheritance(env: Environment, template_name: str) -> TemplateSchema:
     """Extract schema from template including inherited variables.
 
     Algorithm:
@@ -62,7 +59,7 @@ def introspect_template_with_inheritance(
 
     while current_name:
         # Load template source
-        source, _, _ = env.loader.get_source(env, current_name)
+        source, _, _ = env.loader.get_source(env, current_name)  # type: ignore[reportOptionalMemberAccess]
         ast = env.parse(source)
 
         inheritance_chain.append(current_name)
@@ -102,7 +99,7 @@ def introspect_template_with_inheritance(
     return TemplateSchema(
         required=sorted(required),
         optional=sorted(optional),
-        inheritance_chain=inheritance_chain
+        inheritance_chain=inheritance_chain,
     )
 
 
@@ -123,10 +120,12 @@ def _is_variable_optional(var_name: str, asts: list[tuple[str, nodes.Template]])
     for _template_name, ast in asts:
         # Check for |default filter usage
         for filter_node in ast.find_all(nodes.Filter):
-            if filter_node.name == 'default':
-                # Check if this filter is applied to our variable
-                if isinstance(filter_node.node, nodes.Name) and filter_node.node.name == var_name:
-                    return True
+            if (
+                filter_node.name == "default"
+                and isinstance(filter_node.node, nodes.Name)
+                and filter_node.node.name == var_name
+            ):
+                return True
 
         # Check for conditional usage
         for if_node in ast.find_all(nodes.If):
@@ -141,20 +140,18 @@ def _is_variable_optional(var_name: str, asts: list[tuple[str, nodes.Template]])
     return False
 
 
-def demo_introspection(template_name: str):
+def demo_introspection(template_name: str) -> TemplateSchema:
     """Demonstrate introspection on a template.
 
     Args:
         template_name: Template to introspect
     """
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Introspecting: {template_name}")
-    print('='*70)
+    print("=" * 70)
 
     # Setup environment
-    env = Environment(
-        loader=FileSystemLoader('docs/development/issue72/mvp/templates')
-    )
+    env = Environment(loader=FileSystemLoader("docs/development/issue72/mvp/templates"))
 
     # Introspect
     schema = introspect_template_with_inheritance(env, template_name)
@@ -184,9 +181,9 @@ if __name__ == "__main__":
     # Demo: Introspect concrete worker template
     schema = demo_introspection("concrete_worker.py.jinja2")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("KEY FINDINGS:")
-    print("="*70)
+    print("=" * 70)
     print(f"✅ Successfully resolved {len(schema.inheritance_chain)} tier inheritance chain")
     print(f"✅ Extracted {len(schema.required) + len(schema.optional)} total variables")
     print("✅ No manual template merging needed - AST walking works!")

@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -78,7 +79,7 @@ class RunQualityGatesTool(BaseTool):
             return {}
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: RunQualityGatesInput) -> ToolResult:
+    async def execute(self, params: RunQualityGatesInput, context: NoteContext) -> ToolResult:
         """Execute quality gates and return contract-compliant response.
 
         Returns exactly two content items (design.md §4.8, planning.md C27):
@@ -91,19 +92,20 @@ class RunQualityGatesTool(BaseTool):
         Returns:
             ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
+        del context  # Not used
         effective_scope = self._effective_scope(params)
-        resolved_files = self.manager._resolve_scope(effective_scope, files=params.files)
+        resolved_files = self.manager._resolve_scope(effective_scope, files=params.files)  # pyright: ignore[reportPrivateUsage]
 
         result = self.manager.run_quality_gates(
             resolved_files,
             effective_scope=effective_scope,
         )
-        summary_line = QAManager._format_summary_line(
+        summary_line = QAManager._format_summary_line(  # pyright: ignore[reportPrivateUsage]
             result,
             scope=effective_scope,
             file_count=len(resolved_files),
         )
-        compact_payload = self.manager._build_compact_result(result)
+        compact_payload = self.manager._build_compact_result(result)  # pyright: ignore[reportPrivateUsage]
         return ToolResult(
             content=[
                 {"type": "text", "text": summary_line},

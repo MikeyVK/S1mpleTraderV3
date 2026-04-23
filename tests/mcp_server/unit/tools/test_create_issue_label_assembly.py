@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """
 Cycle 5 — Label assembly in CreateIssueTool.
 
@@ -12,6 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 from tests.mcp_server.test_support import make_create_issue_tool
 
@@ -157,7 +159,7 @@ class TestExecuteForwardsAssembledLabels:
         tool = make_tool(mock_manager)
 
         params = make_params(issue_type="feature", scope="mcp-server", priority="medium")
-        await tool.execute(params)
+        await tool.execute(params, NoteContext())
 
         call_kwargs = mock_manager.create_issue.call_args.kwargs
         labels = call_kwargs["labels"]
@@ -172,7 +174,7 @@ class TestExecuteForwardsAssembledLabels:
         tool = make_tool(mock_manager)
 
         params = make_params(issue_type="feature", scope="tooling", priority="high")
-        await tool.execute(params)
+        await tool.execute(params, NoteContext())
 
         labels = mock_manager.create_issue.call_args.kwargs["labels"]
         assert "type:feature" in labels

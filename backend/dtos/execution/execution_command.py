@@ -19,6 +19,7 @@ DESIGN DECISION: Combined in single file because:
     backend.utils.id_generators, backend.core.enums
 ]
 """
+
 from datetime import datetime
 from re import match
 from typing import TYPE_CHECKING, Any
@@ -64,7 +65,7 @@ class ExecutionCommand(BaseModel):
 
     command_id: str = Field(
         default_factory=generate_execution_command_id,
-        description="Auto-generated unique execution command ID (EXC_YYYYMMDD_HHMMSS_hash)"
+        description="Auto-generated unique execution command ID (EXC_YYYYMMDD_HHMMSS_hash)",
     )
     causality: CausalityChain
     entry_plan: EntryPlan | None = None
@@ -91,18 +92,18 @@ class ExecutionCommand(BaseModel):
                         "symbol": "BTC_USDT",
                         "direction": "BUY",
                         "order_type": "LIMIT",
-                        "limit_price": "100000.00"
+                        "limit_price": "100000.00",
                     },
                     "size_plan": {
                         "plan_id": "SIZ_20251027_143350_jkl345",
                         "position_size": "0.5",
                         "position_value": "50000.00",
-                        "risk_amount": "500.00"
+                        "risk_amount": "500.00",
                     },
                     "exit_plan": {
                         "plan_id": "EXT_20251027_143400_mno678",
                         "stop_loss_price": "95000.00",
-                        "take_profit_price": "105000.00"
+                        "take_profit_price": "105000.00",
                     },
                     "execution_plan": {
                         "plan_id": "EXP_20251027_143450_pqr901",
@@ -110,24 +111,24 @@ class ExecutionCommand(BaseModel):
                         "execution_urgency": "0.80",
                         "visibility_preference": "0.50",
                         "max_slippage_pct": "0.0050",
-                        "must_complete_immediately": False
-                    }
+                        "must_complete_immediately": False,
+                    },
                 },
                 {
                     "description": "MODIFY_EXISTING - Trailing stop adjustment (exit only)",
                     "command_id": "EXC_20251027_150000_b2c3d4e5",
                     "causality": {
                         "origin": {"id": "TCK_20251027_145900_xyz789", "type": "TICK"},
-                        "strategy_directive_id": "STR_20251027_145950_abc012"
+                        "strategy_directive_id": "STR_20251027_145950_abc012",
                     },
                     "entry_plan": None,
                     "size_plan": None,
                     "exit_plan": {
                         "plan_id": "EXT_20251027_145955_def345",
                         "stop_loss_price": "98000.00",
-                        "take_profit_price": None
+                        "take_profit_price": None,
                     },
-                    "execution_plan": None
+                    "execution_plan": None,
                 },
                 {
                     "description": "ADD_TO_POSITION - Scale in (entry + size only)",
@@ -141,30 +142,25 @@ class ExecutionCommand(BaseModel):
                         "plan_id": "ENT_20251027_151955_mno234",
                         "symbol": "ETH_USDT",
                         "direction": "BUY",
-                        "order_type": "MARKET"
+                        "order_type": "MARKET",
                     },
                     "size_plan": {
                         "plan_id": "SIZ_20251027_151958_pqr567",
                         "position_size": "2.0",
                         "position_value": "7000.00",
-                        "risk_amount": "70.00"
+                        "risk_amount": "70.00",
                     },
                     "exit_plan": None,
-                    "execution_plan": None
-                }
+                    "execution_plan": None,
+                },
             ]
-        }
+        },
     }
 
     @model_validator(mode="after")
     def validate_at_least_one_plan(self) -> "Self":
         """Validate that at least one plan is present."""
-        if not any([
-            self.entry_plan,
-            self.size_plan,
-            self.exit_plan,
-            self.execution_plan
-        ]):
+        if not any([self.entry_plan, self.size_plan, self.exit_plan, self.execution_plan]):
             raise ValueError(
                 "ExecutionCommand must contain at least one plan "
                 "(entry_plan, size_plan, exit_plan, or execution_plan)"
@@ -214,20 +210,20 @@ class ExecutionCommandBatch(BaseModel):
                             "command_id": "EXC_20251028_143020_1a2b3c4d",
                             "causality": {
                                 "origin": {"id": "TCK_20251028_143000_abc123", "type": "TICK"}
-                            }
+                            },
                         },
                         {
                             "command_id": "EXC_20251028_143021_2b3c4d5e",
                             "causality": {
                                 "origin": {"id": "TCK_20251028_143001_def456", "type": "TICK"}
-                            }
+                            },
                         },
                         {
                             "command_id": "EXC_20251028_143022_3c4d5e6f",
                             "causality": {
                                 "origin": {"id": "TCK_20251028_143002_ghi789", "type": "TICK"}
-                            }
-                        }
+                            },
+                        },
                     ],
                     "execution_mode": "ATOMIC",
                     "created_at": "2025-10-28T14:30:22Z",
@@ -236,8 +232,8 @@ class ExecutionCommandBatch(BaseModel):
                     "metadata": {
                         "reason": "FLASH_CRASH",
                         "trigger_price": 45000,
-                        "risk_threshold": 0.05
-                    }
+                        "risk_threshold": 0.05,
+                    },
                 },
                 {
                     "batch_id": "BAT_20251028_150000_e3f4g",
@@ -246,14 +242,14 @@ class ExecutionCommandBatch(BaseModel):
                             "command_id": "EXC_20251028_150001_4d5e6f7g",
                             "causality": {
                                 "origin": {"id": "TCK_20251028_150000_jkl012", "type": "TICK"}
-                            }
+                            },
                         }
                     ],
                     "execution_mode": "PARALLEL",
                     "created_at": "2025-10-28T15:00:00Z",
                     "rollback_on_failure": False,
                     "timeout_seconds": 10,
-                    "metadata": {"action": "BULK_CANCEL", "count": 20}
+                    "metadata": {"action": "BULK_CANCEL", "count": 20},
                 },
                 {
                     "batch_id": "BAT_20251028_160000_h9i0j",
@@ -262,28 +258,28 @@ class ExecutionCommandBatch(BaseModel):
                             "command_id": "EXC_20251028_160001_5e6f7g8h",
                             "causality": {
                                 "origin": {"id": "TCK_20251028_160000_mno345", "type": "TICK"}
-                            }
+                            },
                         },
                         {
                             "command_id": "EXC_20251028_160002_6f7g8h9i",
                             "causality": {
                                 "origin": {"id": "TCK_20251028_160001_pqr678", "type": "TICK"}
-                            }
-                        }
+                            },
+                        },
                     ],
                     "execution_mode": "SEQUENTIAL",
                     "created_at": "2025-10-28T16:00:00Z",
                     "rollback_on_failure": False,
                     "timeout_seconds": None,
-                    "metadata": {"strategy": "HEDGED_EXIT"}
-                }
+                    "metadata": {"strategy": "HEDGED_EXIT"},
+                },
             ]
-        }
+        },
     }
 
     batch_id: str = Field(
         default_factory=generate_batch_id,
-        description="Unique batch identifier (BAT_YYYYMMDD_HHMMSS_xxxxx)"
+        description="Unique batch identifier (BAT_YYYYMMDD_HHMMSS_xxxxx)",
     )
     commands: list[ExecutionCommand] = Field(min_length=1)
     execution_mode: ExecutionMode
@@ -308,9 +304,7 @@ class ExecutionCommandBatch(BaseModel):
         """
         pattern = r"^BAT_\d{8}_\d{6}_[0-9a-z]{5,8}$"
         if not match(pattern, v):
-            raise ValueError(
-                f"batch_id must match pattern BAT_YYYYMMDD_HHMMSS_xxxxx, got: {v}"
-            )
+            raise ValueError(f"batch_id must match pattern BAT_YYYYMMDD_HHMMSS_xxxxx, got: {v}")
         return v
 
     @field_validator("commands")
@@ -328,16 +322,12 @@ class ExecutionCommandBatch(BaseModel):
             ValueError: If list is empty
         """
         if len(v) == 0:
-            raise ValueError(
-                "commands list cannot be empty (minimum 1 command required)"
-            )
+            raise ValueError("commands list cannot be empty (minimum 1 command required)")
         return v
 
     @field_validator("commands")
     @classmethod
-    def validate_unique_command_ids(
-        cls, v: list[ExecutionCommand]
-    ) -> list[ExecutionCommand]:
+    def validate_unique_command_ids(cls, v: list[ExecutionCommand]) -> list[ExecutionCommand]:
         """Ensure all command IDs are unique within batch.
 
         Args:
@@ -351,9 +341,7 @@ class ExecutionCommandBatch(BaseModel):
         """
         command_ids = [c.command_id for c in v]
         if len(command_ids) != len(set(command_ids)):
-            raise ValueError(
-                "All command_ids must be unique within batch (duplicates found)"
-            )
+            raise ValueError("All command_ids must be unique within batch (duplicates found)")
         return v
 
     @field_validator("rollback_on_failure")
@@ -373,9 +361,7 @@ class ExecutionCommandBatch(BaseModel):
         """
         execution_mode: ExecutionMode | None = info.data.get("execution_mode")
         if execution_mode == ExecutionMode.ATOMIC and not v:
-            raise ValueError(
-                "rollback_on_failure must be True for ExecutionMode.ATOMIC"
-            )
+            raise ValueError("rollback_on_failure must be True for ExecutionMode.ATOMIC")
         return v
 
     @field_validator("timeout_seconds")

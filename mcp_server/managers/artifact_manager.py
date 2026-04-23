@@ -297,10 +297,6 @@ class ArtifactManager:
         if not context_class_name.endswith("Context"):
             raise ValidationError(
                 f"Invalid Context class name: {context_class_name} (must end with 'Context')",
-                hints=[
-                    "Context classes must follow naming convention: XxxContext",
-                    "Example: DTOContext, WorkerContext, ToolContext",
-                ],
             )
 
         render_context_class_name = context_class_name.replace("Context", "RenderContext")
@@ -317,11 +313,6 @@ class ArtifactManager:
         if render_context_class is None:
             raise ValidationError(
                 f"RenderContext class not found: {render_context_class_name}",
-                hints=[
-                    f"Expected class {render_context_class_name} in mcp_server.schemas",
-                    "Verify class is defined and exported in mcp_server/schemas/__init__.py",
-                    f"For {context_class_name}, implement {render_context_class_name}",
-                ],
             )
 
         # Generate ISO 8601 UTC timestamp with Z suffix
@@ -543,11 +534,6 @@ class ArtifactManager:
             if "output_path" not in enriched_context:
                 raise ValidationError(
                     "Generic artifacts require explicit output_path in context",
-                    hints=[
-                        "Add output_path to context: "
-                        "context={'output_path': 'path/to/file.py', ...}",
-                        "Generic artifacts can be placed anywhere",
-                    ],
                 )
             return str(enriched_context["output_path"])
 
@@ -575,10 +561,6 @@ class ArtifactManager:
             if artifact.type == "code":
                 raise ValidationError(
                     f"Generated {artifact_type} artifact failed validation:\n{issues}",
-                    hints=[
-                        "Check template for syntax errors",
-                        "Verify template variables are correctly substituted",
-                    ],
                 )
 
             logger.warning(
@@ -644,7 +626,6 @@ class ArtifactManager:
         if getattr(artifact, "output_type", None) == "file" and not output_path:
             raise ValidationError(
                 f"Missing output_path for file artifact '{artifact_type}'",
-                hints=["output_path is required for file artifacts"],
             )
 
         # QA-2: Fail-fast if template_path is null (not yet implemented)
@@ -710,11 +691,6 @@ class ArtifactManager:
                     raise ValidationError(
                         f"V2 pipeline: Failed to validate {artifact_type} context "
                         f"via {context_class.__name__}",
-                        hints=[
-                            f"Pydantic validation error: {e}",
-                            "Check tool call parameters match schema definition",
-                            f"See mcp_server/schemas/contexts/{artifact_type}.py for schema",
-                        ],
                     ) from e
 
                 # 2. Enrich to RenderContext (adds lifecycle fields)
@@ -850,12 +826,5 @@ class ArtifactManager:
         if self.workspace_root is None:
             raise ConfigError(
                 "workspace_root not configured - cannot resolve artifact paths automatically",
-                hints=[
-                    "Option 1: Initialize ArtifactManager with workspace_root "
-                    "parameter: ArtifactManager(workspace_root='/path/to/workspace')",
-                    "Option 2: Provide explicit output_path in scaffold_artifact() call",
-                    "Option 3: For MCP tools, workspace_root should be passed "
-                    "from server initialization",
-                ],
             )
         return self.workspace_root / base_dir / file_name

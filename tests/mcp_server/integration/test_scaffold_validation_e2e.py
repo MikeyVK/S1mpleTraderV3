@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 # Project modules
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
@@ -49,7 +50,7 @@ async def test_validation_error_returns_schema(
     )
 
     # WHEN: Attempting to scaffold DTO artifact without required 'description' field
-    result = await tool.execute(scaffold_input)
+    result = await tool.execute(scaffold_input, NoteContext())
 
     # THEN: Returns ToolResult with ValidationError resource containing schema JSON
     assert result.is_error, "Scaffold should fail with missing required field"
@@ -89,7 +90,7 @@ async def test_success_response_includes_schema(
     )
 
     # WHEN: Successfully scaffolding DTO artifact with all required fields
-    result = await tool.execute(scaffold_input)
+    result = await tool.execute(scaffold_input, NoteContext())
 
     # THEN: Returns ToolResult with success resource containing file path
     assert not result.is_error, f"Scaffold should succeed: {result.content}"
@@ -118,7 +119,7 @@ async def test_system_fields_filtered_from_schema(
     )
 
     # WHEN: Validation error occurs and schema is returned
-    result = await tool.execute(scaffold_input)
+    result = await tool.execute(scaffold_input, NoteContext())
 
     # THEN: Schema only contains agent-input fields, system fields excluded
     assert result.is_error, "Should fail validation"

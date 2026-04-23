@@ -11,7 +11,6 @@ Tests according to TDD principles with comprehensive coverage.
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 # Third-party
@@ -20,6 +19,7 @@ import pytest
 # Module under test
 from pydantic import ValidationError
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.template_validation_tool import (
     TemplateValidationInput,
     TemplateValidationTool,
@@ -36,7 +36,7 @@ class TestTemplateValidationTool:
         return TemplateValidationTool()
 
     @pytest.mark.asyncio
-    async def test_missing_arguments(self, tool: TemplateValidationTool) -> None:
+    async def test_missing_arguments(self) -> None:
         """Test execution with missing arguments."""
         # Missing template_type
         with pytest.raises(ValidationError):
@@ -57,7 +57,7 @@ class TestTemplateValidationTool:
             # Setup mock instance
             mock_instance = MagicMock()
 
-            async def async_validate(*_: Any, **__: Any) -> ValidationResult:
+            async def async_validate(*_: object, **__: object) -> ValidationResult:
                 return ValidationResult(passed=True, score=10.0, issues=[])
 
             mock_instance.validate.side_effect = async_validate
@@ -65,7 +65,7 @@ class TestTemplateValidationTool:
 
             # Execute
             result = await tool.execute(
-                TemplateValidationInput(path=path, template_type=template_type)
+                TemplateValidationInput(path=path, template_type=template_type), NoteContext()
             )
 
             # Verify
@@ -84,7 +84,7 @@ class TestTemplateValidationTool:
             # Setup failing mock
             mock_instance = MagicMock()
 
-            async def async_validate(*_: Any, **__: Any) -> ValidationResult:
+            async def async_validate(*_: object, **__: object) -> ValidationResult:
                 return ValidationResult(
                     passed=False,
                     score=0.0,
@@ -96,7 +96,7 @@ class TestTemplateValidationTool:
 
             # Execute
             result = await tool.execute(
-                TemplateValidationInput(path=path, template_type=template_type)
+                TemplateValidationInput(path=path, template_type=template_type), NoteContext()
             )
 
             # Verify
@@ -106,7 +106,7 @@ class TestTemplateValidationTool:
             assert "❌" in text
 
     @pytest.mark.asyncio
-    async def test_execute_value_error(self, tool: TemplateValidationTool) -> None:
+    async def test_execute_value_error(self) -> None:
         """Test handling of invalid template type (ValueError)."""
         # Pydantic validation now catches this before execution
         with pytest.raises(ValidationError):
@@ -126,7 +126,7 @@ class TestTemplateValidationTool:
             mock_validator_cls.return_value = mock_instance
 
             result = await tool.execute(
-                TemplateValidationInput(path=path, template_type=template_type)
+                TemplateValidationInput(path=path, template_type=template_type), NoteContext()
             )
 
             assert "Validation error" in result.content[0]["text"]

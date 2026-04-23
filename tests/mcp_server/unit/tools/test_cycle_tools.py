@@ -15,6 +15,7 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
 from mcp_server.core.exceptions import ConfigError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.server import MCPServer
 from mcp_server.tools.cycle_tools import (
     ForceCycleTransitionInput,
@@ -287,7 +288,8 @@ class TestForceCycleToolFormatting:
                 skip_reason="audited skip",
                 human_approval="Verifier approved",
                 issue_number=257,
-            )
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error
@@ -331,7 +333,8 @@ class TestForceCycleToolFormatting:
                 skip_reason="audited skip",
                 human_approval="Verifier approved",
                 issue_number=257,
-            )
+            ),
+            NoteContext(),
         )
 
         assert not result.is_error

@@ -11,17 +11,19 @@ Single source of truth for categorical values.
 """
 
 # Standard Library Imports
-from enum import Enum
+from enum import StrEnum
 
 # =============================================================================
 # ORIGIN ENUMS
 # =============================================================================
 
-class OriginType(str, Enum):
+
+class OriginType(StrEnum):
     """Platform data origin types.
 
     Used in Origin DTO and CausalityChain for data source tracking.
     """
+
     TICK = "TICK"
     NEWS = "NEWS"
     SCHEDULE = "SCHEDULE"
@@ -31,12 +33,14 @@ class OriginType(str, Enum):
 # WORKER TYPE ENUMS
 # =============================================================================
 
-class ContextType(str, Enum):
+
+class ContextType(StrEnum):
     """
     Context worker categorization by analysis domain.
 
     Maps to worker subtypes for context enrichment.
     """
+
     REGIME_CLASSIFICATION = "REGIME_CLASSIFICATION"
     STRUCTURAL_ANALYSIS = "STRUCTURAL_ANALYSIS"
     INDICATOR_CALCULATION = "INDICATOR_CALCULATION"
@@ -46,8 +50,9 @@ class ContextType(str, Enum):
     FUNDAMENTAL_ENRICHMENT = "FUNDAMENTAL_ENRICHMENT"
 
 
-class SignalType(str, Enum):
+class SignalType(StrEnum):
     """Signal detector categorization by pattern type."""
+
     BREAKOUT_DETECTION = "BREAKOUT_DETECTION"
     PULLBACK_DETECTION = "PULLBACK_DETECTION"
     REVERSAL_DETECTION = "REVERSAL_DETECTION"
@@ -57,8 +62,9 @@ class SignalType(str, Enum):
     SENTIMENT_EXTREME = "SENTIMENT_EXTREME"
 
 
-class RiskType(str, Enum):
+class RiskType(StrEnum):
     """Risk monitor categorization by risk domain."""
+
     RISK_LIMIT_MONITORING = "RISK_LIMIT_MONITORING"
     DRAWDOWN_MONITORING = "DRAWDOWN_MONITORING"
     VOLATILITY_MONITORING = "VOLATILITY_MONITORING"
@@ -66,16 +72,18 @@ class RiskType(str, Enum):
     SYSTEMIC_RISK_DETECTION = "SYSTEMIC_RISK_DETECTION"
 
 
-class PlanningPhase(str, Enum):
+class PlanningPhase(StrEnum):
     """Planning worker categorization by planning stage."""
+
     ENTRY_PLANNING = "ENTRY_PLANNING"
     RISK_SIZING = "RISK_SIZING"
     EXIT_PLANNING = "EXIT_PLANNING"
     EXECUTION_ROUTING = "EXECUTION_ROUTING"
 
 
-class ExecutionType(str, Enum):
+class ExecutionType(StrEnum):
     """Execution worker categorization by action type."""
+
     ORDER_PLACEMENT = "ORDER_PLACEMENT"
     ORDER_MANAGEMENT = "ORDER_MANAGEMENT"
     POSITION_MANAGEMENT = "POSITION_MANAGEMENT"
@@ -86,7 +94,8 @@ class ExecutionType(str, Enum):
 # STRATEGY ENUMS
 # =============================================================================
 
-class DirectiveScope(str, Enum):
+
+class DirectiveScope(StrEnum):
     """
     Scope of strategy directive.
 
@@ -95,12 +104,13 @@ class DirectiveScope(str, Enum):
     - MODIFY_EXISTING: Adjust existing position (stops, targets, size)
     - CLOSE_EXISTING: Close existing position(s)
     """
+
     NEW_TRADE = "NEW_TRADE"
     MODIFY_EXISTING = "MODIFY_EXISTING"
     CLOSE_EXISTING = "CLOSE_EXISTING"
 
 
-class ExecutionAction(str, Enum):
+class ExecutionAction(StrEnum):
     """
     Execution action types.
 
@@ -112,18 +122,20 @@ class ExecutionAction(str, Enum):
         MODIFY_ORDER: Modify existing order
         CANCEL_GROUP: Cancel entire execution group (e.g., TWAP)
     """
+
     EXECUTE_TRADE = "EXECUTE_TRADE"
     CANCEL_ORDER = "CANCEL_ORDER"
     MODIFY_ORDER = "MODIFY_ORDER"
     CANCEL_GROUP = "CANCEL_GROUP"
 
 
-class TradeStatus(str, Enum):
+class TradeStatus(StrEnum):
     """
     Lifecycle status of a TradePlan.
 
     Defines the high-level state of the strategic container.
     """
+
     ACTIVE = "ACTIVE"
     CLOSED = "CLOSED"
 
@@ -132,7 +144,8 @@ class TradeStatus(str, Enum):
 # EXECUTION ENUMS
 # =============================================================================
 
-class BatchExecutionMode(str, Enum):
+
+class BatchExecutionMode(StrEnum):
     """Strategic execution coordination mode for command batches.
 
     Defines the coordination semantics from strategic intent (StrategyDirective).
@@ -157,12 +170,13 @@ class BatchExecutionMode(str, Enum):
         - docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md
         - docs/development/backend/dtos/EXECUTION_COMMAND_DESIGN.md
     """
+
     INDEPENDENT = "INDEPENDENT"
     COORDINATED = "COORDINATED"
     SEQUENTIAL = "SEQUENTIAL"
 
 
-class ExecutionMode(str, Enum):
+class ExecutionMode(StrEnum):
     """Batch execution mode (LEGACY - to be replaced by BatchExecutionMode).
 
     Values:
@@ -173,12 +187,13 @@ class ExecutionMode(str, Enum):
     @deprecated: Use BatchExecutionMode instead. This enum will be removed
                  when ExecutionCommandBatch is refactored.
     """
+
     SEQUENTIAL = "SEQUENTIAL"
     PARALLEL = "PARALLEL"
     ATOMIC = "ATOMIC"
 
 
-class ExecutionStrategyType(str, Enum):
+class ExecutionStrategyType(StrEnum):
     """Execution strategy types.
 
     Values:
@@ -189,6 +204,7 @@ class ExecutionStrategyType(str, Enum):
         LAYERED: Layered limit orders
         POV: Percentage of Volume
     """
+
     SINGLE = "SINGLE"
     TWAP = "TWAP"
     VWAP = "VWAP"
@@ -197,7 +213,7 @@ class ExecutionStrategyType(str, Enum):
     POV = "POV"
 
 
-class GroupStatus(str, Enum):
+class GroupStatus(StrEnum):
     """Group lifecycle status.
 
     State Transitions:
@@ -215,6 +231,7 @@ class GroupStatus(str, Enum):
         FAILED: Execution failed (error state)
         PARTIAL: Some orders filled, group stopped
     """
+
     PENDING = "PENDING"
     ACTIVE = "ACTIVE"
     COMPLETED = "COMPLETED"
@@ -228,7 +245,7 @@ class GroupStatus(str, Enum):
 # =============================================================================
 
 
-class OrderType(str, Enum):
+class OrderType(StrEnum):
     """Order type specification.
 
     Values:
@@ -236,12 +253,13 @@ class OrderType(str, Enum):
         LIMIT: Execute at specified price or better
         STOP_LIMIT: Trigger limit order when stop price is reached
     """
+
     MARKET = "MARKET"
     LIMIT = "LIMIT"
     STOP_LIMIT = "STOP_LIMIT"
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     """Order lifecycle status.
 
     State Transitions:
@@ -260,6 +278,7 @@ class OrderStatus(str, Enum):
         REJECTED: Rejected by exchange
         EXPIRED: Time-in-force expired
     """
+
     PENDING = "PENDING"
     OPEN = "OPEN"
     PARTIALLY_FILLED = "PARTIALLY_FILLED"

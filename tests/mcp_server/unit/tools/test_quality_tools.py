@@ -17,6 +17,7 @@ import pytest
 from pydantic import ValidationError
 
 # Module under test
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from mcp_server.tools.tool_result import ToolResult
@@ -68,7 +69,7 @@ class TestRunQualityGatesTool:
             "overall_pass": True,
         }
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="project"))
+        result = await tool.execute(RunQualityGatesInput(scope="project"), NoteContext())
 
         text = _summary_text(result)
         assert "Quality gates" in text
@@ -103,7 +104,9 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         text = _summary_text(result)
         assert "✅" in text
@@ -141,7 +144,9 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         text = _summary_text(result)
         assert "❌" in text
@@ -172,7 +177,9 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         text = _summary_text(result)
         assert "❌" in text
@@ -203,7 +210,9 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         text = _summary_text(result)
         assert "Quality gates" in text
@@ -255,7 +264,9 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
+        )
 
         # content[0] is text summary
         assert result.content[0]["type"] == "text"
@@ -374,7 +385,9 @@ class TestRunQualityGatesInputC28:
             "gates": [],
         }
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(scope="files", files=["src/foo.py"]))
+        result = await tool.execute(
+            RunQualityGatesInput(scope="files", files=["src/foo.py"]), NoteContext()
+        )
 
         mock_manager.run_quality_gates.assert_called_once_with(
             ["src/foo.py"],
@@ -428,7 +441,9 @@ class TestRunQualityGatesScopeGuardC41:
             patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
         ):
-            await tool.execute(RunQualityGatesInput(scope="files", files=["backend/__init__.py"]))
+            await tool.execute(
+                RunQualityGatesInput(scope="files", files=["backend/__init__.py"]), NoteContext()
+            )
 
         mock_advance.assert_not_called()
         mock_accumulate.assert_not_called()
@@ -458,7 +473,7 @@ class TestRunQualityGatesScopeGuardC41:
             patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
         ):
-            await tool.execute(RunQualityGatesInput(scope=scope))
+            await tool.execute(RunQualityGatesInput(scope=scope), NoteContext())
 
         mock_advance.assert_not_called()
         mock_accumulate.assert_not_called()
@@ -518,7 +533,7 @@ class TestRunQualityGatesFailedSubsetC42:
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
             patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
         ):
-            await tool.execute(RunQualityGatesInput(scope="auto"))
+            await tool.execute(RunQualityGatesInput(scope="auto"), NoteContext())
 
         mock_advance.assert_not_called()
         mock_accumulate.assert_called_once_with(["a.py"])
@@ -548,7 +563,7 @@ class TestRunQualityGatesFailedSubsetC42:
             ),
             patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
         ):
-            await tool.execute(RunQualityGatesInput(scope="auto"))
+            await tool.execute(RunQualityGatesInput(scope="auto"), NoteContext())
 
         assert mock_accumulate.call_count == 1
         accumulated = mock_accumulate.call_args.args[0]
@@ -592,7 +607,7 @@ class TestEffectiveScopePropagationC43:
 
         params = RunQualityGatesInput(scope=scope, files=files_arg)
         with patch.object(QAManager, "_format_summary_line", return_value="ok") as mock_summary:
-            await tool.execute(params)
+            await tool.execute(params, NoteContext())
 
         mock_manager._resolve_scope.assert_called_once_with(scope, files=files_arg)
         mock_manager.run_quality_gates.assert_called_once_with(
@@ -630,9 +645,11 @@ class TestScopeSwitchInvariantsC43:
         }
         tool = RunQualityGatesTool(manager=mock_manager)
 
-        await tool.execute(RunQualityGatesInput(scope="auto"))
-        await tool.execute(RunQualityGatesInput(scope="files", files=["target_file.py"]))
-        await tool.execute(RunQualityGatesInput(scope="auto"))
+        await tool.execute(RunQualityGatesInput(scope="auto"), NoteContext())
+        await tool.execute(
+            RunQualityGatesInput(scope="files", files=["target_file.py"]), NoteContext()
+        )
+        await tool.execute(RunQualityGatesInput(scope="auto"), NoteContext())
 
         assert mock_manager.run_quality_gates.call_args_list[0].kwargs["effective_scope"] == "auto"
         assert mock_manager.run_quality_gates.call_args_list[1].kwargs["effective_scope"] == "files"

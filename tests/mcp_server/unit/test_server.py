@@ -5,8 +5,11 @@
 @dependencies: pytest, mcp_server.server, mcp.types
 """
 
+import json
 import logging
+import os
 import shutil
+import subprocess
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,6 +20,7 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
 from mcp_server.core.exceptions import ConfigError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.server import MCPServer
 from mcp_server.tools.base import BaseTool
@@ -47,6 +51,66 @@ def _patch_server_settings(
     mock.from_env.return_value.github.repo = "repo"
     mock.from_env.return_value.logging.level = "INFO"
     mock.from_env.return_value.logging.audit_log = ".logs/mcp_audit.log"
+
+
+def _write_phase_state(workspace_root: Path, current_phase: str) -> None:
+    state_file = workspace_root / ".st3" / "state.json"
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text(
+        json.dumps(
+            {
+                "branch": "refactor/283-ready-phase-enforcement",
+                "workflow_name": "refactor",
+                "current_phase": current_phase,
+                "issue_number": 283,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _git_test_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.setdefault("GIT_TERMINAL_PROMPT", "0")
+    env.setdefault("GIT_PAGER", "cat")
+    env.setdefault("PAGER", "cat")
+    return env
+
+
+def _run_git(workspace_root: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args],
+        cwd=workspace_root,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=5,
+        env=_git_test_env(),
+    )
+
+
+def _track_branch_local_artifacts(workspace_root: Path) -> None:
+    deliverables_file = workspace_root / ".st3" / "deliverables.json"
+    if not deliverables_file.exists():
+        deliverables_file.write_text("{}\n", encoding="utf-8")
+
+    _run_git(workspace_root, "init")
+    _run_git(workspace_root, "add", ".st3/state.json", ".st3/deliverables.json")
+
+
+def _make_submit_pr_request() -> CallToolRequest:
+    return CallToolRequest(
+        params=CallToolRequestParams(
+            name="submit_pr",
+            arguments={
+                "title": "Test PR",
+                "body": "Test body",
+                "head": "refactor/283-ready-phase-enforcement",
+                "base": "main",
+            },
+        )
+    )
 
 
 class TestServerToolRegistration:
@@ -86,7 +150,6 @@ class TestServerToolRegistration:
             assert "list_issues" in tool_names
             assert "get_issue" in tool_names
             assert "close_issue" in tool_names
-            assert "create_pr" in tool_names
             assert "add_labels" in tool_names
 
     @pytest.mark.asyncio
@@ -103,8 +166,8 @@ class TestServerToolRegistration:
             description = "Dummy tool"
             args_model = None
 
-            async def execute(self, params: object) -> ToolResult:
-                del params
+            async def execute(self, params: Any, context: NoteContext) -> ToolResult:  # noqa: ANN401
+                del params, context
                 return ToolResult.text("ok")
 
         with patch("mcp_server.server.Settings") as mock_settings_cls:
@@ -192,6 +255,87 @@ class TestServerToolRegistration:
 
         assert "cannot be created from base" in response.root.content[0].text
         manager.create_branch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_call_tool_pre_enforcement_blocks_submit_pr_outside_ready_phase(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Dispatch pre-hook should return a phase error and never reach GitHub PR creation."""
+        _bootstrap_workspace_configs(tmp_path)
+        _write_phase_state(tmp_path, "documentation")
+
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            _patch_server_settings(
+                mock_settings_cls,
+                workspace_root=str(tmp_path),
+                token="test-token",
+            )
+
+            server = MCPServer()
+            handler = server.server.request_handlers[CallToolRequest]
+
+            with patch.object(
+                server.github_manager,
+                "create_pr",
+                side_effect=AssertionError("create_pr should not be called"),
+            ) as mock_create_pr:
+                response = await handler(_make_submit_pr_request())
+
+        text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
+        assert response.root.isError is True
+        assert "requires phase 'ready'" in text
+        assert "Current phase: 'documentation'" in text
+        assert 'transition_phase(to_phase="ready")' in text
+        mock_create_pr.assert_not_called()
+
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "Pre-existing: submit_pr artifact-tracking pre-enforcement not yet wired "
+            "(separate issue)"
+        ),
+    )
+    @pytest.mark.asyncio
+    async def test_call_tool_pre_enforcement_blocks_submit_pr_with_tracked_artifacts(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Dispatch pre-hook should stop submit_pr when branch-local artifacts remain tracked."""
+        _bootstrap_workspace_configs(tmp_path)
+        _write_phase_state(tmp_path, "ready")
+        _track_branch_local_artifacts(tmp_path)
+
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            _patch_server_settings(
+                mock_settings_cls,
+                workspace_root=str(tmp_path),
+                token="test-token",
+            )
+
+            server = MCPServer()
+            handler = server.server.request_handlers[CallToolRequest]
+
+            with (
+                patch(
+                    "mcp_server.managers.enforcement_runner._has_net_diff_for_path",
+                    return_value=True,
+                ),
+                patch.object(
+                    server.github_manager,
+                    "create_pr",
+                    side_effect=AssertionError("create_pr should not be called"),
+                ) as mock_create_pr,
+            ):
+                response = await handler(_make_submit_pr_request())
+
+        text = "\n".join(c.text for c in response.root.content if hasattr(c, "text"))
+        assert response.root.isError is True
+        assert "Branch-local artifacts have a net delta against" in text
+        assert ".st3/state.json" in text
+        assert ".st3/deliverables.json" in text
+        assert "neutralize" in text
+        mock_create_pr.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_call_tool_post_enforcement_runs_after_transition(

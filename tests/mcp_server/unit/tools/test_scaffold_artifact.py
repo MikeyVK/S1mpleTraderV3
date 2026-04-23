@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from mcp_server.core.exceptions import ConfigError, ValidationError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
     ScaffoldArtifactTool,
@@ -58,7 +59,7 @@ class TestScaffoldArtifactTool:
             artifact_type="dto", name="User", context={"fields": [{"name": "id", "type": "int"}]}
         )
 
-        result = await tool.execute(input_data)
+        result = await tool.execute(input_data, NoteContext())
 
         # Verify manager called
         mock_manager.scaffold_artifact.assert_called_once_with(
@@ -83,7 +84,7 @@ class TestScaffoldArtifactTool:
             context={"title": "System Architecture", "author": "GitHub Copilot", "status": "DRAFT"},
         )
 
-        result = await tool.execute(input_data)
+        result = await tool.execute(input_data, NoteContext())
 
         # Verify manager called
         mock_manager.scaffold_artifact.assert_called_once_with(
@@ -111,14 +112,14 @@ class TestScaffoldArtifactTool:
     async def test_validation_error_returns_error_result(
         self, tool: ScaffoldArtifactTool, mock_manager: MagicMock
     ) -> None:
-        """Should return error result on validation failure with hints in result.hints."""
+        """Should return error result on validation failure."""
         mock_manager.scaffold_artifact.side_effect = ValidationError(
-            "Invalid artifact type: unknown", hints=["Available types: dto, worker, design"]
+            "Invalid artifact type: unknown",
         )
 
         input_data = ScaffoldArtifactInput(artifact_type="unknown", name="Test")
 
-        result = await tool.execute(input_data)
+        result = await tool.execute(input_data, NoteContext())
 
         assert result.is_error
         assert result.error_code == "ERR_VALIDATION"
@@ -126,11 +127,6 @@ class TestScaffoldArtifactTool:
         # Check message in content
         text = result.content[0]["text"]
         assert "Invalid artifact type" in text
-
-        # Check hints in structured result.hints (not in text)
-        assert result.hints is not None
-        assert len(result.hints) > 0
-        assert any("Available types" in hint for hint in result.hints)
 
     @pytest.mark.asyncio
     async def test_config_error_returns_error_result(
@@ -144,7 +140,7 @@ class TestScaffoldArtifactTool:
 
         input_data = ScaffoldArtifactInput(artifact_type="dto", name="User")
 
-        result = await tool.execute(input_data)
+        result = await tool.execute(input_data, NoteContext())
 
         assert result.is_error
         text = result.content[0]["text"]
@@ -166,7 +162,7 @@ class TestScaffoldArtifactTool:
             },
         )
 
-        await tool.execute(input_data)
+        await tool.execute(input_data, NoteContext())
 
         # Verify all context items passed as kwargs
         mock_manager.scaffold_artifact.assert_called_once_with(
@@ -184,7 +180,7 @@ class TestScaffoldArtifactTool:
         """Should allow empty context dict."""
         input_data = ScaffoldArtifactInput(artifact_type="dto", name="Simple")
 
-        result = await tool.execute(input_data)
+        result = await tool.execute(input_data, NoteContext())
 
         assert not result.is_error
         mock_manager.scaffold_artifact.assert_called_once()

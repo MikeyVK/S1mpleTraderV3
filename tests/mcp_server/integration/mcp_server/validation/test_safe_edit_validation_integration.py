@@ -12,12 +12,14 @@ LayeredTemplateValidator → TemplateAnalyzer → TEMPLATE_METADATA
 # pyright: reportCallIssue=false
 # Standard library
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 # Third-party
 import pytest
 
 # Module under test
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool
 
 
@@ -30,7 +32,7 @@ class TestSafeEditValidationIntegration:
         return SafeEditTool()
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self) -> Generator[Path, None, None]:
         """Fixture for temporary directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
@@ -61,7 +63,8 @@ Missing frontmatter.
                 search=None,
                 replace=None,
                 search_count=None,
-            )
+            ),
+            NoteContext(),
         )
 
         # Should NOT create file (FORMAT violation blocks)
@@ -104,7 +107,8 @@ class TestDTO:  # Missing BaseModel inheritance
                 search=None,
                 replace=None,
                 search_count=None,
-            )
+            ),
+            NoteContext(),
         )
 
         text = result.content[0]["text"]
@@ -144,7 +148,8 @@ class TestDTO:  # Missing BaseModel - STRICT violation
                 search=None,
                 replace=None,
                 search_count=None,
-            )
+            ),
+            NoteContext(),
         )
 
         text = result.content[0]["text"].lower()
@@ -185,7 +190,8 @@ class TestDTO(BaseModel):
                 search=None,
                 replace=None,
                 search_count=None,
-            )
+            ),
+            NoteContext(),
         )
 
         text = result.content[0]["text"]
@@ -225,7 +231,8 @@ class TestWorker(ABC):
                 search=None,
                 replace=None,
                 search_count=None,
-            )
+            ),
+            NoteContext(),
         )
 
         text = result.content[0]["text"]
@@ -258,7 +265,8 @@ class InvalidWorker(ABC):
                 search=None,
                 replace=None,
                 search_count=None,
-            )
+            ),
+            NoteContext(),
         )
 
         text2 = result2.content[0]["text"]

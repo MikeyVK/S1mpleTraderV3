@@ -161,7 +161,7 @@ class TestMetadataEndToEnd:
 
         # Error should be the C2 gate error (output_path required for file artifacts)
         error_msg = str(exc_info.value)
-        assert "output_path is required for file artifacts" in error_msg
+        assert "Missing output_path for file artifact" in error_msg
 
     @pytest.mark.skip(reason="commit_message template in wrong location (separate issue)")
     @pytest.mark.asyncio

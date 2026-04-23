@@ -1,8 +1,10 @@
 """GitHub Manager for business logic."""
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from mcp_server.adapters.github_adapter import GitHubAdapter
+from mcp_server.core.interfaces import PRStatus
 from mcp_server.schemas import (
     ContributorConfig,
     GitConfig,
@@ -17,6 +19,9 @@ if TYPE_CHECKING:
     from github.Label import Label
     from github.Milestone import Milestone
     from github.PullRequest import PullRequest
+
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubManager:
@@ -235,3 +240,12 @@ class GitHubManager:
             commit_message=commit_message,
             merge_method=merge_method,
         )
+
+    def get_pr_status(self, branch: str) -> PRStatus:
+        """Return current PR status for *branch* by querying the GitHub API.
+
+        Queries open PRs with head=branch. Returns OPEN if at least one open PR
+        exists; ABSENT otherwise.
+        """
+        prs = self.adapter.list_prs(state="open", head=branch)
+        return PRStatus.OPEN if prs else PRStatus.ABSENT

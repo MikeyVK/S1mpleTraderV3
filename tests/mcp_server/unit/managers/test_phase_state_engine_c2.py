@@ -136,11 +136,17 @@ phases:
   documentation:
     display_name: "Documentation"
     subphases: []
+  ready:
+    display_name: "Ready"
+    terminal: true
 """.strip(),
         encoding="utf-8",
     )
     (config_dir / "phase_contracts.yaml").write_text(
         """
+merge_policy:
+  pr_allowed_phase: ready
+  branch_local_artifacts: []
 workflows:
   feature:
     research:

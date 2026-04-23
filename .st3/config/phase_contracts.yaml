@@ -1,3 +1,11 @@
+merge_policy:
+  pr_allowed_phase: ready
+  branch_local_artifacts:
+    - path: .st3/state.json
+      reason: "MCP workflow state — branch-local, must never reach main"
+    - path: .st3/deliverables.json
+      reason: "MCP workflow deliverables — branch-local, must never reach main"
+
 workflows:
   feature:
     research:

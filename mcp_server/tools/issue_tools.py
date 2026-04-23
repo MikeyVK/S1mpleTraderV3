@@ -9,6 +9,7 @@ import jinja2
 from pydantic import BaseModel, Field, field_validator
 
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
@@ -240,7 +241,8 @@ class CreateIssueTool(BaseTool):
 
         return labels
 
-    async def execute(self, params: CreateIssueInput) -> ToolResult:
+    async def execute(self, params: CreateIssueInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             self.manager.validate_issue_params(
                 issue_type=params.issue_type,
@@ -308,7 +310,8 @@ class GetIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: GetIssueInput) -> ToolResult:
+    async def execute(self, params: GetIssueInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             issue = self.manager.get_issue(params.issue_number)
 
@@ -350,7 +353,8 @@ class ListIssuesTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: ListIssuesInput) -> ToolResult:
+    async def execute(self, params: ListIssuesInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             state_str = params.state
             issues = self.manager.list_issues(state=state_str or "open", labels=params.labels)
@@ -393,7 +397,8 @@ class UpdateIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: UpdateIssueInput) -> ToolResult:
+    async def execute(self, params: UpdateIssueInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             self.manager.update_issue(
                 issue_number=params.issue_number,
@@ -430,7 +435,8 @@ class CloseIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: CloseIssueInput) -> ToolResult:
+    async def execute(self, params: CloseIssueInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         try:
             self.manager.close_issue(params.issue_number, comment=params.comment)
             return ToolResult.text(f"Closed issue #{params.issue_number}")

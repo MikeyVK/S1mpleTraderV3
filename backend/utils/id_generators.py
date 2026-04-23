@@ -66,24 +66,24 @@ from hashlib import sha256
 from uuid import uuid4
 
 __all__ = [
-    'generate_tick_id',
-    'generate_schedule_id',
-    'generate_news_id',
-    'generate_signal_id',
-    'generate_risk_id',
-    'generate_strategy_directive_id',
-    'generate_trade_plan_id',
-    'generate_entry_plan_id',
-    'generate_size_plan_id',
-    'generate_exit_plan_id',
-    'generate_execution_plan_id',
-    'generate_execution_command_id',
-    'generate_execution_group_id',
-    'generate_order_id',
-    'generate_fill_id',
-    'generate_batch_id',
-    'extract_id_type',
-    'extract_id_timestamp',
+    "generate_tick_id",
+    "generate_schedule_id",
+    "generate_news_id",
+    "generate_signal_id",
+    "generate_risk_id",
+    "generate_strategy_directive_id",
+    "generate_trade_plan_id",
+    "generate_entry_plan_id",
+    "generate_size_plan_id",
+    "generate_exit_plan_id",
+    "generate_execution_plan_id",
+    "generate_execution_command_id",
+    "generate_execution_group_id",
+    "generate_order_id",
+    "generate_fill_id",
+    "generate_batch_id",
+    "extract_id_type",
+    "extract_id_timestamp",
 ]
 
 
@@ -104,8 +104,8 @@ def _generate_id(prefix: str) -> str:
         'TCK_20251026_143052_a1b2c3d4'
     """
     now = datetime.now(UTC)
-    date_str = now.strftime('%Y%m%d')
-    time_str = now.strftime('%H%M%S')
+    date_str = now.strftime("%Y%m%d")
+    time_str = now.strftime("%H%M%S")
 
     # Generate 8-char hash for uniqueness
     hash_input = f"{prefix}{now.isoformat()}{uuid4()}".encode()
@@ -116,91 +116,95 @@ def _generate_id(prefix: str) -> str:
 
 # === Birth IDs (Strategy Run Initiators) ===
 
+
 def generate_tick_id() -> str:
     """Generate market tick event ID."""
-    return _generate_id('TCK')
+    return _generate_id("TCK")
 
 
 def generate_schedule_id() -> str:
     """Generate scheduled event ID."""
-    return _generate_id('SCH')
+    return _generate_id("SCH")
 
 
 def generate_news_id() -> str:
     """Generate news/external event ID."""
-    return _generate_id('NWS')
+    return _generate_id("NWS")
 
 
 # === Worker Output IDs (Quant Framework) ===
 
+
 def generate_signal_id() -> str:
     """Generate Signal ID."""
-    return _generate_id('SIG')
+    return _generate_id("SIG")
 
 
 def generate_risk_id() -> str:
     """Generate Risk ID."""
-    return _generate_id('RSK')
+    return _generate_id("RSK")
 
 
 # === Worker Output IDs (Planning Pipeline) ===
 
+
 def generate_strategy_directive_id() -> str:
     """Generate StrategyDirective ID."""
-    return _generate_id('STR')
+    return _generate_id("STR")
 
 
 def generate_trade_plan_id() -> str:
     """Generate TradePlan ID."""
-    return _generate_id('TPL')
+    return _generate_id("TPL")
 
 
 def generate_entry_plan_id() -> str:
     """Generate EntryPlan ID."""
-    return _generate_id('ENT')
+    return _generate_id("ENT")
 
 
 def generate_size_plan_id() -> str:
     """Generate SizePlan ID."""
-    return _generate_id('SIZ')
+    return _generate_id("SIZ")
 
 
 def generate_exit_plan_id() -> str:
     """Generate ExitPlan ID."""
-    return _generate_id('EXT')
+    return _generate_id("EXT")
 
 
 def generate_execution_plan_id() -> str:
     """Generate ExecutionPlan ID."""
-    return _generate_id('EXP')
+    return _generate_id("EXP")
 
 
 def generate_execution_command_id() -> str:
     """Generate ExecutionCommand ID (aggregated execution instruction)."""
-    return _generate_id('EXC')
+    return _generate_id("EXC")
 
 
 def generate_execution_group_id() -> str:
     """Generate ExecutionGroup ID."""
-    return _generate_id('EXG')
+    return _generate_id("EXG")
 
 
 def generate_order_id() -> str:
     """Generate Order ID."""
-    return _generate_id('ORD')
+    return _generate_id("ORD")
 
 
 def generate_fill_id() -> str:
     """Generate Fill ID."""
-    return _generate_id('FIL')
+    return _generate_id("FIL")
 
 
 def generate_batch_id() -> str:
     """Generate ExecutionDirectiveBatch ID."""
-    return _generate_id('BAT')
+    return _generate_id("BAT")
 
 
 # === ID Utilities ===
+
 
 def extract_id_type(typed_id: str) -> str:
     """
@@ -221,16 +225,28 @@ def extract_id_type(typed_id: str) -> str:
         >>> extract_id_type("TCK_20251026_143052_a1b2c3d4")
         'TCK'
     """
-    if '_' not in typed_id:
+    if "_" not in typed_id:
         raise ValueError(f"Invalid typed ID format: {typed_id}")
 
-    prefix = typed_id.split('_')[0]
+    prefix = typed_id.split("_", maxsplit=1)[0]
     valid_prefixes = [
-        'TCK', 'SCH', 'NWS',        # Birth IDs
-        'SIG', 'RSK', 'CTX',        # Quant worker outputs
-        'STR',                      # StrategyPlanner output
-        'TPL',                      # TradePlan (Execution Anchor)
-        'ENT', 'SIZ', 'EXT', 'EXP', 'EXC', 'EXG', 'ORD', 'FIL', 'BAT'  # Planning/execution outputs
+        "TCK",
+        "SCH",
+        "NWS",  # Birth IDs
+        "SIG",
+        "RSK",
+        "CTX",  # Quant worker outputs
+        "STR",  # StrategyPlanner output
+        "TPL",  # TradePlan (Execution Anchor)
+        "ENT",
+        "SIZ",
+        "EXT",
+        "EXP",
+        "EXC",
+        "EXG",
+        "ORD",
+        "FIL",
+        "BAT",  # Planning/execution outputs
     ]
 
     if prefix not in valid_prefixes:
@@ -256,11 +272,10 @@ def extract_id_timestamp(typed_id: str) -> datetime:
         >>> extract_id_timestamp("SIG_20251026_100000_abc123")
         datetime.datetime(2025, 10, 26, 10, 0, 0, tzinfo=timezone.utc)
     """
-    parts = typed_id.split('_')
+    parts = typed_id.split("_")
     if len(parts) != 4:
         raise ValueError(
-            f"Invalid typed ID format: {typed_id}. "
-            f"Expected PREFIX_YYYYMMDD_HHMMSS_hash"
+            f"Invalid typed ID format: {typed_id}. Expected PREFIX_YYYYMMDD_HHMMSS_hash"
         )
 
     _prefix, date_str, time_str, _hash_str = parts
@@ -268,9 +283,6 @@ def extract_id_timestamp(typed_id: str) -> datetime:
     try:
         # Parse YYYYMMDD_HHMMSS
         dt_str = f"{date_str}_{time_str}"
-        dt = datetime.strptime(dt_str, '%Y%m%d_%H%M%S').replace(tzinfo=UTC)
-        return dt
+        return datetime.strptime(dt_str, "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
     except ValueError as e:
-        raise ValueError(
-            f"Invalid timestamp in ID {typed_id}: {date_str}_{time_str}"
-        ) from e
+        raise ValueError(f"Invalid timestamp in ID {typed_id}: {date_str}_{time_str}") from e

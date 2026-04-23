@@ -230,11 +230,17 @@ def _write_cycle_based_tdd_configs(workspace_root: Path) -> None:
             "    subphases: [red, green, refactor]\n"
             "  documentation:\n"
             "    display_name: Documentation\n"
+            "  ready:\n"
+            "    display_name: Ready\n"
+            "    terminal: true\n"
         ),
         encoding="utf-8",
     )
     (config_dir / "phase_contracts.yaml").write_text(
         (
+            "merge_policy:\n"
+            "  pr_allowed_phase: ready\n"
+            "  branch_local_artifacts: []\n"
             "workflows:\n"
             "  feature:\n"
             "    planning: {}\n"

@@ -55,7 +55,6 @@ class JinjaRenderer:
         except TemplateNotFound as e:
             raise ExecutionError(
                 f"Template not found: {template_name}",
-                recovery=["Check template directory structure"],
             ) from e
 
     def render(self, template_name: str, **kwargs: Any) -> str:  # noqa: ANN401

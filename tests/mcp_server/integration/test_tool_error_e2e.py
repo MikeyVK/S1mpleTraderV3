@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
 
@@ -28,7 +29,7 @@ def test_scaffold_artifact_tool_preserves_error_contract(
         context=None,
     )
 
-    result = asyncio.run(tool.execute(params))
+    result = asyncio.run(tool.execute(params, NoteContext()))
 
     assert result.is_error is True
     assert result.error_code == "ERR_CONFIG"

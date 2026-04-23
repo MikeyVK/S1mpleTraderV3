@@ -27,17 +27,13 @@ class TradePlan(BaseModel):
 
     plan_id: str = Field(
         default_factory=generate_trade_plan_id,
-        description="Unique identifier. The anchor for cross-referencing."
+        description="Unique identifier. The anchor for cross-referencing.",
     )
     strategy_instance_id: str = Field(..., description="ID of the owning strategy instance.")
     status: TradeStatus = Field(..., description="Current lifecycle state.")
     created_at: datetime = Field(..., description="Creation timestamp (UTC).")
 
-    model_config = {
-        "frozen": False,
-        "str_strip_whitespace": True,
-        "validate_assignment": True
-    }
+    model_config = {"frozen": False, "str_strip_whitespace": True, "validate_assignment": True}
 
     @field_validator("plan_id")
     @classmethod

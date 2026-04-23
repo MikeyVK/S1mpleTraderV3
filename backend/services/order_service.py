@@ -11,19 +11,19 @@
 """
 
 # Standard library
-from typing import Any
 
 # Third-party
 
 # Project modules
 
+
 class OrderService:
     """Manages order operations
-    
+
     Service command following execute pattern.
     """
 
-    async def execute(self) -> Any:
+    async def execute(self) -> None:
         """Execute service command.
         Returns:
             Any

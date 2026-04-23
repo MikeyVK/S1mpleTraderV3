@@ -12,6 +12,6 @@
 class StringHelper:
     """Helper class for common utility functions"""
 
-    def placeholder(self):
+    def placeholder(self) -> None:
         """Placeholder method."""
         pass

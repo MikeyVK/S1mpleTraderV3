@@ -71,11 +71,11 @@ This document defines the 7 development phases that ST3 follows, including entry
 |-------|------|---------|----------------------|---------------|
 | 0 | Discovery | Problem exploration | `type:discussion` | `search_documentation` |
 | 1 | Planning | Work breakdown | `type:feature` | `create_issue` |
-| 2 | Architectural | System design | Architecture Design | `validate_document_structure` |
-| 3 | Component | Detailed design | Component Design | `validate_document_structure` |
+| 2 | Architectural | System design | Architecture Design | `scaffold_artifact`, `validate_architecture` |
+| 3 | Component | Detailed design | Component Design | `scaffold_artifact`, `validate_dto` |
 | 4 | TDD | Implementation | TDD Task | `run_quality_gates`, `run_tests` |
-| 5 | Integration | Wiring & testing | TDD Task | `test_integration_run` |
-| 6 | Documentation | Reference docs | Reference Documentation | `scaffold_document` |
+| 5 | Integration | Wiring & testing | TDD Task | `run_tests` |
+| 6 | Documentation | Reference docs | Reference Documentation | `scaffold_artifact` |
 
 ### 2.2 Label Transitions
 
@@ -169,7 +169,7 @@ System-level design decisions. How do components fit together?
 | Activity | Description | MCP Tool |
 |----------|-------------|----------|
 | Review Existing Arch | Understand current architecture | `search_documentation` |
-| Draft Design | Write architectural design | `scaffold_document` |
+| Draft Design | Write architectural design | `scaffold_artifact` |
 | Validate Patterns | Check against ST3 patterns | `check_arch_compliance` |
 | Request Review | Assign reviewers | `update_issue` |
 
@@ -317,7 +317,7 @@ Create/update reference documentation after implementation.
 | Activity | Description | MCP Tool |
 |----------|-------------|----------|
 | Identify Doc Gaps | What needs documenting | `st3://docs/inventory` |
-| Write Reference | API docs, guides | `scaffold_document` |
+| Write Reference | API docs, guides | `scaffold_artifact` |
 | Update Existing | Keep docs in sync | Manual |
 | Close Issue | Mark as done | `update_issue` |
 
@@ -345,5 +345,5 @@ Automations run on GitHub to enforce phases:
 The MCP server supports this workflow by:
 1. Providing context (`get_work_context`)
 2. Enforcing rules (`run_quality_gates`)
-3. Scaffolding compliant files (`scaffold_document`)
+3. Scaffolding compliant files (`scaffold_artifact`)
 4. Managing GitHub state (`update_issue`)

@@ -72,7 +72,7 @@ class ExecutionGroup(BaseModel):
                         "order_20251028_143325_2",
                         "order_20251028_143625_3",
                         "order_20251028_143925_4",
-                        "order_20251028_144225_5"
+                        "order_20251028_144225_5",
                     ],
                     "status": "ACTIVE",
                     "created_at": "2025-10-28T14:30:22Z",
@@ -80,23 +80,20 @@ class ExecutionGroup(BaseModel):
                     "target_quantity": "100.0",
                     "filled_quantity": "40.0",
                     "cancelled_at": None,
-                    "completed_at": None
+                    "completed_at": None,
                 },
                 {
                     "group_id": "EXG_20251028_150015_b9d2e",
                     "parent_command_id": "EXC_20251028_150010_c3f1g",
                     "execution_strategy": "ICEBERG",
-                    "order_ids": [
-                        "order_20251028_150018_1",
-                        "order_20251028_150045_2"
-                    ],
+                    "order_ids": ["order_20251028_150018_1", "order_20251028_150045_2"],
                     "status": "ACTIVE",
                     "created_at": "2025-10-28T15:00:15Z",
                     "updated_at": "2025-10-28T15:00:50Z",
                     "target_quantity": "500.0",
                     "filled_quantity": "100.0",
                     "cancelled_at": None,
-                    "completed_at": None
+                    "completed_at": None,
                 },
                 {
                     "group_id": "EXG_20251028_160000_d4e5f",
@@ -109,10 +106,10 @@ class ExecutionGroup(BaseModel):
                     "target_quantity": "50.0",
                     "filled_quantity": "50.0",
                     "cancelled_at": None,
-                    "completed_at": "2025-10-28T16:00:05Z"
-                }
+                    "completed_at": "2025-10-28T16:00:05Z",
+                },
             ]
-        }
+        },
     }
 
     group_id: str
@@ -143,9 +140,7 @@ class ExecutionGroup(BaseModel):
         """
         pattern = r"^EXG_\d{8}_\d{6}_[0-9a-z]{5,8}$"
         if not match(pattern, v):
-            raise ValueError(
-                f"group_id must match pattern EXG_YYYYMMDD_HHMMSS_xxxxx, got: {v}"
-            )
+            raise ValueError(f"group_id must match pattern EXG_YYYYMMDD_HHMMSS_xxxxx, got: {v}")
         return v
 
     @field_validator("parent_command_id")
@@ -232,9 +227,7 @@ class ExecutionGroup(BaseModel):
 
     @field_validator("completed_at")
     @classmethod
-    def validate_final_state_xor(
-        cls, v: datetime | None, info: ValidationInfo
-    ) -> datetime | None:
+    def validate_final_state_xor(cls, v: datetime | None, info: ValidationInfo) -> datetime | None:
         """Ensure cancelled_at and completed_at are mutually exclusive.
 
         Args:

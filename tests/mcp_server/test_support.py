@@ -44,10 +44,10 @@ from mcp_server.schemas import (
     QualityConfig,
     ScaffoldMetadataConfig,
     WorkflowConfig,
+    WorkphasesConfig,
 )
 from mcp_server.tools.git_tools import CreateBranchInput
 from mcp_server.tools.issue_tools import CreateIssueTool
-from mcp_server.tools.pr_tools import CreatePRInput
 
 
 def _candidate_config_roots(workspace_root: Path | str | None = None) -> list[Path]:
@@ -133,16 +133,6 @@ def configure_create_branch_input(workspace_root: Path | str | None = None) -> G
     return git_config
 
 
-def configure_create_pr_input(workspace_root: Path | str | None = None) -> GitConfig:
-    """Configure CreatePRInput validators with explicit git config."""
-    git_config = cast(
-        GitConfig,
-        _load_config(workspace_root, "git.yaml", "load_git_config"),
-    )
-    CreatePRInput.configure(git_config)
-    return git_config
-
-
 def make_git_manager(workspace_root: Path | str | None = None) -> GitManager:
     """Build a GitManager with explicit GitConfig."""
     git_config = cast(
@@ -172,10 +162,15 @@ def make_project_manager(
         git_roots = _candidate_config_roots(workspace_root)
         if any((candidate / "git.yaml").exists() for candidate in git_roots):
             resolved_git_manager = make_git_manager(workspace_root)
+    workphases_config = cast(
+        WorkphasesConfig,
+        _load_config(workspace_root, "workphases.yaml", "load_workphases_config"),
+    )
     return ProjectManager(
         workspace_root=workspace_root,
         workflow_config=resolved_workflow_config,
         git_manager=resolved_git_manager,
+        workphases_config=workphases_config,
     )
 
 
@@ -186,14 +181,16 @@ def make_state_reconstructor(
     scope_decoder: object | None = None,
 ) -> StateReconstructor:
     """Build a StateReconstructor with explicit dependency injection."""
-    workspace_path = Path(workspace_root)
     manager = project_manager or make_project_manager(workspace_root)
     resolved_git_config = git_config or cast(
         GitConfig,
         _load_config(workspace_root, "git.yaml", "load_git_config"),
     )
     resolved_scope_decoder = scope_decoder or ScopeDecoder(
-        workphases_path=workspace_path / ".st3" / "config" / "workphases.yaml"
+        workphases_config=cast(
+            WorkphasesConfig,
+            _load_config(workspace_root, "workphases.yaml", "load_workphases_config"),
+        )
     )
     return StateReconstructor(
         workspace_root=workspace_root,
@@ -235,7 +232,12 @@ def make_phase_state_engine(
             ),
         )
     else:
-        phase_contracts_config = PhaseContractsConfig.model_validate({"workflows": {}})
+        phase_contracts_config = PhaseContractsConfig.model_validate(
+            {
+                "workflows": {},
+                "merge_policy": {"pr_allowed_phase": "ready", "branch_local_artifacts": []},
+            }
+        )
     resolver = PhaseContractResolver(
         PhaseConfigContext(
             workphases=workphases_config,
@@ -246,7 +248,7 @@ def make_phase_state_engine(
         state_file=workspace_path / ".st3" / "state.json"
     )
     resolved_scope_decoder = scope_decoder or ScopeDecoder(
-        workphases_path=workspace_path / ".st3" / "config" / "workphases.yaml"
+        workphases_config=cast(WorkphasesConfig, workphases_config)
     )
     resolved_workflow_gate_runner = workflow_gate_runner or WorkflowGateRunner(
         deliverable_checker=DeliverableChecker(workspace_path),

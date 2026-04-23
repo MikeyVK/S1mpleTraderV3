@@ -5,12 +5,13 @@
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from pydantic import ValidationError
 
 from mcp_server.config.loader import ConfigLoader
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.git_tools import (
     CommitPhaseMismatchError,
@@ -69,9 +70,9 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(
     mock_git_manager.create_branch.return_value = "feature/test-branch"
 
     params = CreateBranchInput(name="test-branch", branch_type="feature", base_branch="HEAD")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
-    mock_git_manager.create_branch.assert_called_once_with("test-branch", "feature", "HEAD")
+    mock_git_manager.create_branch.assert_called_once_with("test-branch", "feature", "HEAD", ANY)
     assert isinstance(result, ToolResult)
     assert "Created and switched to branch: feature/test-branch" in result.content[0]["text"]
 
@@ -85,10 +86,10 @@ async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager: Mag
     params = CreateBranchInput(
         name="new-fix", branch_type="fix", base_branch="refactor/51-labels-yaml"
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.create_branch.assert_called_once_with(
-        "new-fix", "fix", "refactor/51-labels-yaml"
+        "new-fix", "fix", "refactor/51-labels-yaml", ANY
     )
     assert "fix/new-fix" in result.content[0]["text"]
 
@@ -111,7 +112,7 @@ async def test_git_status_tool(mock_git_manager: MagicMock) -> None:
         "modified_files": ["bar.py"],
     }
 
-    result = await tool.execute(GitStatusInput())
+    result = await tool.execute(GitStatusInput(), NoteContext())
 
     assert isinstance(result, ToolResult)
     assert "Branch: main" in result.content[0]["text"]
@@ -133,15 +134,17 @@ async def test_git_commit_tool_docs(mock_git_manager: MagicMock) -> None:
     mock_git_manager.commit_with_scope.return_value = "doc1234"
 
     params = GitCommitInput(workflow_phase="documentation", message="update readme")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="documentation",
         message="update readme",
+        note_context=ANY,
         sub_phase=None,
         cycle_number=None,
         commit_type=None,
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: doc1234" in result.content[0]["text"]
 
@@ -162,7 +165,7 @@ async def test_git_commit_tool_resolves_commit_type_from_phase_contracts(
         sub_phase="refactor",
         cycle_number=4,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     resolver.assert_called_once_with(
         "feature/257-reorder-workflow-phases",
@@ -172,10 +175,12 @@ async def test_git_commit_tool_resolves_commit_type_from_phase_contracts(
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="refactor code",
+        note_context=ANY,
         sub_phase="refactor",
         cycle_number=4,
         commit_type="refactor",
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: abc1234" in result.content[0]["text"]
 
@@ -190,15 +195,17 @@ async def test_git_commit_tool_with_workflow_phase(mock_git_manager: MagicMock) 
         message="complete research",
         workflow_phase="research",
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="research",
         message="complete research",
+        note_context=ANY,
         sub_phase=None,
         cycle_number=None,
         commit_type=None,
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: wf1234" in result.content[0]["text"]
 
@@ -217,15 +224,17 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(
         sub_phase="red",
         cycle_number=1,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="add failing test",
+        note_context=ANY,
         sub_phase="red",
         cycle_number=1,
         commit_type=None,
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: wf5678" in result.content[0]["text"]
 
@@ -242,15 +251,17 @@ async def test_git_commit_tool_with_cycle_number(mock_git_manager: MagicMock) ->
         sub_phase="green",
         cycle_number=1,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="implement feature",
+        note_context=ANY,
         sub_phase="green",
         cycle_number=1,
         commit_type=None,
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: wf9012" in result.content[0]["text"]
 
@@ -268,15 +279,17 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager: M
         cycle_number=1,
         files=["src/app.py", "tests/test_app.py"],
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="refactor code",
+        note_context=ANY,
         sub_phase="refactor",
         cycle_number=1,
         commit_type=None,
         files=["src/app.py", "tests/test_app.py"],
+        skip_paths=frozenset(),
     )
     assert "Committed: wf3456" in result.content[0]["text"]
 
@@ -302,16 +315,18 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager: Magic
         message="fix failing test",
         cycle_number=1,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     # Should pass commit_type to commit_with_scope
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="fix failing test",
+        note_context=ANY,
         sub_phase="red",
         cycle_number=1,
         commit_type="fix",
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: override123" in result.content[0]["text"]
 
@@ -346,16 +361,18 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager: Ma
     # Should be normalized to lowercase by validator
     assert params.commit_type == "feat"
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     # Should pass normalized commit_type
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="add feature",
+        note_context=ANY,
         sub_phase="red",
         cycle_number=1,
         commit_type="feat",  # Normalized to lowercase
         files=None,
+        skip_paths=frozenset(),
     )
     assert "Committed: case123" in result.content[0]["text"]
 
@@ -363,20 +380,17 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager: Ma
 @pytest.mark.asyncio
 async def test_git_commit_integration_workflow_phases() -> None:
     """Integration test: Full commit workflow with real workphases.yaml."""
-    # Create a real GitManager with mocked adapter but real workphases.yaml
+    # Create a real GitManager with mocked adapter but real workphases config
     mock_adapter = MagicMock()
     mock_adapter.commit.return_value = "integration123"
 
-    # Use the real .st3/workphases.yaml
-    workphases_path = Path(".st3/workphases.yaml")
-    if not workphases_path.exists():
-        pytest.skip("workphases.yaml not found - skipping integration test")
-
-    git_config = ConfigLoader(config_root=Path(".st3")).load_git_config()
+    loader = ConfigLoader(config_root=Path(".st3/config"))
+    git_config = loader.load_git_config()
+    workphases_config = loader.load_workphases_config()
     manager = GitManager(
         git_config=git_config,
         adapter=mock_adapter,
-        workphases_path=workphases_path,
+        workphases_config=workphases_config,
     )
     resolver = MagicMock(
         side_effect=lambda _branch, workflow_phase, sub_phase: {
@@ -390,10 +404,12 @@ async def test_git_commit_integration_workflow_phases() -> None:
 
     # Test 1: Research phase (no subphase)
     params1 = GitCommitInput(message="investigate alternatives", workflow_phase="research")
-    result1 = await tool.execute(params1)
+    result1 = await tool.execute(params1, NoteContext())
 
     assert "Committed: integration123" in result1.content[0]["text"]
-    mock_adapter.commit.assert_called_with("docs(P_RESEARCH): investigate alternatives", files=None)
+    mock_adapter.commit.assert_called_with(
+        "docs(P_RESEARCH): investigate alternatives", files=None, skip_paths=frozenset()
+    )
 
     # Test 2: TDD with subphase
     params2 = GitCommitInput(
@@ -402,11 +418,11 @@ async def test_git_commit_integration_workflow_phases() -> None:
         sub_phase="red",
         cycle_number=1,
     )
-    result2 = await tool.execute(params2)
+    result2 = await tool.execute(params2, NoteContext())
 
     assert "Committed: integration123" in result2.content[0]["text"]
     mock_adapter.commit.assert_called_with(
-        "test(P_IMPLEMENTATION_SP_C1_RED): add failing test", files=None
+        "test(P_IMPLEMENTATION_SP_C1_RED): add failing test", files=None, skip_paths=frozenset()
     )
 
     # Test 3: Coordination phase (NEW)
@@ -415,11 +431,13 @@ async def test_git_commit_integration_workflow_phases() -> None:
         workflow_phase="coordination",
         sub_phase="delegation",
     )
-    result3 = await tool.execute(params3)
+    result3 = await tool.execute(params3, NoteContext())
 
     assert "Committed: integration123" in result3.content[0]["text"]
     mock_adapter.commit.assert_called_with(
-        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
+        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues",
+        files=None,
+        skip_paths=frozenset(),
     )
 
 
@@ -435,7 +453,7 @@ async def test_git_checkout_tool(mock_git_manager: MagicMock) -> None:
 
     tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="main")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.checkout.assert_called_once_with("main")
     mock_engine.get_state.assert_called_once_with("main")
@@ -460,7 +478,7 @@ async def test_git_checkout_tool_displays_parent_branch(mock_git_manager: MagicM
 
     tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="feature/79-test")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.checkout.assert_called_once_with("feature/79-test")
     assert "Switched to branch: feature/79-test" in result.content[0]["text"]
@@ -485,7 +503,7 @@ async def test_git_checkout_tool_no_parent_branch(mock_git_manager: MagicMock) -
 
     tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="main")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.checkout.assert_called_once_with("main")
     output = result.content[0]["text"]
@@ -501,7 +519,7 @@ async def test_git_push_tool(mock_git_manager: MagicMock) -> None:
     mock_git_manager.get_status.return_value = {"branch": "feature/foo"}
 
     params = GitPushInput(set_upstream=True)
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_git_manager.push.assert_called_once_with(set_upstream=True)
     assert "Pushed branch: feature/foo" in result.content[0]["text"]
@@ -514,9 +532,9 @@ async def test_git_merge_tool(mock_git_manager: MagicMock) -> None:
     mock_git_manager.get_status.return_value = {"branch": "main"}
 
     params = GitMergeInput(branch="feature/foo")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
-    mock_git_manager.merge.assert_called_once_with("feature/foo")
+    mock_git_manager.merge.assert_called_once_with("feature/foo", ANY)
     assert "Merged feature/foo into main" in result.content[0]["text"]
 
 
@@ -526,9 +544,9 @@ async def test_git_delete_branch_tool(mock_git_manager: MagicMock) -> None:
     tool = GitDeleteBranchTool(manager=mock_git_manager)
 
     params = GitDeleteBranchInput(branch="feature/old", force=True)
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
-    mock_git_manager.delete_branch.assert_called_once_with("feature/old", force=True)
+    mock_git_manager.delete_branch.assert_called_once_with("feature/old", ANY, force=True)
     assert "Deleted branch: feature/old" in result.content[0]["text"]
 
 
@@ -538,18 +556,18 @@ async def test_git_stash_tool(mock_git_manager: MagicMock) -> None:
     tool = GitStashTool(manager=mock_git_manager)
 
     # Push
-    result = await tool.execute(GitStashInput(action="push", message="wip"))
+    result = await tool.execute(GitStashInput(action="push", message="wip"), NoteContext())
     mock_git_manager.stash.assert_called_with(message="wip", include_untracked=False)
     assert "Stashed changes: wip" in result.content[0]["text"]
 
     # Pop
-    result = await tool.execute(GitStashInput(action="pop"))
+    result = await tool.execute(GitStashInput(action="pop"), NoteContext())
     mock_git_manager.stash_pop.assert_called_once()
     assert "Applied and removed latest stash" in result.content[0]["text"]
 
     # List
     mock_git_manager.stash_list.return_value = ["stash@{0}: wip"]
-    result = await tool.execute(GitStashInput(action="list"))
+    result = await tool.execute(GitStashInput(action="list"), NoteContext())
     assert "stash@{0}: wip" in result.content[0]["text"]
 
 
@@ -559,9 +577,11 @@ async def test_git_restore_tool(mock_git_manager: MagicMock) -> None:
     tool = GitRestoreTool(manager=mock_git_manager)
 
     params = GitRestoreInput(files=["foo.py", "bar.py"], source="HEAD")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
-    mock_git_manager.restore.assert_called_once_with(files=["foo.py", "bar.py"], source="HEAD")
+    mock_git_manager.restore.assert_called_once_with(
+        files=["foo.py", "bar.py"], note_context=ANY, source="HEAD"
+    )
     assert "Restored 2 file(s)" in result.content[0]["text"]
 
 
@@ -582,7 +602,7 @@ async def test_get_parent_branch_current_branch() -> None:
 
     tool = GetParentBranchTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GetParentBranchInput()
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_engine.get_state.assert_called_once_with("feature/79-parent-branch-tracking")
     assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
@@ -602,7 +622,7 @@ async def test_get_parent_branch_specified_branch() -> None:
 
     tool = GetParentBranchTool(manager=MagicMock(), state_engine=mock_engine)
     params = GetParentBranchInput(branch="feature/77-error-handling")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_engine.get_state.assert_called_once_with("feature/77-error-handling")
     assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
@@ -623,7 +643,7 @@ async def test_get_parent_branch_not_set() -> None:
 
     tool = GetParentBranchTool(manager=MagicMock(), state_engine=mock_engine)
     params = GetParentBranchInput(branch="main")
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     mock_engine.get_state.assert_called_once_with("main")
     output = result.content[0]["text"]
@@ -646,7 +666,7 @@ async def test_git_commit_tdd_requires_cycle_number(mock_git_manager: MagicMock)
         # cycle_number is MISSING - should return error result
     )
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert result.is_error, "Expected error when cycle_number missing for TDD"
     error_text = result.content[0]["text"]
@@ -667,7 +687,7 @@ async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager: M
         # cycle_number is MISSING - should return error result
     )
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert result.is_error, "Expected error when cycle_number missing for TDD sub-phase"
     error_text = result.content[0]["text"]
@@ -687,17 +707,19 @@ async def test_git_commit_non_tdd_allows_no_cycle_number(mock_git_manager: Magic
         # cycle_number is OMITTED - should be allowed
     )
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     # Should succeed
     assert "Committed: abc1234" in result.content[0]["text"]
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="research",
         message="research alternatives",
+        note_context=ANY,
         sub_phase=None,
         cycle_number=None,
         commit_type=None,
         files=None,
+        skip_paths=frozenset(),
     )
 
 
@@ -715,17 +737,19 @@ async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager: Magic
         cycle_number=3,
     )
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     # Should succeed
     assert "Committed: def5678" in result.content[0]["text"]
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="implementation",
         message="add schema validation",
+        note_context=ANY,
         sub_phase="green",
         cycle_number=3,
         commit_type=None,
         files=None,
+        skip_paths=frozenset(),
     )
 
 
@@ -751,7 +775,7 @@ async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager: Magi
         cycle_number=2,
         message="add red test",
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert result.is_error
     assert "phase_mismatch" in result.content[0]["text"]
@@ -776,7 +800,7 @@ async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager: Magi
         cycle_number=2,
         message="add green impl",
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert result.is_error
     assert "phase_mismatch" in result.content[0]["text"]
@@ -802,7 +826,7 @@ async def test_git_add_or_commit_passes_when_phase_and_cycle_match(
         cycle_number=2,
         message="implement guard",
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert "Committed: abc1234" in result.content[0]["text"]
 
@@ -821,7 +845,7 @@ async def test_git_commit_no_state_json_returns_error(mock_git_manager: MagicMoc
     # No workflow_phase — triggers auto-detect from state.json
     params = GitCommitInput(message="chore: cleanup")
 
-    result = await tool.execute(params)
+    result = await tool.execute(params, NoteContext())
 
     assert result.is_error
     error_text = result.content[0]["text"]

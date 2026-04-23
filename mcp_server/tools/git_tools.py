@@ -11,11 +11,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import CommitNote, NoteContext
 from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_contract_resolver import PhaseContractResolver
 from mcp_server.schemas import GitConfig
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = get_logger("tools.git")
@@ -112,7 +113,7 @@ class CreateBranchInput(BaseModel):
         return value
 
 
-class CreateBranchTool(BaseTool):
+class CreateBranchTool(BranchMutatingTool):
     """Tool to create a git branch from specified base."""
 
     name = "create_branch"
@@ -140,7 +141,7 @@ class CreateBranchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: CreateBranchInput) -> ToolResult:
+    async def execute(self, params: CreateBranchInput, context: NoteContext) -> ToolResult:
         logger.info(
             "Branch creation requested",
             extra={
@@ -154,7 +155,7 @@ class CreateBranchTool(BaseTool):
 
         try:
             branch_name = self.manager.create_branch(
-                params.name, params.branch_type, params.base_branch
+                params.name, params.branch_type, params.base_branch, context
             )
             return ToolResult.text(f"âœ… Created and switched to branch: {branch_name}")
         except Exception as e:
@@ -194,7 +195,14 @@ class GitStatusTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitStatusInput) -> ToolResult:  # noqa: ARG002
+    async def execute(
+        self,
+        params: GitStatusInput,
+        context: NoteContext,
+    ) -> ToolResult:
+        del params
+        del context
+
         status = self.manager.get_status()
 
         text = f"Branch: {status['branch']}\n"
@@ -274,12 +282,13 @@ class GitCommitInput(BaseModel):
         return value.lower()  # Normalize to lowercase
 
 
-class GitCommitTool(BaseTool):
+class GitCommitTool(BranchMutatingTool):
     """Tool to commit changes with workflow-scoped commit messages."""
 
     name = "git_add_or_commit"
     description = "Commit changes with workflow phase scope (e.g., test(P_TDD_SP_RED): message)"
     args_model = GitCommitInput
+    enforcement_event: str | None = "git_add_or_commit"
 
     def __init__(
         self,
@@ -300,57 +309,58 @@ class GitCommitTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitCommitInput) -> ToolResult:
-        try:
-            workflow_phase = params.workflow_phase
-            current_branch = self.manager.adapter.get_current_branch()
+    async def execute(self, params: GitCommitInput, context: NoteContext) -> ToolResult:
+        workflow_phase = params.workflow_phase
+        current_branch = self.manager.adapter.get_current_branch()
 
-            if workflow_phase is None:
-                if self._state_engine is None:
-                    raise ValueError("PhaseStateEngine must be injected for auto-detection")
-                try:
-                    workflow_phase = self._state_engine.get_current_phase(branch=current_branch)
-                except FileNotFoundError:
-                    return ToolResult.error(
-                        f"No state.json found for branch '{current_branch}'. "
-                        "Provide workflow_phase explicitly: "
-                        "git_add_or_commit(workflow_phase='<phase>', message='...')"
-                    )
-
-                logger.info(
-                    "Auto-detected workflow_phase from state.json",
-                    extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
+        if workflow_phase is None:
+            if self._state_engine is None:
+                raise ValueError("PhaseStateEngine must be injected for auto-detection")
+            try:
+                workflow_phase = self._state_engine.get_current_phase(branch=current_branch)
+            except FileNotFoundError:
+                return ToolResult.error(
+                    f"No state.json found for branch '{current_branch}'. "
+                    "Provide workflow_phase explicitly: "
+                    "git_add_or_commit(workflow_phase='<phase>', message='...')"
                 )
 
-            if workflow_phase == "implementation" and params.cycle_number is None:
-                raise ValueError(
-                    "cycle_number is required for TDD phase commits. "
-                    "All TDD work belongs to a specific cycle. "
-                    "Use: git_add_or_commit(workflow_phase='implementation', cycle_number=N, ...)"
-                )
-
-            if self._phase_guard is not None:
-                self._phase_guard(current_branch, workflow_phase, params.cycle_number)
-
-            commit_type = params.commit_type
-            if commit_type is None and self._commit_type_resolver is not None:
-                commit_type = self._commit_type_resolver(
-                    current_branch,
-                    workflow_phase,
-                    params.sub_phase,
-                )
-
-            commit_hash = self.manager.commit_with_scope(
-                workflow_phase=workflow_phase,
-                message=params.message,
-                sub_phase=params.sub_phase,
-                cycle_number=params.cycle_number,
-                commit_type=commit_type,
-                files=params.files,
+            logger.info(
+                "Auto-detected workflow_phase from state.json",
+                extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
             )
-            return ToolResult.text(f"Committed: {commit_hash}")
-        except Exception as exc:
-            return ToolResult.error(str(exc))
+
+        if workflow_phase == "implementation" and params.cycle_number is None:
+            raise ValueError(
+                "cycle_number is required for TDD phase commits. "
+                "All TDD work belongs to a specific cycle. "
+                "Use: git_add_or_commit(workflow_phase='implementation', cycle_number=N, ...)"
+            )
+
+        if self._phase_guard is not None:
+            self._phase_guard(current_branch, workflow_phase, params.cycle_number)
+
+        commit_type = params.commit_type
+        if commit_type is None and self._commit_type_resolver is not None:
+            commit_type = self._commit_type_resolver(
+                current_branch,
+                workflow_phase,
+                params.sub_phase,
+            )
+
+        ctx = context
+        commit_hash = self.manager.commit_with_scope(
+            workflow_phase=workflow_phase,
+            message=params.message,
+            note_context=ctx,
+            sub_phase=params.sub_phase,
+            cycle_number=params.cycle_number,
+            commit_type=commit_type,
+            files=params.files,
+            skip_paths=frozenset(),
+        )
+        ctx.produce(CommitNote(commit_hash=commit_hash))
+        return ToolResult.text(f"Committed: {commit_hash}")
 
 
 class GitRestoreInput(BaseModel):
@@ -362,7 +372,7 @@ class GitRestoreInput(BaseModel):
     source: str = Field(default="HEAD", description="Git ref to restore from (default: HEAD)")
 
 
-class GitRestoreTool(BaseTool):
+class GitRestoreTool(BranchMutatingTool):
     """Tool to restore files to a ref (discard local changes)."""
 
     name = "git_restore"
@@ -388,8 +398,8 @@ class GitRestoreTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitRestoreInput) -> ToolResult:
-        self.manager.restore(files=params.files, source=params.source)
+    async def execute(self, params: GitRestoreInput, context: NoteContext) -> ToolResult:
+        self.manager.restore(files=params.files, note_context=context, source=params.source)
         return ToolResult.text(f"Restored {len(params.files)} file(s) from {params.source}")
 
 
@@ -429,7 +439,9 @@ class GitCheckoutTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitCheckoutInput) -> ToolResult:
+    async def execute(self, params: GitCheckoutInput, context: NoteContext) -> ToolResult:
+        del context
+
         try:
             # GitPython operations can block; run them in a worker thread.
             await anyio.to_thread.run_sync(self.manager.checkout, params.branch)
@@ -468,7 +480,7 @@ class GitPushInput(BaseModel):
     )
 
 
-class GitPushTool(BaseTool):
+class GitPushTool(BranchMutatingTool):
     """Tool to push current branch to origin."""
 
     name = "git_push"
@@ -494,7 +506,9 @@ class GitPushTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitPushInput) -> ToolResult:
+    async def execute(self, params: GitPushInput, context: NoteContext) -> ToolResult:
+        del context
+
         status = self.manager.get_status()
         self.manager.push(set_upstream=params.set_upstream)
         return ToolResult.text(f"Pushed branch: {status['branch']}")
@@ -506,7 +520,7 @@ class GitMergeInput(BaseModel):
     branch: str = Field(..., description="Branch name to merge")
 
 
-class GitMergeTool(BaseTool):
+class GitMergeTool(BranchMutatingTool):
     """Tool to merge a branch into current branch."""
 
     name = "git_merge"
@@ -532,9 +546,9 @@ class GitMergeTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitMergeInput) -> ToolResult:
+    async def execute(self, params: GitMergeInput, context: NoteContext) -> ToolResult:
         status = self.manager.get_status()
-        self.manager.merge(params.branch)
+        self.manager.merge(params.branch, context)
         return ToolResult.text(f"Merged {params.branch} into {status['branch']}")
 
 
@@ -545,7 +559,7 @@ class GitDeleteBranchInput(BaseModel):
     force: bool = Field(default=False, description="Force delete unmerged branch")
 
 
-class GitDeleteBranchTool(BaseTool):
+class GitDeleteBranchTool(BranchMutatingTool):
     """Tool to delete a branch."""
 
     name = "git_delete_branch"
@@ -571,8 +585,8 @@ class GitDeleteBranchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitDeleteBranchInput) -> ToolResult:
-        self.manager.delete_branch(params.branch, force=params.force)
+    async def execute(self, params: GitDeleteBranchInput, context: NoteContext) -> ToolResult:
+        self.manager.delete_branch(params.branch, context, force=params.force)
         return ToolResult.text(f"Deleted branch: {params.branch}")
 
 
@@ -618,7 +632,9 @@ class GitStashTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitStashInput) -> ToolResult:
+    async def execute(self, params: GitStashInput, context: NoteContext) -> ToolResult:
+        del context
+
         if params.action == "push":
             self.manager.stash(message=params.message, include_untracked=params.include_untracked)
             if params.message:
@@ -672,7 +688,9 @@ class GetParentBranchTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GetParentBranchInput) -> ToolResult:
+    async def execute(self, params: GetParentBranchInput, context: NoteContext) -> ToolResult:
+        del context
+
         if self._state_engine is None:
             return ToolResult.error("PhaseStateEngine must be injected")
 

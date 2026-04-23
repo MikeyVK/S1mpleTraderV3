@@ -28,8 +28,10 @@ from typing import Any
 # Third-party
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from mcp_server.core.operation_notes import NoteContext
+
 # Project modules
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.validation.validation_service import ValidationService
 
@@ -178,7 +180,7 @@ class SafeEditInput(BaseModel):
         return self
 
 
-class SafeEditTool(BaseTool):
+class SafeEditTool(BranchMutatingTool):
     """Tool for safely editing files with validation and multiple edit modes.
 
     Supports four mutually exclusive edit modes:
@@ -221,12 +223,13 @@ class SafeEditTool(BaseTool):
         """Return the input schema for the tool."""
         return SafeEditInput.model_json_schema()
 
-    async def execute(self, params: SafeEditInput) -> ToolResult:
+    async def execute(self, params: SafeEditInput, context: NoteContext) -> ToolResult:
         """Execute the safe edit with validation.
 
         Uses file-level locking to prevent concurrent edits on the same file.
         Multiple edits for the same file should be batched in line_edits list.
         """
+        del context  # Not used
         # Normalize path for lock key
         file_key = str(Path(params.path).resolve())
         # Get or create lock for this file

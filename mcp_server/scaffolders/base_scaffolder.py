@@ -15,7 +15,6 @@ class BaseScaffolder(ABC):
     validate() and scaffold() methods.
     """
 
-
     @abstractmethod
     def validate(self, artifact_type: str, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate scaffolding arguments before execution.

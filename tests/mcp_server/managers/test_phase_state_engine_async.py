@@ -1,4 +1,5 @@
 # tests/mcp_server/managers/test_phase_state_engine_async.py
+# pyright: reportPrivateUsage=false
 """
 Tests for async-safe state.json operations in PhaseStateEngine.
 
@@ -19,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.state_repository import BranchState
 from tests.mcp_server.test_support import make_phase_state_engine
 
@@ -162,7 +164,7 @@ class TestPhaseToolsAsyncSafe:
                 skip_reason="test reason",
                 human_approval="test approval",
             )
-            await tool.execute(params)
+            await tool.execute(params, NoteContext())
 
         # Assert
         assert run_sync_was_called, (
@@ -210,7 +212,7 @@ class TestPhaseToolsAsyncSafe:
                 to_phase="implementation",
                 human_approval="test approval",
             )
-            await tool.execute(params)
+            await tool.execute(params, NoteContext())
 
         # Assert
         assert run_sync_was_called, (

@@ -165,9 +165,7 @@ class Order(BaseModel):
             ValueError: If prefix is not EXG_
         """
         if not v.startswith("EXG_"):
-            raise ValueError(
-                f"parent_group_id must start with 'EXG_', got: {v[:10]}..."
-            )
+            raise ValueError(f"parent_group_id must start with 'EXG_', got: {v[:10]}...")
         return v
 
     @field_validator("symbol")
@@ -186,9 +184,7 @@ class Order(BaseModel):
         """
         pattern = r"^[A-Z]+_[A-Z]+$"
         if not match(pattern, v):
-            raise ValueError(
-                f"symbol must match pattern BASE_QUOTE (e.g., BTC_USDT), got: {v}"
-            )
+            raise ValueError(f"symbol must match pattern BASE_QUOTE (e.g., BTC_USDT), got: {v}")
         return v
 
     @model_validator(mode="after")

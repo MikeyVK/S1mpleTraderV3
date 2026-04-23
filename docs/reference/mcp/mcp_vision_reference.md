@@ -71,7 +71,7 @@ Instead of:
 > "Please follow TDD principles and write tests first"
 
 We have:
-> `git_add_or_commit(phase='red')` → **Blocks if non-test files are staged**
+> `git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1)` → **Blocks if non-test files are staged**
 
 Instead of:
 > "DTOs should be immutable Pydantic models"

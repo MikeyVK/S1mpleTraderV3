@@ -140,6 +140,38 @@ Prefer:
 
 Only if unavoidable, use targeted ignore(s) with rationale.
 
+### E) `reportPrivateUsage` in tests — never suppress without justification
+
+`reportPrivateUsage` in test code is **almost always a test design smell**, not a false positive.
+
+**Decision tree:**
+
+1. Can the behaviour be observed via the public interface?
+   - Yes → **Rewrite the test.** Do not suppress.
+   - No → Is the private access a true test-infrastructure necessity? (e.g., injecting a test double into an attribute with no public setter or factory)
+     - Yes → Add `# pyright: ignore[reportPrivateUsage]` **with a rationale comment**.
+     - No → The private method is unreachable dead code. Remove it.
+
+**Forbidden:**
+```python
+# ❌ suppression without rationale — not acceptable
+runner._handle_merge_readiness(action, ctx, tmp_path)  # pyright: ignore[reportPrivateUsage]
+
+# ❌ attribute inspection instead of observing behaviour
+assert runner._merge_readiness_context is ctx  # pyright: ignore[reportPrivateUsage]
+```
+
+**Accepted (only with rationale):**
+```python
+# ✅ test-double injection, no public setter exists — documented
+tool._settings = mock_settings  # pyright: ignore[reportPrivateUsage]  # inject test double: no public setter
+
+# ✅ OR avoid the suppression entirely by using a factory/constructor that accepts the dependency
+tool = MyTool(settings=mock_settings)  # preferred
+```
+
+See also: [ARCHITECTURE_PRINCIPLES.md §14 — Test via Public API](ARCHITECTURE_PRINCIPLES.md).
+
 ---
 
 ## What Agents Should Do (Short Checklist)

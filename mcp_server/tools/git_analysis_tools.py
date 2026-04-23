@@ -4,6 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -30,7 +31,8 @@ class GitListBranchesTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: GitListBranchesInput) -> ToolResult:
+    async def execute(self, params: GitListBranchesInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         branches = self.manager.list_branches(verbose=params.verbose, remote=params.remote)
         if not branches:
             return ToolResult.text("No branches found")
@@ -58,7 +60,8 @@ class GitDiffTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    async def execute(self, params: GitDiffInput) -> ToolResult:
+    async def execute(self, params: GitDiffInput, context: NoteContext) -> ToolResult:
+        del context  # Not used
         stats = self.manager.compare_branches(params.target_branch, params.source_branch)
         if not stats:
             return ToolResult.text("No differences found")

@@ -286,6 +286,42 @@ Do not write code for hypothetical future needs.
 
 ---
 
+## 14. Test via Public API — No Private Method Access in Tests
+
+**Binding rule:**
+- Tests call **public methods only**. Private methods (`_method`) are never called directly from test code.
+- Private methods are implementation details. Testing them directly couples the test to the internal structure rather than the observable contract. Any internal refactor (rename, split, merge of private methods) would break tests that should not care.
+- If a private method contains meaningful logic, that logic is reachable and testable via the public interface. If it is not reachable via the public interface, it is dead code.
+- The corollary: private methods must be small and cohesive (SRP). If a handler is too complex to be tested through the public entry point, that is a design smell — split the method or add a narrower public accessor, do not widen the test boundary.
+
+**Anti-pattern:**
+```python
+# ❌ WRONG — bypasses public dispatch, couples test to implementation
+runner._handle_exclude_branch_local_artifacts(action, ctx, tmp_path)
+
+# ❌ WRONG — inspects internal state directly instead of observable behaviour
+assert runner._merge_readiness_context is ctx
+```
+
+**Correct pattern:**
+```python
+# ✅ CORRECT — tests the observable contract via the public entry point
+notes = runner.run(event="git_add_or_commit", timing="pre", context=ctx)
+assert any("excluded" in note for note in notes)
+
+# ✅ CORRECT — constructor injection verified by observing behaviour, not attributes
+runner = EnforcementRunner(workspace_root=tmp_path, config=config, merge_readiness_context=ctx)
+# run() behaviour proves the context was accepted
+```
+
+**When `reportPrivateUsage` appears in test code:**
+- It is a signal, not noise. Do not suppress it reflexively.
+- Re-examine whether the test can be rewritten against the public interface. The answer is almost always yes.
+- If yes → rewrite the test. Do not add the ignore.
+- Only add `# pyright: ignore[reportPrivateUsage]` when private access is an unavoidable test-infrastructure necessity (e.g., injecting a test double into an attribute that has no public setter and no factory alternative), **and** you include a rationale comment.
+
+---
+
 ## Quick Reference — Prohibited Patterns
 
 | Pattern | Violation | Alternative |
@@ -302,3 +338,6 @@ Do not write code for hypothetical future needs.
 | Hardcoded regex/list with type or phase names | DRY, Config-First | Build from config at startup |
 | Inconsistent config combination (flag on + map empty) | Fail-Fast | `ConfigError` on startup |
 | Migration code for deprecated parameter | YAGNI | Flag-day: remove directly |
+| `runner._handle_x(...)` in test | §14 — Public API | `runner.run(event=..., timing=..., context=...)` |
+| `assert obj._internal is x` in test | §14 — Public API | Assert via observable behaviour of public method |
+| `# pyright: ignore[reportPrivateUsage]` without rationale | §14 — Public API | Rewrite test, or add rationale explaining why no public alternative exists |

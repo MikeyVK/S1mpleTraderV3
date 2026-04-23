@@ -2,9 +2,9 @@
 <!-- template=architecture version=8b924f78 created=2026-03-13T19:07Z updated=2026-03-13 -->
 # Naming Landscape
 
-**Status:** DRAFT
-**Version:** 1.0
-**Last Updated:** 2026-03-13
+**Status:** CURRENT
+**Version:** 1.1
+**Last Updated:** 2026-04-23
 
 ---
 
@@ -51,7 +51,7 @@ Full mapping of all tool files. ⚠ marks known inconsistencies.
 | `git_tools.py` | `GitStashTool` | `git_stash` | — |
 | `git_tools.py` | `GetParentBranchTool` | `get_parent_branch` | — |
 | `git_analysis_tools.py` | `GitListBranchesTool` | `git_list_branches` | — |
-| `git_analysis_tools.py` | `GitDiffStatTool` | `git_diff_stat` | — |
+| `git_analysis_tools.py` | `GitDiffTool` | `git_diff_stat` | Class name differs from MCP name suffix |
 | `git_fetch_tool.py` ⚠ | `GitFetchTool` | `git_fetch` | Singular filename |
 | `git_pull_tool.py` ⚠ | `GitPullTool` | `git_pull` | Singular filename |
 | `phase_tools.py` | `TransitionPhaseTool` | `transition_phase` | — |
@@ -75,12 +75,12 @@ Full mapping of all tool files. ⚠ marks known inconsistencies.
 | `milestone_tools.py` | `ListMilestonesTool` | `list_milestones` | — |
 | `milestone_tools.py` | `CreateMilestoneTool` | `create_milestone` | — |
 | `milestone_tools.py` | `CloseMilestoneTool` | `close_milestone` | — |
-| `pr_tools.py` | `CreatePRTool` | `create_pr` | — |
+| `pr_tools.py` | `SubmitPRTool` | `submit_pr` | Replaced deleted public `create_pr` path |
 | `pr_tools.py` | `ListPRsTool` | `list_prs` | — |
 | `pr_tools.py` | `MergePRTool` | `merge_pr` | — |
 | `quality_tools.py` | `RunQualityGatesTool` | `run_quality_gates` | — |
 | `test_tools.py` | `RunTestsTool` | `run_tests` | — |
-| `validation_tools.py` | `ValidateArchitectureTool` | `validate_architecture` | — |
+| `validation_tools.py` | `ValidationTool` | `validate_architecture` | Class name is broader than MCP tool name |
 | `validation_tools.py` | `ValidateDTOTool` | `validate_dto` | — |
 | `template_validation_tool.py` ⚠ | `ValidateTemplateTool` | `validate_template` | Singular filename |
 | `scaffold_artifact.py` ⚠ | `ScaffoldArtifactTool` | `scaffold_artifact` | No `_tool` suffix |

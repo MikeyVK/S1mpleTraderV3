@@ -44,19 +44,14 @@ class PlatformDataDTO(BaseModel):
         ... )
     """
 
-    origin: Origin = Field(
-        ...,
-        description="Type-safe platform data origin (TICK/NEWS/SCHEDULE)"
-    )
+    origin: Origin = Field(..., description="Type-safe platform data origin (TICK/NEWS/SCHEDULE)")
 
     timestamp: datetime = Field(
-        ...,
-        description="Point-in-time timestamp used for cache.start_new_run(timestamp)"
+        ..., description="Point-in-time timestamp used for cache.start_new_run(timestamp)"
     )
 
     payload: BaseModel = Field(
-        ...,
-        description="Provider DTO instance (CandleWindow, OrderBookSnapshot, etc.)"
+        ..., description="Provider DTO instance (CandleWindow, OrderBookSnapshot, etc.)"
     )
 
     model_config = ConfigDict(
@@ -64,28 +59,15 @@ class PlatformDataDTO(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "origin": {
-                        "id": "TCK_20251109_143000_abc123",
-                        "type": "TICK"
-                    },
+                    "origin": {"id": "TCK_20251109_143000_abc123", "type": "TICK"},
                     "timestamp": "2025-11-09T14:30:00Z",
-                    "payload": {
-                        "symbol": "BTC",
-                        "timeframe": "1h",
-                        "close": 50000.0
-                    }
+                    "payload": {"symbol": "BTC", "timeframe": "1h", "close": 50000.0},
                 },
                 {
-                    "origin": {
-                        "id": "NWS_20251109_150000_def456",
-                        "type": "NEWS"
-                    },
+                    "origin": {"id": "NWS_20251109_150000_def456", "type": "NEWS"},
                     "timestamp": "2025-11-09T15:00:00Z",
-                    "payload": {
-                        "headline": "Fed announces rate decision",
-                        "sentiment": "neutral"
-                    }
-                }
+                    "payload": {"headline": "Fed announces rate decision", "sentiment": "neutral"},
+                },
             ]
-        }
+        },
     )

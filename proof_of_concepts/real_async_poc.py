@@ -28,6 +28,7 @@ from datetime import datetime
 # CPU-Intensive Work (The REAL problem)
 # ============================================================================
 
+
 def cpu_intensive_work(event_id: int, duration_ms: int) -> dict:
     """
     REAL CPU-bound work that BLOCKS the thread.
@@ -44,20 +45,17 @@ def cpu_intensive_work(event_id: int, duration_ms: int) -> dict:
     while (time.perf_counter() - start) < target_duration:
         # Simulate mathematical calculations (e.g., indicators, signals)
         for i in range(1000):
-            result += i ** 2
+            result += i**2
 
     elapsed = time.perf_counter() - start
 
-    return {
-        'event_id': event_id,
-        'result': result,
-        'processing_time_ms': elapsed * 1000
-    }
+    return {"event_id": event_id, "result": result, "processing_time_ms": elapsed * 1000}
 
 
 # ============================================================================
 # Event Source (Simulates External Events)
 # ============================================================================
+
 
 class EventSource:
     """
@@ -74,16 +72,13 @@ class EventSource:
     def publish_event(self) -> dict:
         """Publish single event."""
         event = {
-            'event_id': self.events_published,
-            'timestamp': datetime.now(),
-            'data': f"Event_{self.events_published}"
+            "event_id": self.events_published,
+            "timestamp": datetime.now(tz=datetime.UTC),
+            "data": f"Event_{self.events_published}",
         }
 
         self.events_published += 1
-        self.publish_log.append({
-            'event_id': event['event_id'],
-            'published_at': event['timestamp']
-        })
+        self.publish_log.append({"event_id": event["event_id"], "published_at": event["timestamp"]})
 
         return event
 
@@ -92,7 +87,8 @@ class EventSource:
 # Scenario 1: SYNCHRONOUS (Baseline - Shows The Problem)
 # ============================================================================
 
-def scenario_1_synchronous():
+
+def scenario_1_synchronous():  # noqa: ANN201
     """
     Synchronous event processing.
 
@@ -124,13 +120,10 @@ def scenario_1_synchronous():
 
             # Process event SYNCHRONOUSLY (BLOCKS!)
             print(f"  → Processing Event_{event['event_id']} (500ms CPU work)...")
-            result = cpu_intensive_work(event['event_id'], duration_ms=500)
+            result = cpu_intensive_work(event["event_id"], duration_ms=500)
             processed_events.append(result)
-            proc_time = result['processing_time_ms']
-            print(
-                f"  ✓ Completed Event_{event['event_id']} "
-                f"in {proc_time:.0f}ms"
-            )
+            proc_time = result["processing_time_ms"]
+            print(f"  ✓ Completed Event_{event['event_id']} in {proc_time:.0f}ms")
 
     # Results
     print()
@@ -140,9 +133,9 @@ def scenario_1_synchronous():
     print()
 
     return {
-        'published': source.events_published,
-        'processed': len(processed_events),
-        'missed': source.events_published - len(processed_events)
+        "published": source.events_published,
+        "processed": len(processed_events),
+        "missed": source.events_published - len(processed_events),
     }
 
 
@@ -150,7 +143,8 @@ def scenario_1_synchronous():
 # Scenario 2: ASYNC (Naive - DOESN'T Solve CPU Problem!)
 # ============================================================================
 
-async def scenario_2_async_naive():
+
+async def scenario_2_async_naive():  # noqa: ANN201
     """
     Async event processing with CPU-bound work.
 
@@ -189,7 +183,7 @@ async def scenario_2_async_naive():
 
             # ❌ THIS BLOCKS THE EVENT LOOP!
             # Even though we're in async function, this is synchronous CPU work
-            result = cpu_intensive_work(event['event_id'], duration_ms=500)
+            result = cpu_intensive_work(event["event_id"], duration_ms=500)
 
             processed_events.append(result)
             elapsed = time.perf_counter() - start_time
@@ -224,10 +218,10 @@ async def scenario_2_async_naive():
     print()
 
     return {
-        'published': source.events_published,
-        'processed': len(processed_events),
-        'queued': event_queue.qsize(),
-        'missed': source.events_published - len(processed_events) - event_queue.qsize()
+        "published": source.events_published,
+        "processed": len(processed_events),
+        "queued": event_queue.qsize(),
+        "missed": source.events_published - len(processed_events) - event_queue.qsize(),
     }
 
 
@@ -235,7 +229,8 @@ async def scenario_2_async_naive():
 # Scenario 3: ASYNC + ProcessPoolExecutor (REAL Solution)
 # ============================================================================
 
-async def scenario_3_async_processpool():
+
+async def scenario_3_async_processpool():  # noqa: ANN201
     """
     Async event processing with ProcessPoolExecutor.
 
@@ -275,15 +270,17 @@ async def scenario_3_async_processpool():
         while True:
             event = await event_queue.get()
             elapsed = time.perf_counter() - start_time
-            print(f"  [{elapsed:.3f}s] Worker-{worker_id}: Processing Event_{event['event_id']} "
-                  f"(500ms CPU work in separate process)...")
+            print(
+                f"  [{elapsed:.3f}s] Worker-{worker_id}: Processing Event_{event['event_id']} "
+                f"(500ms CPU work in separate process)..."
+            )
 
             # ✅ Run CPU work in separate process (NON-BLOCKING!)
             result = await loop.run_in_executor(
                 executor,
                 cpu_intensive_work,
-                event['event_id'],
-                500  # duration_ms
+                event["event_id"],
+                500,  # duration_ms
             )
 
             processed_events.append(result)
@@ -324,16 +321,17 @@ async def scenario_3_async_processpool():
     print()
 
     return {
-        'published': source.events_published,
-        'processed': len(processed_events),
-        'queued': event_queue.qsize(),
-        'missed': source.events_published - len(processed_events) - event_queue.qsize()
+        "published": source.events_published,
+        "processed": len(processed_events),
+        "queued": event_queue.qsize(),
+        "missed": source.events_published - len(processed_events) - event_queue.qsize(),
     }
 
 
 # ============================================================================
 # Main Test Runner
 # ============================================================================
+
 
 async def main() -> None:
     """Run all scenarios and compare results."""
@@ -363,14 +361,20 @@ async def main() -> None:
     print("SUMMARY - Events Published vs Processed")
     print("=" * 80)
     print()
-    print(f"Scenario 1 (SYNC):           Published: {result1['published']:2d}, "
-          f"Processed: {result1['processed']:2d}, Missed: {result1['missed']:2d}")
-    print(f"Scenario 2 (ASYNC naive):    Published: {result2['published']:2d}, "
-          f"Processed: {result2['processed']:2d}, Queued: {result2['queued']:2d}, "
-          f"Missed: {result2['missed']:2d}")
-    print(f"Scenario 3 (ProcessPool):    Published: {result3['published']:2d}, "
-          f"Processed: {result3['processed']:2d}, Queued: {result3['queued']:2d}, "
-          f"Missed: {result3['missed']:2d}")
+    print(
+        f"Scenario 1 (SYNC):           Published: {result1['published']:2d}, "
+        f"Processed: {result1['processed']:2d}, Missed: {result1['missed']:2d}"
+    )
+    print(
+        f"Scenario 2 (ASYNC naive):    Published: {result2['published']:2d}, "
+        f"Processed: {result2['processed']:2d}, Queued: {result2['queued']:2d}, "
+        f"Missed: {result2['missed']:2d}"
+    )
+    print(
+        f"Scenario 3 (ProcessPool):    Published: {result3['published']:2d}, "
+        f"Processed: {result3['processed']:2d}, Queued: {result3['queued']:2d}, "
+        f"Missed: {result3['missed']:2d}"
+    )
     print()
     print("=" * 80)
     print("CONCLUSION")
@@ -389,6 +393,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     # Set start method for multiprocessing (required on Windows)
-    multiprocessing.set_start_method('spawn', force=True)
+    multiprocessing.set_start_method("spawn", force=True)
 
     asyncio.run(main())

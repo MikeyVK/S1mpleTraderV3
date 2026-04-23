@@ -20,7 +20,7 @@ Handles loading and retrieving translated strings for the application.
 
 # Standard library
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Third-party
 import yaml
@@ -37,7 +37,7 @@ class Translator:
     to retrieve translated strings using a dot-notation key.
     """
 
-    def __init__(self, platform_config: PlatformConfig, project_root: Path):
+    def __init__(self, platform_config: PlatformConfig, project_root: Path) -> None:
         """Initializes the Translator by loading the appropriate language file.
 
         Args:
@@ -45,9 +45,9 @@ class Translator:
             project_root: The absolute path to the project's root directory.
         """
         lang_path = project_root / "locales" / f"{platform_config.core.language}.yaml"
-        self.strings: Dict[str, Any] = {}
+        self.strings: dict[str, Any] = {}
         try:
-            with open(lang_path, "r", encoding="utf-8") as f:
+            with open(lang_path, encoding="utf-8") as f:
                 self.strings = yaml.safe_load(f) or {}
         except FileNotFoundError:
             print(f"WARNING: Language file not found at {lang_path}")
