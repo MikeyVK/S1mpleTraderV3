@@ -183,6 +183,23 @@ class TestGitManagerOperations:
         mock_adapter.get_current_branch.return_value = "main"
         assert manager.get_current_branch() == "main"
 
+    def test_has_net_diff_for_path_delegates(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """has_net_diff_for_path must delegate to adapter with identical arguments."""
+        mock_adapter.has_net_diff_for_path.return_value = True
+        result = manager.has_net_diff_for_path(".st3/state.json", "main")
+        assert result is True
+        mock_adapter.has_net_diff_for_path.assert_called_once_with(".st3/state.json", "main")
+
+    def test_neutralize_to_base_delegates(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """neutralize_to_base must delegate to adapter with identical arguments."""
+        paths = frozenset({".st3/state.json", ".st3/deliverables.json"})
+        manager.neutralize_to_base(paths, "main")
+        mock_adapter.neutralize_to_base.assert_called_once_with(paths, "main")
+
     def test_list_branches(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test listing branches."""
         mock_adapter.list_branches.return_value = ["main", "dev"]
