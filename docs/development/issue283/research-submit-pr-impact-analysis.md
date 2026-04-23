@@ -108,7 +108,7 @@ Neutralisatie is voortaan **self-contained** in `SubmitPRTool.execute()` via een
 | Step | Operation | Source |
 |------|-----------|--------|
 | 1 | Read `state.json` (still intact) | `_read_current_phase()` |
-| 2 | Phase gate: `current_phase == pr_allowed_phase` | `_handle_check_merge_readiness` logic |
+| 2 | Phase gate: `current_phase == pr_allowed_phase` | `_handle_check_phase_readiness` (enforcement runner pre-call, via enforcement.yaml) |
 | 3 | Net-diff check: branch-local artifacts against base | `_has_net_diff_for_path()` |
 | 4 | `neutralize_to_base()` for tracked artifacts | `GitAdapter.neutralize_to_base()` |
 | 5 | Commit with scope `chore(P_READY): neutralize...` | `GitManager.commit_with_scope()` |
@@ -123,12 +123,12 @@ Neutralisatie is voortaan **self-contained** in `SubmitPRTool.execute()` via een
 |------|----------------|
 | `mcp_server/tools/pr_tools.py` | Add `SubmitPRTool` + `SubmitPRInput`. `CreatePRTool` **deleted entirely** — `SubmitPRTool` calls `GitHubManager.create_pr()` directly |
 | `mcp_server/server.py` | Register `SubmitPRTool` instead of `CreatePRTool` in tool list |
-| `mcp_server/managers/enforcement_runner.py` | `check_merge_readiness` handler unchanged — called internally by `SubmitPRTool.execute()` |
-| `.st3/config/enforcement.yaml` | `tool: create_pr` → `tool: submit_pr` OR remove rule (enforcement becomes internal) |
-| `mcp_server/tools/git_tools.py` | Terminal-route neutralize logic (lines 370-395 in `GitCommitTool.execute()`) → extracted to shared utility or moved to `SubmitPRTool` |
+| `mcp_server/managers/enforcement_runner.py` | `check_merge_readiness` handler **removed**; new `_handle_check_phase_readiness` handler added (called as enforcement pre-action on `submit_pr`); new `_handle_check_pr_status` handler added (called for `tool_category: branch_mutating`) |
+| `.st3/config/enforcement.yaml` | Rule `create_pr → check_merge_readiness` removed entirely; two new rules: `tool: submit_pr → check_phase_readiness` (pre) + `tool_category: branch_mutating → check_pr_status` (pre) |
+| `mcp_server/tools/git_tools.py` | Terminal-route neutralize logic (lines 370-395) **removed** from `GitCommitTool.execute()` |
 
 **Key architectural decision**: Whether enforcement stays in `enforcement.yaml` (consistent with all other tools) or moves internal to `SubmitPRTool.execute()` (simpler, since the check and action are now atomic).
-
+**Resolved**: Enforcement stays in `enforcement.yaml` as `check_phase_readiness` on `submit_pr` (option B from D1). The phase gate runs as an external pre-call action, not inside `SubmitPRTool.execute()`.
 ### 4. NoteContext / Messaging Preservation
 
 The `NoteContext` lifecycle does not change fundamentally:
@@ -155,20 +155,19 @@ The current messaging classes (`ExclusionNote`, `SuggestionNote`, `CommitNote`) 
 
 | File | Methods | Reason |
 |------|---------|--------|
-| `tests/mcp_server/unit/managers/test_enforcement_runner_c3.py` | 11 | Test `check_merge_readiness` handler — event name may change |
-| `tests/mcp_server/unit/managers/test_enforcement_runner_c9_default_base.py` | 10 | Test default base branch in enforcement context |
+| `tests/mcp_server/unit/managers/test_enforcement_runner_c3.py` | *(deleted)* | Tested `check_merge_readiness` handler — file deleted; handler replaced by `_handle_check_phase_readiness` |
 | `tests/mcp_server/unit/managers/test_enforcement_runner_unit.py` | 6 | Unit tests for enforcement runner |
 
-#### 5c. Tests That Likely Survive (internal CreatePRTool stays)
+#### 5c. Tests — Actual Outcome *(earlier plan assumed internal `CreatePRTool` survival — superseded; see D2)*
 
-| File | Methods | Reason |
+| File | Methods | Outcome |
 |------|---------|--------|
-| `tests/mcp_server/unit/tools/test_git_tools_c8_terminal_route.py` | 11 | Tests terminal-route neutralize in GitCommitTool — depends on refactor scope |
-| `tests/mcp_server/unit/tools/test_pr_tools.py` | 5 | Tests CreatePRTool mechanics (may survive if class stays) |
-| `tests/mcp_server/unit/tools/test_pr_tools_config.py` | 1 | Tests CreatePRInput.apply_default_base_branch — survives |
-| `tests/mcp_server/unit/test_server.py` | 2 | create_pr-specific tests in server test |
-| `tests/mcp_server/unit/test_github_extras.py` | 1 | Tests GitHub manager PR creation |
-| `tests/mcp_server/unit/managers/test_enforcement_runner.py` | 9 | General enforcement runner tests |
+| `tests/mcp_server/unit/tools/test_git_tools_c8_terminal_route.py` | *(deleted)* | File deleted along with terminal-route removal |
+| `tests/mcp_server/unit/tools/test_pr_tools.py` | Rewritten | Now tests `SubmitPRTool`; no `CreatePRTool` references |
+| `tests/mcp_server/unit/tools/test_pr_tools_config.py` | *(deleted)* | `CreatePRInput` deleted with `CreatePRTool` |
+| `tests/mcp_server/unit/test_server.py` | Updated | Survives; now asserts `create_pr` is **not called** (negative assertion) |
+| `tests/mcp_server/unit/test_github_extras.py` | *(deleted)* | File deleted |
+| `tests/mcp_server/unit/managers/test_enforcement_runner.py` | Survives | General enforcement runner tests |
 
 #### 5d. New Tests Required
 
@@ -315,6 +314,7 @@ Nieuwe handler `_handle_check_pr_status` in `EnforcementRunner` roept `IPRStatus
 
 - Verwijder: `git_add_or_commit → exclude_branch_local_artifacts`
 - Verwijder: `create_pr → check_merge_readiness`
+- Toevoegen: `tool: submit_pr → check_phase_readiness` (pre)
 - Toevoegen: `tool_category: branch_mutating → check_pr_status` (pre)
 
 ### E8 — Testcoverage (oplost Finding 5)
@@ -333,7 +333,7 @@ Nieuwe handler `_handle_check_pr_status` in `EnforcementRunner` roept `IPRStatus
 
 1. **`submit_pr` is architecturally sound** — it eliminates the chicken-and-egg problem by making phase check and neutralization atomic within a single tool call.
 
-2. **Scope is significant but bounded** — ~8 production files, ~25 test methods to rewrite/update, ~50 documentation references. The core enforcement logic (`check_merge_readiness`, `neutralize_to_base`) is reused, not rewritten.
+2. **Scope is significant but bounded** — ~8 production files, ~25 test methods to rewrite/update, ~50 documentation references. The `check_merge_readiness` enforcement handler was **replaced** (not reused) by `check_phase_readiness`; `neutralize_to_base` is reused internally within `SubmitPRTool`.
 
 3. **NoteContext mechanism is fully preserved** — no changes to `ExclusionNote`, `SuggestionNote`, or `CommitNote`. They just live within one tool context instead of two.
 
