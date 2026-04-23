@@ -210,6 +210,27 @@ class GitAdapter:
                     f"git restore --source={merge_base_sha} failed for '{path}': {e}"
                 ) from e
 
+    def has_net_diff_for_path(self, path: str, base: str) -> bool:
+        """Return True if *path* has a net delta between the merge-base and HEAD.
+
+        Uses ``git diff --name-only <merge_base>..HEAD -- <path>`` to determine
+        whether this branch introduced commits that modified *path* relative to
+        *base*. Raises ExecutionError on non-zero git exit codes.
+        """
+        try:
+            merge_base_sha = str(self.repo.git.merge_base("HEAD", base)).strip()
+        except Exception as e:
+            raise ExecutionError(f"git merge-base failed for base='{base}': {e}") from e
+
+        try:
+            diff_output = str(
+                self.repo.git.diff("--name-only", f"{merge_base_sha}..HEAD", "--", path)
+            )
+        except Exception as e:
+            raise ExecutionError(f"git diff failed for path='{path}': {e}") from e
+
+        return path in diff_output.splitlines()
+
     def checkout(self, branch_name: str) -> None:
         """Checkout branch (local or remote-tracking)."""
         try:

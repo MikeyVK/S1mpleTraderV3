@@ -216,11 +216,17 @@ class TestBranchMutatingToolAllowedWhenPRAbsent:
         )
         note_context = NoteContext()
 
-        # Must not raise ValidationError from check_pr_status
-        runner.run(
-            event=tool_cls.name,
-            timing="pre",
-            enforcement_ctx=ctx,
-            note_context=note_context,
-            tool_category=tool_cls.tool_category,
-        )
+        # Must not raise ValidationError from check_pr_status (other rules may still fire)
+        try:
+            runner.run(
+                event=tool_cls.name,
+                timing="pre",
+                enforcement_ctx=ctx,
+                note_context=note_context,
+                tool_category=tool_cls.tool_category,
+            )
+        except ValidationError as exc:
+            assert "open PR" not in str(exc), (
+                f"{tool_cls.__name__} must not be blocked by check_pr_status when "
+                f"PRStatus.ABSENT, but got: {exc}"
+            )

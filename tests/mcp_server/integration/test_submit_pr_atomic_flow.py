@@ -39,24 +39,42 @@ from unittest.mock import MagicMock
 import yaml
 
 import mcp_server.server as server_module
+from mcp_server.config.schemas.phase_contracts_config import BranchLocalArtifact
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IPRStatusWriter, PRStatus
-from mcp_server.core.operation_notes import ExclusionNote, NoteContext, RecoveryNote
+from mcp_server.core.operation_notes import NoteContext, RecoveryNote
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.tools import git_tools
 from mcp_server.tools.pr_tools import SubmitPRInput, SubmitPRTool
+
+_STATE_ARTIFACT = BranchLocalArtifact(
+    path=".st3/state.json",
+    reason="branch-local workflow state",
+)
+_DELIVERABLES_ARTIFACT = BranchLocalArtifact(
+    path=".st3/deliverables.json",
+    reason="branch-local deliverables",
+)
 
 
 def _make_submit_pr_tool(
     git_manager: GitManager,
     github_manager: GitHubManager,
     pr_status_writer: IPRStatusWriter,
+    artifacts: tuple[BranchLocalArtifact, ...] = (_STATE_ARTIFACT,),
 ) -> SubmitPRTool:
+    merge_readiness_context = MergeReadinessContext(
+        terminal_phase="ready",
+        pr_allowed_phase="ready",
+        branch_local_artifacts=artifacts,
+    )
     return SubmitPRTool(
         git_manager=git_manager,
         github_manager=github_manager,
         pr_status_writer=pr_status_writer,
+        merge_readiness_context=merge_readiness_context,
     )
 
 
@@ -78,6 +96,7 @@ class TestSubmitPRHappyPath:
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
         git_manager.adapter.get_current_branch.return_value = "feature/42-test"
+        git_manager.adapter.has_net_diff_for_path.return_value = True
         git_manager.commit_with_scope.return_value = "abc1234"
 
         github_manager = MagicMock(spec=GitHubManager)
@@ -90,11 +109,7 @@ class TestSubmitPRHappyPath:
 
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
 
-        context = NoteContext()
-        # Inject an ExclusionNote so neutralize_to_base is triggered
-        context.produce(ExclusionNote(file_path=".st3/state.json"))
-
-        result = asyncio.get_event_loop().run_until_complete(tool.execute(_make_params(), context))
+        result = asyncio.get_event_loop().run_until_complete(tool.execute(_make_params(), NoteContext()))
 
         assert not result.is_error
         git_manager.adapter.neutralize_to_base.assert_called_once()
@@ -104,7 +119,7 @@ class TestSubmitPRHappyPath:
         pr_status_writer.set_pr_status.assert_called_once_with("feature/42-test", PRStatus.OPEN)
 
     def test_submit_pr_skips_neutralize_when_no_exclusions(self) -> None:
-        """When no ExclusionNotes are present, neutralize_to_base must not be called."""
+        """When no branch-local artifacts are configured, neutralize_to_base must not be called."""
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
         git_manager.adapter.get_current_branch.return_value = "feature/42-test"
@@ -118,7 +133,8 @@ class TestSubmitPRHappyPath:
 
         pr_status_writer = MagicMock(spec=IPRStatusWriter)
 
-        tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
+        # No artifacts → neutralize must not be called
+        tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer, artifacts=())
 
         result = asyncio.get_event_loop().run_until_complete(
             tool.execute(_make_params(), NoteContext())
@@ -133,6 +149,7 @@ class TestSubmitPRHappyPath:
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
         git_manager.adapter.get_current_branch.return_value = "refactor/283-test"
+        git_manager.adapter.has_net_diff_for_path.return_value = False
         git_manager.commit_with_scope.return_value = "deadbeef"
 
         github_manager = MagicMock(spec=GitHubManager)
@@ -160,6 +177,7 @@ class TestSubmitPRPartialFailure:
         git_manager = MagicMock(spec=GitManager)
         git_manager.adapter = MagicMock()
         git_manager.adapter.get_current_branch.return_value = "feature/42-test"
+        git_manager.adapter.has_net_diff_for_path.return_value = True
         git_manager.commit_with_scope.return_value = "abc1234"
         git_manager.adapter.push.side_effect = ExecutionError("push failed: remote rejected")
 
@@ -169,8 +187,6 @@ class TestSubmitPRPartialFailure:
         tool = _make_submit_pr_tool(git_manager, github_manager, pr_status_writer)
 
         context = NoteContext()
-        context.produce(ExclusionNote(file_path=".st3/state.json"))
-
         result = asyncio.get_event_loop().run_until_complete(tool.execute(_make_params(), context))
 
         assert result.is_error

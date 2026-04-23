@@ -26,7 +26,7 @@ from mcp_server.core.logging import get_logger
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = get_logger("tools.git_pull")
@@ -51,7 +51,7 @@ class GitPullInput(BaseModel):
     )
 
 
-class GitPullTool(BaseTool):
+class GitPullTool(BranchMutatingTool):
     """Pull updates from a remote into the current branch.
 
     Responsibilities:

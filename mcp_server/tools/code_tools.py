@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.core.operation_notes import NoteContext
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 
@@ -20,7 +20,7 @@ class CreateFileInput(BaseModel):
     content: str = Field(..., description="File content")
 
 
-class CreateFileTool(BaseTool):
+class CreateFileTool(BranchMutatingTool):
     """Tool to create or overwrite a file.
 
     .. deprecated::

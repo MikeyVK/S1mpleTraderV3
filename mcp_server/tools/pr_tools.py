@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IPRStatusWriter, PRStatus
-from mcp_server.core.operation_notes import ExclusionNote, NoteContext, RecoveryNote
+from mcp_server.core.operation_notes import NoteContext, RecoveryNote
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas import GitConfig
 from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
@@ -146,10 +147,12 @@ class SubmitPRTool(BranchMutatingTool):
         git_manager: GitManager,
         github_manager: GitHubManager,
         pr_status_writer: IPRStatusWriter,
+        merge_readiness_context: MergeReadinessContext,
     ) -> None:
         self._git_manager = git_manager
         self._github_manager = github_manager
         self._pr_status_writer = pr_status_writer
+        self._merge_readiness_context = merge_readiness_context
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -160,10 +163,14 @@ class SubmitPRTool(BranchMutatingTool):
         branch = self._git_manager.adapter.get_current_branch()
         base = params.base or self._git_manager.git_config.default_base_branch
 
-        # Step 1-3: neutralize branch-local artifacts if ExclusionNotes present
-        excluded_paths = frozenset(n.file_path for n in context.of_type(ExclusionNote))
-        if excluded_paths:
-            self._git_manager.adapter.neutralize_to_base(excluded_paths, base)
+        # Step 1-3: neutralize branch-local artifacts that have a net diff against base
+        paths_to_neutralize = frozenset(
+            artifact.path
+            for artifact in self._merge_readiness_context.branch_local_artifacts
+            if self._git_manager.adapter.has_net_diff_for_path(artifact.path, base)
+        )
+        if paths_to_neutralize:
+            self._git_manager.adapter.neutralize_to_base(paths_to_neutralize, base)
 
         # Step 4-7: commit → push → create_pr → write OPEN status
         try:

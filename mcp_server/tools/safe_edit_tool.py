@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from mcp_server.core.operation_notes import NoteContext
 
 # Project modules
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.validation.validation_service import ValidationService
 
@@ -180,7 +180,7 @@ class SafeEditInput(BaseModel):
         return self
 
 
-class SafeEditTool(BaseTool):
+class SafeEditTool(BranchMutatingTool):
     """Tool for safely editing files with validation and multiple edit modes.
 
     Supports four mutually exclusive edit modes:

@@ -16,7 +16,7 @@ from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_contract_resolver import PhaseContractResolver
 from mcp_server.schemas import GitConfig
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = get_logger("tools.git")
@@ -113,7 +113,7 @@ class CreateBranchInput(BaseModel):
         return value
 
 
-class CreateBranchTool(BaseTool):
+class CreateBranchTool(BranchMutatingTool):
     """Tool to create a git branch from specified base."""
 
     name = "create_branch"
@@ -282,7 +282,7 @@ class GitCommitInput(BaseModel):
         return value.lower()  # Normalize to lowercase
 
 
-class GitCommitTool(BaseTool):
+class GitCommitTool(BranchMutatingTool):
     """Tool to commit changes with workflow-scoped commit messages."""
 
     name = "git_add_or_commit"
@@ -372,7 +372,7 @@ class GitRestoreInput(BaseModel):
     source: str = Field(default="HEAD", description="Git ref to restore from (default: HEAD)")
 
 
-class GitRestoreTool(BaseTool):
+class GitRestoreTool(BranchMutatingTool):
     """Tool to restore files to a ref (discard local changes)."""
 
     name = "git_restore"
@@ -480,7 +480,7 @@ class GitPushInput(BaseModel):
     )
 
 
-class GitPushTool(BaseTool):
+class GitPushTool(BranchMutatingTool):
     """Tool to push current branch to origin."""
 
     name = "git_push"
@@ -520,7 +520,7 @@ class GitMergeInput(BaseModel):
     branch: str = Field(..., description="Branch name to merge")
 
 
-class GitMergeTool(BaseTool):
+class GitMergeTool(BranchMutatingTool):
     """Tool to merge a branch into current branch."""
 
     name = "git_merge"
@@ -559,7 +559,7 @@ class GitDeleteBranchInput(BaseModel):
     force: bool = Field(default=False, description="Force delete unmerged branch")
 
 
-class GitDeleteBranchTool(BaseTool):
+class GitDeleteBranchTool(BranchMutatingTool):
     """Tool to delete a branch."""
 
     name = "git_delete_branch"

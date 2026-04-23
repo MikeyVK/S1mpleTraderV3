@@ -252,7 +252,6 @@ class MCPServer:
         self.enforcement_runner = EnforcementRunner(
             workspace_root=workspace_root,
             config=enforcement_config,
-            merge_readiness_context=_merge_readiness_context,
             default_base_branch=git_config.default_base_branch,
             pr_status_reader=self.pr_status_cache,
         )
@@ -380,6 +379,7 @@ class MCPServer:
                         git_manager=self.git_manager,
                         github_manager=self.github_manager,
                         pr_status_writer=self.pr_status_cache,
+                        merge_readiness_context=_merge_readiness_context,
                     ),
                     AddLabelsTool(manager=self.github_manager, label_config=label_config),
                     ListLabelsTool(manager=self.github_manager, label_config=label_config),

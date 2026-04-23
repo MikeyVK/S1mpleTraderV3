@@ -26,7 +26,7 @@ from mcp_server.core.operation_notes import NoteContext
 # Project modules
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 
@@ -59,7 +59,7 @@ class ForcePhaseTransitionInput(BaseModel):
         return v.strip()
 
 
-class _BaseTransitionTool(BaseTool):
+class _BaseTransitionTool(BranchMutatingTool):
     """Base class for phase and cycle transition tools."""
 
     def __init__(

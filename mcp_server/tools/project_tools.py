@@ -24,7 +24,7 @@ from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 from mcp_server.schemas import WorkflowConfig
-from mcp_server.tools.base import BaseTool
+from mcp_server.tools.base import BaseTool, BranchMutatingTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class InitializeProjectInput(BaseModel):
     skip_reason: str | None = Field(default=None, description="Reason for custom phases")
 
 
-class InitializeProjectTool(BaseTool):
+class InitializeProjectTool(BranchMutatingTool):
     """Tool for initializing projects with atomic state management.
 
     Phase 0.5: Human selects workflow_name → generates project phase plan.
@@ -389,7 +389,7 @@ class SavePlanningDeliverablesInput(BaseModel):
     )
 
 
-class SavePlanningDeliverablesTool(BaseTool):
+class SavePlanningDeliverablesTool(BranchMutatingTool):
     """Tool to persist planning deliverables for an issue to deliverables.json.
 
     Issue #229 Cycle 4 — GAP-04 + GAP-06:
@@ -479,7 +479,7 @@ class UpdatePlanningDeliverablesInput(BaseModel):
     )
 
 
-class UpdatePlanningDeliverablesTool(BaseTool):
+class UpdatePlanningDeliverablesTool(BranchMutatingTool):
     """Tool to merge-update planning deliverables for an issue in deliverables.json.
 
     Issue #229 Cycle 5 — GAP-09:

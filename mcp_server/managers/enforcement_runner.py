@@ -18,15 +18,12 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import cast
 
-from mcp_server.core.exceptions import ConfigError, ExecutionError, ValidationError
+from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.core.interfaces import IPRStatusReader, PRStatus
 from mcp_server.core.operation_notes import (
-    ExclusionNote,
     NoteContext,
-    RecoveryNote,
     SuggestionNote,
 )
-from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
 
@@ -94,62 +91,6 @@ def _get_current_git_branch(workspace_root: Path) -> str | None:
     return name if name and name != "HEAD" else None
 
 
-def _git_is_tracked(workspace_root: Path, path: str) -> bool:
-    """Return True if *path* is currently tracked in the git index."""
-    result = _run_git_command(
-        workspace_root,
-        ["ls-files", "--error-unmatch", path],
-        failure_context=f"git ls-files failed for '{path}'",
-    )
-    return result.returncode == 0
-
-
-def _has_net_diff_for_path(workspace_root: Path, path: str, base: str) -> bool:
-    """Return True if *path* has a net delta between the merge-base and HEAD.
-
-    Uses ``git diff --name-only merge_base..HEAD -- path`` to determine whether
-    this branch introduced any commits that modified *path* relative to *base*.
-
-    Raises ExecutionError on non-zero git exit codes so callers receive an
-    explicit signal rather than a silent false negative.
-    """
-    merge_base_result = _run_git_command(
-        workspace_root,
-        ["merge-base", "HEAD", base],
-        failure_context=f"git merge-base failed for base='{base}'",
-    )
-    if merge_base_result.returncode != 0:
-        raise ExecutionError(
-            f"git merge-base failed for base='{base}': {merge_base_result.stderr.strip()}"
-        )
-    merge_base = merge_base_result.stdout.strip()
-
-    diff_result = _run_git_command(
-        workspace_root,
-        ["diff", "--name-only", f"{merge_base}..HEAD", "--", path],
-        failure_context=f"git diff failed for path='{path}'",
-    )
-    if diff_result.returncode != 0:
-        raise ExecutionError(f"git diff failed for path='{path}': {diff_result.stderr.strip()}")
-    return path in diff_result.stdout.splitlines()
-
-
-def _git_rm_cached(workspace_root: Path, path: str, note_context: NoteContext) -> None:
-    """Remove *path* from the git index without deleting the working-tree file."""
-    result = _run_git_command(
-        workspace_root,
-        ["rm", "--cached", "--ignore-unmatch", path],
-        failure_context=f"git rm --cached failed for '{path}'",
-    )
-    if result.returncode != 0:
-        stderr = result.stderr.strip()
-        note_context.produce(
-            RecoveryNote(message="Run 'git status' to inspect current index state")
-        )
-        note_context.produce(RecoveryNote(message=f"Manually run: git rm --cached {path}"))
-        raise ExecutionError(f"git rm --cached failed for '{path}': {stderr}")
-
-
 __all__ = [
     "EnforcementAction",
     "EnforcementConfig",
@@ -211,13 +152,11 @@ class EnforcementRunner:
         workspace_root: Path,
         config: EnforcementConfig,
         registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
-        merge_readiness_context: MergeReadinessContext | None = None,
         default_base_branch: str = "main",
         pr_status_reader: IPRStatusReader | None = None,
     ) -> None:
         self.workspace_root = Path(workspace_root)
         self._config = config
-        self._merge_readiness_context = merge_readiness_context
         self.default_base_branch = default_base_branch
         self._pr_status_reader = pr_status_reader
         if registry is None:
@@ -296,14 +235,6 @@ class EnforcementRunner:
             self._handle_check_branch_policy,
         )
         registry.register(
-            "exclude_branch_local_artifacts",
-            self._handle_exclude_branch_local_artifacts,
-        )
-        registry.register(
-            "check_merge_readiness",
-            self._handle_check_merge_readiness,
-        )
-        registry.register(
             "check_pr_status",
             self._handle_check_pr_status,
         )
@@ -340,104 +271,6 @@ class EnforcementRunner:
         raise ValidationError(
             f"Branch type '{branch_type}' cannot be created from base '{base_branch}'",
         )
-
-    def _handle_exclude_branch_local_artifacts(
-        self,
-        action: EnforcementAction,
-        context: EnforcementContext,
-        workspace_root: Path,
-        note_context: NoteContext,
-    ) -> None:
-        """Write ExclusionNote for each confirmed-tracked branch-local artifact.
-
-        Only runs when the current workflow phase equals the configured terminal phase.
-        For each artifact in merge_readiness_context.branch_local_artifacts that is
-        git-tracked, produces an ExclusionNote in note_context. No git operations.
-
-        C3 contract: zero git ops in this handler. GitAdapter.commit(skip_paths=)
-        owns the actual exclusion from the staging area.
-        """
-        del action, context
-        if self._merge_readiness_context is None:
-            return
-        ctx = self._merge_readiness_context
-
-        current_phase = _read_current_phase(workspace_root)
-        if current_phase != ctx.terminal_phase:
-            return
-
-        for artifact in ctx.branch_local_artifacts:
-            if not _git_is_tracked(workspace_root, artifact.path):
-                continue
-            note_context.produce(ExclusionNote(file_path=artifact.path))
-
-    def _handle_check_merge_readiness(
-        self,
-        action: EnforcementAction,
-        context: EnforcementContext,
-        workspace_root: Path,
-        note_context: NoteContext,
-    ) -> None:
-        """Block PR creation when phase or net-diff-artifact checks fail.
-
-        Check 1 — Phase gate: current_phase must equal pr_allowed_phase.
-        Check 2 — Artifact net-diff pre-flight: no branch-local artifact may have
-          a net delta between the merge-base and HEAD. Uses _has_net_diff_for_path
-          (git diff merge_base..HEAD) rather than _git_is_tracked (git ls-files)
-          to avoid false positives when the artifact is inherited from the base branch.
-        Both checks read live state at handler execution time.
-        """
-        del action  # action config not used; context MUST remain live for get_param()
-        if self._merge_readiness_context is None:
-            return
-        ctx = self._merge_readiness_context
-
-        base = str(context.get_param("base") or self.default_base_branch)
-
-        # Check 1 — Phase gate (read live from state.json)
-        current_phase = _read_current_phase(workspace_root)
-        if current_phase != ctx.pr_allowed_phase:
-            note_context.produce(
-                SuggestionNote(message=f'transition_phase(to_phase="{ctx.pr_allowed_phase}")')
-            )
-            raise ValidationError(
-                f"PR creation requires phase '{ctx.pr_allowed_phase}'. "
-                f"Current phase: '{current_phase}'.",
-            )
-
-        # Check 2 — Artifact net-diff pre-flight (C6: replaces _git_is_tracked)
-        tracked = [
-            artifact
-            for artifact in ctx.branch_local_artifacts
-            if _has_net_diff_for_path(workspace_root, artifact.path, base)
-        ]
-        if tracked:
-            for a in tracked:
-                note_context.produce(
-                    SuggestionNote(message=f"  - {a.path}\n    Reason: {a.reason}")
-                )
-            note_context.produce(
-                SuggestionNote(
-                    message=f"Run git_add_or_commit in phase '{ctx.pr_allowed_phase}'"
-                    f" to neutralize these paths:"
-                )
-            )
-            note_context.produce(
-                SuggestionNote(
-                    message=f'  git_add_or_commit(workflow_phase="{ctx.pr_allowed_phase}",'
-                    ' message="...")'
-                )
-            )
-            note_context.produce(
-                SuggestionNote(
-                    message=f"  This commit will align the branch tip to '{base}'"
-                    " for the excluded paths."
-                )
-            )
-            raise ValidationError(
-                f"Branch-local artifacts have a net delta against '{base}' and"
-                " would contaminate the merge target:",
-            )
 
     def _handle_check_pr_status(
         self,
