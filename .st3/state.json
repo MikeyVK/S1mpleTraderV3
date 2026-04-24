@@ -1,0 +1,21 @@
+{
+  "branch": "docs/288-backlog-review",
+  "issue_number": 288,
+  "workflow_name": "docs",
+  "current_phase": "planning",
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
+  "required_phases": [
+    "planning",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": null,
+  "issue_title": "Backlog review: close superseded issues, define next focus areas",
+  "parent_branch": null,
+  "created_at": "2026-04-24T07:14:23.840104+00:00",
+  "transitions": [],
+  "reconstructed": false
+}
