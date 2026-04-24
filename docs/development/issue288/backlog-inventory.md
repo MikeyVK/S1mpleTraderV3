@@ -1,199 +1,180 @@
 # Backlog Inventory — Issue #288
-**Date:** 2026-04-24  
-**Trigger:** Merge of PR #283 (atomic submit_pr, BranchMutatingTool ABC, PRStatusCache, LoD fix)
+**Bijgewerkt:** 2026-04-24  
+**Aanleiding:** Merge van PR #283 + backlog-sanering: 17 issues gesloten, 2 nieuwe epics aangemaakt, epic-mapping uitgevoerd
 
 ---
 
-## 1. Inventory: All 79 Open Issues
+## 1. Epic-overzicht
 
-### Group A — Recent analysis findings (high issue numbers, from analysis rounds)
+| Epic | Titel | # Issues | Sprint |
+|------|-------|----------|--------|
+| #91 | Restore clean tests + consistent ToolResult contract | 12 | Focus A |
+| #72 | Template Library Management | 14 | Focus B |
+| #49 | MCP Platform Configurability | 6 | — |
+| #18 | Enforce TDD & Coverage via Hard Tooling | 5 | — |
+| #289 | Installable Wheel / Standalone MCP Server | 2 + nieuw | Focus C |
+| #290 | Workflow Intelligence / Agent UX | 7 | — |
 
-| # | Title | Assessment |
-|---|-------|-----------|
-| #286 | generic template: methods schema (list[str]) vs template (object access) | Bug → bundle into template issue |
-| #285 | Separate MCPServer composition root from runtime dispatch | Architecture → bundle into wheel epic |
-| #282 | Isolate test suite from real workflows.yaml | Test infra bug, active pain point |
-| #278 | Fix critical gaps and stale claims in agent.md | Partially resolved in #283 |
-| #274 | Enforce terminal-phase exit gates via create_pr hook | **CLOSE** — create_pr deleted in #283 |
-| #271 | Make phase_contracts.yaml SSOT for workflow-phase membership | Config improvement |
-| #269 | Align phase and cycle transition tool base class and API contracts | Technical debt |
-| #268 | MCP-tool-first orchestration: get_work_context + create_handover | Workflow improvement |
-| #262 | Config layer: GitConfig/QualityConfig are constants, not YAML-backed | Bundle into wheel epic |
-| #261 | Add SHA-256 tamper detection for deliverables.json | Low priority / gold-plating |
-| #260 | Configureerbare MCP root directory: .st3 → instelbaar pad | **Core blocker for distribution** |
-| #259 | ArtifactManager sections injection + workflow-aware template rendering | Future / depends on #258 |
-| #258 | sections.yaml + workflow phase_contracts + PSE content_contract gate | Future |
-| #255 | Unify scope-aware rerun optimization for quality gates and tests | Future epic |
-| #254 | Centralize .st3 config root via MCP setting | **CLOSE** — duplicate of #260 |
-| #253 | run_tests: summary_line sync bug + no fail-fast + missing coverage | Bundle into run_tests issue |
-| #250 | Test suite clean-up: SOLID audit, deprecated tests, setup-duplicaten | Technical debt |
-| #245 | Shared ArtifactBodyRenderer: auto-render PR body and commit message | Future feature |
-| #242 | save_planning_deliverables validates TDD deliverables on planning exit | Future gate |
-| #238 | Implement three-unity architecture for create_issue tool | Large refactor |
-| #237 | Exclude integration marker from default pytest run | Bundle into run_tests issue |
-| #236 | Backfill existing issues: clean titles, add labels, re-scaffold bodies | Maintenance |
-| #231 | State reconciliation for get_state: cycle/subphase awareness | Bug/enhancement |
-| #230 | TDD cycle counter resets to 1 on TDD phase re-entry | Active bug |
-| #228 | Add issue number to commit message encoding | Small enhancement |
-| #225 | Refactor: remove V1 pipeline, consolidate to single Pydantic scaffold path | Bundle into template issue |
-
-### Group B — Active bugs (real, daily pain points)
-
-| # | Title | Assessment |
-|---|-------|-----------|
-| #253 | run_tests: sync bug + no fail-fast + missing coverage | Bundle into run_tests issue |
-| #237 | Exclude integration marker from default pytest run | Bundle into run_tests issue |
-| #230 | TDD cycle counter reset on phase re-entry | Keep open |
-| #231 | get_state cycle/subphase awareness | Keep open |
-| #139 | get_project_plan does not return current_phase | Daily pain point, keep open |
-| #117 | get_work_context detects only TDD phase | Daily pain point, keep open |
-| #89 | Copilot Chat disables MCP tools per session | **CLOSE** — VS Code limitation, not fixable by us |
-| #58 | scaffold_design_doc: sections parameter type mismatch | Bundle into template issue |
-
-### Group C — Concrete features/refactors (scoped, relevant)
-
-| # | Title | Assessment |
-|---|-------|-----------|
-| #285 | Separate MCPServer composition root | Bundle into wheel epic |
-| #269 | Align phase/cycle transition base class + API | Keep open |
-| #268 | get_work_context + create_handover | Keep open |
-| #250 | Test suite clean-up | Keep open |
-| #237 | Exclude integration marker | Bundle into run_tests issue |
-| #228 | Issue number in commit encoding | Keep open |
-| #225 | Remove V1 scaffold pipeline | Bundle into template issue |
-| #187 | Decouple create_issue from Jinja2 field contract | Keep open |
-| #150 | Align get_issue/list_issues with new conventions | Keep open |
-| #140 | Test coverage 82% → 90% | Bundle into wheel epic |
-| #136 | Normalise error handling | Keep open |
-| #118 | Post-#56: restore test discovery + lint suppressions | Keep open |
-| #116 | create_branch accepts issue_number parameter | Keep open |
-| #107 | DRY violations in scaffolding | Bundle into template issue (optional) |
-| #74 | Fix DTO and Tool template validation failures | Bundle into template issue |
-| #62 | Make phase workflow tests phase-agnostic | Keep open |
-| #47 | Audit over-broad exception handling + lint suppressions | Keep open |
-
-### Group D — Epics
-
-| # | Title | Assessment |
-|---|-------|-----------|
-| #91 | Epic: Restore clean tests + consistent ToolResult error contract | Partially done, keep open |
-| #73 | Epic: Template Governance | **CLOSE** — process doc, not code; governance emerges from practice |
-| #72 | Epic: Template Library Management | Keep open as parent |
-| #49 | Epic: MCP Platform Configurability (8 config files) | Keep open as parent |
-
-### Group E — Old sequential phase implementation issues (superseded)
-
-| # | Title | Assessment |
-|---|-------|-----------|
-| #36 | Phase G: End-to-end integration testing + docs | **CLOSE** — superseded by actual implementation |
-| #35 | Phase F: Extend SafeEdit validators (YAML/JSON/TOML) | **CLOSE** — partially done, low priority |
-| #34 | Phase D: Path-based file creation enforcement | **CLOSE** — realised |
-| #33 | Phase C: Retrofit GitManager with PolicyEngine | **CLOSE** — realised in #283 |
-| #32 | Phase B: TransitionPhaseTool implementation | **CLOSE** — realised |
-| #31 | Phase A.2: PhaseStateEngine for transition management | **CLOSE** — realised |
-| #30 | Phase A.1: PolicyEngine core with strict validation | **CLOSE** — realised |
-| #24 | [Tooling Debt] Missing Git operations in ST3 workflow tools | **CLOSE** — mostly realised |
-
-### Group F — Old / low priority / stale
-
-| # | Title | Assessment |
-|---|-------|-----------|
-| #274 | Enforce terminal-phase exit gates via create_pr | **CLOSE** — create_pr deleted |
-| #261 | SHA-256 tamper detection deliverables.json | Low priority, defer |
-| #260 | Configureerbare MCP root (.st3) | Core distribution blocker → bundle into wheel epic |
-| #254 | Centralize .st3 config root | **CLOSE** — duplicate of #260 |
-| #242 | save_planning_deliverables validates TDD deliverables | Future |
-| #238 | Three-unity architecture create_issue | Large refactor, defer |
-| #236 | Backfill existing issues | Maintenance, defer |
-| #122 | Refactor: path resolution ArtifactManager → tool layer | Keep as debt |
-| #121 | Content-Aware Edit Tool: VS Code Position/Range API | Defer |
-| #110 | Project Scaffolding Tool (Empty Dir → Full Project) | Future |
-| #109 | File Operations Consolidation (PathResolver Utility) | Debt |
-| #106 | ScaffoldComponentTool SRP Refactoring | Debt |
-| #102 | TEST: Project Initialization Tool Validation | Possibly stale |
-| #59 | Enforce Git Branching & Merging Strategy | Mostly realised |
-| #57 | Config: Constants Configuration (constants.yaml) | Low priority |
-| #48 | Research: Git as SSOT for phase tracking | **CLOSE** — replaced by state.json |
-| #46 | Enforce pre-push/post-pull validation | Partially done |
-| #42 | Phase workflow vs TDD: component→tdd sequence | Conceptual, low prio |
-| #41 | TransitionPhaseTool with phase-specific guidance | Enhancement |
-| #40 | Enforce hierarchical issue-specific docs structure | Partially realised |
-| #37 | Design test_*.py Jinja2 template | Template work |
-| #22 | Analyze SRP Compliance | **CLOSE** — research done |
-| #18 | Enforce TDD & Coverage via Hard Tooling | Partially realised |
-| #16 | Inventory of Test Coverage & TDD Compliance | **CLOSE** — done |
-| #15 | Enhanced Template Validation & Standardization | **CLOSE** — superseded |
-| #14 | Automated 'Close Feature' Workflow | **CLOSE** — superseded |
+Elke open issue staat in exact één epic of in §3 (standalone) of §4 (deferred).
 
 ---
 
-## 2. Issues to Close (17 confirmed)
+## 2. Issues per epic
 
-| # | Reason |
-|---|--------|
-| #274 | `create_pr` tool deleted in #283 — enforcement rule is gone |
-| #254 | Exact duplicate of #260 |
-| #89  | VS Code limitation outside our control |
-| #73  | Governance emerges from practice; process doc not actionable |
-| #36  | Superseded by actual implementation |
-| #35  | Superseded; SafeEdit validators partially done |
-| #34  | Realised (path enforcement implemented) |
-| #33  | Realised in #283 (GitManager + PolicyEngine/EnforcementRunner) |
-| #32  | Realised (TransitionPhaseTool exists and works) |
-| #31  | Realised (PhaseStateEngine exists and works) |
-| #30  | Realised (EnforcementRunner = PolicyEngine core) |
-| #24  | Mostly realised; remaining items tracked in specific issues |
-| #48  | Research superseded; state.json is the SSOT |
-| #22  | Research complete; findings absorbed into specific issues |
-| #16  | Inventory done; tracking ongoing via quality gates |
-| #15  | Superseded by V2 template validation infrastructure |
-| #14  | Automated close workflow not needed; submit_pr covers it |
+### Epic #91 — Restore clean tests + consistent ToolResult contract
+
+Focus A: #282, #253, #237 zijn de eerste te leveren issues (~1 sprint).
+
+| # | Titel | Prio |
+|---|-------|------|
+| #282 | Isolate test suite van real workflows.yaml (prod-config fallback) | **Nu** |
+| #253 | run_tests: sync bug + fail-fast + coverage support | **Nu** |
+| #237 | Exclude integration marker from default pytest run | **Nu** |
+| #136 | Normalise error handling (ToolResult contract) | Snel |
+| #147 | Standardize Tool I/O Schema Validation + graceful degradation | Snel |
+| #118 | Post-#56: herstel test discovery + lint suppressions | Snel |
+| #47 | Audit over-broad exception handling + lint suppressions | Snel |
+| #250 | Test suite clean-up: SOLID audit, deprecated tests | Later |
+| #62 | Make phase workflow tests phase-agnostic | Later |
+| #128 | V2→V3 Infrastructure Migration: tests & integration | Later |
+| #140 | Test coverage 82% → 90% | Later |
+| #102 | TEST: Project Initialization Tool Validation | Later |
+
+### Epic #72 — Template Library Management
+
+Focus B: #286, #74, #58, #225 zijn de eerste te leveren issues (~2 sprints).
+
+| # | Titel | Prio |
+|---|-------|------|
+| #286 | generic template: methods schema mismatch (list[str] vs object access) | **Nu** |
+| #74 | Fix DTO en Tool template validation failures | **Nu** |
+| #58 | scaffold_design_doc: sections parameter type mismatch | **Nu** |
+| #225 | Remove V1 pipeline, consolidate naar Pydantic scaffold path | **Nu** |
+| #107 | DRY violations in scaffolding (optioneel na #225) | Nu/Later |
+| #187 | Decouple create_issue van Jinja2 field contract | Snel |
+| #178 | unit_test template: add test_cases field voor echte testmethoden | Snel |
+| #238 | Three-unity architecture voor create_issue | Later |
+| #245 | Shared ArtifactBodyRenderer: auto-render PR body + commit message | Later |
+| #259 | ArtifactManager sections injection + workflow-aware rendering | Later |
+| #258 | sections.yaml + phase_contracts + PSE content_contract gate | Later |
+| #132 | Shared File Formatting Service for auto-format on write | Later |
+| #106 | ScaffoldComponentTool SRP Refactoring | Later |
+| #37 | Design test_*.py Jinja2 template met safe_edit diff-integratie | Later |
+
+### Epic #49 — MCP Platform Configurability
+
+| # | Titel | Prio |
+|---|-------|------|
+| #271 | phase_contracts.yaml SSOT voor workflow-fase membership | Snel |
+| #262 | Config layer: GitConfig/QualityConfig → YAML-backed (niet hardcoded) | Snel |
+| #141 | Move ephemeral artifacts van .st3/temp/ naar temp/ | Snel |
+| #122 | Move path resolution van ArtifactManager naar tool layer | Later |
+| #109 | File Operations Consolidation (PathResolver Utility) | Later |
+| #57 | Config: Constants Configuration (constants.yaml) | Later |
+
+### Epic #18 — Enforce TDD & Coverage via Hard Tooling
+
+| # | Titel | Prio |
+|---|-------|------|
+| #41 | TransitionPhaseTool met phase-specific focus/guidance | Snel |
+| #46 | Enforce pre-push/post-pull validation bij fase-transities | Snel |
+| #61 | Label Validation Enforcement via Tool Hooks | Snel |
+| #60 | Automatic Label Application op basis van issue type/branch/fase | Later |
+| #40 | Enforce hierarchical issue-specific documentatiestructuur | Later |
+
+### Epic #289 — Installable Wheel / Standalone MCP Server
+
+Focus C: #285 en #260 zijn de kerndependencies (~3–4 sprints totaal).
+
+| # | Titel | Prio |
+|---|-------|------|
+| #285 | Separate MCPServer composition root van runtime dispatch | **Nu** |
+| #260 | Configureerbare MCP root directory (.st3 → instelbaar pad) | **Nu** |
+| *(nieuw)* | Entry point in pyproject.toml (`console_scripts: st3-mcp`) | Aanmaken |
+| *(nieuw)* | Bootstrap: default .st3/ structuur aanmaken bij first run | Aanmaken |
+
+### Epic #290 — Workflow Intelligence / Agent UX
+
+| # | Titel | Prio |
+|---|-------|------|
+| #139 | Bug: get_project_plan geeft current_phase niet terug uit state.json | **Nu** |
+| #117 | get_work_context detecteert alleen TDD-fase, niet volledige workflow | **Nu** |
+| #230 | TDD cycle counter reset bij re-entry na planning/design detour | **Nu** |
+| #231 | State reconciliation get_state: cycle/subphase awareness | Snel |
+| #45 | PhaseStateEngine state.json structuurinconsistentie docs vs impl | Snel |
+| #268 | MCP-tool-first orchestration: get_work_context + create_handover | Later |
+| #278 | Fix critical gaps en stale claims in agent.md | Later |
 
 ---
 
-## 3. Three Consolidated Focus Areas
+## 3. Standalone issues (actief, geen epic)
 
-### Focus A — run_tests: fix all known gaps
-**Consolidates:** #237 + #253  
-**Scope:**
-- Add `-m not integration` to pyproject.toml addopts (one-liner — #237)
-- Fix summary_line sync: write fallback back to `parsed["summary_line"]` (#253 Gap 1)
-- Detect pytest exit code 4 / startup errors as `ToolResult.error` (#253 Gap 2)
-- Add `coverage: bool` parameter + `--cov` flags + Gate 6 output (#253 Gap 3)
-- Regression tests for all three code paths
-
-**Estimate:** ~1 sprint
-
-### Focus B — Template system pass
-**Consolidates:** #74 + #286 + #58 + #225 (+ optional #107)  
-**Scope:**
-- Fix `generic` template: align `GenericContext.methods` schema with template object access (#286)
-- Fix DTO template: remove unused imports, fix typing issues (#74)
-- Fix Tool template: resolve syntax error in triple-quoted string (#74)
-- Fix `scaffold_design_doc`: sections parameter type mismatch (#58)
-- Remove V1 dict-based pipeline from ArtifactManager; consolidate to single Pydantic path (#225)
-- Optional: BaseScaffolder DRY fix (#107) — include if V1 removal reveals good moment
-
-**Estimate:** ~2 sprints
-
-### Focus C — Installable wheel / standalone MCP server (Epic)
-**Groups:** #260 + #285 + #262 + #128 + #140  
-**New work to add:**
-- Entry point declaration in pyproject.toml (`console_scripts: st3-mcp`)
-- Bootstrap logic: create default `.st3/` structure on first run if absent
-- Replace `start_mcp_server.ps1` with proper CLI entry point
-
-**Child issues to keep active:** #260 (core), #285 (composition root), #262 (config constants), #128 (V2→V3 infra), #140 (coverage 90%)  
-**Estimate:** Epic — ~3–4 sprints total across child issues
+| # | Titel | Noot |
+|---|-------|------|
+| #22 | Analyze SRP Compliance and Coding Standards Adherence | Bewust open — follow-up issues uit archief nog aanmaken |
+| #269 | Align phase/cycle transition base class + API contracts | Tech debt, scoped, zelfstandig |
+| #228 | Add issue number to commit message encoding | Kleine enhancement |
+| #150 | Align get_issue/list_issues met nieuwe conventions | Onderhoud |
+| #116 | create_branch accepteert issue_number parameter | Kleine enhancement |
 
 ---
 
-## 4. Decision Log
+## 4. Deferred issues (bewust geparkeerd)
 
-| Decision | Rationale |
-|----------|-----------|
-| #254 close (not merge into #260) | Exact duplicate; no unique content to preserve |
-| #73 close | Template governance emerges from actual template quality work (#B), not a separate process doc |
-| #89 close | VS Code MCP tool lazy-loading is documented in agent.md as a known pattern; not a code fix |
-| #107 optional in Focus B | V1 removal (#225) may make the DRY violations less severe; reassess after #225 is done |
-| #255 defer | Scope-aware rerun optimization is valid but not blocking; stays as future epic after Focus A ships |
+| # | Titel | Heropenen wanneer |
+|---|-------|-------------------|
+| #255 | Unify scope-aware rerun optimization | Na Focus A |
+| #261 | SHA-256 tamper detection deliverables.json | Na deployment epic (#289) |
+| #242 | save_planning_deliverables validates TDD deliverables op planning exit | Na Focus B |
+| #236 | Backfill existing issues: titles, labels, bodies | Onderhoud — laag prio |
+| #121 | Content-Aware Edit Tool: VS Code Position/Range API | Toekomst |
+| #110 | Project Scaffolding Tool (Empty Dir → Full Project) | Toekomst |
+| #59 | Enforce Git Branching & Merging Strategy | Herbeoordelen: grotendeels gerealiseerd via #56/#229/#283 |
+
+---
+
+## 5. Sprint planning
+
+### Focus A — run_tests (~1 sprint, Epic #91)
+**Issues:** #282, #253, #237  
+**Scope:** `-m not integration` in addopts; summary_line sync fix; exit code 4 detection als ToolResult.error; coverage flag + Gate 6 output
+
+### Focus B — Template pass (~2 sprints, Epic #72)
+**Issues:** #286, #74, #58, #225, optioneel #107  
+**Scope:** methods schema fix; DTO/Tool template fixes; scaffold_design_doc fix; V1 pipeline removal
+
+### Focus C — Wheel/distribution (~3–4 sprints, Epic #289)
+**Issues:** #285, #260 + 2 nieuw aan te maken  
+**Scope:** composition root; configurable .st3/; CLI entry point; bootstrap
+
+---
+
+## 6. Beslissingslog
+
+| Beslissing | Motivatie |
+|-----------|-----------|
+| 17 issues gesloten (§7) | Allemaal superseded, duplicate of buiten scope — zie §7 |
+| #22 bewust open | Analyse in archief aanwezig; follow-up issues nog niet gecreëerd |
+| #59 herbeoordelen | Grotendeels gerealiseerd via #56, #229, #283 |
+| #255 deferred | Geldig maar niet blokkerend; na Focus A |
+| #107 optioneel Focus B | V1-removal (#225) kan DRY-violations verminderen; herbeoordelen na #225 |
+| #60/#61 → Epic #18 | Label enforcement is tooling-gedreven handhaving, past bij #18 |
+| #45/#278 → Epic #290 | Symptomatische bugs van hetzelfde model |
+| #141 → Epic #49 | Locatie ephemeral artifacts is een pad/configuratie-issue |
+| #128/#147 → Epic #91 | Test infra en I/O contract zijn kern van #91 |
+| #132/#178 → Epic #72 | Template-gerelateerde output rendering |
+| Nieuwe epics #289, #290 | Expliciet eigenaarschap voor deployment en dagelijkse navigatiepijn |
+
+---
+
+## 7. Acties uitgevoerd (2026-04-24)
+
+| Issues | Actie |
+|--------|-------|
+| #30, #31, #32, #33 | scaffold → update body → close |
+| #42, #48, #274, #89 | scaffold → update body → close |
+| #254, #73, #36, #35 | scaffold → update body → close |
+| #34, #24, #16, #15, #14 | scaffold → update body → close |
+| #22, #260 | scaffold → update body (bewust open) |
+| #289, #290 | Nieuwe epics aangemaakt |
+| docs/development/archive/ | 242 bestanden gecommit; 3 SRP-docs issue257 → issue22 |
