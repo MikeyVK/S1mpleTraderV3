@@ -1,6 +1,6 @@
 # mcp_server\core\interfaces\__init__.py
 # template=generic version=f35abd82 created=2026-03-12T15:02Z updated=
-"""Protocol interfaces for workflow state, gate orchestration, and PR status."""
+"""Protocol interfaces for workflow state, gate orchestration, PR status, and test execution."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from mcp_server.config.schemas.phase_contracts_config import CheckSpec
+    from mcp_server.managers.pytest_runner import PytestResult
     from mcp_server.managers.state_repository import BranchState
 
 
@@ -25,8 +26,7 @@ class IPRStatusReader(Protocol):
     """Read the cached PR status for a branch."""
 
     def get_pr_status(self, branch: str) -> PRStatus:
-        """Return the current PR status for *branch*."""
-        ...
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -34,8 +34,15 @@ class IPRStatusWriter(Protocol):
     """Write the PR status for a branch into the cache."""
 
     def set_pr_status(self, branch: str, status: PRStatus) -> None:
-        """Persist *status* for *branch* in the session cache."""
-        ...
+        raise NotImplementedError
+
+
+@runtime_checkable
+class IPytestRunner(Protocol):
+    """Run a pytest invocation and return a structured PytestResult."""
+
+    def run(self, cmd: list[str], cwd: str, timeout: int) -> PytestResult:
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)
@@ -59,24 +66,21 @@ class IStateReader(Protocol):
     """Read-only access to persisted branch state."""
 
     def load(self, branch: str) -> BranchState:
-        """Load state for a branch."""
-        ...
+        raise NotImplementedError
 
 
 class IStateRepository(IStateReader, Protocol):
     """Read-write access to persisted branch state."""
 
     def save(self, state: BranchState) -> None:
-        """Persist branch state."""
-        ...
+        raise NotImplementedError
 
 
 class IStateReconstructor(Protocol):
     """Reconstruct missing or invalid branch state for one branch."""
 
     def reconstruct(self, branch: str) -> BranchState:
-        """Reconstruct state for one branch."""
-        ...
+        raise NotImplementedError
 
 
 class IWorkflowGateRunner(Protocol):
@@ -89,8 +93,7 @@ class IWorkflowGateRunner(Protocol):
         cycle_number: int | None = None,
         checks: list[CheckSpec] | None = None,
     ) -> GateReport:
-        """Run blocking gate evaluation."""
-        ...
+        raise NotImplementedError
 
     def inspect(
         self,
@@ -99,9 +102,7 @@ class IWorkflowGateRunner(Protocol):
         cycle_number: int | None = None,
         checks: list[CheckSpec] | None = None,
     ) -> GateReport:
-        """Run non-blocking gate inspection."""
-        ...
+        raise NotImplementedError
 
     def is_cycle_based_phase(self, workflow_name: str, phase: str) -> bool:
-        """Report whether the requested workflow phase supports TDD cycles."""
-        ...
+        raise NotImplementedError
