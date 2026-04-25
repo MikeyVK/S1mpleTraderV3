@@ -3,7 +3,7 @@
 # run_tests Reliability — Thin Tool + PytestRunner Manager, Typed Result Contract, Coverage Support
 
 **Status:** DRAFT  
-**Version:** 2.1  
+**Version:** 2.2  
 **Last Updated:** 2026-04-25
 
 ---
@@ -24,9 +24,8 @@ Define finalized interface contracts for all changes in issue #253 so TDD implem
 - Documentation note for stale `.st3/projects.json`
 
 **Out of Scope:**
-- New YAML config file for run_tests (existing SSOT in `pyproject.toml` is reused)
+- New YAML config file for run_tests (no new YAML; the 90% project standard documented in `pyproject.toml` comments and `QUALITY_GATES.md` is materialized by `RunTestsTool._build_cmd` when `coverage=True`)
 - `run_quality_gates` changes
-- New YAML for coverage config (the 90% threshold is materialized directly in `_build_cmd` when `coverage=True`; `pyproject.toml` documents but does not machine-enforce it)
 - New `NoteEntry` variants in `mcp_server/core/operation_notes.py`
 - CI/CD pipeline
 
@@ -60,12 +59,12 @@ Define finalized interface contracts for all changes in issue #253 so TDD implem
 - [ ] A new `PytestResult` frozen dataclass MUST be the single source of truth for `summary_line`, `passed`, `failed`, `skipped`, `errors`, `failures`, `coverage_pct`, `exit_code`, `lf_cache_was_empty`
 - [ ] A new `IPytestRunner` Protocol MUST be defined in `mcp_server/core/interfaces/__init__.py` with method `run(cmd: list[str], cwd: str, timeout: int) -> PytestResult`; `PytestRunner` is the domain manager — it owns command execution, output parsing, and exit-code classification, so callers receive a fully typed result, not raw output; `PytestExecution` (stdout/stderr/returncode) is a private internal implementation detail of `PytestRunner`, not part of the Protocol surface
 - [ ] A new `PytestRunner` concrete implementation MUST live in `mcp_server/managers/pytest_runner.py` and own command execution, output parsing, exit-code classification, and LF-cache detection
-- [ ] `RunTestsTool` MUST accept `runner: IPytestRunner` via constructor injection (default: `PytestRunner()`)
+- [ ] `RunTestsTool` MUST accept `runner: IPytestRunner` via constructor injection; no default runner is created inside the tool — the composition root is solely responsible for constructing and injecting `PytestRunner()`
 - [ ] `RunTestsTool.execute()` MUST be a thin adapter: build cmd → call runner → emit notes → render `ToolResult`
 - [ ] `RunTestsTool.execute()` MUST remove the `del context` line and call `context.produce()` for all notes
 - [ ] `content[0].text` MUST be `result.summary_line` literally — no parallel construction; this guarantees content[0]/content[1] cannot drift
 - [ ] Pytest exit codes 0, 1 produce a normal `ToolResult`; codes 2, 3, 4 raise `ExecutionError` with a `RecoveryNote`; code 5 returns a zero-count `ToolResult` with a `SuggestionNote`; unknown non-zero codes raise `ExecutionError` with a fail-safe `RecoveryNote`
-- [ ] Exit-code semantics MUST live in a typed `_EXIT_CODE_POLICY: dict[PytestExitCode, ExitCodePolicy]` lookup table inside `pytest_runner.py` — no if/elif chains in `RunTestsTool` or `PytestRunner.run`
+- [ ] Exit-code semantics MUST live in a typed `_EXIT_CODE_POLICY: dict[int, ExitCodePolicy]` lookup table inside `pytest_runner.py` — no if/elif chains in `RunTestsTool` or `PytestRunner.run`; `dict[int, ...]` is used rather than `dict[PytestExitCode, ...]` because `result.exit_code` is a raw int that may fall outside the known enum values
 - [ ] `RunTestsInput` MUST gain a `coverage: bool = False` field; when `True`, `_build_cmd` adds `--cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90`; the 90% threshold value is materialized here from the project standard (documented in `pyproject.toml` comments and `QUALITY_GATES.md`)
 - [ ] `PytestResult` MUST carry `should_raise: bool` and `note: NoteEntry | None` fields stamped by `PytestRunner` via policy, so `RunTestsTool` never imports `_EXIT_CODE_POLICY`
 - [ ] `PytestRunner` MUST parse the coverage report line and populate `PytestResult.coverage_pct` when present; otherwise `None`
@@ -168,7 +167,7 @@ Option B delivers all the architectural rigor of Option C's structural ideal (th
 | 4 | `summary_line` is always non-empty and is the canonical display string | Prevents the issue #253 drift class structurally |
 | 5 | Exit code 5 returns `summary_line="no tests collected"` (matching pytest's own phrasing) | Consistency with pytest output; informative one-liner |
 | 6 | Exit codes 2, 3, 4 raise `ExecutionError` with a `RecoveryNote`; code 5 returns with `SuggestionNote`; unknown codes raise with fail-safe `RecoveryNote` | Hard errors require user action (raise); empty collection is a soft miss (return); fail-safe for the unknown |
-| 7 | `_EXIT_CODE_POLICY: dict[PytestExitCode, ExitCodePolicy]` is the SSOT for code semantics | OCP — adding a known code is a registration, not a method change |
+| 7 | `_EXIT_CODE_POLICY: dict[int, ExitCodePolicy]` is the SSOT for exit-code semantics; `dict[int, ...]` rather than `dict[PytestExitCode, ...]` because unknown raw codes must also be lookable via `.get()` with a fallback | OCP — adding a known code is a registration, not a method change |
 | 8 | Coverage opt-in via `RunTestsInput.coverage: bool = False` | Off-by-default preserves fast feedback; on-demand for Gate 6 / PR readiness |
 | 9 | `coverage=True` materializes `--cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90` in `_build_cmd`; the 90% value comes from the project standard documented in `pyproject.toml` comments and `QUALITY_GATES.md` | Enforces Gate 6 threshold at the command level; no new YAML duplication; `_build_cmd` is the machine-enforceable source of truth |
 | 10 | `LF-empty-cache` detection moves from `RunTestsTool.execute()` into `PytestRunner` parser as a typed `PytestResult.lf_cache_was_empty: bool` flag | Pytest output classification is runner concern, not tool concern |
@@ -331,7 +330,7 @@ class RunTestsTool(BaseTool):
 
     def __init__(
         self,
-        runner: IPytestRunner,                      # injected — no default in the tool
+        runner: IPytestRunner,                      # injected — no default in the tool; composition root must provide PytestRunner()
         workspace_root: str | os.PathLike[str] | None = None,
         settings: Settings | None = None,
     ) -> None:
@@ -349,7 +348,7 @@ class RunTestsTool(BaseTool):
         if params.markers:
             cmd.extend(["-m", params.markers])
         if params.coverage:
-            cmd.extend(["--cov=backend", "--cov=mcp_server", "--cov-branch"])
+            cmd.extend(["--cov=backend", "--cov=mcp_server", "--cov-branch", "--cov-fail-under=90"])
         return cmd
 
     async def execute(self, params: RunTestsInput, context: NoteContext) -> ToolResult:
@@ -508,17 +507,17 @@ class FakePytestRunner:
 
 ### 3.11. Composition root impact
 
-`mcp_server/server.py` constructs `RunTestsTool` once at startup. Change:
+`mcp_server/server.py` builds the tool list at startup. Change (within the existing `self.tools = [...]` list):
 
 ```python
 # BEFORE
-tools["run_tests"] = RunTestsTool(settings=settings)
+RunTestsTool(settings=settings),
 
 # AFTER
-tools["run_tests"] = RunTestsTool(runner=PytestRunner(), settings=settings)
+RunTestsTool(runner=PytestRunner(), settings=settings),
 ```
 
-All other call sites (none currently exist outside the composition root) are migrated in the same branch.
+`PytestRunner` is imported at the top of `server.py` alongside `RunTestsTool`. All other call sites (none currently exist outside the composition root) are migrated in the same branch.
 
 ---
 
@@ -574,4 +573,5 @@ All other call sites (none currently exist outside the composition root) are mig
 |---------|------|--------|---------|
 | 1.0 | 2026-04-25 | Agent | Initial draft — minimal in-tool returncode dispatch; rejected by QA review |
 | 2.0 | 2026-04-25 | Agent | Full rewrite: thin RunTestsTool adapter, new PytestRunner manager, IPytestRunner Protocol, PytestResult typed contract eliminating summary_line drift, coverage support, exit codes 2/3/4/5 + unknown handled via _EXIT_CODE_POLICY lookup, complete test contract using FakePytestRunner; rejected by QA review |
-| 2.1 | 2026-04-25 | Agent | QA corrections: IPytestRunner returns PytestResult (not PytestExecution); _PytestExecution internal; coverage=True materializes --cov-fail-under=90 in _build_cmd; ExitCodePolicy.note_factory typed as Callable \| None; PytestResult gains should_raise+note so RunTestsTool never imports _EXIT_CODE_POLICY; test case 17 added for fail-under assertion; "Direction C" wording replaced with "Option B"; date metadata corrected |
+| 2.1 | 2026-04-25 | Agent | QA corrections: IPytestRunner returns PytestResult (not PytestExecution); _PytestExecution internal; coverage=True materializes --cov-fail-under=90 in _build_cmd; ExitCodePolicy.note_factory typed as Callable \| None; PytestResult gains should_raise+note so RunTestsTool never imports _EXIT_CODE_POLICY; test case 17 added for fail-under assertion; "Direction C" wording replaced with "Option B"; date metadata corrected; rejected by QA review |
+| 2.2 | 2026-04-25 | Agent | QA corrections: --cov-fail-under=90 added to §3.6 _build_cmd pseudocode; constructor contract fixed (no default, composition root injects); Out of Scope wording clarified (no SSOT claim for pyproject comment); _EXIT_CODE_POLICY typed as dict[int, ExitCodePolicy] consistently; §3.11 server snippet corrected to existing list form |
