@@ -1,37 +1,42 @@
 """Test execution tools."""
 
+from __future__ import annotations
+
 import asyncio
 import os
 import re
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError
-from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.interfaces import IPytestRunner
+from mcp_server.core.operation_notes import InfoNote, NoteContext, RecoveryNote
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+
+if TYPE_CHECKING:
+    from mcp_server.managers.pytest_runner import PytestResult
 
 
 def _run_pytest_sync(cmd: list[str], cwd: str, timeout: int) -> tuple[str, str, int]:
     """Run pytest synchronously - to be called from thread pool."""
-    # Build proper environment for venv
     env = os.environ.copy()
-    venv_path = os.path.dirname(os.path.dirname(cmd[0]))  # Get venv from python path
+    venv_path = os.path.dirname(os.path.dirname(cmd[0]))
     env["VIRTUAL_ENV"] = venv_path
     env["PATH"] = f"{os.path.dirname(cmd[0])};{env.get('PATH', '')}"
-    env["PYTHONUNBUFFERED"] = "1"  # Disable output buffering
+    env["PYTHONUNBUFFERED"] = "1"
 
-    # Use Popen for proper subprocess control
     with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        stdin=subprocess.DEVNULL,  # Prevents hanging on input
+        stdin=subprocess.DEVNULL,
         text=True,
         cwd=cwd,
         env=env,
@@ -52,9 +57,8 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
     Returns a dict with:
     - summary: {"passed": int, "failed": int}
     - summary_line: human-readable one-liner (e.g. "2 passed in 0.45s")
-    - failures: list of {"test_id", "location", "short_reason", "traceback"} — only when failed > 0
+    - failures: list of {"test_id", "location", "short_reason", "traceback"}
     """
-    # --- Pass 1: extract per-test tracebacks from FAILURES section ---
     tb_by_test_id: dict[str, str] = {}
     in_failures = False
     current_id = ""
@@ -78,7 +82,6 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
         else:
             current_tb.append(line)
 
-    # --- Pass 2: build failures list from FAILED lines ---
     failures: list[dict[str, str]] = []
     for line in stdout.splitlines():
         match = re.match(r"^FAILED (.+?) - (.+)$", line.strip())
@@ -95,18 +98,16 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
                 }
             )
 
-    # --- Pass 3: extract summary counts and summary_line ---
     passed = 0
     failed = 0
     summary_line = ""
     for line in stdout.splitlines():
-        m_fail = re.search(r"(\d+) failed", line)
-        if m_fail:
-            failed = int(m_fail.group(1))
-        m_pass = re.search(r"(\d+) passed", line)
-        if m_pass:
-            passed = int(m_pass.group(1))
-        # Extract the summary line (the one with "passed" or "failed" stats inside ====)
+        match_fail = re.search(r"(\d+) failed", line)
+        if match_fail:
+            failed = int(match_fail.group(1))
+        match_pass = re.search(r"(\d+) passed", line)
+        if match_pass:
+            passed = int(match_pass.group(1))
         if re.search(r"\d+ (passed|failed)", line):
             cleaned = re.sub(r"^=+\s*", "", line.strip())
             cleaned = re.sub(r"\s*=+$", "", cleaned).strip()
@@ -142,9 +143,13 @@ class RunTestsInput(BaseModel):
         default=False,
         description="Re-run only previously failed tests (pytest --lf)",
     )
+    coverage: bool = Field(
+        default=False,
+        description="Enable branch coverage and enforce the 90% threshold.",
+    )
 
     @model_validator(mode="after")
-    def validate_path_or_scope(self) -> "RunTestsInput":
+    def validate_path_or_scope(self) -> RunTestsInput:
         """Ensure exactly one of path or scope is provided."""
         if self.path is None and self.scope is None:
             raise ValueError("Either 'path' or 'scope' must be provided")
@@ -153,22 +158,68 @@ class RunTestsInput(BaseModel):
         return self
 
 
+def _emit_lf_cache_note(result: PytestResult, params: RunTestsInput, context: NoteContext) -> None:
+    """Emit the LF-empty informational note only when the user requested --lf."""
+    if params.last_failed_only and result.lf_cache_was_empty:
+        context.produce(InfoNote("Last-failed cache was empty; ran full selection instead."))
+
+
+def _find_timeout_expired(exc: BaseException) -> subprocess.TimeoutExpired | None:
+    """Unwrap direct or grouped timeout exceptions from thread execution."""
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return exc
+
+    nested = getattr(exc, "exceptions", None)
+    if nested is None:
+        return None
+
+    for child in nested:
+        timeout_exc = _find_timeout_expired(child)
+        if timeout_exc is not None:
+            return timeout_exc
+    return None
+
+
+def _to_tool_result(result: PytestResult) -> ToolResult:
+    """Convert the typed runner result into the MCP ToolResult payload."""
+    payload = {
+        "exit_code": result.exit_code,
+        "summary": {
+            "passed": result.passed,
+            "failed": result.failed,
+            "skipped": result.skipped,
+            "errors": result.errors,
+        },
+        "summary_line": result.summary_line,
+        "failures": [asdict(failure) for failure in result.failures],
+        "coverage_pct": result.coverage_pct,
+        "lf_cache_was_empty": result.lf_cache_was_empty,
+    }
+    return ToolResult(
+        content=[
+            {"type": "text", "text": result.summary_line},
+            {"type": "json", "json": payload},
+        ]
+    )
+
+
 class RunTestsTool(BaseTool):
-    """Tool to run pytest."""
+    """Thin MCP adapter for pytest execution via an injected runner."""
 
     name = "run_tests"
     description = "Run tests using pytest"
     args_model = RunTestsInput
 
-    # Default timeout in seconds (5 minutes for large test suites)
     DEFAULT_TIMEOUT = 300
 
     def __init__(
         self,
-        settings: Settings | None = None,
+        runner: IPytestRunner,
         workspace_root: str | os.PathLike[str] | None = None,
+        settings: Settings | None = None,
     ) -> None:
         super().__init__()
+        self._runner = runner
         base_workspace = workspace_root or (
             settings.server.workspace_root if settings else Path.cwd()
         )
@@ -176,52 +227,57 @@ class RunTestsTool(BaseTool):
 
     def _build_cmd(self, params: RunTestsInput) -> list[str]:
         """Build the pytest command from input parameters."""
-        cmd = [sys.executable, "-m", "pytest"]
+        cmd = [sys.executable, "-m", "pytest", "--tb=short"]
         if params.path is not None:
             cmd.extend(params.path.split())
-        # scope="full" → no path args: pytest runs entire configured suite
-        cmd.append("--tb=short")
         if params.last_failed_only:
             cmd.append("--lf")
         if params.markers:
             cmd.extend(["-m", params.markers])
+        if params.coverage:
+            cmd.extend(
+                [
+                    "--cov=backend",
+                    "--cov=mcp_server",
+                    "--cov-branch",
+                    "--cov-fail-under=90",
+                ]
+            )
         return cmd
 
     async def execute(self, params: RunTestsInput, context: NoteContext) -> ToolResult:
         """Execute the tool."""
-        del context  # Not used
         cmd = self._build_cmd(params)
-
         effective_timeout = params.timeout or self.DEFAULT_TIMEOUT
 
         try:
-            # Run subprocess in thread pool to avoid blocking event loop
-            stdout, stderr, _ = await asyncio.to_thread(
-                _run_pytest_sync,
+            result = await asyncio.to_thread(
+                self._runner.run,
                 cmd,
                 self._workspace_root,
                 effective_timeout,
             )
+        except Exception as exc:
+            if _find_timeout_expired(exc) is not None:
+                context.produce(
+                    RecoveryNote(
+                        f"Tests timed out after {effective_timeout}s. "
+                        "Run a smaller subset or raise the timeout."
+                    )
+                )
+                raise ExecutionError(f"Tests timed out after {effective_timeout}s") from None
+            if isinstance(exc, OSError):
+                context.produce(
+                    RecoveryNote("Verify the Python interpreter and venv are reachable.")
+                )
+                raise ExecutionError(f"Failed to run tests: {exc}") from exc
+            raise
 
-            output = stdout or ""
-            if stderr:
-                output += "\nSTDERR:\n" + stderr
+        if result.note is not None:
+            context.produce(result.note)
+        _emit_lf_cache_note(result, params, context)
 
-            parsed = _parse_pytest_output(output)
-            s = parsed["summary"]
-            fallback = f"{s.get('passed', 0)} passed, {s.get('failed', 0)} failed"
-            summary_line = parsed.get("summary_line") or fallback
-            return ToolResult(
-                content=[
-                    {"type": "text", "text": summary_line},
-                    {"type": "json", "json": parsed},
-                ]
-            )
+        if result.should_raise:
+            raise ExecutionError(f"pytest exited with returncode {result.exit_code}")
 
-        except subprocess.TimeoutExpired:
-            raise ExecutionError(
-                f"Tests timed out after {effective_timeout}s. "
-                "Consider running a smaller test subset or increasing timeout."
-            ) from None
-        except OSError as e:
-            raise ExecutionError(f"Failed to run tests: {e}") from e
+        return _to_tool_result(result)
