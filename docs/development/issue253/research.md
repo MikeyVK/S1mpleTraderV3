@@ -80,9 +80,9 @@ This pushes users back to direct terminal pytest usage whenever they need reliab
 
 ### Finding 5 — Integration tests are architecturally hermetic: the adapter boundary is the safety layer
 
-All 22 files in `tests/mcp_server/integration/` mock the GitHub API adapter via `MagicMock`. File-system writes go exclusively to `tmp_path`. No test has an environment variable guard (`GITHUB_TOKEN`, `pytest.mark.skipif` env check). This was verified by inspecting the full integration test directory during this research session.
+Tests that touch an external GitHub boundary (for example `test_create_issue_e2e.py`) replace the GitHub API adapter with a `MagicMock`. Tests that operate exclusively on a local filesystem (for example `test_search_integration.py`) have no external adapter to mock; they still use `tmp_path` for all writes. The contractual rule is therefore adapter-boundary-scoped: **every test that reaches an external service must mock that service's adapter**. No test in the suite uses an environment variable guard (`GITHUB_TOKEN`, `pytest.mark.skipif` env check) to make itself opt-in. This was verified by inspecting the full integration test directory during this research session.
 
-The integration tests exercise multiple real layers simultaneously (tool + manager + config) but always mock the external boundary. They are hermetic tests with a wider internal scope. The safety guarantee is structural, not procedural: it does not depend on a marker filter or an environment variable. The absence of such guards is intentional — they would add procedural fragility to what is already a structural boundary.
+The integration tests exercise multiple real layers simultaneously (tool + manager + config) but always mock or avoid the external boundary. They are hermetic tests with a wider internal scope. The safety guarantee is structural: it does not depend on a marker filter or an environment variable.
 
 The `test_pytest_config.py` suite enforces the configuration contract that makes this safe at scale. See Finding 3 and `docs/coding_standards/QUALITY_GATES.md` § Integration Test Boundary Contract for the full checklist.
 

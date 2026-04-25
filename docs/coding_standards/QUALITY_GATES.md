@@ -410,7 +410,7 @@ The `test_pytest_config.py` suite actively guards these invariants:
 - [ ] Module docstring includes `@layer: Tests (Integration)`
 - [ ] External API adapter replaced with `MagicMock` or `MagicMock(spec=AdapterClass)`
 - [ ] All filesystem writes via `tmp_path` — never writes to the real workspace
-- [ ] No environment variable required to run it (no `pytest.skip` guard)
+- [ ] No env-gated or opt-in skip guard (no `pytest.mark.skipif(os.getenv(...))` or `pytest.skip` conditioned on an environment variable)
 - [ ] No `subprocess.run` targeting remote services — local git ops on `tmp_path` are fine
 - [ ] Compatible with `pytest-xdist` parallel execution (no shared mutable state between test functions)
 
