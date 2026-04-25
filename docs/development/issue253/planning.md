@@ -491,8 +491,8 @@ run_tests(path="tests/")            # full suite GREEN
 
 ## Milestones
 
-- After C1: PytestResult + enum + policy table importable and unit-tested
-- After C2: PytestRunner passes all 8 parser tests; subprocess integration verified
+- After C1: PytestResult + ExitCodePolicy + PytestExitCode importable; data contracts verified structurally (no own tests — C2 parser tests cover the contracts)
+- After C2: PytestRunner passes all 8 parser/runner tests; PytestResult returned for each exit code scenario
 - After C3: IPytestRunner Protocol + FakePytestRunner usable in tool tests
 - After C4: run_tests MCP tool passes all 18 tool-level tests; server boots with new composition root
 - After C5: GetProjectPlanTool SuggestionNote test passes (3 test cases)
