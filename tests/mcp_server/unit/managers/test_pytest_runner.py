@@ -4,10 +4,9 @@
 @layer: Tests (Unit)
 @dependencies: [pytest, mcp_server.managers.pytest_runner]
 """
+# pyright: reportPrivateUsage=false
 
 from __future__ import annotations
-
-import subprocess
 
 import pytest
 

@@ -174,6 +174,7 @@ class PytestRunner:
 
     def _parse_counts(self, stdout: str) -> tuple[int, int, int, int]:
         """Extract (passed, failed, skipped, errors) counts — order-independent."""
+
         def _count(keyword: str) -> int:
             m = re.search(rf"(\d+) {keyword}", stdout)
             return int(m.group(1)) if m else 0
@@ -188,8 +189,8 @@ class PytestRunner:
             short_reason = m.group(2).strip()
             # Extract traceback block between the FAILURES header and the next separator
             traceback = self._extract_traceback(stdout, test_id)
-            # Location: file::test_id is the test_id itself in pytest short format
-            location = test_id.split("::")[0] if "::" in test_id else test_id
+            # Location: file part before the first "::" separator
+            location, _, _ = test_id.partition("::")
             details.append(
                 FailureDetail(
                     test_id=test_id,
@@ -203,7 +204,7 @@ class PytestRunner:
     def _extract_traceback(self, stdout: str, test_id: str) -> str:
         """Extract the traceback block for a given test_id from the FAILURES section."""
         # Find the underline block for this test
-        test_name = test_id.split("::")[-1]
+        _, _, test_name = test_id.rpartition("::")
         pattern = re.compile(
             r"_{3,}\s+" + re.escape(test_name) + r"\s+_{3,}\n(.*?)(?=\n_{3,}|\n={3,}|\Z)",
             re.DOTALL,
@@ -216,9 +217,7 @@ class PytestRunner:
         m = _COVERAGE_RE.search(stdout)
         return float(m.group(1)) if m else None
 
-    def _parse_summary_line(
-        self, stdout: str, returncode: int, policy: ExitCodePolicy
-    ) -> str:
+    def _parse_summary_line(self, stdout: str, returncode: int, policy: ExitCodePolicy) -> str:
         """Return the human-readable summary line — never empty.
 
         For codes with a canonical policy string (exit 2/3/4/5/unknown), return it
@@ -230,7 +229,7 @@ class PytestRunner:
         if policy.summary_line_when_no_parse:
             return policy.summary_line_when_no_parse
         # Codes 0 and 1: parse the actual summary from stdout
-        candidates = re.findall(r"={3,}\s+(.+?)\s+={3,}", stdout)
+        candidates: list[str] = re.findall(r"={3,}\s+(.+?)\s+={3,}", stdout)
         for candidate in reversed(candidates):
             if "in " in candidate or "passed" in candidate or "failed" in candidate:
                 return candidate
