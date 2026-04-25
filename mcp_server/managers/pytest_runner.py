@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
@@ -49,7 +48,7 @@ class PytestResult:
     coverage_pct: float | None  # None when coverage flag was not requested
     lf_cache_was_empty: bool  # True iff pytest --lf fell back to full run
     should_raise: bool  # True for exit codes 2, 3, 4, unknown — stamped by runner policy
-    note: "NoteEntry | None"  # RecoveryNote/SuggestionNote from policy; None for codes 0, 1
+    note: NoteEntry | None  # RecoveryNote/SuggestionNote from policy; None for codes 0, 1
 
 
 @dataclass(frozen=True)
@@ -57,7 +56,7 @@ class ExitCodePolicy:
     """Dispatch policy for a single pytest exit code."""
 
     outcome: Literal["return", "raise"]
-    note_factory: Callable[[int], "NoteEntry"] | None  # None for codes that produce no note
+    note_factory: Callable[[int], NoteEntry] | None  # None for codes that produce no note
     summary_line_when_no_parse: str  # used when parser found no summary
 
 
@@ -66,26 +65,26 @@ _EXIT_CODE_POLICY: dict[int, ExitCodePolicy] = {
     PytestExitCode.TESTS_FAILED: ExitCodePolicy("return", None, ""),
     PytestExitCode.INTERRUPTED: ExitCodePolicy(
         "raise",
-        lambda c: RecoveryNote("Pytest was interrupted; check for hung tests or external SIGINT."),
+        lambda _: RecoveryNote("Pytest was interrupted; check for hung tests or external SIGINT."),
         "pytest interrupted (exit 2)",
     ),
     PytestExitCode.INTERNAL_ERROR: ExitCodePolicy(
         "raise",
-        lambda c: RecoveryNote(
+        lambda _: RecoveryNote(
             "Pytest reported an internal error; inspect stderr and pytest plugins."
         ),
         "pytest internal error (exit 3)",
     ),
     PytestExitCode.USAGE_ERROR: ExitCodePolicy(
         "raise",
-        lambda c: RecoveryNote(
+        lambda _: RecoveryNote(
             "Pytest could not start. Verify the path exists and the CLI options are valid."
         ),
         "pytest usage error (exit 4)",
     ),
     PytestExitCode.NO_TESTS_COLLECTED: ExitCodePolicy(
         "return",
-        lambda c: SuggestionNote("No tests matched the filter. Check markers and path."),
+        lambda _: SuggestionNote("No tests matched the filter. Check markers and path."),
         "no tests collected",
     ),
 }
