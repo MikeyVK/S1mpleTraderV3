@@ -1,10 +1,10 @@
 <!-- docs\development\issue253\design.md -->
-<!-- template=design version=5827e841 created=2026-04-25T11:15Z updated=2026-04-26 -->
+<!-- template=design version=5827e841 created=2026-04-25T11:15Z updated=2026-04-25 -->
 # run_tests Reliability — Thin Tool + PytestRunner Manager, Typed Result Contract, Coverage Support
 
 **Status:** DRAFT  
-**Version:** 2.0  
-**Last Updated:** 2026-04-26
+**Version:** 2.1  
+**Last Updated:** 2026-04-25
 
 ---
 
@@ -19,14 +19,14 @@ Define finalized interface contracts for all changes in issue #253 so TDD implem
 - New `PytestRunner` manager owning pytest command execution, output parsing, exit-code classification, and LF-cache detection
 - New `IPytestRunner` Protocol in `core/interfaces/` for DIP and testability
 - New `PytestResult` frozen dataclass as the single source of truth for `summary_line`, counts, failures, and coverage
-- Coverage support (issue #253 Gap 3) via `coverage: bool` input flag — delegates threshold/packages to existing `pyproject.toml` SSOT
+- Coverage support (issue #253 Gap 3) via `coverage: bool` input flag — materializes coverage enforcement command including `--cov-fail-under=90`; the 90% threshold value comes from the project standard documented in `pyproject.toml` comments and `QUALITY_GATES.md`
 - `GetProjectPlanTool` SuggestionNote operator hint
 - Documentation note for stale `.st3/projects.json`
 
 **Out of Scope:**
 - New YAML config file for run_tests (existing SSOT in `pyproject.toml` is reused)
 - `run_quality_gates` changes
-- Coverage threshold/scope configuration changes (already locked in `pyproject.toml`)
+- New YAML for coverage config (the 90% threshold is materialized directly in `_build_cmd` when `coverage=True`; `pyproject.toml` documents but does not machine-enforce it)
 - New `NoteEntry` variants in `mcp_server/core/operation_notes.py`
 - CI/CD pipeline
 
@@ -35,7 +35,7 @@ Define finalized interface contracts for all changes in issue #253 so TDD implem
 1. `research.md` v1.2 complete — all 8 findings documented, NoteContext migration scope (Finding 8) locked
 2. `create_branch` encoding fix already committed (`git_tools.py:160` — pre-design delivery)
 3. `QUALITY_GATES.md` §5 Integration Test Boundary Contract added (pre-design delivery)
-4. QA design discussion v2 conclusions accepted: Direction C is justified as structural parallelism with the quality-gate tool/manager pattern, without new YAML config
+4. QA design discussion v2 conclusions accepted: Option B's structural approach (thin tool + runner + typed Protocol) is justified; no new YAML config needed for pytest exit codes or coverage policy
 
 ---
 
@@ -58,7 +58,7 @@ Define finalized interface contracts for all changes in issue #253 so TDD implem
 **Functional:**
 
 - [ ] A new `PytestResult` frozen dataclass MUST be the single source of truth for `summary_line`, `passed`, `failed`, `skipped`, `errors`, `failures`, `coverage_pct`, `exit_code`, `lf_cache_was_empty`
-- [ ] A new `IPytestRunner` Protocol MUST be defined in `mcp_server/core/interfaces/__init__.py` with method `run(cmd: list[str], cwd: str, timeout: int) -> PytestExecution` (PytestExecution = stdout/stderr/returncode tuple-like dataclass)
+- [ ] A new `IPytestRunner` Protocol MUST be defined in `mcp_server/core/interfaces/__init__.py` with method `run(cmd: list[str], cwd: str, timeout: int) -> PytestResult`; `PytestRunner` is the domain manager — it owns command execution, output parsing, and exit-code classification, so callers receive a fully typed result, not raw output; `PytestExecution` (stdout/stderr/returncode) is a private internal implementation detail of `PytestRunner`, not part of the Protocol surface
 - [ ] A new `PytestRunner` concrete implementation MUST live in `mcp_server/managers/pytest_runner.py` and own command execution, output parsing, exit-code classification, and LF-cache detection
 - [ ] `RunTestsTool` MUST accept `runner: IPytestRunner` via constructor injection (default: `PytestRunner()`)
 - [ ] `RunTestsTool.execute()` MUST be a thin adapter: build cmd → call runner → emit notes → render `ToolResult`
@@ -66,14 +66,15 @@ Define finalized interface contracts for all changes in issue #253 so TDD implem
 - [ ] `content[0].text` MUST be `result.summary_line` literally — no parallel construction; this guarantees content[0]/content[1] cannot drift
 - [ ] Pytest exit codes 0, 1 produce a normal `ToolResult`; codes 2, 3, 4 raise `ExecutionError` with a `RecoveryNote`; code 5 returns a zero-count `ToolResult` with a `SuggestionNote`; unknown non-zero codes raise `ExecutionError` with a fail-safe `RecoveryNote`
 - [ ] Exit-code semantics MUST live in a typed `_EXIT_CODE_POLICY: dict[PytestExitCode, ExitCodePolicy]` lookup table inside `pytest_runner.py` — no if/elif chains in `RunTestsTool` or `PytestRunner.run`
-- [ ] `RunTestsInput` MUST gain a `coverage: bool = False` field; when `True`, `_build_cmd` adds `--cov=backend --cov=mcp_server --cov-branch`
+- [ ] `RunTestsInput` MUST gain a `coverage: bool = False` field; when `True`, `_build_cmd` adds `--cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90`; the 90% threshold value is materialized here from the project standard (documented in `pyproject.toml` comments and `QUALITY_GATES.md`)
+- [ ] `PytestResult` MUST carry `should_raise: bool` and `note: NoteEntry | None` fields stamped by `PytestRunner` via policy, so `RunTestsTool` never imports `_EXIT_CODE_POLICY`
 - [ ] `PytestRunner` MUST parse the coverage report line and populate `PytestResult.coverage_pct` when present; otherwise `None`
 - [ ] LF-empty-cache detection MUST be a `PytestResult.lf_cache_was_empty` flag set by the parser; `RunTestsTool` only emits the `InfoNote` when the flag is `True` and `params.last_failed_only` was `True`
 - [ ] `GetProjectPlanTool` MUST produce a `SuggestionNote` before returning the not-found `ToolResult.error`, and MUST remove `del context`
 
 **Non-Functional:**
 
-- [ ] No new YAML config file is introduced; `pyproject.toml` remains the SSOT for coverage threshold/packages and pytest defaults
+- [ ] No new YAML config file is introduced; `pyproject.toml` remains the documented reference for the 90% threshold; `_build_cmd` is the machine-enforceable source of truth when `coverage=True`; no duplication of threshold/packages in YAML
 - [ ] No new `NoteEntry` variants — all four conditions map to existing types (`RecoveryNote`, `SuggestionNote`, `InfoNote`)
 - [ ] `RunTestsTool.execute()` body MUST fit in one screen and contain no pytest-protocol knowledge (exit code numbers, output substrings, parser regexes)
 - [ ] All new code uses strict typing: no `dict[str, Any]` returns from public methods of `PytestRunner`; the public surface returns `PytestResult` exclusively
@@ -147,7 +148,7 @@ Same as B, plus a new `.st3/config/test_runner.yaml` declaring exit-code-to-note
 
 ### 2.4. Chosen — Option B ✅
 
-Option B delivers all the architectural correctness of Direction C (thin tool, typed result contract, injected runner) without introducing a config layer for knowledge that has no business being configurable. `pyproject.toml` remains the SSOT for ST3 test policy (coverage scope/threshold, default markers, paths). The `PytestExitCode` enum and `_EXIT_CODE_POLICY` lookup are the SSOT for pytest protocol semantics, expressed in typed code.
+Option B delivers all the architectural rigor of Option C's structural ideal (thin tool, typed result contract, injected runner) without introducing a config layer for knowledge that has no business being configurable. `_build_cmd` materializes the 90% coverage threshold from the project standard (documented in `pyproject.toml` and `QUALITY_GATES.md`) when `coverage=True`. The `PytestExitCode` enum and `_EXIT_CODE_POLICY` lookup are the SSOT for pytest protocol semantics, expressed in typed code.
 
 ---
 
@@ -161,7 +162,7 @@ Option B delivers all the architectural correctness of Direction C (thin tool, t
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| 1 | New `mcp_server/managers/pytest_runner.py` containing `PytestRunner`, `PytestExitCode`, `ExitCodePolicy`, `_EXIT_CODE_POLICY`, `PytestExecution`, `PytestResult`, `FailureDetail` | Symmetry with `qa_manager.py`; co-locates pytest protocol knowledge in one module |
+| 1 | New `mcp_server/managers/pytest_runner.py` containing `PytestRunner`, `PytestExitCode`, `ExitCodePolicy`, `_EXIT_CODE_POLICY`, `PytestResult`, `FailureDetail`; `_PytestExecution` (stdout/stderr/returncode) is a private internal dataclass, not exported | Symmetry with `qa_manager.py`; co-locates pytest protocol knowledge in one module; Protocol surface exposes `PytestResult` only |
 | 2 | `IPytestRunner` Protocol in `mcp_server/core/interfaces/__init__.py` | Architectural rule: interfaces for external systems live in `core/interfaces/`, never in `managers/` |
 | 3 | `PytestResult` is `@dataclass(frozen=True)` | CQS: query results are immutable; eliminates accidental mutation |
 | 4 | `summary_line` is always non-empty and is the canonical display string | Prevents the issue #253 drift class structurally |
@@ -169,7 +170,7 @@ Option B delivers all the architectural correctness of Direction C (thin tool, t
 | 6 | Exit codes 2, 3, 4 raise `ExecutionError` with a `RecoveryNote`; code 5 returns with `SuggestionNote`; unknown codes raise with fail-safe `RecoveryNote` | Hard errors require user action (raise); empty collection is a soft miss (return); fail-safe for the unknown |
 | 7 | `_EXIT_CODE_POLICY: dict[PytestExitCode, ExitCodePolicy]` is the SSOT for code semantics | OCP — adding a known code is a registration, not a method change |
 | 8 | Coverage opt-in via `RunTestsInput.coverage: bool = False` | Off-by-default preserves fast feedback; on-demand for Gate 6 / PR readiness |
-| 9 | Coverage threshold and packages NOT redefined; runner adds `--cov=backend --cov=mcp_server --cov-branch` only | `pyproject.toml` is already the SSOT (`--cov-fail-under=90` lives there) |
+| 9 | `coverage=True` materializes `--cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90` in `_build_cmd`; the 90% value comes from the project standard documented in `pyproject.toml` comments and `QUALITY_GATES.md` | Enforces Gate 6 threshold at the command level; no new YAML duplication; `_build_cmd` is the machine-enforceable source of truth |
 | 10 | `LF-empty-cache` detection moves from `RunTestsTool.execute()` into `PytestRunner` parser as a typed `PytestResult.lf_cache_was_empty: bool` flag | Pytest output classification is runner concern, not tool concern |
 | 11 | `RunTestsTool` is constructed at composition root with `PytestRunner()` injected | DIP — tool depends on the Protocol abstraction, not the concrete runner |
 | 12 | Tests use a `FakePytestRunner` implementing `IPytestRunner` | No private-symbol patching for happy paths; aligns with TYPE_CHECKING_PLAYBOOK guidance |
@@ -188,7 +189,7 @@ mcp_server/
   managers/
     pytest_runner.py               ← NEW: PytestRunner, PytestResult, PytestExitCode,
                                      ExitCodePolicy, _EXIT_CODE_POLICY, FailureDetail,
-                                     PytestExecution, _parse_pytest_output (moved here)
+                                     _PytestExecution (private internal), _parse_pytest_output (moved here)
   tools/
     test_tools.py                  ← REWRITTEN: thin RunTestsTool adapter
     project_tools.py               ← MODIFIED: GetProjectPlanTool emits SuggestionNote
@@ -262,12 +263,14 @@ class PytestResult:
     failures: tuple[FailureDetail, ...]   # tuple for hashability + immutability
     coverage_pct: float | None            # None when coverage flag was not requested
     lf_cache_was_empty: bool              # True iff pytest --lf fell back to full run
+    should_raise: bool                    # True for exit codes 2, 3, 4, unknown — stamped by runner policy
+    note: NoteEntry | None               # RecoveryNote/SuggestionNote from policy; None for codes 0, 1
 
 @dataclass(frozen=True)
 class ExitCodePolicy:
     outcome: Literal["return", "raise"]
-    note_factory: Callable[[int], NoteEntry]    # produces the note for this code
-    summary_line_when_no_parse: str             # used when parser found no summary
+    note_factory: Callable[[int], NoteEntry] | None    # None for codes that produce no note (0, 1)
+    summary_line_when_no_parse: str                     # used when parser found no summary
 ```
 
 **Invariants** (enforced by `PytestRunner`):
@@ -281,8 +284,8 @@ class ExitCodePolicy:
 
 ```python
 _EXIT_CODE_POLICY: dict[int, ExitCodePolicy] = {
-    PytestExitCode.ALL_PASSED:         ExitCodePolicy("return", _no_note, ""),
-    PytestExitCode.TESTS_FAILED:       ExitCodePolicy("return", _no_note, ""),
+    PytestExitCode.ALL_PASSED:         ExitCodePolicy("return", None, ""),
+    PytestExitCode.TESTS_FAILED:       ExitCodePolicy("return", None, ""),
     PytestExitCode.INTERRUPTED:        ExitCodePolicy("raise",
         lambda c: RecoveryNote("Pytest was interrupted; check for hung tests or external SIGINT."),
         "pytest interrupted (exit 2)"),
@@ -302,7 +305,7 @@ _UNKNOWN_CODE_POLICY = ExitCodePolicy("raise",
     "pytest exited with unexpected code")
 ```
 
-`PytestRunner.run()` looks up `_EXIT_CODE_POLICY.get(returncode, _UNKNOWN_CODE_POLICY)`. The lookup is the entire dispatch.
+`PytestRunner.run()` looks up `_EXIT_CODE_POLICY.get(returncode, _UNKNOWN_CODE_POLICY)`. The lookup is the entire dispatch. `PytestRunner` stamps `result.should_raise` and `result.note` before returning, so `RunTestsTool` never needs to import the policy.
 
 ---
 
@@ -363,16 +366,17 @@ class RunTestsTool(BaseTool):
             context.produce(RecoveryNote("Verify the Python interpreter and venv are reachable."))
             raise ExecutionError(f"Failed to run tests: {exc}") from exc
 
-        _emit_exit_code_note(result, context)               # one-liner helper
-        _emit_lf_cache_note(result, params, context)        # one-liner helper
+        if result.note is not None:
+            context.produce(result.note)             # stamped by runner via policy
+        _emit_lf_cache_note(result, params, context) # cross-concern: result flag + params intent
 
-        if _EXIT_CODE_POLICY.get(result.exit_code, _UNKNOWN_CODE_POLICY).outcome == "raise":
+        if result.should_raise:
             raise ExecutionError(f"pytest exited with returncode {result.exit_code}")
 
         return _to_tool_result(result)                      # one-liner helper
 ```
 
-`_emit_exit_code_note`, `_emit_lf_cache_note`, `_to_tool_result` are module-level helpers in `test_tools.py` — each <10 lines. The tool body is <30 lines and contains no pytest protocol knowledge.
+`_emit_lf_cache_note`, `_to_tool_result` are module-level helpers in `test_tools.py` — each <10 lines. The tool body is <30 lines and contains no pytest protocol knowledge. `_EXIT_CODE_POLICY` is **never imported** by `test_tools.py` — the runner stamps `result.should_raise` and `result.note` so the tool acts on typed outcome fields, not policy entries.
 
 ---
 
@@ -475,8 +479,9 @@ class FakePytestRunner:
 | 13 | content/summary parity invariant | any | assert `content[0]["text"] == content[1]["json"]["summary_line"]` | n/a |
 | 14 | timeout | n/a — runner raises `TimeoutExpired` | raises `ExecutionError` | 1× `RecoveryNote` |
 | 15 | OSError on subprocess start | n/a — runner raises `OSError` | raises `ExecutionError` | 1× `RecoveryNote` |
-| 16 | `_build_cmd` adds `--cov` when coverage=True | n/a | `runner.captured_cmd` contains `--cov=backend`, `--cov=mcp_server`, `--cov-branch` | n/a |
-| 17 | `_build_cmd` omits `--cov` when coverage=False | n/a | `runner.captured_cmd` contains no `--cov*` flag | n/a |
+| 16 | `_build_cmd` adds `--cov` packages when coverage=True | n/a | `runner.captured_cmd` contains `--cov=backend`, `--cov=mcp_server`, `--cov-branch` | n/a |
+| 17 | `_build_cmd` adds `--cov-fail-under=90` when coverage=True | n/a | `runner.captured_cmd` contains `--cov-fail-under=90` (Gate 6 threshold enforced) | n/a |
+| 18 | `_build_cmd` omits all `--cov*` when coverage=False | n/a | `runner.captured_cmd` contains no `--cov*` flag and no `--cov-fail-under` | n/a |
 
 **PytestRunner — required test cases (parser unit tests, raw stdout fixtures):**
 
@@ -526,7 +531,7 @@ All other call sites (none currently exist outside the composition root) are mig
 | Gate 2 (import placement) | All imports top-level (no in-function imports) |
 | Gate 3 (line length) | Tables and code blocks within 100 chars |
 | Gate 4 (type checking) | `PytestResult`, `IPytestRunner`, `_EXIT_CODE_POLICY` all strictly typed; no `dict[str, Any]` on public surface |
-| Gate 5 (tests passing) | All 17 + 8 + 3 = 28 new test cases listed in §3.10 |
+| Gate 5 (tests passing) | All 18 + 8 + 3 = 29 new test cases listed in §3.10 |
 | Gate 6 (coverage ≥ 90%) | New `pytest_runner.py` and refactored `test_tools.py` tested at branch level; coverage flag itself exercises the cmd path |
 | Gate 7 (architectural review) | SRP (each class one responsibility), DIP (Protocol injection), OCP (`_EXIT_CODE_POLICY` table), Config-First (no policy in code that belongs in `pyproject.toml`), Contract-Driven (`PytestResult` + `IPytestRunner`), DRY (one `summary_line` source), Fail-Fast (unknown exit codes raise) |
 
@@ -568,4 +573,5 @@ All other call sites (none currently exist outside the composition root) are mig
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-04-25 | Agent | Initial draft — minimal in-tool returncode dispatch; rejected by QA review |
-| 2.0 | 2026-04-26 | Agent | Full rewrite per Direction C analysis: thin RunTestsTool adapter, new PytestRunner manager, IPytestRunner Protocol, PytestResult typed contract eliminating summary_line drift, coverage support via pyproject.toml SSOT, exit codes 2/3/4/5 + unknown handled via _EXIT_CODE_POLICY lookup, complete test contract using FakePytestRunner |
+| 2.0 | 2026-04-25 | Agent | Full rewrite: thin RunTestsTool adapter, new PytestRunner manager, IPytestRunner Protocol, PytestResult typed contract eliminating summary_line drift, coverage support, exit codes 2/3/4/5 + unknown handled via _EXIT_CODE_POLICY lookup, complete test contract using FakePytestRunner; rejected by QA review |
+| 2.1 | 2026-04-25 | Agent | QA corrections: IPytestRunner returns PytestResult (not PytestExecution); _PytestExecution internal; coverage=True materializes --cov-fail-under=90 in _build_cmd; ExitCodePolicy.note_factory typed as Callable \| None; PytestResult gains should_raise+note so RunTestsTool never imports _EXIT_CODE_POLICY; test case 17 added for fail-under assertion; "Direction C" wording replaced with "Option B"; date metadata corrected |
