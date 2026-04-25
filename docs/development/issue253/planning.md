@@ -2,8 +2,8 @@
 <!-- template=planning version=130ac5ea created=2026-04-25T12:41Z updated= -->
 # run_tests Reliability — TDD Implementation Planning
 
-**Status:** DRAFT  
-**Version:** 1.0  
+**Status:** DRAFT
+**Version:** 2.0
 **Last Updated:** 2026-04-25
 
 ---
@@ -39,9 +39,9 @@ Refactor RunTestsTool into a thin MCP adapter backed by a new PytestRunner manag
 
 - C2 depends on C1 (PytestRunner uses PytestResult, PytestExitCode, ExitCodePolicy)
 - C3 depends on C1 (FakePytestRunner returns PytestResult)
-- C4 depends on C2 and C3 (RunTestsTool injects IPytestRunner; uses PytestResult fields)
+- C4 depends on C1, C2, C3 (RunTestsTool injects IPytestRunner; uses PytestResult fields)
 - C5 is independent — GetProjectPlanTool change has no dependency on C1-C4
-- C6 depends on C4 (legacy functions only deletable after thin tool is working)
+- C6 depends on C4 AND C5 (legacy functions only deletable after thin tool is working; GetProjectPlanTool fix must also be complete)
 
 ---
 
@@ -75,38 +75,49 @@ No subprocess, no tool — pure data layer.
 **New symbols in `pytest_runner.py` after C1:**
 
 ```
-PytestExitCode(IntEnum)          — 0=OK, 1=TESTS_FAILED, 2=INTERRUPTED,
-                                   3=INTERNAL_ERROR, 4=CLI_USAGE_ERROR, 5=NO_TESTS
-FailureDetail(frozen dataclass)  — file: str, test: str, reason: str
-PytestResult(frozen dataclass)   — passed, failed, errors, skipped: int
-                                   failures: list[FailureDetail]
+PytestExitCode(IntEnum)          — ALL_PASSED=0, TESTS_FAILED=1, INTERRUPTED=2,
+                                   INTERNAL_ERROR=3, USAGE_ERROR=4, NO_TESTS_COLLECTED=5
+
+FailureDetail(frozen dataclass)  — test_id: str, location: str, short_reason: str, traceback: str
+
+PytestResult(frozen dataclass)   — exit_code: int                   (raw int, not PytestExitCode)
+                                   summary_line: str                 (always non-empty field, not property)
+                                   passed: int
+                                   failed: int
+                                   skipped: int
+                                   errors: int
+                                   failures: tuple[FailureDetail, ...]  (tuple, not list)
                                    coverage_pct: float | None
-                                   exit_code: PytestExitCode
+                                   lf_cache_was_empty: bool
                                    should_raise: bool
                                    note: NoteEntry | None
-                                   summary_line: str (property)
-ExitCodePolicy(frozen dataclass) — should_raise: bool, note_factory: Callable[[int], NoteEntry] | None
-_EXIT_CODE_POLICY: dict[int, ExitCodePolicy]  — keys 0-5; None factories for 0 and 1
-_UNKNOWN_CODE_POLICY: ExitCodePolicy          — fallback for unknown exit codes
+
+ExitCodePolicy(frozen dataclass) — outcome: Literal["return", "raise"]
+                                   note_factory: Callable[[int], NoteEntry] | None
+                                   summary_line_when_no_parse: str   (fallback when parser finds nothing)
+
+_EXIT_CODE_POLICY: dict[int, ExitCodePolicy]  — keys 0-5
+  code 0: ("return", None, "")
+  code 1: ("return", None, "")
+  code 2: ("raise", lambda c: RecoveryNote(...), "pytest interrupted (exit 2)")
+  code 3: ("raise", lambda c: RecoveryNote(...), "pytest internal error (exit 3)")
+  code 4: ("raise", lambda c: RecoveryNote(...), "pytest usage error (exit 4)")
+  code 5: ("return", lambda c: SuggestionNote(...), "no tests collected")   ← NOT raise
+
+_UNKNOWN_CODE_POLICY: ExitCodePolicy          — ("raise", lambda c: RecoveryNote(...), "pytest exited with unexpected code")
 ```
 
-**Tests (new file):** `tests/mcp_server/unit/managers/test_pytest_runner.py`
+**Invariants enforced by PytestRunner:**
+- `summary_line` is NEVER the empty string — fallback to `policy.summary_line_when_no_parse`
+- `failures` is a `tuple`, not a `list` (frozen dataclass + hashability)
+- `coverage_pct` is `None` unless the cmd contained `--cov`
+- `exit_code` is a raw `int` — not cast to `PytestExitCode`
 
-| # | Test | Verifies |
-|---|------|----------|
-| 1 | `test_exit_code_policy_code0_no_raise_no_note` | code 0 → should_raise=False, note_factory=None |
-| 2 | `test_exit_code_policy_code1_no_raise_no_note` | code 1 → should_raise=False, note_factory=None |
-| 3 | `test_exit_code_policy_code2_raises` | code 2 → should_raise=True |
-| 4 | `test_exit_code_policy_unknown_code_raises` | unknown code → _UNKNOWN_CODE_POLICY.should_raise=True |
-| 5 | `test_pytest_result_summary_line_all_passed` | summary_line format for all-passed |
-| 6 | `test_pytest_result_summary_line_some_failed` | summary_line format with failures |
-| 7 | `test_pytest_result_frozen_rejects_mutation` | dataclass is frozen |
-| 8 | `test_failure_detail_frozen` | FailureDetail is frozen |
+**Tests:** None in C1. Data types are exercised by C2 parser tests. Total test count preserved at 29.
 
 **Success Criteria:**
-- All 8 tests GREEN
 - `PytestResult`, `ExitCodePolicy`, `PytestExitCode` importable from `mcp_server.managers.pytest_runner`
-- `mypy --strict` clean on `pytest_runner.py`
+- `mypy --strict` clean on `pytest_runner.py` (types-only module)
 
 ---
 
@@ -123,38 +134,55 @@ Implement `PytestRunner` that wraps subprocess execution, parses stdout, applies
 | Action | File |
 |--------|------|
 | MODIFY | `mcp_server/managers/pytest_runner.py` (add PytestRunner class, _PytestExecution, helpers) |
+| CREATE | `tests/mcp_server/unit/managers/test_pytest_runner.py` (8 parser tests) |
 
 **New symbols after C2:**
 
 ```
-_PytestExecution(dataclass)  — internal: stdout, stderr, returncode
-PytestRunner                 — run(cmd, cwd, timeout) -> PytestResult
-                               _parse_output(stdout) -> dict
-                               _parse_coverage_pct(stdout) -> float | None
+_PytestExecution(dataclass)  — internal: stdout, stderr, returncode (NEVER exported)
+PytestRunner                 — run(cmd: list[str], cwd: str, timeout: int) -> PytestResult
+                               _parse_output(stdout: str) -> dict
+                               _parse_coverage_pct(stdout: str) -> float | None
 ```
 
 **Parser responsibilities:**
-- Extract `passed`, `failed`, `errors`, `skipped` from summary line
-- Build `list[FailureDetail]` from `FAILED test::name - reason` lines
+- Extract `passed`, `failed`, `errors`, `skipped` from summary line regex
+- Build `tuple[FailureDetail, ...]` from `FAILED test::name - reason` lines; attach tracebacks
 - Extract `coverage_pct` from `TOTAL ... XX%` line
+- Set `lf_cache_was_empty=True` when LF-empty fallback message detected in stdout
 - Stamp `should_raise` + `note` via `_EXIT_CODE_POLICY.get(returncode, _UNKNOWN_CODE_POLICY)`
+- `summary_line` NEVER empty — fallback to `policy.summary_line_when_no_parse`
 
-**Tests (added to same file):**
+**Exit-code-5 contract (CRITICAL — differs from codes 2/3/4):**
 
-| # | Test | Stdout Fixture |
-|---|------|----------------|
-| 1 | `test_runner_returns_passed_counts` | all-passed |
-| 2 | `test_runner_returns_failed_counts_and_details` | some-failed |
-| 3 | `test_runner_handles_skipped_tests` | with-skipped |
-| 4 | `test_runner_handles_errors` | with-errors |
-| 5 | `test_runner_parses_coverage_pct` | with-coverage |
-| 6 | `test_runner_handles_last_failed_empty` | last-failed-empty (exit 5) |
-| 7 | `test_runner_handles_empty_stdout` | empty string |
-| 8 | `test_runner_stamps_should_raise_for_exit5` | exit_code=5, should_raise=True |
+```
+code 5 (NO_TESTS_COLLECTED):
+  outcome = "return"          ← return ToolResult, do NOT raise
+  note    = SuggestionNote("No tests matched the filter. Check markers and path.")
+  summary_line = "no tests collected"
+```
+
+**Tests (new file):** `tests/mcp_server/unit/managers/test_pytest_runner.py`
+
+All 8 PytestRunner tests from design.md §3.10. These are the ONLY tests for the runner layer (design total = 8):
+
+| # | Test | Assertion |
+|---|------|-----------|
+| 1 | `test_runner_all_passed_stdout` | `passed=N, failed=0, errors=0`, `summary_line` non-empty |
+| 2 | `test_runner_failing_tests_stdout` | `failures` tuple populated with `FailureDetail` per FAILED line |
+| 3 | `test_runner_skipped_tests_stdout` | `skipped=N` |
+| 4 | `test_runner_errors_during_collection_stdout` | `errors=N` |
+| 5 | `test_runner_coverage_report_line_present` | `coverage_pct` parsed correctly |
+| 6 | `test_runner_lf_empty_fallback_message` | `lf_cache_was_empty=True` |
+| 7 | `test_runner_empty_unparseable_stdout` | `summary_line` falls back to policy; never empty |
+| 8 | `test_runner_exit_code_5_returns_suggestion_note` | `should_raise=False`, `note` is `SuggestionNote`, `summary_line == "no tests collected"` |
+
+**Test count after C2:** 8 (total running count toward 29)
 
 **Success Criteria:**
-- All 8 runner tests GREEN (design.md total: 8 tests in test_pytest_runner.py)
+- All 8 tests GREEN
 - mypy compliance maintained
+- `PytestRunner` correctly creates `PytestResult` with `exit_code` as raw `int` (not `PytestExitCode` cast)
 
 ---
 
@@ -220,42 +248,81 @@ Replace RunTestsTool internals: inject `IPytestRunner`, add `coverage` field, fi
 | MODIFY | `mcp_server/server.py` (inject PytestRunner()) |
 
 **Key changes:**
-- `RunTestsInput`: add `coverage: bool = False`
-- `RunTestsTool.__init__`: `runner: IPytestRunner` as first required arg (no default)
+- `RunTestsInput`: add `coverage: bool = False`; all other fields unchanged
+- `RunTestsTool.__init__`: `runner: IPytestRunner` as first required arg (no default, composition root injects)
 - `_build_cmd`: add `--cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90` when `coverage=True`
-- `execute()`: remove `del context`; call `runner.run()`; append `result.note`; raise if `result.should_raise`
-- `server.py` line 301: `RunTestsTool(runner=PytestRunner(), settings=settings)`
-- Add import: `from mcp_server.managers.pytest_runner import PytestRunner`
+- `execute()`: remove `del context`; call `context.produce(result.note)` when note present; raise `ExecutionError` when `result.should_raise`; return `_to_tool_result(result)` otherwise
+- `server.py` line 301: `RunTestsTool(runner=PytestRunner(), settings=settings)` + import `PytestRunner`
+
+**API corrections (CRITICAL):**
+
+```python
+# Wrong (not in this codebase):
+raise ToolError(...)
+context.add_note(...)
+
+# Correct (per NoteContext API and design.md §3.6):
+raise ExecutionError(...)
+context.produce(...)
+```
+
+**execute() structure (thin adapter — no pytest protocol knowledge):**
+
+```python
+async def execute(self, params: RunTestsInput, context: NoteContext) -> ToolResult:
+    cmd = self._build_cmd(params)
+    timeout = params.timeout or self.DEFAULT_TIMEOUT
+    try:
+        result = await asyncio.to_thread(self._runner.run, cmd, self._workspace_root, timeout)
+    except subprocess.TimeoutExpired:
+        context.produce(RecoveryNote(f"Tests timed out after {timeout}s. ..."))
+        raise ExecutionError(f"Tests timed out after {timeout}s") from None
+    except OSError as exc:
+        context.produce(RecoveryNote("Verify the Python interpreter and venv are reachable."))
+        raise ExecutionError(f"Failed to run tests: {exc}") from exc
+
+    if result.note is not None:
+        context.produce(result.note)
+    _emit_lf_cache_note(result, params, context)
+
+    if result.should_raise:
+        raise ExecutionError(f"pytest exited with returncode {result.exit_code}")
+
+    return _to_tool_result(result)
+```
 
 **Tests (new FakePytestRunner-based tests):** `tests/mcp_server/unit/tools/test_test_tools.py`
 
-> Legacy tests still present at this point — deleted in C6.
+> Legacy tests still present at this point — deleted in C6. Design §3.10 defines exactly 18 scenarios:
 
-| # | Test | Verifies |
-|---|------|----------|
-| 1 | `test_input_has_coverage_field` | coverage default=False |
-| 2 | `test_input_path_and_scope_mutual_exclusion` | validation error |
-| 3 | `test_input_no_path_no_scope_raises` | validation error |
-| 4 | `test_build_cmd_basic_path` | cmd contains path |
-| 5 | `test_build_cmd_scope_full_no_path_arg` | no path arg |
-| 6 | `test_build_cmd_coverage_flags` | --cov=backend, --cov-fail-under=90 |
-| 7 | `test_build_cmd_no_coverage_flags_by_default` | --cov absent |
-| 8 | `test_build_cmd_last_failed_only_adds_lf` | --lf present |
-| 9 | `test_build_cmd_markers` | -m marker present |
-| 10 | `test_execute_success_returns_tool_result` | exit 0 → ToolResult.text |
-| 11 | `test_execute_passes_cmd_to_runner` | captured_cmd verified |
-| 12 | `test_execute_should_raise_raises_tool_error` | should_raise → ToolError |
-| 13 | `test_execute_note_appended_to_context` | note → context.add_note |
-| 14 | `test_execute_no_note_nothing_appended` | note=None → no add_note |
-| 15 | `test_execute_coverage_cmd_when_coverage_true` | --cov-fail-under=90 in cmd |
-| 16 | `test_execute_space_separated_paths` | "a b" → two args |
-| 17 | `test_execute_scope_full_no_path_in_cmd` | no path args |
-| 18 | `test_execute_timeout_forwarded_to_runner` | timeout reaches runner |
+| # | Scenario | FakePytestRunner.result exit_code | Expected outcome | Note assertions |
+|---|----------|------------------------------------|------------------|-----------------|
+| 1 | All tests pass | 0 | `ToolResult` content[0]==summary_line | none |
+| 2 | Some tests fail | 1 | `ToolResult` with failures in content[1] | none |
+| 3 | Pytest interrupted | 2 | raises `ExecutionError` | 1× `RecoveryNote` |
+| 4 | Pytest internal error | 3 | raises `ExecutionError` | 1× `RecoveryNote` |
+| 5 | Pytest usage error | 4 | raises `ExecutionError` | 1× `RecoveryNote` |
+| 6 | No tests collected | 5 | returns `ToolResult`, summary_line="no tests collected" | 1× `SuggestionNote` |
+| 7 | Unknown exit code (99) | 99 | raises `ExecutionError` | 1× `RecoveryNote` (fail-safe) |
+| 8 | LF cache empty + last_failed_only=True | 0, lf_cache_was_empty=True | normal `ToolResult` | 1× `InfoNote` |
+| 9 | LF cache populated + last_failed_only=True | 0, lf_cache_was_empty=False | normal `ToolResult` | none |
+| 10 | last_failed_only=False, lf_cache_was_empty=True | 0 | normal `ToolResult` | none (flag ignored unless requested) |
+| 11 | coverage=True | 0, coverage_pct=92.5 | content[1].json.coverage_pct == 92.5 | none |
+| 12 | coverage=False | 0, coverage_pct=None | content[1].json.coverage_pct is None | none |
+| 13 | content/summary parity invariant | any | content[0]["text"] == content[1]["json"]["summary_line"] | n/a |
+| 14 | timeout | runner raises TimeoutExpired | raises `ExecutionError` | 1× `RecoveryNote` |
+| 15 | OSError on subprocess start | runner raises OSError | raises `ExecutionError` | 1× `RecoveryNote` |
+| 16 | _build_cmd adds --cov packages when coverage=True | n/a | captured_cmd contains --cov=backend, --cov=mcp_server, --cov-branch | n/a |
+| 17 | _build_cmd adds --cov-fail-under=90 when coverage=True | n/a | captured_cmd contains --cov-fail-under=90 | n/a |
+| 18 | _build_cmd omits all --cov* when coverage=False | n/a | captured_cmd contains no --cov* | n/a |
+
+**Test count after C4:** 8 + 18 = 26 (running count toward 29)
 
 **Success Criteria:**
 - All 18 new tests GREEN
 - Server boots: `PytestRunner()` injected in `server.py`
 - No import of `_EXIT_CODE_POLICY` in `test_tools.py`
+- `ExecutionError` used (not `ToolError`); `context.produce()` used (not `context.add_note()`)
 
 ---
 
@@ -286,7 +353,7 @@ return ToolResult.error(f"No project plan found for issue #{params.issue_number}
 ```python
 # del context line removed
 ...
-context.add_note(SuggestionNote(
+context.produce(SuggestionNote(
     "Run initialize_project first to create a project plan.",
     subject=f"issue #{params.issue_number}"
 ))
@@ -301,9 +368,12 @@ return ToolResult.error(f"No project plan found for issue #{params.issue_number}
 | 2 | `test_get_plan_not_found_adds_suggestion_note` | 1× SuggestionNote appended |
 | 3 | `test_get_plan_not_found_suggestion_subject_contains_issue_number` | subject == f"issue #{n}" |
 
+**Test count after C5:** 8 + 18 + 3 = 29 ✓ (matches design.md §3.10 total)
+
 **Success Criteria:**
 - All 3 tests GREEN
 - No `del context` in `GetProjectPlanTool.execute`
+- `context.produce()` used (not `context.add_note()`)
 
 ---
 
@@ -313,23 +383,36 @@ return ToolResult.error(f"No project plan found for issue #{params.issue_number}
 **⚠️ This cycle is mandatory: no legacy or old test code may remain after implementation.**
 
 **Goal:**
-Delete every line of replaced legacy code. Leave zero orphaned symbols, zero patch-based tests, and zero dead imports.
+Delete every line of replaced legacy code. Leave zero orphaned symbols, zero patch-based tests, zero dead imports, and zero unmigrated `RunTestsTool(...)` call sites that omit the required `runner=` argument.
 
 **Files changed:**
 
-| Action | File | What to delete |
-|--------|------|----------------|
+| Action | File | What to delete / migrate |
+|--------|------|--------------------------|
 | MODIFY | `mcp_server/tools/test_tools.py` | Delete `_run_pytest_sync` function |
 | MODIFY | `mcp_server/tools/test_tools.py` | Delete `_parse_pytest_output` function |
-| MODIFY | `tests/mcp_server/unit/tools/test_test_tools.py` | Delete ALL 21 legacy test functions |
+| MODIFY | `tests/mcp_server/unit/tools/test_test_tools.py` | Delete ALL 21 legacy test functions (see list) |
 | MODIFY | `tests/mcp_server/unit/tools/test_test_tools.py` | Delete `mock_run_pytest_sync` fixture |
 | MODIFY | `tests/mcp_server/unit/tools/test_test_tools.py` | Delete `# pyright: reportPrivateUsage=false` |
 | MODIFY | `tests/mcp_server/unit/tools/test_test_tools.py` | Remove unused imports (patch, MagicMock, Generator) |
+| MIGRATE | `tests/mcp_server/unit/tools/test_dev_tools.py` | Replace `RunTestsTool(settings=...)` + `patch(_run_pytest_sync)` with `RunTestsTool(runner=FakePytestRunner(...), settings=...)` |
+| MIGRATE | `tests/mcp_server/unit/integration/test_all_tools.py` | Replace both `RunTestsTool()` calls with `RunTestsTool(runner=PytestRunner())` |
 | VERIFY | `mcp_server/tools/test_tools.py` | No reference to `_run_pytest_sync` or `_parse_pytest_output` |
 | VERIFY | `tests/mcp_server/unit/tools/test_test_tools.py` | No `patch("mcp_server.tools.test_tools._run_pytest_sync")` |
 | VERIFY | `mcp_server/server.py` | `RunTestsTool(runner=PytestRunner(), ...)` is the composition root |
+| VERIFY | entire codebase | grep `RunTestsTool(` → all occurrences include `runner=` |
 
-**Legacy test functions to delete (all 21):**
+**RunTestsTool call sites requiring migration (breaking refactor — no shim):**
+
+| File | Line | Current (broken after refactor) | Migration |
+|------|------|----------------------------------|-----------|
+| `mcp_server/server.py` | 301 | `RunTestsTool(settings=settings)` | `RunTestsTool(runner=PytestRunner(), settings=settings)` |
+| `tests/mcp_server/unit/tools/test_test_tools.py` | multiple | `RunTestsTool(settings=injected_settings)` | Replaced by 18 new tests using `FakePytestRunner` in C4 |
+| `tests/mcp_server/unit/tools/test_dev_tools.py` | 24 | `RunTestsTool(settings=Settings(...))` | `RunTestsTool(runner=FakePytestRunner(...), settings=Settings(...))` |
+| `tests/mcp_server/unit/integration/test_all_tools.py` | 220 | `RunTestsTool()` | `RunTestsTool(runner=PytestRunner())` |
+| `tests/mcp_server/unit/integration/test_all_tools.py` | 542 | `RunTestsTool()` | `RunTestsTool(runner=PytestRunner())` |
+
+**Legacy test functions to delete from test_test_tools.py (all 21):**
 
 ```
 test_run_tests_success
@@ -361,12 +444,16 @@ test_scope_full_produces_no_path_args_in_cmd
 run_tests(path="tests/mcp_server/unit/tools/test_test_tools.py")          # 18 GREEN, 0 legacy
 run_tests(path="tests/mcp_server/unit/managers/test_pytest_runner.py")    # 8 GREEN
 run_tests(path="tests/mcp_server/unit/tools/test_project_tools.py")       # all GREEN incl. 3 new
+run_tests(path="tests/mcp_server/unit/tools/test_dev_tools.py")           # GREEN (migrated)
+run_tests(path="tests/mcp_server/unit/integration/test_all_tools.py")     # GREEN (migrated)
 run_quality_gates(scope="files", files=[
     "mcp_server/tools/test_tools.py",
     "mcp_server/managers/pytest_runner.py",
     "mcp_server/core/interfaces/__init__.py",
     "mcp_server/tools/project_tools.py",
     "mcp_server/server.py",
+    "tests/mcp_server/unit/tools/test_dev_tools.py",
+    "tests/mcp_server/unit/integration/test_all_tools.py",
 ])
 run_quality_gates(scope="branch")   # GREEN
 run_tests(path="tests/")            # full suite GREEN
@@ -376,6 +463,7 @@ run_tests(path="tests/")            # full suite GREEN
 - Zero references to `_run_pytest_sync` anywhere
 - Zero `patch("mcp_server.tools.test_tools._run_pytest_sync")` calls
 - `test_test_tools.py` contains exactly 18 tests, all GREEN
+- All `RunTestsTool(...)` call sites include `runner=` argument
 - `run_quality_gates(scope="branch")` GREEN
 - Full test suite GREEN
 
