@@ -62,6 +62,15 @@ class ExitCodePolicy:
     summary_line_when_no_parse: str  # used when parser found no summary
 
 
+@dataclass(frozen=True)
+class _PytestExecution:
+    """Private normalized subprocess result used inside PytestRunner only."""
+
+    stdout: str
+    stderr: str
+    returncode: int
+
+
 _EXIT_CODE_POLICY: dict[int, ExitCodePolicy] = {
     PytestExitCode.ALL_PASSED: ExitCodePolicy("return", None, ""),
     PytestExitCode.TESTS_FAILED: ExitCodePolicy("return", None, ""),
@@ -101,15 +110,6 @@ _UNKNOWN_CODE_POLICY = ExitCodePolicy(
 # Regexes for output parsing
 # ---------------------------------------------------------------------------
 
-# "3 passed, 1 failed, 2 skipped in 0.12s"
-_SUMMARY_RE = re.compile(
-    r"(?:(\d+) passed)?[,\s]*"
-    r"(?:(\d+) failed)?[,\s]*"
-    r"(?:(\d+) skipped)?[,\s]*"
-    r"(?:(\d+) error(?:s)?)?[,\s]*"
-    r"in \d",
-)
-
 # "FAILED tests/test_foo.py::test_bad - AssertionError: assert 1 == 2"
 _FAILED_LINE_RE = re.compile(r"^FAILED (.+?) - (.+)$", re.MULTILINE)
 
@@ -134,6 +134,11 @@ class PytestRunner:
             subprocess.TimeoutExpired: pytest exceeded the timeout.
             OSError: process could not be started.
         """
+        execution = self._execute(cmd, cwd, timeout)
+        return self._parse_output(execution.stdout, execution.returncode)
+
+    def _execute(self, cmd: list[str], cwd: str, timeout: int) -> _PytestExecution:
+        """Run pytest and normalize subprocess output into the private execution boundary."""
         proc = subprocess.run(
             cmd,
             capture_output=True,
@@ -141,8 +146,11 @@ class PytestRunner:
             cwd=cwd,
             timeout=timeout,
         )
-        stdout = proc.stdout or ""
-        return self._parse_output(stdout, proc.returncode)
+        return _PytestExecution(
+            stdout=proc.stdout or "",
+            stderr=proc.stderr or "",
+            returncode=proc.returncode,
+        )
 
     def _parse_output(self, stdout: str, returncode: int) -> PytestResult:
         """Parse raw pytest stdout and return a fully typed PytestResult."""
@@ -176,20 +184,18 @@ class PytestRunner:
         """Extract (passed, failed, skipped, errors) counts — order-independent."""
 
         def _count(keyword: str) -> int:
-            m = re.search(rf"(\d+) {keyword}", stdout)
-            return int(m.group(1)) if m else 0
+            match = re.search(rf"(\d+) {keyword}", stdout)
+            return int(match.group(1)) if match else 0
 
         return _count("passed"), _count("failed"), _count("skipped"), _count("error")
 
     def _parse_failures(self, stdout: str) -> tuple[FailureDetail, ...]:
         """Extract FailureDetail entries from FAILED lines in short summary."""
         details: list[FailureDetail] = []
-        for m in _FAILED_LINE_RE.finditer(stdout):
-            test_id = m.group(1).strip()
-            short_reason = m.group(2).strip()
-            # Extract traceback block between the FAILURES header and the next separator
+        for match in _FAILED_LINE_RE.finditer(stdout):
+            test_id = match.group(1).strip()
+            short_reason = match.group(2).strip()
             traceback = self._extract_traceback(stdout, test_id)
-            # Location: file part before the first "::" separator
             location, _, _ = test_id.partition("::")
             details.append(
                 FailureDetail(
@@ -203,19 +209,18 @@ class PytestRunner:
 
     def _extract_traceback(self, stdout: str, test_id: str) -> str:
         """Extract the traceback block for a given test_id from the FAILURES section."""
-        # Find the underline block for this test
         _, _, test_name = test_id.rpartition("::")
         pattern = re.compile(
             r"_{3,}\s+" + re.escape(test_name) + r"\s+_{3,}\n(.*?)(?=\n_{3,}|\n={3,}|\Z)",
             re.DOTALL,
         )
-        m = pattern.search(stdout)
-        return m.group(1).strip() if m else ""
+        match = pattern.search(stdout)
+        return match.group(1).strip() if match else ""
 
     def _parse_coverage(self, stdout: str) -> float | None:
         """Extract total coverage percentage from coverage report line."""
-        m = _COVERAGE_RE.search(stdout)
-        return float(m.group(1)) if m else None
+        match = _COVERAGE_RE.search(stdout)
+        return float(match.group(1)) if match else None
 
     def _parse_summary_line(self, stdout: str, returncode: int, policy: ExitCodePolicy) -> str:
         """Return the human-readable summary line — never empty.
@@ -224,11 +229,9 @@ class PytestRunner:
         directly so summary_line is always unambiguous. For codes 0 and 1 (where
         policy.summary_line_when_no_parse == ""), parse from the last === banner.
         """
-        # Codes with a defined canonical fallback use it directly (e.g. exit 5 →
-        # "no tests collected", exit 2 → "pytest interrupted (exit 2)")
         if policy.summary_line_when_no_parse:
             return policy.summary_line_when_no_parse
-        # Codes 0 and 1: parse the actual summary from stdout
+
         candidates: list[str] = re.findall(r"={3,}\s+(.+?)\s+={3,}", stdout)
         for candidate in reversed(candidates):
             if "in " in candidate or "passed" in candidate or "failed" in candidate:

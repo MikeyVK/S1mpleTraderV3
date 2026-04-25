@@ -4,17 +4,16 @@
 @layer: Tests (Unit)
 @dependencies: [pytest, mcp_server.managers.pytest_runner]
 """
-# pyright: reportPrivateUsage=false
 
 from __future__ import annotations
 
+import subprocess
+
 import pytest
 
-from mcp_server.managers.pytest_runner import (
-    FailureDetail,
-    PytestResult,
-    PytestRunner,
-)
+import mcp_server.managers.pytest_runner as pytest_runner_module
+from mcp_server.core.operation_notes import SuggestionNote
+from mcp_server.managers.pytest_runner import FailureDetail, PytestResult, PytestRunner
 
 # ---------------------------------------------------------------------------
 # Stdout fixtures
@@ -104,14 +103,42 @@ collected 0 items
 
 
 # ---------------------------------------------------------------------------
-# Helper — construct PytestRunner and call _parse_output directly
+# Helper — exercise public PytestRunner.run() with a controlled subprocess seam
 # ---------------------------------------------------------------------------
 
 
-def _parse(stdout: str, returncode: int) -> PytestResult:
-    """Helper to exercise PytestRunner._parse_output for parser unit tests."""
-    runner = PytestRunner()
-    return runner._parse_output(stdout, returncode)  # noqa: SLF001
+def _run(
+    monkeypatch: pytest.MonkeyPatch,
+    stdout: str,
+    returncode: int,
+    *,
+    stderr: str = "",
+) -> PytestResult:
+    """Helper to exercise PytestRunner.run() through a controlled subprocess seam."""
+    completed: subprocess.CompletedProcess[str] = subprocess.CompletedProcess(
+        args=["pytest"],
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    def fake_run(
+        cmd: list[str],
+        *,
+        capture_output: bool,
+        text: bool,
+        cwd: str,
+        timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        assert cmd == ["pytest"]
+        assert capture_output is True
+        assert text is True
+        assert cwd == "."
+        assert timeout == 30
+        return completed
+
+    monkeypatch.setattr(pytest_runner_module.subprocess, "run", fake_run)
+    return PytestRunner().run(["pytest"], cwd=".", timeout=30)
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +146,12 @@ def _parse(stdout: str, returncode: int) -> PytestResult:
 # ---------------------------------------------------------------------------
 
 
-class TestPytestRunnerParser:
-    """Parser unit tests — exercise _parse_output with raw stdout fixtures."""
+class TestPytestRunnerRun:
+    """Runner unit tests — exercise the public run() surface only."""
 
-    def test_all_passed(self) -> None:
+    def test_all_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 1: all-passed stdout → passed=N, failed=0, summary_line non-empty."""
-        result = _parse(_PASSED_STDOUT, returncode=0)
+        result = _run(monkeypatch, _PASSED_STDOUT, returncode=0)
 
         assert result.passed == 3
         assert result.failed == 0
@@ -135,9 +162,9 @@ class TestPytestRunnerParser:
         assert result.should_raise is False
         assert result.note is None
 
-    def test_failing_tests(self) -> None:
+    def test_failing_tests(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 2: failing tests stdout → failures tuple populated with FailureDetail."""
-        result = _parse(_FAILED_STDOUT, returncode=1)
+        result = _run(monkeypatch, _FAILED_STDOUT, returncode=1)
 
         assert result.failed == 1
         assert result.passed == 1
@@ -148,44 +175,45 @@ class TestPytestRunnerParser:
         assert result.should_raise is False
         assert result.note is None
 
-    def test_skipped_tests(self) -> None:
+    def test_skipped_tests(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 3: skipped tests stdout → skipped=N."""
-        result = _parse(_SKIPPED_STDOUT, returncode=0)
+        result = _run(monkeypatch, _SKIPPED_STDOUT, returncode=0)
 
         assert result.skipped == 1
         assert result.passed == 1
         assert result.failed == 0
 
-    def test_errors_during_collection(self) -> None:
+    def test_errors_during_collection(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 4: errors-during-collection stdout → errors=N."""
-        result = _parse(_ERRORS_STDOUT, returncode=2)
+        result = _run(monkeypatch, _ERRORS_STDOUT, returncode=2)
 
         assert result.errors >= 1
 
-    def test_coverage_pct_parsed(self) -> None:
+    def test_coverage_pct_parsed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 5: coverage report line present → coverage_pct parsed as float."""
-        result = _parse(_COVERAGE_STDOUT, returncode=0)
+        result = _run(monkeypatch, _COVERAGE_STDOUT, returncode=0)
 
         assert result.coverage_pct is not None
         assert isinstance(result.coverage_pct, float)
         assert result.coverage_pct == pytest.approx(96.0)
 
-    def test_lf_cache_was_empty(self) -> None:
+    def test_lf_cache_was_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 6: LF empty fallback message in stdout → lf_cache_was_empty=True."""
-        result = _parse(_LF_EMPTY_STDOUT, returncode=0)
+        result = _run(monkeypatch, _LF_EMPTY_STDOUT, returncode=0)
 
         assert result.lf_cache_was_empty is True
 
-    def test_empty_stdout_summary_line_fallback(self) -> None:
+    def test_empty_stdout_summary_line_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 7: empty/unparseable stdout → summary_line falls back to policy; never empty."""
-        result = _parse(_EMPTY_STDOUT, returncode=2)
+        result = _run(monkeypatch, _EMPTY_STDOUT, returncode=2)
 
         assert result.summary_line != ""
         assert result.should_raise is True
 
-    def test_exit_code_5_no_tests_collected(self) -> None:
+    def test_exit_code_5_no_tests_collected(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Scenario 8: exit code 5 path → summary_line == 'no tests collected'."""
-        result = _parse(_NO_TESTS_STDOUT, returncode=5)
+        result = _run(monkeypatch, _NO_TESTS_STDOUT, returncode=5)
 
         assert result.summary_line == "no tests collected"
         assert result.should_raise is False
+        assert isinstance(result.note, SuggestionNote)
