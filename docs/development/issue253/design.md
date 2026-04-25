@@ -2,8 +2,8 @@
 <!-- template=design version=5827e841 created=2026-04-25T11:15Z updated=2026-04-25 -->
 # run_tests Reliability — Thin Tool + PytestRunner Manager, Typed Result Contract, Coverage Support
 
-**Status:** DRAFT  
-**Version:** 2.2  
+**Status:** APPROVED  
+**Version:** 2.3  
 **Last Updated:** 2026-04-25
 
 ---
@@ -139,7 +139,7 @@ Same as B, plus a new `.st3/config/test_runner.yaml` declaring exit-code-to-note
 
 **Cons:**
 - Pytest exit codes are external library protocol, not ST3 policy — encoding them in YAML moves typed compiler-checkable knowledge into stringly-typed config
-- Coverage threshold (90%) and packages (`backend`, `mcp_server`) are already in `pyproject.toml` — duplicating them in YAML violates DRY/SSOT
+- Coverage threshold (90%) and packages (`backend`, `mcp_server`) are documented in `pyproject.toml` comments — duplicating them in YAML violates DRY; `_build_cmd` is the machine-enforced command source
 - The recovery messages are developer diagnostics, not user-configurable
 - Over-engineering: introduces a config-loader, schema, and validator for knowledge that does not change
 
@@ -532,7 +532,7 @@ RunTestsTool(runner=PytestRunner(), settings=settings),
 | Gate 4 (type checking) | `PytestResult`, `IPytestRunner`, `_EXIT_CODE_POLICY` all strictly typed; no `dict[str, Any]` on public surface |
 | Gate 5 (tests passing) | All 18 + 8 + 3 = 29 new test cases listed in §3.10 |
 | Gate 6 (coverage ≥ 90%) | New `pytest_runner.py` and refactored `test_tools.py` tested at branch level; coverage flag itself exercises the cmd path |
-| Gate 7 (architectural review) | SRP (each class one responsibility), DIP (Protocol injection), OCP (`_EXIT_CODE_POLICY` table), Config-First (no policy in code that belongs in `pyproject.toml`), Contract-Driven (`PytestResult` + `IPytestRunner`), DRY (one `summary_line` source), Fail-Fast (unknown exit codes raise) |
+| Gate 7 (architectural review) | SRP (each class one responsibility), DIP (Protocol injection), OCP (`_EXIT_CODE_POLICY` table), Config-First (90% threshold documented in `pyproject.toml`/`QUALITY_GATES.md`; machine-enforced via `_build_cmd` — no policy duplicated in code or new YAML), Contract-Driven (`PytestResult` + `IPytestRunner`), DRY (one `summary_line` source), Fail-Fast (unknown exit codes raise) |
 
 ---
 
@@ -574,4 +574,5 @@ RunTestsTool(runner=PytestRunner(), settings=settings),
 | 1.0 | 2026-04-25 | Agent | Initial draft — minimal in-tool returncode dispatch; rejected by QA review |
 | 2.0 | 2026-04-25 | Agent | Full rewrite: thin RunTestsTool adapter, new PytestRunner manager, IPytestRunner Protocol, PytestResult typed contract eliminating summary_line drift, coverage support, exit codes 2/3/4/5 + unknown handled via _EXIT_CODE_POLICY lookup, complete test contract using FakePytestRunner; rejected by QA review |
 | 2.1 | 2026-04-25 | Agent | QA corrections: IPytestRunner returns PytestResult (not PytestExecution); _PytestExecution internal; coverage=True materializes --cov-fail-under=90 in _build_cmd; ExitCodePolicy.note_factory typed as Callable \| None; PytestResult gains should_raise+note so RunTestsTool never imports _EXIT_CODE_POLICY; test case 17 added for fail-under assertion; "Direction C" wording replaced with "Option B"; date metadata corrected; rejected by QA review |
-| 2.2 | 2026-04-25 | Agent | QA corrections: --cov-fail-under=90 added to §3.6 _build_cmd pseudocode; constructor contract fixed (no default, composition root injects); Out of Scope wording clarified (no SSOT claim for pyproject comment); _EXIT_CODE_POLICY typed as dict[int, ExitCodePolicy] consistently; §3.11 server snippet corrected to existing list form |
+| 2.2 | 2026-04-25 | Agent | QA corrections: --cov-fail-under=90 added to §3.6 _build_cmd pseudocode; constructor contract fixed (no default, composition root injects); Out of Scope wording clarified (no SSOT claim for pyproject comment); _EXIT_CODE_POLICY typed as dict[int, ExitCodePolicy] consistently; §3.11 server snippet corrected to existing list form; rejected by QA review |
+| 2.3 | 2026-04-25 | Agent | QA GO — doc-nits: Option C cons replaced "already in pyproject.toml" with accurate documented-standard wording; Gate 7 Config-First entry clarified; status set to APPROVED |
