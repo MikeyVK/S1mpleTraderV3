@@ -15,7 +15,7 @@
 
 Complete reference documentation for project lifecycle and phase management tools. These 4 tools provide workflow initialization, phase plan inspection, sequential phase transitions, and emergency phase skipping with human approval.
 
-Phase state persists in [.st3/state.json](../../../../.st3/state.json) and is synchronized with git branch operations.
+Phase state persists in [.st3/state.json](../../../../.st3/state.json) and workflow definitions / planning deliverables persist in [.st3/deliverables.json](../../../../.st3/deliverables.json). Both files are branch-local artifacts synchronized with git branch operations and neutralized before PR submission.
 
 ---
 
@@ -34,7 +34,7 @@ All tools interact with:
 - **PhaseStateEngine:** Phase state tracking and validation
 - **[.st3/workflows.yaml](../../../../.st3/workflows.yaml):** Workflow definitions (feature, bug, docs, refactor, hotfix, epic, custom)
 - **[.st3/state.json](../../../../.st3/state.json):** Current branch state (runtime, not committed)
-- **[.st3/projects.json](../../../../.st3/projects.json):** Historical project registry
+- **[.st3/deliverables.json](../../../../.st3/deliverables.json):** Workflow definition and planning deliverables (branch-local artifact)
 
 ---
 
@@ -121,7 +121,7 @@ Initialize project with phase plan selection. Human selects workflow_name (featu
 
 #### Behavior Notes
 
-- **State Persistence:** Writes to `.st3/state.json` and `.st3/projects.json`
+- **State Persistence:** Creates `.st3/deliverables.json` (workflow definition) and `.st3/state.json` (branch state) atomically
 - **Parent Branch Auto-Detection:** If `parent_branch` not provided, attempts detection via `git reflog`
 - **Branch Validation:** Current branch must match pattern `<type>/<issue_number>-*`
 - **Idempotency:** Re-running on same branch returns error (project already initialized)
@@ -180,7 +180,7 @@ Get project phase plan for issue number.
 #### Behavior Notes
 
 - **Read-Only:** Does not modify state
-- **Historical Access:** Reads from `.st3/projects.json` (historical registry)
+- **Plan Access:** Reads workflow definition from `.st3/deliverables.json`; live phase is detected from commit scope with fallback to `.st3/state.json`
 - **Not Found:** Returns error if project not initialized
 
 ---
@@ -239,7 +239,7 @@ Transition branch to next phase (strict sequential validation).
 
 - **Sequential Validation:** Target phase must be the **next** phase in workflow (no skipping)
 - **State Update:** Updates `.st3/state.json` atomically
-- **Audit Trail:** Records timestamp and optional human approval in `.st3/projects.json`
+- **Branch-Local State:** Updates `.st3/state.json` for the active branch only
 - **Not Initialized:** Returns error if project not initialized
 
 #### Example Error (Attempting to Skip)
@@ -311,7 +311,7 @@ Force non-sequential phase transition (skip/jump with reason and human approval)
 #### Behavior Notes
 
 - **No Validation:** Bypasses sequential phase validation
-- **Audit Trail:** Records `skip_reason`, `human_approval`, skipped phases, and timestamp in `.st3/projects.json`
+- **Branch-Local State:** Updates `.st3/state.json` for the active branch; forced-transition metadata stays in that branch-local state
 - **Use Sparingly:** Intended for emergency situations only
 - **Required Fields:** Both `skip_reason` and `human_approval` are REQUIRED (not optional)
 
@@ -321,61 +321,79 @@ Force non-sequential phase transition (skip/jump with reason and human approval)
 
 ### .st3/state.json
 
-Current branch state (runtime, not committed to git):
+Current branch state (runtime, branch-local, neutralized before PR submission):
 
 ```json
 {
-  "feature/123-oauth": {
-    "issue_number": 123,
-    "issue_title": "Add OAuth2 authentication",
-    "workflow_name": "feature",
-    "current_phase": "green",
-    "parent_branch": "main",
-    "updated_at": "2026-02-08T12:00:00Z"
-  }
+  "branch": "feature/123-oauth",
+  "issue_number": 123,
+  "workflow_name": "feature",
+  "current_phase": "documentation",
+  "current_cycle": null,
+  "last_cycle": 3,
+  "cycle_history": [],
+  "required_phases": [
+    "research",
+    "design",
+    "planning",
+    "implementation",
+    "validation",
+    "documentation"
+  ],
+  "execution_mode": "normal",
+  "skip_reason": null,
+  "issue_title": "Add OAuth2 authentication",
+  "parent_branch": "main",
+  "created_at": "2026-02-08T10:00:00Z",
+  "transitions": [],
+  "reconstructed": false
 }
 ```
 
 **Behavior:**
-- Updated by `initialize_project`, `transition_phase`, `force_phase_transition`
+- Updated by `initialize_project`, `transition_phase`, and `force_phase_transition`
 - Synchronized by `git_checkout` (loads state when switching branches)
-- **Not committed** to git (local state only)
+- Treated as a branch-local artifact and neutralized before `submit_pr`
 
 ---
 
-### .st3/projects.json
+### .st3/deliverables.json
 
-Historical project registry (committed to git):
+Workflow definition and planning deliverables (branch-local artifact):
 
 ```json
 {
   "123": {
-    "issue_number": 123,
     "issue_title": "Add OAuth2 authentication",
     "workflow_name": "feature",
-    "phases": ["planning", "research", "red", "green", "refactor", "documentation", "merge-prep"],
+    "execution_mode": "normal",
+    "required_phases": [
+      "research",
+      "design",
+      "planning",
+      "implementation",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
     "created_at": "2026-02-08T10:00:00Z",
-    "transitions": [
-      {
-        "from_phase": null,
-        "to_phase": "planning",
-        "timestamp": "2026-02-08T10:00:00Z"
-      },
-      {
-        "from_phase": "planning",
-        "to_phase": "research",
-        "timestamp": "2026-02-08T10:30:00Z"
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 3,
+        "cycles": []
       }
-    ]
+    }
   }
 }
 ```
 
 **Behavior:**
-- Append-only history of all project initializations and phase transitions
-- Committed to git (shared across team)
-- Provides audit trail for phase skips and forced transitions
+- Initialized by `initialize_project`
+- Extended by `save_planning_deliverables` and `update_planning_deliverables`
+- Treated as a branch-local artifact and neutralized before `submit_pr`
 
+---
 ---
 
 ## Workflow Definitions
@@ -489,7 +507,7 @@ Phase state is **synchronized** with git branch operations:
 - [git.md](git.md) — Git workflow tools (branch, checkout, commit)
 - [.st3/workflows.yaml](../../../../.st3/workflows.yaml) — Workflow definitions
 - [.st3/state.json](../../../../.st3/state.json) — Current branch state
-- [.st3/projects.json](../../../../.st3/projects.json) — Historical project registry
+- [.st3/deliverables.json](../../../../.st3/deliverables.json) — Workflow definition and planning deliverables
 - [docs/development/issue19/research.md](../../../development/issue19/research.md) — Tool inventory research (Section 1.8: Project/Phase tools)
 
 ---

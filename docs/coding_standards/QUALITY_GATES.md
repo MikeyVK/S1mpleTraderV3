@@ -1,4 +1,4 @@
-# Quality Gates
+﻿# Quality Gates
 
 ## Overview
 
@@ -375,6 +375,44 @@ def _artifact_manager(
 - Standard pytest pattern for fixture composition
 
 **Status:** Use this pattern for all fixtures that inject other fixtures as parameters.
+
+
+### 5. Integration Test Boundary Contract
+
+Integration tests in `tests/mcp_server/integration/` are part of the **default test suite** and run with every `pytest tests/mcp_server` invocation. The following contract must hold to keep the full suite safe and side-effect-free.
+
+**What "integration" means in this codebase:**
+
+| Characteristic | Rule |
+|---|---|
+| External API adapter | Always mocked (`MagicMock` or `MagicMock(spec=...)`) |
+| Filesystem writes | Exclusively via `tmp_path` (pytest fixture) |
+| Real workspace reads | Permitted for read-only operations (e.g. `ruff`/`mypy` on a real source file) |
+| Network calls | Never — zero real HTTP/GitHub API traffic |
+| Side effects outside `tmp_path` | Not allowed — test must be fully reversible |
+| Environment variable guards | Not needed — the adapter boundary is the safety layer |
+
+Integration tests exercise multiple real layers simultaneously (e.g. tool + manager + config) while mocking the external boundary. They are not slower-running tests requiring an opt-in flag; they are hermetic tests with a wider internal scope.
+
+**Boundary enforcement:**
+
+The `test_pytest_config.py` suite actively guards these invariants:
+
+- `testpaths = ["tests/mcp_server"]` — backend tests never run implicitly
+- No `-m not integration` filter — the integration marker is intentionally abolished (merged via #237)
+- `integration` marker not defined in `pyproject.toml` — not needed because the adapter boundary provides safety, not a marker
+- `asyncio_mode = "strict"` — async tests pay no event-loop overhead unless marked
+- `pytest-xdist` enabled via `-n auto` — parallel execution requires `tmp_path` isolation
+
+**Writing a new integration test — checklist:**
+
+- [ ] File lives in `tests/mcp_server/integration/`
+- [ ] Module docstring includes `@layer: Tests (Integration)`
+- [ ] External API adapter replaced with `MagicMock` or `MagicMock(spec=AdapterClass)`
+- [ ] All filesystem writes via `tmp_path` — never writes to the real workspace
+- [ ] No env-gated or opt-in skip guard (no `pytest.mark.skipif(os.getenv(...))` or `pytest.skip` conditioned on an environment variable)
+- [ ] No `subprocess.run` targeting remote services — local git ops on `tmp_path` are fine
+- [ ] Compatible with `pytest-xdist` parallel execution (no shared mutable state between test functions)
 
 ## Code Review Rejection Criteria
 

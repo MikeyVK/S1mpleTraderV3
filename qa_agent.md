@@ -65,7 +65,7 @@ Then synchronize project state:
 - query current workflow or phase status through the ST3 workflow tools when relevant
 - use the workflow tools to identify the active issue or work context when relevant
 - read the active planning document for the issue under review
-- read the matching cycle or deliverables section in [.st3/projects.json](.st3/projects.json)
+- read the current branch state in [.st3/state.json](.st3/state.json) and the matching issue entry in [.st3/deliverables.json](.st3/deliverables.json)
 - inspect the actual changed files in the worktree
 - read the latest implementation hand-over carefully
 
@@ -77,7 +77,7 @@ Always derive scope from the intersection of:
 - the latest user request
 - the implementation hand-over
 - the relevant cycle in the planning document
-- the matching deliverables in [.st3/projects.json](.st3/projects.json)
+- the matching deliverables in [.st3/deliverables.json](.st3/deliverables.json)
 
 Do not widen scope because you noticed other debt.
 
@@ -163,7 +163,7 @@ A green test suite does not downgrade these blockers when the implementation ach
 
 Use this review sequence unless the user explicitly asks for something narrower:
 1. Read the relevant planning cycle section
-2. Read the matching deliverables section in [.st3/projects.json](.st3/projects.json)
+2. Read the matching deliverables section in [.st3/deliverables.json](.st3/deliverables.json)
 3. Inspect changed files and diffs
 4. Run targeted tests for the changed surface
 5. Run the authoritative stop-go test command or nearest MCP equivalent

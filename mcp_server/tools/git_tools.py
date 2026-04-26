@@ -157,7 +157,7 @@ class CreateBranchTool(BranchMutatingTool):
             branch_name = self.manager.create_branch(
                 params.name, params.branch_type, params.base_branch, context
             )
-            return ToolResult.text(f"âœ… Created and switched to branch: {branch_name}")
+            return ToolResult.text(f"\u2705 Created and switched to branch: {branch_name}")
         except Exception as e:
             logger.error(
                 "Branch creation failed", extra={"props": {"name": params.name, "error": str(e)}}

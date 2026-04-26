@@ -37,7 +37,7 @@ De kern van de orchestratie is een universeel **producer/verifier** patroon dat 
 | Workphase | Producer Agent | Verifier Agent | Artifact Type |
 |-----------|---------------|----------------|---------------|
 | Research | `@researcher` | `@qa` | research.md, findings |
-| Planning | `@researcher` | `@qa` | planning.md, projects.json |
+| Planning | `@researcher` | `@qa` | planning.md, deliverables.json |
 | Design | `@researcher` | `@qa` | design.md, contracts |
 | Implementation | `@imp` | `@qa` | Code + tests (TDD) |
 | Validation | `@imp` | `@qa` | e2e/acceptance tests |
@@ -168,7 +168,7 @@ VS Code Copilot hooks (Preview, beschikbaar sinds VS Code 1.108+) zijn **shell c
 """
 VS Code SessionStart hook — injects workspace context into agent.
 
-Reads .st3/state.json + .st3/projects.json and returns a system prompt
+Reads .st3/state.json + .st3/deliverables.json and returns a system prompt
 fragment with current branch, phase, issue, and role context.
 
 Input (stdin JSON):
@@ -196,12 +196,12 @@ from pathlib import Path
 def main() -> None:
     workspace = Path(__file__).resolve().parents[2]  # scripts/hooks/ → root
     state_path = workspace / ".st3" / "state.json"
-    projects_path = workspace / ".st3" / "projects.json"
+    deliverables_path = workspace / ".st3" / "deliverables.json"
     handover_path = workspace / ".st3" / "handover.json"
 
     # Read current state
     state = _read_json(state_path)
-    projects = _read_json(projects_path)
+    deliverables = _read_json(deliverables_path)
     handover = _read_json(handover_path)
 
     # Read stdin for agent context
@@ -216,7 +216,7 @@ def main() -> None:
 
     # Build context instruction
     instructions = _build_instructions(
-        state, projects, handover, agent_name, workspace
+        state, deliverables, handover, agent_name, workspace
     )
 
     # Output
@@ -227,7 +227,7 @@ def main() -> None:
 
 def _build_instructions(
     state: dict,
-    projects: dict,
+    deliverables: dict,
     handover: dict | None,
     agent_name: str,
     workspace: Path,
@@ -249,10 +249,10 @@ def _build_instructions(
     if issue:
         lines.append(f"- **Issue:** #{issue}")
 
-        # Find issue title from projects
+        # Find issue title from deliverables
         issue_key = str(issue)
-        if issue_key in projects:
-            proj = projects[issue_key]
+        if issue_key in deliverables:
+            proj = deliverables[issue_key]
             title = proj.get("issue_title", "")
             if title:
                 lines.append(f"- **Titel:** {title}")
@@ -317,7 +317,7 @@ if __name__ == "__main__":
 
 **Werking:**
 1. VS Code start een nieuwe chat → triggert `SessionStart`
-2. Het script leest `.st3/state.json`, `.st3/projects.json`, en optioneel `.st3/handover.json`
+2. Het script leest `.st3/state.json`, `.st3/deliverables.json`, en optioneel `.st3/handover.json`
 3. Het bouwt een contextfragment met branch, fase, issue, en rol
 4. Dit fragment wordt in het system prompt geïnjecteerd → agent weet direct waar hij is
 5. Bij een custom agent (`imp` of `qa`) krijgt de agent rol-specifieke instructies
@@ -731,10 +731,10 @@ Bij elke sessie (inclusief na compaction):
 
 ### Planning Fase
 - **Doel:** TDD cycle breakdown, taakdecompositie, dependency analyse
-- **Output:** `planning.md` + `save_planning_deliverables` naar `projects.json`
+- **Output:** `planning.md` + `save_planning_deliverables` naar `deliverables.json`
 - **Subphases:** c1, c2, c3, c4 (planning cycles)
 - **Tool:** `scaffold_artifact(artifact_type="planning", ...)`
-- **Exit criterium:** Planning deliverables opgeslagen in projects.json
+- **Exit criterium:** Planning deliverables opgeslagen in `deliverables.json`
 - **Commit type:** `docs(P_PLANNING): ...`
 
 ### Design Fase
@@ -971,7 +971,7 @@ Bij elke sessie (inclusief na compaction):
 | Check | Methode | GO als... |
 |-------|---------|-----------|
 | Planning document compleet | File check | planning.md bevat alle cycles |
-| Deliverables geregistreerd | `get_project_plan` | projects.json bevat cycle deliverables |
+| Deliverables geregistreerd | `get_project_plan` | `deliverables.json` bevat cycle deliverables |
 | Cycles hebben clear exit criteria | Lees planning | Elke cycle heeft verifieerbare "validates" |
 | Dependencies correct | Lees planning | Cycle ordering respecteert afhankelijkheden |
 | Realistische scope per cycle | Lees planning | Geen cycle met >5 deliverables |
@@ -980,7 +980,7 @@ Bij elke sessie (inclusief na compaction):
 **NOGO triggers:**
 - Cycles ontbreken verifieerbare exit criteria
 - Dependencies zijn circulair of ontbreken
-- Deliverables niet in projects.json geregistreerd
+- Deliverables niet in `deliverables.json` geregistreerd
 - Cycle scope onrealistisch (te veel of te vaag)
 
 ### Design Fase — QA Criteria
@@ -1351,7 +1351,7 @@ Bij elke sessie (inclusief na compaction):
 ## Verificatie Sequentie (8 stappen)
 
 1. Lees de relevante planning cycle sectie
-2. Lees de deliverables in `.st3/projects.json`
+2. Lees de deliverables in `.st3/deliverables.json`
 3. Inspecteer gewijzigde bestanden en diffs
 4. Draai targeted tests voor het gewijzigde oppervlak
 5. Draai de stop-go test of dichtstbijzijnde MCP equivalent
@@ -1689,7 +1689,7 @@ Vul elk van deze secties in op basis van de verzamelde data:
 - Gewijzigde bestanden gegroepeerd per rol (production, test, config, docs)
 
 ### 3. Deliverables
-- Welke deliverables uit `projects.json` zijn nu voldaan
+- Welke deliverables uit `deliverables.json` zijn nu voldaan
 
 ### 4. Stop-Go Proof
 - Exact welke tests gedraaid (commando + output)
@@ -1740,7 +1740,7 @@ Voer een strikte QA verificatie uit op de meest recente hand-over.
 - [ ] Alle geclaimde tests draaien en zijn groen
 - [ ] Quality gates passeren op branch scope
 - [ ] Geen onvermelde bestandswijzigingen
-- [ ] Deliverables uit projects.json zijn voldaan
+- [ ] Deliverables uit `deliverables.json` zijn voldaan
 - [ ] Geen architectuur violations (cross-layer imports, hardcoded config)
 - [ ] Type checking slaagt
 - [ ] Coverage ≥90% voor gewijzigde bestanden
@@ -2209,14 +2209,13 @@ De hooks zijn **lichtgewicht bruggen**, geen vervanging van MCP tools:
 VS Code Hook Scripts
        │
        ├── LEEST: .st3/state.json         (via FileStateRepository format)
-       ├── LEEST: .st3/projects.json       (via ProjectManager format)
-       ├── LEEST: .st3/deliverables.json   (via DeliverableChecker format)
+       ├── LEEST: .st3/deliverables.json   (workflow plans + deliverable specs)
        │
        ├── SCHRIJFT: .st3/compaction_state.json  (eigen schema, alleen hooks)
        └── SCHRIJFT: .st3/handover.json          (eigen schema, alleen hooks)
 ```
 
-**Belangrijk:** Hook scripts lezen `.st3/` bestanden maar wijzigen alleen hun eigen bestanden (`compaction_state.json`, `handover.json`). Ze wijzigen NOOIT `state.json`, `projects.json`, of `deliverables.json` — dat is het domein van de MCP server.
+**Belangrijk:** Hook scripts lezen `.st3/` bestanden maar wijzigen alleen hun eigen bestanden (`compaction_state.json`, `handover.json`). Ze wijzigen NOOIT `state.json` of `deliverables.json` — dat is het domein van de MCP server.
 
 ### 10.3 Enforcement Alignment
 
@@ -2470,7 +2469,6 @@ scripts/
 
 .st3/
 ├── state.json                         # Bestaand (gelezen door hooks)
-├── projects.json                      # Bestaand (gelezen door hooks)
 ├── deliverables.json                  # Bestaand (gelezen door hooks)
 ├── compaction_state.json              # NIEUW (geschreven door pre_compact.py)
 ├── handover.json                      # NIEUW (optioneel, geschreven door hooks)

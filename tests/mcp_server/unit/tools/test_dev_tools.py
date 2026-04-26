@@ -7,35 +7,44 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.operation_notes import NoteContext
+from mcp_server.managers.pytest_runner import PytestResult
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
+from tests.mcp_server.fixtures.fake_pytest_runner import FakePytestRunner
 
 
 @pytest.mark.asyncio
 async def test_run_tests_tool(tmp_path: Path) -> None:
     """Test RunTestsTool executes pytest and returns JSON output."""
+    runner = FakePytestRunner(
+        result=PytestResult(
+            exit_code=0,
+            summary_line="2 passed in 0.10s",
+            passed=2,
+            failed=0,
+            skipped=0,
+            errors=0,
+            failures=(),
+            coverage_pct=None,
+            lf_cache_was_empty=False,
+            should_raise=False,
+            note=None,
+        )
+    )
+    tool = RunTestsTool(runner=runner, settings=Settings(server={"workspace_root": str(tmp_path)}))
 
-    tool = RunTestsTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
+    result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
-    with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock_run:
-        mock_run.return_value = ("2 passed in 0.10s\n", "", 0)
-
-        result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
-
-        assert result.content[0]["type"] == "text"
-        assert result.content[1]["json"]["summary"]["passed"] == 2
-        mock_run.assert_called_once()
-
-        call_args = mock_run.call_args[0]
-        cmd = call_args[0]
-        assert any("pytest" in str(arg) for arg in cmd)
-        assert "tests/unit" in cmd
+    assert result.content[0]["type"] == "text"
+    assert result.content[1]["json"]["summary"]["passed"] == 2
+    assert runner.captured_cmd is not None
+    assert any("pytest" in str(arg) for arg in runner.captured_cmd)
+    assert "tests/unit" in runner.captured_cmd
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 
 from mcp_server.core.operation_notes import NoteContext
+from mcp_server.managers.pytest_runner import PytestRunner
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 
 # Git Tools
@@ -217,7 +218,7 @@ def make_core_tools() -> list[object]:
         make_validation_tool(),
         ValidateDTOTool(),
         HealthCheckTool(),
-        RunTestsTool(),
+        RunTestsTool(runner=PytestRunner()),
         CreateFileTool(),
     ]
 
@@ -536,13 +537,11 @@ class TestToolSchemas:
             assert isinstance(schema, dict), f"{tool.name} schema not a dict"
 
     def test_all_dev_tools_have_schemas(self) -> None:
-        """Verify all Development tools have input schemas."""
         tools = [
             HealthCheckTool(),
-            RunTestsTool(),
+            RunTestsTool(runner=PytestRunner()),
             CreateFileTool(),
         ]
-
         for tool in tools:
             schema = tool.input_schema
             assert schema is not None or not schema, f"{tool.name} missing schema"

@@ -43,6 +43,7 @@ from mcp_server.managers.phase_contract_resolver import (
 )
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.pytest_runner import PytestRunner
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.managers.state_reconstructor import StateReconstructor
 from mcp_server.managers.state_repository import FileStateRepository
@@ -298,7 +299,7 @@ class MCPServer:
             # Development tools
             HealthCheckTool(),
             RestartServerTool(),
-            RunTestsTool(settings=settings),
+            RunTestsTool(runner=PytestRunner(), settings=settings),
             CreateFileTool(settings=settings),
             # Project tools (Phase 0.5)
             InitializeProjectTool(
