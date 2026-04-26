@@ -14,5 +14,533 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-04-26T12:37:24.551401+00:00"
+  },
+  "231": {
+    "issue_title": "State reconciliation for get_state: cycle/subphase awareness + typed snapshot API",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "design",
+      "planning",
+      "implementation",
+      "validation",
+      "documentation",
+      "ready"
+    ],
+    "skip_reason": null,
+    "parent_branch": "epic/290-workflow-intelligence-agent-ux",
+    "created_at": "2026-04-26T13:26:37.018555+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 8,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "cycle_id": "C_READ_GUARD",
+            "goal": "Introduce the dedicated mismatch exception and the single approved branch-safe read adapter.",
+            "deliverables": [
+              {
+                "id": "c1.state_branch_mismatch_error",
+                "title": "StateBranchMismatchError defined",
+                "artifact": "mcp_server/managers/state_repository.py",
+                "design_trace": "design.md \u00a73.3, \u00a73.13",
+                "expected_result": "StateBranchMismatchError exists as the dedicated branch-mismatch read contract.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/state_repository.py",
+                  "text": "class StateBranchMismatchError"
+                }
+              },
+              {
+                "id": "c1.branch_validated_state_reader",
+                "title": "BranchValidatedStateReader added",
+                "artifact": "mcp_server/managers/state_repository.py",
+                "design_trace": "design.md \u00a73.3, \u00a73.13",
+                "expected_result": "BranchValidatedStateReader wraps IStateReader and rejects mismatched state.branch.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/state_repository.py",
+                  "text": "class BranchValidatedStateReader"
+                }
+              },
+              {
+                "id": "c1.read_guard_tests",
+                "title": "Repository guard tests added",
+                "artifact": "tests/mcp_server/unit/managers/test_state_repository.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "Repository tests cover both matched and mismatched branch loads.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/managers/test_state_repository.py"
+                }
+              }
+            ],
+            "exit_criteria": "A mismatched branch load raises StateBranchMismatchError via BranchValidatedStateReader, and the repository tests lock both the accepted and rejected read paths."
+          },
+          {
+            "cycle_number": 2,
+            "cycle_id": "C_ENGINE_BREAK",
+            "goal": "Apply the clean break to engine query methods and the engine-query tool callers.",
+            "deliverables": [
+              {
+                "id": "c2.get_state_clean_break",
+                "title": "get_state clean break applied",
+                "artifact": "mcp_server/managers/phase_state_engine.py",
+                "design_trace": "design.md \u00a73.3, \u00a73.9",
+                "expected_result": "get_state propagates StateBranchMismatchError without translation.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "StateBranchMismatchError"
+                }
+              },
+              {
+                "id": "c2.get_current_phase_clean_break",
+                "title": "get_current_phase clean break applied",
+                "artifact": "mcp_server/managers/phase_state_engine.py",
+                "design_trace": "design.md \u00a73.9",
+                "expected_result": "get_current_phase remains a thin wrapper and propagates the same exception.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "def get_current_phase"
+                }
+              },
+              {
+                "id": "c2.git_tools_error_handling",
+                "title": "git_tools direct exception handling updated",
+                "artifact": "mcp_server/tools/git_tools.py",
+                "design_trace": "design.md \u00a73.6, \u00a73.9, \u00a73.14",
+                "expected_result": "Engine-query callers catch StateBranchMismatchError directly and keep explicit operator guidance.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "StateBranchMismatchError"
+                }
+              },
+              {
+                "id": "c2.git_pull_error_handling",
+                "title": "git_pull_tool exception handling updated",
+                "artifact": "mcp_server/tools/git_pull_tool.py",
+                "design_trace": "design.md \u00a73.6, \u00a73.14",
+                "expected_result": "Pull-time state sync handles StateBranchMismatchError directly.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_pull_tool.py",
+                  "text": "StateBranchMismatchError"
+                }
+              },
+              {
+                "id": "c2.clean_break_tests",
+                "title": "Clean-break tests updated",
+                "artifact": "tests/mcp_server/unit/tools/test_git_tools.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "Engine and git tool tests assert the new exception contract instead of the removed translation shim.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/tools/test_git_tools.py"
+                }
+              }
+            ],
+            "exit_criteria": "PhaseStateEngine no longer translates branch mismatch to FileNotFoundError, and the engine-query git tools handle StateBranchMismatchError directly while preserving the current explicit operator guidance."
+          },
+          {
+            "cycle_number": 3,
+            "cycle_id": "C_RESOLVER_CORE",
+            "goal": "Introduce the read-side core types without changing consumer behavior yet.",
+            "deliverables": [
+              {
+                "id": "c3.workflow_status_dto",
+                "title": "WorkflowStatusDTO added",
+                "artifact": "mcp_server/state/workflow_status.py",
+                "design_trace": "design.md \u00a73.2",
+                "expected_result": "WorkflowStatusDTO exists in the state package, not in schemas.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/state/workflow_status.py",
+                  "text": "WorkflowStatusDTO"
+                }
+              },
+              {
+                "id": "c3.git_context_reader_contract",
+                "title": "IGitContextReader contract added",
+                "artifact": "mcp_server/core/interfaces/__init__.py",
+                "design_trace": "design.md \u00a73.5",
+                "expected_result": "IGitContextReader exists as the resolver-facing git metadata contract.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/core/interfaces/__init__.py",
+                  "text": "class IGitContextReader"
+                }
+              },
+              {
+                "id": "c3.commit_phase_detector",
+                "title": "CommitPhaseDetector added",
+                "artifact": "mcp_server/core/commit_phase_detector.py",
+                "design_trace": "design.md \u00a73.4",
+                "expected_result": "Commit-only detector wraps ScopeDecoder with fallback_to_state=False.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/core/commit_phase_detector.py"
+                }
+              },
+              {
+                "id": "c3.workflow_status_resolver",
+                "title": "WorkflowStatusResolver added",
+                "artifact": "mcp_server/managers/workflow_status_resolver.py",
+                "design_trace": "design.md \u00a73.5",
+                "expected_result": "Resolver depends only on IGitContextReader, IStateReader, and CommitPhaseDetector.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/workflow_status_resolver.py",
+                  "text": "WorkflowStatusResolver"
+                }
+              },
+              {
+                "id": "c3.resolver_tests",
+                "title": "Resolver tests added",
+                "artifact": "tests/mcp_server/unit/managers/test_workflow_status_resolver.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "Resolver behavior is covered before consumer migration.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/managers/test_workflow_status_resolver.py"
+                }
+              }
+            ],
+            "exit_criteria": "The DTO, interface contract, detector, and resolver exist together as an independently testable read-side core with no consumer adoption mixed into the same cycle."
+          },
+          {
+            "cycle_number": 4,
+            "cycle_id": "C_RESOLVER_ADOPTION",
+            "goal": "Move only the researched user-facing consumers to the new resolver and wire them through the composition root.",
+            "deliverables": [
+              {
+                "id": "c4.project_manager_adoption",
+                "title": "ProjectManager uses resolver",
+                "artifact": "mcp_server/managers/project_manager.py",
+                "design_trace": "design.md \u00a73.6, \u00a73.12",
+                "expected_result": "get_project_plan stops assembling workflow status locally and uses WorkflowStatusResolver.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "WorkflowStatusResolver"
+                }
+              },
+              {
+                "id": "c4.get_work_context_adoption",
+                "title": "GetWorkContextTool uses resolver",
+                "artifact": "mcp_server/tools/discovery_tools.py",
+                "design_trace": "design.md \u00a73.6, \u00a73.12",
+                "expected_result": "GetWorkContextTool uses the resolver and gates cycle enrichment on current_cycle is not None.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/discovery_tools.py",
+                  "text": "WorkflowStatusResolver"
+                }
+              },
+              {
+                "id": "c4.server_wiring",
+                "title": "Resolver wiring added to composition root",
+                "artifact": "mcp_server/server.py",
+                "design_trace": "design.md \u00a73.12, \u00a73.13",
+                "expected_result": "Resolver and branch-validated state reader are injected consistently from the composition root.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "WorkflowStatusResolver"
+                }
+              },
+              {
+                "id": "c4.consumer_tests",
+                "title": "Consumer migration tests updated",
+                "artifact": "tests/mcp_server/unit/managers/test_project_manager.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "User-facing consumer migration is fully covered.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/managers/test_project_manager.py"
+                }
+              }
+            ],
+            "exit_criteria": "ProjectManager and GetWorkContextTool consume one shared resolver, duplicate local workflow-status assembly is removed, and server/test wiring provides the new dependencies through the composition root."
+          },
+          {
+            "cycle_number": 5,
+            "cycle_id": "C_QA_STATE_SPLIT",
+            "goal": "Move QA baseline persistence out of workflow state and into its own typed file-backed repository.",
+            "deliverables": [
+              {
+                "id": "c5.quality_state_model",
+                "title": "QualityState model added",
+                "artifact": "mcp_server/state/quality_state.py",
+                "design_trace": "design.md \u00a73.7",
+                "expected_result": "QualityState exists as the dedicated QA baseline payload.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/state/quality_state.py",
+                  "text": "QualityState"
+                }
+              },
+              {
+                "id": "c5.quality_state_repository_contract",
+                "title": "IQualityStateRepository contract added",
+                "artifact": "mcp_server/core/interfaces/__init__.py",
+                "design_trace": "design.md \u00a73.10",
+                "expected_result": "IQualityStateRepository exists as the dedicated QA-state persistence contract.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/core/interfaces/__init__.py",
+                  "text": "class IQualityStateRepository"
+                }
+              },
+              {
+                "id": "c5.quality_state_repository",
+                "title": "Quality state repository added",
+                "artifact": "mcp_server/managers/quality_state_repository.py",
+                "design_trace": "design.md \u00a73.10",
+                "expected_result": "quality_state.json reads and writes go through one repository abstraction.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/quality_state_repository.py"
+                }
+              },
+              {
+                "id": "c5.qa_manager_migration",
+                "title": "QAManager migrated to quality state",
+                "artifact": "mcp_server/managers/qa_manager.py",
+                "design_trace": "design.md \u00a73.7, \u00a73.10",
+                "expected_result": "Baseline and failed-files logic no longer read or write workflow-owned QA data in state.json.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/qa_manager.py",
+                  "text": "IQualityStateRepository"
+                }
+              },
+              {
+                "id": "c5.branch_local_artifact_config",
+                "title": "quality_state.json marked branch-local",
+                "artifact": ".st3/config/phase_contracts.yaml",
+                "design_trace": "design.md \u00a73.10",
+                "expected_result": "quality_state.json is treated as a branch-local artifact.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/phase_contracts.yaml",
+                  "text": "quality_state.json"
+                }
+              },
+              {
+                "id": "c5.qa_state_tests",
+                "title": "QAManager state split tests updated",
+                "artifact": "tests/mcp_server/unit/managers/test_baseline_advance.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "QAManager tests assert the split state ownership.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/managers/test_baseline_advance.py"
+                }
+              },
+              {
+                "id": "c5.submit_pr_branch_local_artifact_test",
+                "title": "submit_pr branch-local artifact behavior covered",
+                "artifact": "tests/mcp_server/integration/test_submit_pr_atomic_flow.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "PR submission flow neutralizes or protects quality_state.json exactly as branch-local policy requires.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/integration/test_submit_pr_atomic_flow.py"
+                }
+              }
+            ],
+            "exit_criteria": "QA baseline state is isolated behind IQualityStateRepository, QAManager no longer mutates workflow-owned QA fields, and the submit-PR integration path recognizes quality_state.json as branch-local state."
+          },
+          {
+            "cycle_number": 6,
+            "cycle_id": "C_MUTATOR_CORE",
+            "goal": "Move workflow writes and hook writes behind one coordinated mutator boundary.",
+            "deliverables": [
+              {
+                "id": "c6.workflow_state_mutator_contract",
+                "title": "IWorkflowStateMutator contract added",
+                "artifact": "mcp_server/core/interfaces/__init__.py",
+                "design_trace": "design.md \u00a73.8",
+                "expected_result": "IWorkflowStateMutator exists as the command-side workflow mutation contract.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/core/interfaces/__init__.py",
+                  "text": "class IWorkflowStateMutator"
+                }
+              },
+              {
+                "id": "c6.state_mutation_conflict_error",
+                "title": "StateMutationConflictError added",
+                "artifact": "mcp_server/managers/workflow_state_mutator.py",
+                "design_trace": "design.md \u00a73.8",
+                "expected_result": "Dedicated mutation conflict error exists with diagnostic and recovery fields.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/workflow_state_mutator.py",
+                  "text": "class StateMutationConflictError"
+                }
+              },
+              {
+                "id": "c6.workflow_state_mutator",
+                "title": "WorkflowStateMutator added",
+                "artifact": "mcp_server/managers/workflow_state_mutator.py",
+                "design_trace": "design.md \u00a73.8, \u00a73.9",
+                "expected_result": "Command-side workflow writes use one coordinated mutation seam.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/workflow_state_mutator.py",
+                  "text": "class WorkflowStateMutator"
+                }
+              },
+              {
+                "id": "c6.phase_state_engine_write_routing",
+                "title": "PhaseStateEngine command paths routed through mutator",
+                "artifact": "mcp_server/managers/phase_state_engine.py",
+                "design_trace": "design.md \u00a73.9, \u00a73.12",
+                "expected_result": "Initialize, transition, cycle operations and implementation hooks route through the mutator.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "WorkflowStateMutator"
+                }
+              },
+              {
+                "id": "c6.mutator_wiring",
+                "title": "Mutator wiring added to composition root",
+                "artifact": "mcp_server/server.py",
+                "design_trace": "design.md \u00a73.12, \u00a73.13",
+                "expected_result": "Composition root injects the mutator instead of leaving ad hoc save paths.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "WorkflowStateMutator"
+                }
+              },
+              {
+                "id": "c6.mutator_tests",
+                "title": "Mutator tests updated",
+                "artifact": "tests/mcp_server/unit/managers/test_phase_state_engine.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "Workflow write-path tests assert coordinated mutation behavior.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/managers/test_phase_state_engine.py"
+                }
+              }
+            ],
+            "exit_criteria": "Workflow command paths and implementation hooks write through IWorkflowStateMutator, conflicts surface through the dedicated error type, and no ad hoc workflow save path remains in the touched engine slice."
+          },
+          {
+            "cycle_number": 7,
+            "cycle_id": "C_TOOL_CONFLICTS",
+            "goal": "Surface write conflicts explicitly through the phase, cycle, and quality tools.",
+            "deliverables": [
+              {
+                "id": "c7.phase_tool_conflicts",
+                "title": "Phase tool conflict feedback added",
+                "artifact": "mcp_server/tools/phase_tools.py",
+                "design_trace": "design.md \u00a73.11",
+                "expected_result": "Phase tools return ToolResult.error and emit RecoveryNote on mutation conflicts.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/phase_tools.py",
+                  "text": "RecoveryNote"
+                }
+              },
+              {
+                "id": "c7.cycle_tool_conflicts",
+                "title": "Cycle tool conflict feedback added",
+                "artifact": "mcp_server/tools/cycle_tools.py",
+                "design_trace": "design.md \u00a73.11",
+                "expected_result": "Cycle tools expose the same operator-facing conflict behavior.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/cycle_tools.py",
+                  "text": "RecoveryNote"
+                }
+              },
+              {
+                "id": "c7.quality_tool_conflicts",
+                "title": "Quality tool conflict feedback added",
+                "artifact": "mcp_server/tools/quality_tools.py",
+                "design_trace": "design.md \u00a73.11",
+                "expected_result": "Quality tool surfaces quality-state mutation conflicts explicitly.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/quality_tools.py",
+                  "text": "RecoveryNote"
+                }
+              },
+              {
+                "id": "c7.conflict_feedback_tests",
+                "title": "Conflict feedback tests updated",
+                "artifact": "tests/mcp_server/unit/tools/test_quality_tools.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "Tool-layer tests lock the operator feedback contract across phase, cycle, and quality tools.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/tools/test_quality_tools.py"
+                }
+              }
+            ],
+            "exit_criteria": "All three tool families convert mutation conflicts into explicit operator-facing errors with recovery guidance, and the corresponding unit tests lock that contract."
+          },
+          {
+            "cycle_number": 8,
+            "cycle_id": "C_CLEANUP",
+            "goal": "Remove every legacy remnant left behind by the previous seven cycles.",
+            "deliverables": [
+              {
+                "id": "c8.translation_and_fallback_grep_closure",
+                "title": "Translation and fallback remnants removed",
+                "artifact": "mcp_server/managers/phase_state_engine.py",
+                "design_trace": "design.md \u00a71.3, \u00a73.14",
+                "expected_result": "No FileNotFoundError translation shim, constructor fallback compatibility layer, or stale branch-mismatch assumption remains.",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "raise FileNotFoundError("
+                }
+              },
+              {
+                "id": "c8.legacy_test_cleanup",
+                "title": "Legacy tests and helpers removed or rewritten",
+                "artifact": "tests/mcp_server/unit/managers/test_phase_state_engine_c1.py",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "Obsolete tests and helpers for removed translation or fallback behavior are deleted or rewritten.",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "tests/mcp_server/unit/managers/test_phase_state_engine_c1.py",
+                  "text": "FileNotFoundError"
+                }
+              },
+              {
+                "id": "c8.final_wiring_cleanup",
+                "title": "Temporary seams and dead helpers removed",
+                "artifact": "tests/mcp_server/test_support.py",
+                "design_trace": "design.md \u00a73.13, \u00a73.15",
+                "expected_result": "No unused seams, dead helper code, or stale temporary wiring remain."
+              },
+              {
+                "id": "c8.final_verification",
+                "title": "Final focused verification completed",
+                "artifact": "docs/development/issue231/planning.md",
+                "design_trace": "design.md \u00a73.15",
+                "expected_result": "The branch is ready to enter implementation with no known legacy baggage.",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "docs/development/issue231/planning.md"
+                }
+              }
+            ],
+            "exit_criteria": "Grep, focused tests, and branch quality gates show no remaining legacy translation, fallback constructor shape, stale helper, or obsolete test assumption in the touched slice."
+          }
+        ]
+      }
+    }
   }
 }

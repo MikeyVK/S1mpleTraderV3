@@ -1,13 +1,14 @@
 {
-  "branch": "epic/290-workflow-intelligence-agent-ux",
-  "issue_number": 290,
-  "workflow_name": "refactor",
-  "current_phase": "research",
+  "branch": "feature/231-state-snapshot-cqrs",
+  "issue_number": 231,
+  "workflow_name": "feature",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
   "required_phases": [
     "research",
+    "design",
     "planning",
     "implementation",
     "validation",
@@ -16,9 +17,26 @@
   ],
   "execution_mode": "interactive",
   "skip_reason": null,
-  "issue_title": "Epic: Workflow Intelligence / Agent UX",
-  "parent_branch": "main",
-  "created_at": "2026-04-26T12:37:24.669199+00:00",
-  "transitions": [],
+  "issue_title": "State reconciliation for get_state: cycle/subphase awareness + typed snapshot API",
+  "parent_branch": "epic/290-workflow-intelligence-agent-ux",
+  "created_at": "2026-04-26T13:26:37.230739+00:00",
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-04-26T18:35:14.203025+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-04-26T20:45:56.244558+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    }
+  ],
   "reconstructed": false
 }
