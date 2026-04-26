@@ -21,8 +21,10 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.operation_notes import NoteContext, SuggestionNote
 from mcp_server.tools.project_tools import (
+    GetProjectPlanInput,
+    GetProjectPlanTool,
     InitializeProjectInput,
     InitializeProjectTool,
     SavePlanningDeliverablesInput,
@@ -190,6 +192,87 @@ class TestInitializeProjectToolParentBranch:
         content_text = result.content[0]["text"]
         assert '"parent_branch": "epic/special"' in content_text
         mock_detect.assert_not_called()
+
+
+class _GetProjectPlanManagerStub:
+    """Minimal manager stub for GetProjectPlanTool tests."""
+
+    def __init__(
+        self,
+        plan: dict[str, object] | None,
+        error: Exception | None = None,
+    ) -> None:
+        self._plan = plan
+        self._error = error
+        self.issue_numbers: list[int] = []
+
+    def get_project_plan(self, issue_number: int) -> dict[str, object] | None:
+        self.issue_numbers.append(issue_number)
+        if self._error is not None:
+            raise self._error
+        return self._plan
+
+
+class TestGetProjectPlanTool:
+    """Issue #253 C5: operator guidance on missing project plan."""
+
+    @pytest.mark.asyncio
+    async def test_get_plan_exists_returns_text_json(self) -> None:
+        plan = {"issue_number": 253, "workflow_name": "bug", "current_phase": "implementation"}
+        tool = GetProjectPlanTool(manager=_GetProjectPlanManagerStub(plan=plan))
+        context = NoteContext()
+
+        result = await tool.execute(GetProjectPlanInput(issue_number=253), context)
+
+        assert result.is_error is False
+        assert result.content[0]["type"] == "text"
+        assert json.loads(result.content[0]["text"]) == plan
+        assert len(context.of_type(SuggestionNote)) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_plan_not_found_returns_error(self) -> None:
+        tool = GetProjectPlanTool(manager=_GetProjectPlanManagerStub(plan=None))
+        context = NoteContext()
+
+        result = await tool.execute(GetProjectPlanInput(issue_number=253), context)
+
+        assert result.is_error is True
+        assert result.content[0]["text"] == "No project plan found for issue #253"
+
+    @pytest.mark.asyncio
+    async def test_get_plan_not_found_adds_suggestion_note(self) -> None:
+        tool = GetProjectPlanTool(manager=_GetProjectPlanManagerStub(plan=None))
+        context = NoteContext()
+
+        await tool.execute(GetProjectPlanInput(issue_number=253), context)
+
+        suggestions = context.of_type(SuggestionNote)
+        assert len(suggestions) == 1
+        assert suggestions[0].message == "Run initialize_project first to create a project plan."
+
+    @pytest.mark.asyncio
+    async def test_get_plan_not_found_suggestion_subject_contains_issue_number(self) -> None:
+        tool = GetProjectPlanTool(manager=_GetProjectPlanManagerStub(plan=None))
+        context = NoteContext()
+
+        await tool.execute(GetProjectPlanInput(issue_number=253), context)
+
+        suggestions = context.of_type(SuggestionNote)
+        assert len(suggestions) == 1
+        assert suggestions[0].subject == "issue #253"
+
+    @pytest.mark.asyncio
+    async def test_get_plan_value_error_returns_error(self) -> None:
+        tool = GetProjectPlanTool(
+            manager=_GetProjectPlanManagerStub(plan=None, error=ValueError("bad plan state"))
+        )
+        context = NoteContext()
+
+        result = await tool.execute(GetProjectPlanInput(issue_number=253), context)
+
+        assert result.is_error is True
+        assert result.content[0]["text"] == "bad plan state"
+        assert len(context.of_type(SuggestionNote)) == 0
 
 
 # ---------------------------------------------------------------------------

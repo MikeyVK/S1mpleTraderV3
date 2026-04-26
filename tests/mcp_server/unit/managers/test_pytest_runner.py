@@ -77,7 +77,8 @@ collected 1 items
 tests/test_foo.py::test_a PASSED
 
 ---------- coverage: platform linux, python 3.12 ----------
-TOTAL                                   250    10    96%
+Name                                   Stmts   Miss Branch BrPart  Cover
+TOTAL                                    250     10     40      4    96%
 
 ============================== 1 passed in 0.45s ==============================
 """
@@ -126,14 +127,22 @@ def _run(
         cmd: list[str],
         *,
         capture_output: bool,
-        text: bool,
+        check: bool,
+        creationflags: int,
         cwd: str,
+        env: dict[str, str],
+        stdin: int,
+        text: bool,
         timeout: int,
     ) -> subprocess.CompletedProcess[str]:
         assert cmd == ["pytest"]
         assert capture_output is True
-        assert text is True
+        assert check is False
+        assert creationflags >= 0
         assert cwd == "."
+        assert env["PYTHONUNBUFFERED"] == "1"
+        assert stdin == subprocess.DEVNULL
+        assert text is True
         assert timeout == 30
         return completed
 

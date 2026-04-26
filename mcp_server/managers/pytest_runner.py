@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from collections.abc import Callable
@@ -40,17 +41,17 @@ class FailureDetail:
 class PytestResult:
     """Single source of truth for a completed pytest invocation."""
 
-    exit_code: int  # raw int — may be unknown (not in PytestExitCode)
-    summary_line: str  # ALWAYS non-empty — canonical display string
+    exit_code: int
+    summary_line: str
     passed: int
     failed: int
     skipped: int
     errors: int
-    failures: tuple[FailureDetail, ...]  # tuple for hashability + immutability
-    coverage_pct: float | None  # None when coverage flag was not requested
-    lf_cache_was_empty: bool  # True iff pytest --lf fell back to full run
-    should_raise: bool  # True for exit codes 2, 3, 4, unknown — stamped by runner policy
-    note: NoteEntry | None  # RecoveryNote/SuggestionNote from policy; None for codes 0, 1
+    failures: tuple[FailureDetail, ...]
+    coverage_pct: float | None
+    lf_cache_was_empty: bool
+    should_raise: bool
+    note: NoteEntry | None
 
 
 @dataclass(frozen=True)
@@ -58,8 +59,8 @@ class ExitCodePolicy:
     """Dispatch policy for a single pytest exit code."""
 
     outcome: Literal["return", "raise"]
-    note_factory: Callable[[int], NoteEntry] | None  # None for codes that produce no note
-    summary_line_when_no_parse: str  # used when parser found no summary
+    note_factory: Callable[[int], NoteEntry] | None
+    summary_line_when_no_parse: str
 
 
 @dataclass(frozen=True)
@@ -106,44 +107,39 @@ _UNKNOWN_CODE_POLICY = ExitCodePolicy(
     "pytest exited with unexpected code",
 )
 
-# ---------------------------------------------------------------------------
-# Regexes for output parsing
-# ---------------------------------------------------------------------------
-
-# "FAILED tests/test_foo.py::test_bad - AssertionError: assert 1 == 2"
 _FAILED_LINE_RE = re.compile(r"^FAILED (.+?) - (.+)$", re.MULTILINE)
-
-# "TOTAL   250   10   96%"
-_COVERAGE_RE = re.compile(r"TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%")
-
-# pytest --lf empty cache message
+_COVERAGE_RE = re.compile(r"^TOTAL\b(?:\s+\d+)+\s+(\d+(?:\.\d+)?)%$", re.MULTILINE)
 _LF_EMPTY_RE = re.compile(r"no previously failed tests,\s*not deselecting", re.IGNORECASE)
 
 
 class PytestRunner:
-    """Domain manager: command execution, output parsing, exit-code classification.
-
-    Stateless — owns no persisted state. All output is returned via PytestResult.
-    Raises subprocess.TimeoutExpired or OSError; callers (RunTestsTool) handle those.
-    """
+    """Domain manager: command execution, output parsing, exit-code classification."""
 
     def run(self, cmd: list[str], cwd: str, timeout: int) -> PytestResult:
-        """Execute pytest, parse output, classify exit code, return typed result.
-
-        Raises:
-            subprocess.TimeoutExpired: pytest exceeded the timeout.
-            OSError: process could not be started.
-        """
+        """Execute pytest, parse output, classify exit code, return typed result."""
         execution = self._execute(cmd, cwd, timeout)
         return self._parse_output(execution.stdout, execution.returncode)
 
     def _execute(self, cmd: list[str], cwd: str, timeout: int) -> _PytestExecution:
-        """Run pytest and normalize subprocess output into the private execution boundary."""
+        """Run pytest with safe subprocess defaults for the MCP server environment."""
+        env = os.environ.copy()
+        python_dir = os.path.dirname(cmd[0])
+        venv_path = os.path.dirname(python_dir)
+        env["VIRTUAL_ENV"] = venv_path
+        env["PATH"] = f"{python_dir};{env.get('PATH', '')}"
+        env["PYTHONUNBUFFERED"] = "1"
+
         proc = subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
+            check=False,
+            creationflags=(
+                subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
+            ),
             cwd=cwd,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            text=True,
             timeout=timeout,
         )
         return _PytestExecution(
@@ -175,10 +171,6 @@ class PytestRunner:
             should_raise=policy.outcome == "raise",
             note=policy.note_factory(returncode) if policy.note_factory else None,
         )
-
-    # ------------------------------------------------------------------
-    # Private parsing helpers
-    # ------------------------------------------------------------------
 
     def _parse_counts(self, stdout: str) -> tuple[int, int, int, int]:
         """Extract (passed, failed, skipped, errors) counts — order-independent."""
@@ -223,12 +215,7 @@ class PytestRunner:
         return float(match.group(1)) if match else None
 
     def _parse_summary_line(self, stdout: str, returncode: int, policy: ExitCodePolicy) -> str:
-        """Return the human-readable summary line — never empty.
-
-        For codes with a canonical policy string (exit 2/3/4/5/unknown), return it
-        directly so summary_line is always unambiguous. For codes 0 and 1 (where
-        policy.summary_line_when_no_parse == ""), parse from the last === banner.
-        """
+        """Return the human-readable summary line — never empty."""
         if policy.summary_line_when_no_parse:
             return policy.summary_line_when_no_parse
 

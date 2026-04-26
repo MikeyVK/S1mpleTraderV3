@@ -74,6 +74,7 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(
 
     mock_git_manager.create_branch.assert_called_once_with("test-branch", "feature", "HEAD", ANY)
     assert isinstance(result, ToolResult)
+    assert result.content[0]["text"].startswith("✅ ")
     assert "Created and switched to branch: feature/test-branch" in result.content[0]["text"]
 
 

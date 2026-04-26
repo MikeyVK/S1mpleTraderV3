@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import os
-import re
 import subprocess
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -22,105 +21,6 @@ from mcp_server.tools.tool_result import ToolResult
 
 if TYPE_CHECKING:
     from mcp_server.managers.pytest_runner import PytestResult
-
-
-def _run_pytest_sync(cmd: list[str], cwd: str, timeout: int) -> tuple[str, str, int]:
-    """Run pytest synchronously - to be called from thread pool."""
-    env = os.environ.copy()
-    venv_path = os.path.dirname(os.path.dirname(cmd[0]))
-    env["VIRTUAL_ENV"] = venv_path
-    env["PATH"] = f"{os.path.dirname(cmd[0])};{env.get('PATH', '')}"
-    env["PYTHONUNBUFFERED"] = "1"
-
-    with subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        stdin=subprocess.DEVNULL,
-        text=True,
-        cwd=cwd,
-        env=env,
-        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
-    ) as proc:
-        try:
-            stdout, stderr = proc.communicate(timeout=timeout)
-            return stdout or "", stderr or "", proc.returncode
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
-            raise
-
-
-def _parse_pytest_output(stdout: str) -> dict[str, Any]:
-    """Parse pytest stdout into a structured dict.
-
-    Returns a dict with:
-    - summary: {"passed": int, "failed": int}
-    - summary_line: human-readable one-liner (e.g. "2 passed in 0.45s")
-    - failures: list of {"test_id", "location", "short_reason", "traceback"}
-    """
-    tb_by_test_id: dict[str, str] = {}
-    in_failures = False
-    current_id = ""
-    current_tb: list[str] = []
-    for line in stdout.splitlines():
-        if re.match(r"^=+ FAILURES =+", line):
-            in_failures = True
-            continue
-        if not in_failures:
-            continue
-        header = re.match(r"^_+\s+(.+?)\s+_+$", line)
-        if header:
-            if current_id and current_tb:
-                tb_by_test_id[current_id] = "\n".join(current_tb).strip()
-            current_id = header.group(1).strip()
-            current_tb = []
-        elif re.match(r"^=+", line):
-            if current_id and current_tb:
-                tb_by_test_id[current_id] = "\n".join(current_tb).strip()
-            in_failures = False
-        else:
-            current_tb.append(line)
-
-    failures: list[dict[str, str]] = []
-    for line in stdout.splitlines():
-        match = re.match(r"^FAILED (.+?) - (.+)$", line.strip())
-        if match:
-            location = match.group(1).strip()
-            short_reason = match.group(2).strip()
-            test_id = location.split("::")[-1] if "::" in location else location
-            failures.append(
-                {
-                    "test_id": test_id,
-                    "location": location,
-                    "short_reason": short_reason,
-                    "traceback": tb_by_test_id.get(test_id, ""),
-                }
-            )
-
-    passed = 0
-    failed = 0
-    summary_line = ""
-    for line in stdout.splitlines():
-        match_fail = re.search(r"(\d+) failed", line)
-        if match_fail:
-            failed = int(match_fail.group(1))
-        match_pass = re.search(r"(\d+) passed", line)
-        if match_pass:
-            passed = int(match_pass.group(1))
-        if re.search(r"\d+ (passed|failed)", line):
-            cleaned = re.sub(r"^=+\s*", "", line.strip())
-            cleaned = re.sub(r"\s*=+$", "", cleaned).strip()
-            if cleaned:
-                summary_line = cleaned
-
-    result: dict[str, Any] = {
-        "summary": {"passed": passed, "failed": failed},
-        "summary_line": summary_line,
-    }
-    if failures:
-        result["failures"] = failures
-    return result
 
 
 class RunTestsInput(BaseModel):

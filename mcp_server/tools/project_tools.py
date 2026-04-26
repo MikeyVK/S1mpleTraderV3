@@ -19,7 +19,7 @@ from typing import Any
 import anyio
 from pydantic import BaseModel, Field
 
-from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.operation_notes import NoteContext, SuggestionNote
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
@@ -323,11 +323,16 @@ class GetProjectPlanTool(BaseTool):
         Returns:
             ToolResult with project plan or error
         """
-        del context  # Not used
         try:
             plan = self.manager.get_project_plan(issue_number=params.issue_number)
             if plan:
                 return ToolResult.text(json.dumps(plan, indent=2))
+            context.produce(
+                SuggestionNote(
+                    "Run initialize_project first to create a project plan.",
+                    subject=f"issue #{params.issue_number}",
+                )
+            )
             return ToolResult.error(f"No project plan found for issue #{params.issue_number}")
         except (ValueError, OSError) as e:
             return ToolResult.error(str(e))
