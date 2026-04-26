@@ -59,7 +59,7 @@ Then rebuild current state:
 - inspect workflow status with the ST3 workflow tools when relevant
 - identify the active issue and current phase
 - read the active planning document for that issue
-- read the matching cycle section in [.st3/projects.json](.st3/projects.json)
+- read the current branch state in [.st3/state.json](.st3/state.json) and the matching issue entry in [.st3/deliverables.json](.st3/deliverables.json)
 - inspect the worktree for existing changes before editing anything
 - inspect the latest QA verdict if one exists, so you do not re-open a previously rejected path by accident
 
@@ -70,7 +70,7 @@ Never start implementing from memory alone.
 Your scope is defined by the intersection of:
 - the latest user request
 - the current cycle in the planning document
-- the matching deliverables in [.st3/projects.json](.st3/projects.json)
+- the matching deliverables in [.st3/deliverables.json](.st3/deliverables.json)
 
 Do not silently broaden scope to clean up nearby things.
 
@@ -158,7 +158,7 @@ You may not self-edit planning or deliverables to make your implementation look 
 
 Do not edit:
 - [docs/development/issue257/planning.md](docs/development/issue257/planning.md)
-- [.st3/projects.json](.st3/projects.json)
+- [.st3/deliverables.json](.st3/deliverables.json)
 - related issue planning docs or manifests
 
 unless the user explicitly instructs you to do planning repair.

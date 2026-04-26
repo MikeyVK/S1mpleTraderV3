@@ -80,7 +80,6 @@ Changes to `.st3/` YAML files take effect without a server restart. Changes to
 | ID | Component | Issue | Severity |
 |----|-----------|-------|----------|
 | RC-6 | `phase_contracts.yaml` | Hardcoded `docs/development/issue257/planning.md` and `design.md` — works only for issue #257, breaks for every other branch | High |
-| RC-1 | `.st3/projects.json` | File still exists physically; should have been removed in Cycle 1 | Low |
 
 ---
 
