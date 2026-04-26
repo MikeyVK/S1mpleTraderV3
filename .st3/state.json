@@ -1,0 +1,121 @@
+{
+  "branch": "fix/253-run-tests-reliability",
+  "issue_number": 253,
+  "workflow_name": "bug",
+  "current_phase": "documentation",
+  "current_cycle": null,
+  "last_cycle": 6,
+  "cycle_history": [
+    {
+      "cycle_number": 2,
+      "name": "PytestRunner",
+      "entered": "2026-04-25T13:54:07.680489+00:00",
+      "forced": true,
+      "skip_reason": "C1 has zero own tests per planning.md \u2014 behaviour verified by C2 parser/runner tests.",
+      "human_approval": "User confirmed GO via QA verdict: C1 PASS, no blockers, proceed to C2.",
+      "skipped_cycles": []
+    },
+    {
+      "cycle_number": 3,
+      "name": "IPytestRunner Protocol + FakePytestRunner",
+      "entered": "2026-04-25T14:18:57.121413+00:00",
+      "forced": true,
+      "skip_reason": "Sequential transition to C3 is blocked by a missing docs/development issue test-suite artifact unrelated to the C3 Protocol/FakePytestRunner implementation slice; user approved proceeding after QA PASS on C2.",
+      "human_approval": "User approved on 2026-04-25: C2 PASS, can close C2 and proceed to C3.",
+      "skipped_cycles": []
+    },
+    {
+      "cycle_number": 4,
+      "name": "RunTestsTool Refactor",
+      "entered": "2026-04-25T14:24:51.694142+00:00",
+      "forced": true,
+      "skip_reason": "Sequential transition to C4 is blocked by the same missing implementation test-suite documentation artifact, which is unrelated to the C4 RunTestsTool refactor slice. User explicitly approved proceeding from C3 PASS to C4.",
+      "human_approval": "User approved on 2026-04-25: C3 PASS, C3 can close, proceed to C4.",
+      "skipped_cycles": []
+    },
+    {
+      "cycle_number": 6,
+      "name": "Legacy Cleanup",
+      "entered": "2026-04-25T20:39:19.613670+00:00",
+      "forced": true,
+      "skip_reason": "C5 and C6 implementation are complete; sequential transition is blocked only by the missing implementation-test-suite documentation artifact in docs/development, which is outside the run_tests code validation scope.",
+      "human_approval": "User approved on 2026-04-25: move issue 253 forward to validation despite the implementation-test-suite doc gate.",
+      "skipped_cycles": [
+        5
+      ]
+    }
+  ],
+  "required_phases": [
+    "research",
+    "design",
+    "planning",
+    "implementation",
+    "validation",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": "Return to validation so the updated validation report can remain in the validation phase until QA GO and only be committed afterwards.",
+  "issue_title": "run_tests: summary_line sync bug + no fail-fast on invocation error + missing coverage support",
+  "parent_branch": null,
+  "created_at": "2026-04-24T19:53:37.632463+00:00",
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-04-25T11:13:44.215730+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-04-25T12:35:51.481724+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "implementation",
+      "timestamp": "2026-04-25T13:18:09.101474+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-04-25T21:20:52.564879+00:00",
+      "human_approval": "User approved on 2026-04-25: move issue 253 to validation despite the implementation-test-suite doc gate.",
+      "forced": true,
+      "skip_reason": "Re-applying the already approved implementation\u2192validation move after the previous phase write was lost by a concurrent state.json mutation during parallel cycle and phase transitions."
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "documentation",
+      "timestamp": "2026-04-26T07:02:54.710023+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "documentation",
+      "to_phase": "validation",
+      "timestamp": "2026-04-26T07:26:43.470389+00:00",
+      "human_approval": "User approved on 2026-04-26: force phase back to validation so the report can be committed after QA GO.",
+      "forced": true,
+      "skip_reason": "Return to validation so the updated validation report can remain in the validation phase until QA GO and only be committed afterwards."
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "documentation",
+      "timestamp": "2026-04-26T07:30:16.342501+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    }
+  ],
+  "reconstructed": false
+}

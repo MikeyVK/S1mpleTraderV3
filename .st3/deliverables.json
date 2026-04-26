@@ -1,0 +1,96 @@
+{
+  "253": {
+    "issue_title": "run_tests: summary_line sync bug + no fail-fast on invocation error + missing coverage support",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "design",
+      "planning",
+      "implementation",
+      "validation",
+      "documentation",
+      "ready"
+    ],
+    "skip_reason": null,
+    "parent_branch": null,
+    "created_at": "2026-04-24T19:53:37.514493+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 6,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "name": "Data Contracts",
+            "deliverables": [
+              "PytestResult dataclass",
+              "PytestExitCode enum",
+              "ExitCodePolicy table (_EXIT_CODE_POLICY)",
+              "FailureDetail dataclass",
+              "mcp_server/managers/pytest_runner.py created"
+            ],
+            "exit_criteria": "PytestResult + ExitCodePolicy + PytestExitCode importable; no own tests (covered by C2)"
+          },
+          {
+            "cycle_number": 2,
+            "name": "PytestRunner",
+            "deliverables": [
+              "PytestRunner.run() implementation",
+              "_parse_output() with FailureDetail extraction",
+              "8 parser/runner tests in tests/mcp_server/unit/managers/test_pytest_runner.py"
+            ],
+            "exit_criteria": "PytestRunner passes all 8 parser/runner tests; PytestResult returned for each exit code scenario"
+          },
+          {
+            "cycle_number": 3,
+            "name": "IPytestRunner Protocol + FakePytestRunner",
+            "deliverables": [
+              "IPytestRunner Protocol in mcp_server/core/interfaces/__init__.py",
+              "FakePytestRunner test double in tests/mcp_server/fixtures/fake_pytest_runner.py"
+            ],
+            "exit_criteria": "IPytestRunner Protocol usable; FakePytestRunner injectable in tool tests"
+          },
+          {
+            "cycle_number": 4,
+            "name": "RunTestsTool Refactor",
+            "deliverables": [
+              "RunTestsTool with runner injection (IPytestRunner)",
+              "coverage: bool field in RunTestsInput",
+              "_build_cmd with --cov flags when coverage=True",
+              "execute() using ExecutionError + context.produce (not ToolError + add_note)",
+              "del context removed",
+              "18 new FakePytestRunner-based tests",
+              "mcp_server/server.py: RunTestsTool(runner=PytestRunner(), settings=settings)"
+            ],
+            "exit_criteria": "All 18 new tool-level tests GREEN; server boots with new composition root"
+          },
+          {
+            "cycle_number": 5,
+            "name": "GetProjectPlanTool Fix",
+            "deliverables": [
+              "del context removed from GetProjectPlanTool.execute()",
+              "context.produce(SuggestionNote(...)) added before error return",
+              "3 new tests in tests/mcp_server/unit/tools/test_project_tools.py"
+            ],
+            "exit_criteria": "All 3 GetProjectPlanTool tests GREEN; total test count = 29"
+          },
+          {
+            "cycle_number": 6,
+            "name": "Legacy Cleanup",
+            "deliverables": [
+              "_run_pytest_sync deleted from mcp_server/tools/test_tools.py",
+              "_parse_pytest_output deleted from mcp_server/tools/test_tools.py",
+              "21 legacy test functions deleted from tests/mcp_server/unit/tools/test_test_tools.py",
+              "mock_run_pytest_sync fixture deleted",
+              "pyright: reportPrivateUsage=false header deleted",
+              "tests/mcp_server/unit/tools/test_dev_tools.py migrated to FakePytestRunner",
+              "tests/mcp_server/unit/integration/test_all_tools.py (line 220) migrated: RunTestsTool(runner=PytestRunner())",
+              "tests/mcp_server/unit/integration/test_all_tools.py (line 542) migrated: RunTestsTool(runner=PytestRunner())"
+            ],
+            "exit_criteria": "Zero legacy patch-based tests remain; all RunTestsTool() call sites include runner= arg; run_quality_gates(scope=branch) GREEN; full test suite GREEN"
+          }
+        ]
+      }
+    }
+  }
+}
