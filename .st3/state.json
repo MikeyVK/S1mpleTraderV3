@@ -1,0 +1,24 @@
+{
+  "branch": "epic/290-workflow-intelligence-agent-ux",
+  "issue_number": 290,
+  "workflow_name": "refactor",
+  "current_phase": "research",
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
+  "required_phases": [
+    "research",
+    "planning",
+    "implementation",
+    "validation",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": null,
+  "issue_title": "Epic: Workflow Intelligence / Agent UX",
+  "parent_branch": "main",
+  "created_at": "2026-04-26T12:37:24.669199+00:00",
+  "transitions": [],
+  "reconstructed": false
+}
