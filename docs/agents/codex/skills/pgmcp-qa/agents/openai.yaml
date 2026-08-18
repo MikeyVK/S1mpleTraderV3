@@ -1,0 +1,7 @@
+interface:
+  display_name: "PGMCP QA"
+  short_description: "Review PGMCP work independently"
+  default_prompt: "Use $pgmcp-qa to review the latest PGMCP hand-over with me."
+
+policy:
+  allow_implicit_invocation: false

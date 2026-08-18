@@ -100,3 +100,6 @@ temp/qa_logs/
 mcp_server/assets/*
 !mcp_server/assets/.gitkeep
 
+
+# Local Codex workspace configuration
+.codex/
