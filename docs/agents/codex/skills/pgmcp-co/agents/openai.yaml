@@ -1,0 +1,7 @@
+interface:
+  display_name: "PGMCP Coordination"
+  short_description: "Coordinate issues and own epic workflows"
+  default_prompt: "Use $pgmcp-co to coordinate the active PGMCP workflow with me."
+
+policy:
+  allow_implicit_invocation: false

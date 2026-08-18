@@ -1,0 +1,7 @@
+interface:
+  display_name: "PGMCP Implementation"
+  short_description: "Execute child issues and TDD cycles"
+  default_prompt: "Use $pgmcp-imp to execute the active PGMCP child-issue phase with me."
+
+policy:
+  allow_implicit_invocation: false

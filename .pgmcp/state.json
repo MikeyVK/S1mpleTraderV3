@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0.0",
+  "branch": "refactor/444-review-reconcile-generated-workspace-assets",
+  "issue_number": 444,
+  "workflow_name": "refactor",
+  "current_phase": "research",
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
+  "required_phases": [
+    "research",
+    "planning",
+    "implementation",
+    "validation",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": null,
+  "issue_title": "Review and reconcile generated workspace assets for package inclusion",
+  "parent_branch": "epic/289-mcp-server-structural-refactoring-dto-exception-segregation",
+  "created_at": "2026-08-18T08:04:39.576233+00:00",
+  "transitions": [],
+  "reconstructed": false,
+  "current_sub_phase": null
+}
