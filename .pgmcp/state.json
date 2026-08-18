@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "branch": "epic/290-workflow-intelligence-agent-ux",
+  "issue_number": 290,
+  "workflow_name": "epic",
+  "current_phase": "documentation",
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
+  "required_phases": [
+    "research",
+    "planning",
+    "design",
+    "coordination",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": "Restore historical epic workflow state after the parent branch was recreated from main. The implementation and validation work already exists in merged child PR #448 with documented test and quality evidence; this session is explicitly completing the epic documentation closeout before PR submission.",
+  "issue_title": "Epic: Workflow Intelligence / Agent UX",
+  "parent_branch": "main",
+  "created_at": "2026-08-18T20:04:05.439592+00:00",
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "documentation",
+      "timestamp": "2026-08-18T20:04:18.517430+00:00",
+      "human_approval_message": "User requested that epic #290 first enter the documentation phase so its issue body can be updated before creating the PR to main.",
+      "forced": true,
+      "skip_reason": "Restore historical epic workflow state after the parent branch was recreated from main. The implementation and validation work already exists in merged child PR #448 with documented test and quality evidence; this session is explicitly completing the epic documentation closeout before PR submission."
+    }
+  ],
+  "reconstructed": false,
+  "current_sub_phase": null
+}
