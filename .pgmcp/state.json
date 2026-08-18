@@ -3,7 +3,7 @@
   "branch": "feature/446-add-chore-as-a-first-class-workflow-and-branch-type",
   "issue_number": 446,
   "workflow_name": "feature",
-  "current_phase": "documentation",
+  "current_phase": "ready",
   "current_cycle": 1,
   "last_cycle": 1,
   "cycle_history": [],
@@ -99,6 +99,14 @@
       "to_phase": "documentation",
       "timestamp": "2026-08-18T17:09:51.113207+00:00",
       "human_approval_message": "Final validation report is PASS; full suite and functioning branch gates are green, with the accepted Ruff runner defect recorded as deferred work.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "documentation",
+      "to_phase": "ready",
+      "timestamp": "2026-08-18T17:10:41.709284+00:00",
+      "human_approval_message": "Validation is PASS, documentation is reconciled, and the only remaining deferred item is the explicitly accepted Ruff quality-runner integrity issue.",
       "forced": false,
       "skip_reason": null
     }
