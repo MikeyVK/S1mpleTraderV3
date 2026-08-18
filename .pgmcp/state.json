@@ -3,7 +3,7 @@
   "branch": "feature/446-add-chore-as-a-first-class-workflow-and-branch-type",
   "issue_number": 446,
   "workflow_name": "feature",
-  "current_phase": "documentation",
+  "current_phase": "validation",
   "current_cycle": 1,
   "last_cycle": 1,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Return from validation to repair all mechanically fixable repository lint and type findings explicitly approved by the user.",
+  "skip_reason": "Return from documentation to implementation to remove concurrency tests that the user explicitly does not want as a runtime contract.",
   "issue_title": "Add chore as a first-class workflow and branch type",
   "parent_branch": "epic/290-workflow-intelligence-agent-ux",
   "created_at": "2026-08-18T10:51:31.430398+00:00",
@@ -75,6 +75,22 @@
       "to_phase": "documentation",
       "timestamp": "2026-08-18T15:01:40.841276+00:00",
       "human_approval_message": "User approved transition to documentation; the required validation report now records the exact non-green full-suite evidence and deferred items.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "documentation",
+      "to_phase": "implementation",
+      "timestamp": "2026-08-18T16:51:45.375216+00:00",
+      "human_approval_message": "User explicitly requested: 'Spring terug naar implementatie en pas de test aan. Dit is geen runtime gedrag dat ik getest wil hebben.'",
+      "forced": true,
+      "skip_reason": "Return from documentation to implementation to remove concurrency tests that the user explicitly does not want as a runtime contract."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-18T17:05:26.153939+00:00",
+      "human_approval_message": "User approved updating validation evidence and progressing toward ready after the deterministic test correction.",
       "forced": false,
       "skip_reason": null
     }

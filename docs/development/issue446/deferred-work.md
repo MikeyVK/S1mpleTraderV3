@@ -1,33 +1,31 @@
 <!-- docs\development\issue446\deferred-work.md -->
-<!-- template=generic_doc version=43c84181 created=2026-08-18T14:47Z updated=2026-08-18T15:28Z -->
+<!-- template=generic_doc version=43c84181 created=2026-08-18T14:47Z updated=2026-08-18 -->
 # Issue #446 Deferred Work for @co Triage
 
 **Status:** PENDING  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-08-18
 
 ---
 
 ## Purpose
 
-Record out-of-scope validation findings that must remain visible in the issue
-#446 PR body and be triaged by `@co` after merge.
+Record the remaining out-of-scope validation finding that must be included in
+the issue #446 PR body and triaged by `@co` after merge.
 
 ## Scope
 
 **In Scope:**
 
-- Dedicated follow-up for Ruff command, auto-fix, exit-code, and result-summary
-  integrity.
-- Triage of nondeterministic Windows permission failures in the concurrent
-  state integration tests.
+- Dedicated follow-up for Ruff command syntax, auto-fix behavior, exit-code
+  handling, and result-summary integrity.
 
 **Out of Scope:**
 
-- Repairing either finding on the issue #446 branch.
+- Repairing the quality runner or Ruff configuration on the issue #446 branch.
 - Weakening or removing workspace-wide validation requirements.
 
-## Deferred Work Item 1: Quality-Gate Command and Result Integrity
+## Deferred Work Item: Quality-Gate Command and Result Integrity
 
 **Owner:** `@co` triage after merge of issue #446  
 **Disposition:** Create a dedicated issue; do not repair under #446.  
@@ -75,62 +73,14 @@ false confidence and the configured auto-fix path is unusable.
 
 ### Evidence
 
-- An explicit ten-file quality run passed format, imports, line length,
-  Pyright, and mypy; Ruff strict lint returned exit code 2 while reported as
-  passed.
-- A project-wide 497-file quality run reproduced the same false-positive Ruff
-  result.
+- The final branch-scope 29-file quality run passed format, imports, line
+  length, Pyright, and mypy.
+- In that same run Ruff strict lint returned exit code 2 while the runner
+  reported the gate and overall result as passed.
+- A focused one-file quality run reproduced the same false-positive
+  classification.
 - All mechanical lint and typing findings surfaced by the functioning gates
   were repaired under #446.
-
-## Deferred Work Item 2: Concurrent State Test Permission Race
-
-**Owner:** `@co` triage after merge of issue #446  
-**Disposition:** Check for an existing tracking issue; otherwise create a
-dedicated test-reliability issue.  
-**Priority:** Determine during triage.
-
-### Finding
-
-Two consecutive full workspace runs each failed one different test in
-`tests/mcp_server/integration/test_phase_state_engine_concurrent.py`. Both
-failures were Windows `PermissionError: [Errno 13]` races against a temporary
-`.pgmcp/state.json`.
-
-The first failed test passed on an isolated rerun. The full test file then
-passed in isolation. The test file and concurrent-state implementation were not
-changed for the chore workflow.
-
-### Reason for Deferral
-
-The failures are outside the approved chore boundary and are not reproducible
-in isolated execution. Repair requires dedicated concurrency and Windows
-file-sharing analysis rather than a documentation or configuration change.
-
-### Impact or Risk
-
-The workspace-wide suite is nondeterministic under its parallel Windows
-execution context. This can block trustworthy validation and conceal genuine
-regressions among environmental failures.
-
-### Recommended Follow-up
-
-1. Reproduce under the full-suite parallel execution settings on Windows.
-2. Inspect temporary-file replacement, locking, teardown, and xdist/process
-   interaction around `.pgmcp/state.json`.
-3. Determine whether production locking or only the concurrency fixture needs
-   hardening.
-4. Add a deterministic regression that distinguishes expected lock contention
-   from unexpected filesystem permission failures.
-5. Keep the ready-phase workspace test requirement; rerun until a current full
-   suite is green before PR submission.
-
-### Evidence
-
-- Full run 1: 1 failed, 2778 passed, 2 skipped, 1 xpassed, 25 warnings.
-- Failed test rerun: 1 passed.
-- Full run 2: 1 different concurrent-state test failed; 2778 passed.
-- Concurrent-state integration file rerun: 2 passed.
 
 ## Related Documentation
 
@@ -151,4 +101,5 @@ regressions among environmental failures.
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0 | 2026-08-18 | Agent | Record deferred quality-gate integrity work |
-| 1.1 | 2026-08-18 | Agent | Add concurrent-state test reliability triage item |
+| 1.1 | 2026-08-18 | Agent | Record initial validation follow-up findings |
+| 1.2 | 2026-08-18 | Agent | Retain only the unresolved quality-gate integrity item |
