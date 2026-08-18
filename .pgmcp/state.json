@@ -3,7 +3,7 @@
   "branch": "epic/290-workflow-intelligence-agent-ux",
   "issue_number": 290,
   "workflow_name": "epic",
-  "current_phase": "documentation",
+  "current_phase": "ready",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -28,6 +28,14 @@
       "human_approval_message": "User requested that epic #290 first enter the documentation phase so its issue body can be updated before creating the PR to main.",
       "forced": true,
       "skip_reason": "Restore historical epic workflow state after the parent branch was recreated from main. The implementation and validation work already exists in merged child PR #448 with documented test and quality evidence; this session is explicitly completing the epic documentation closeout before PR submission."
+    },
+    {
+      "from_phase": "documentation",
+      "to_phase": "ready",
+      "timestamp": "2026-08-18T20:07:34.989045+00:00",
+      "human_approval_message": "User requested preparing epic branch #290 for merge to main via PR after updating the issue body in documentation.",
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,
