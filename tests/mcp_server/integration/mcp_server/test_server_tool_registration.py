@@ -82,3 +82,13 @@ def test_force_cycle_transition_tool_has_correct_name() -> None:
     assert tools[0].name == "force_cycle_transition", (
         f"Expected name 'force_cycle_transition', got '{tools[0].name}'"
     )
+
+
+def test_search_documentation_removed_and_get_work_context_preserved() -> None:
+    """The clean-break inventory omits search while retaining workflow context."""
+
+    server = make_test_server()
+    tool_names = [tool.name for tool in server.tools]
+
+    assert "search_documentation" not in tool_names
+    assert "get_work_context" in tool_names
