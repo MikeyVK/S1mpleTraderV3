@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "projects": {
+    "289": {
+      "issue_title": "Epic: MCP Server Structural Refactoring & DTO/Exception Segregation",
+      "workflow_name": "epic",
+      "execution_mode": "interactive",
+      "required_phases": [
+        "research",
+        "planning",
+        "design",
+        "coordination",
+        "documentation",
+        "ready"
+      ],
+      "skip_reason": null,
+      "parent_branch": "main",
+      "created_at": "2026-08-18T10:31:15.934643+00:00"
+    }
+  }
+}
