@@ -1,6 +1,6 @@
 ---
 trigger: manual
-description: QA role wrapper for VS Code orchestration on this repository.
+description: QA role wrapper for agent orchestration on this repository.
 ---
 
 # @qa — QA Role

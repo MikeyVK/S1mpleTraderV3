@@ -6,11 +6,12 @@ description: Execute the active phase for the current branch, or first discuss o
 
 Use the active branch phase as the source of truth for this session.
 
-## Startup rule
+## Refresh & Startup rule
 
-1. Call `get_work_context()` first.
-2. You must create a todo list using built-in tools to track the steps you will take based on the returned `phase_instructions`.
-3. Treat the returned `phase_instructions` as the default operational script for this session.
+1. Call `get_work_context()` first to refresh and load the active branch, workflow, and phase.
+2. Reload and verify compliance with all general guidelines from **[AGENTS.md](../../AGENTS.md)** and the active sub-role instructions (refer to the onboarding rules established in **[/start](start.md)**, including the strict prohibition of built-in tools for repository operations).
+3. You must create a todo list to track the steps you will take based on the returned `phase_instructions`.
+4. Treat the returned `phase_instructions` as the default operational script for this session.
 
 ## Optional invocation modes
 

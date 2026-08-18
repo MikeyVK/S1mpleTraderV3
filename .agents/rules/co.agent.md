@@ -1,6 +1,6 @@
 ---
 trigger: manual
-description: Coordination role wrapper for VS Code orchestration on this repository.
+description: Coordination role wrapper for agent orchestration on this repository.
 ---
 
 # @co - Coordination Role

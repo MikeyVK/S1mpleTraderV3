@@ -1,6 +1,6 @@
 ---
 trigger: manual
-description: Implementation role wrapper for VS Code orchestration on this repository.
+description: Implementation role wrapper for agent orchestration on this repository.
 ---
 
 # @imp — Implementation Role

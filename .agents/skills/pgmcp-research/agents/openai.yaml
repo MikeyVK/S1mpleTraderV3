@@ -1,0 +1,7 @@
+interface:
+  display_name: "PGMCP Research"
+  short_description: "Explore questions without workflow mutation"
+  default_prompt: "Use $pgmcp-research for an interactive standalone research session."
+
+policy:
+  allow_implicit_invocation: false
