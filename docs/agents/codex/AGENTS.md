@@ -177,10 +177,10 @@ Compatibility, migration, and breakage strategy is decided at the end of Researc
 | `docs` | planning, documentation, ready | Documentation-only changes |
 | `refactor` | research, planning, implementation, validation, documentation, ready | Code refactoring |
 | `hotfix` | implementation, validation, documentation, ready | Emergency fixes |
+| `chore` | research, implementation, validation, documentation, ready | Lightweight maintenance and housekeeping |
 | `epic` | See `.pgmcp/config/contracts.yaml` (SSOT for epic phase order) | Large multi-issue features |
-| `custom` | (user-defined) | Custom workflows |
 
-**Workflow Selection:** Use `initialize_project(issue_number, issue_title, workflow_name="feature|bug|docs|...")` to start.
+**Workflow Selection:** Use `initialize_project(issue_number, issue_title, workflow_name="feature|bug|refactor|docs|hotfix|chore|epic")` to start.
 
 ---
 
@@ -199,7 +199,7 @@ Compatibility, migration, and breakage strategy is decided at the end of Researc
 
 These are representative examples, not the complete registry. Current first-class types also include `adapter`, `resource`, `interface`, `service`, `schema`, `generic`, `unit_test`, `integration_test`, `architecture`, `planning`, `validation_report`, `generic_doc`, `commit`, `pr`, and `issue`.
 
-**Registry:** `.pgmcp/config/artifacts/` defines the authoritative complete set of artifact types and their templates.
+**Registry:** `.pgmcp/templates/config/` defines the authoritative complete set of artifact types and their templates.
 
 **Schema discovery:** Before calling `scaffold_artifact` with an artifact type whose context fields are not already in your working context, call `scaffold_schema(artifact_type=...)` first. It returns the full JSON Schema for the `context` parameter — required and optional fields — enabling first-time-right scaffolding without a failed call. If you call `scaffold_artifact` with wrong or missing context fields, the error response contains the same schema; use it to correct the call immediately.
 

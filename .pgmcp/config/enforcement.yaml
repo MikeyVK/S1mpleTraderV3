@@ -32,9 +32,9 @@ enforcement:
           epic: [main]
           feature: [main, "epic/*", "refactor/*"]
           bug: [main, "epic/*"]
-          fix: [main, "epic/*"]
           refactor: [main, "epic/*"]
           docs: [main, "epic/*"]
+          chore: [main, "epic/*"]
   - event_source: tool
     tool_category: branch_mutating
     timing: pre

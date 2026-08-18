@@ -39,7 +39,7 @@ Comprehensive Git automation with branch management, commit workflows, merge ope
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `create_branch` | Create feature/bug/docs branches | `name`, `base_branch`, `branch_type` |
+| `create_branch` | Create configured feature/bug/docs/refactor/hotfix/chore/epic branches | `name`, `base_branch`, `branch_type` |
 | `git_status` | Check working directory status | None |
 | `git_add_or_commit` | Stage and commit with workflow phase prefix | `workflow_phase`, `sub_phase`, `cycle_number`, `message` |
 | `git_checkout` | Switch branches (syncs phase state) | `branch` |

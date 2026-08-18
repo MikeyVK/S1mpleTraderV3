@@ -666,7 +666,7 @@ class TestGitAdapterHardResetAndForcePush:
         """force_push_with_lease must call repo.git.push with --force-with-lease."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.active_branch.name = "fix/295-test"
+            mock_repo.active_branch.name = "bug/295-test"
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -678,7 +678,7 @@ class TestGitAdapterHardResetAndForcePush:
         """force_push_with_lease raises ExecutionError when git push fails."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.active_branch.name = "fix/295-test"
+            mock_repo.active_branch.name = "bug/295-test"
             mock_repo.git.push.side_effect = Exception("rejected: stale info")
             mock_repo_class.return_value = mock_repo
 

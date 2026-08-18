@@ -61,7 +61,7 @@ class TestInitializeProjectToolMode1:
         """
         # Mock git to return branch name on tool's git_manager instance
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
-            mock_git.return_value = "fix/39-initialize-project-tool"
+            mock_git.return_value = "bug/39-initialize-project-tool"
 
             # Execute initialization
             params = InitializeProjectInput(
@@ -89,7 +89,7 @@ class TestInitializeProjectToolMode1:
             # Verify state.json structure
             state = json.loads(state_file.read_text())
 
-            assert state["branch"] == "fix/39-initialize-project-tool"
+            assert state["branch"] == "bug/39-initialize-project-tool"
             assert state["issue_number"] == 39
             assert state["workflow_name"] == "bug"
             # First phase from contracts.yaml (SSOT)
@@ -151,9 +151,9 @@ class TestInitializeProjectToolMode1:
     ) -> None:
         """Test atomic initialization works for all workflow types.
 
-        Uses workflows.yaml as SSOT for expected first phases.
+        Uses contracts.yaml as SSOT for expected first phases.
         """
-        workflows_to_test = ["feature", "bug", "docs", "refactor", "hotfix"]
+        workflows_to_test = ["feature", "bug", "docs", "refactor", "hotfix", "chore"]
 
         for workflow_name in workflows_to_test:
             # Get expected first phase from contracts.yaml (SSOT)
@@ -162,10 +162,11 @@ class TestInitializeProjectToolMode1:
             # Determine branch prefix from workflow name
             branch_prefix_map = {
                 "feature": "feature",
-                "bug": "fix",
+                "bug": "bug",
                 "docs": "docs",
                 "refactor": "refactor",
                 "hotfix": "hotfix",
+                "chore": "chore",
             }
             prefix = branch_prefix_map[workflow_name]
             issue_num = workflows_to_test.index(workflow_name) + 1
@@ -216,7 +217,7 @@ class TestInitializeProjectToolMode1:
     ) -> None:
         """Test error handling when state.json creation fails."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
-            mock_git.return_value = "fix/39-test"
+            mock_git.return_value = "bug/39-test"
 
             with patch.object(tool.state_engine, "initialize_branch") as mock_init:
                 mock_init.side_effect = OSError("Permission denied")
@@ -235,7 +236,7 @@ class TestInitializeProjectToolMode1:
     ) -> None:
         """Test that deliverables.json format has core expected fields."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
-            mock_git.return_value = "fix/39-test"
+            mock_git.return_value = "bug/39-test"
 
             params = InitializeProjectInput(
                 issue_number=39, issue_title="Test format", workflow_name="bug"
@@ -261,7 +262,7 @@ class TestInitializeProjectToolMode1:
     ) -> None:
         """Test that state.json is separate file, not embedded in deliverables.json."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
-            mock_git.return_value = "fix/39-test"
+            mock_git.return_value = "bug/39-test"
 
             params = InitializeProjectInput(
                 issue_number=39, issue_title="Test separation", workflow_name="bug"

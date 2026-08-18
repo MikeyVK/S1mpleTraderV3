@@ -123,6 +123,19 @@ def test_resolve_config_root_raises_for_nonexistent_explicit_root(tmp_path: Path
         resolve_config_root(explicit_root=missing_root)
 
 
+def test_real_enforcement_config_declares_chore_branch_policy() -> None:
+    """New chore branches use the standard non-hotfix base policy."""
+    config_root = Path(__file__).resolve().parents[4] / get_default_server_root() / "config"
+    config = ConfigLoader(config_root).load_enforcement_config()
+    create_branch_rule = next(rule for rule in config.enforcement if rule.tool == "create_branch")
+    branch_policy = next(
+        action for action in create_branch_rule.actions if action.type == "check_branch_policy"
+    )
+
+    assert branch_policy.rules["chore"] == ["main", "epic/*"]
+    assert "fix" not in branch_policy.rules
+
+
 def test_load_enforcement_config_allows_missing_file(tmp_path: Path) -> None:
     loader = ConfigLoader(tmp_path / get_default_server_root() / "config")
 

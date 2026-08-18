@@ -156,6 +156,28 @@ class TestLoadContractsConfig:
         assert phases[0] == "research"
         assert phases[-1] == "ready"
 
+    def test_real_chore_workflow_is_lightweight_and_non_cycle_based(self) -> None:
+        """Real contracts.yaml exposes the approved five-phase chore contract."""
+        real = Path(__file__).parents[4] / get_default_server_root() / "config" / "contracts.yaml"
+        result = ConfigLoader(real.parent).load_contracts_config()
+
+        assert result.get_phases("chore") == [
+            "research",
+            "implementation",
+            "validation",
+            "documentation",
+            "ready",
+        ]
+
+        chore = result.workflows["chore"]
+        research = chore.get_phase("research")
+        implementation = chore.get_phase("implementation")
+
+        assert research.exit_requires == []
+        assert implementation.cycle_based is False
+        assert implementation.subphases == []
+        assert implementation.commit_type_map == {}
+
     def test_loaded_object_passes_model_validator(self, config_dir: Path) -> None:
         """Loaded object must satisfy the model_validator (last phase == pr_allowed_phase)."""
         _write_contracts(config_dir, _MINIMAL_YAML)

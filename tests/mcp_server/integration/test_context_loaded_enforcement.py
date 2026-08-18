@@ -185,7 +185,7 @@ class TestContextLoadedGate:
         )
         cache = ContextLoadedCache()  # context NOT loaded
         git_config = GitConfig(
-            branch_types=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+            branch_types=["feature", "bug", "refactor", "docs", "hotfix", "epic"],
             protected_branches=["main"],
             branch_name_pattern=r"^[a-z0-9-]+$",
             commit_types=["feat", "fix", "docs", "chore"],

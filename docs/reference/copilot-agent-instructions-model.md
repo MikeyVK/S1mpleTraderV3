@@ -200,7 +200,7 @@ and `.pgmcp/config/contracts.yaml`, then returns a formatted orientation respons
 | Field | Type | Purpose |
 |-------|------|---------|
 | `current_branch` | string | Active git branch |
-| `workflow_name` | string | Active workflow type (feature/bug/docs/refactor/hotfix/epic/custom) |
+| `workflow_name` | string | Active workflow type (feature/bug/docs/refactor/hotfix/chore/epic) |
 | `phase` | string | Active workflow phase from branch state |
 | `issue_number` | integer | Bound issue number when available |
 | `parent_branch` | string | Parent branch when available |

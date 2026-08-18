@@ -111,7 +111,7 @@ class TestInitializeProjectToolSchema:
     def test_workflow_name_has_enum_from_contracts_config(
         self, tmp_path: pytest.TempPathFactory
     ) -> None:
-        contracts_config = _make_contracts_config({"feature": None, "bug": None, "custom": None})
+        contracts_config = _make_contracts_config({"feature": None, "bug": None, "special": None})
         tool = InitializeProjectTool(
             workspace_root=tmp_path,
             manager=MagicMock(),
@@ -121,7 +121,7 @@ class TestInitializeProjectToolSchema:
         )
         schema = tool.input_schema
         assert "enum" in schema["properties"]["workflow_name"]
-        assert set(schema["properties"]["workflow_name"]["enum"]) == {"feature", "bug", "custom"}
+        assert set(schema["properties"]["workflow_name"]["enum"]) == {"feature", "bug", "special"}
 
 
 class TestCreateIssueToolSchema:

@@ -38,6 +38,12 @@ workflows:
     description: "Documentation-only workflow (planning → docs)"
     default_execution_mode: interactive
 
+  # Chore (lightweight maintenance)
+  chore:
+    name: chore
+    description: "Lightweight maintenance workflow"
+    default_execution_mode: interactive
+
   # Epic (research and planning focused)
   epic:
     name: epic

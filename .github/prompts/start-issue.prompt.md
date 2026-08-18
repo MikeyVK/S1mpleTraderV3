@@ -13,7 +13,7 @@ Bootstrap explicit lifecycle entry. This prompt models branch entry, not backgro
 
 Extract from the invocation argument:
 - `ISSUE_NUMBER` — the GitHub issue number
-- `WORKFLOW_TYPE` — one of: feature, bug, refactor, docs, hotfix, epic
+- `WORKFLOW_TYPE` — one of: feature, bug, refactor, docs, hotfix, chore, epic
 
 If `WORKFLOW_TYPE` is missing, call `get_issue(ISSUE_NUMBER)` and derive it from authoritative issue context.
 If `ISSUE_NUMBER` is missing, stop and ask for it. Do not guess from branch names or free-form text.
@@ -66,7 +66,7 @@ Use this path only when `WORKFLOW_TYPE` is `epic`.
 
 ## Non-Epic Path
 
-Use this path for `feature`, `bug`, `refactor`, `docs`, and `hotfix` workflows.
+Use this path for `feature`, `bug`, `refactor`, `docs`, `hotfix`, and `chore` workflows.
 
 6. **Verify project plan and hand-off boundary**
    `get_project_plan(issue_number=ISSUE_NUMBER)`

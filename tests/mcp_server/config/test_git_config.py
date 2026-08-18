@@ -29,7 +29,7 @@ def _load_git_config(config_path: Path | None = None) -> GitConfig:
 def _git_config_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "version": "1.0.0",
-        "branch_types": ["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+        "branch_types": ["feature", "bug", "refactor", "docs", "hotfix", "chore", "epic"],
         "protected_branches": ["main", "master", "develop"],
         "branch_name_pattern": r"^[a-z0-9-]+$",
         "commit_types": [
@@ -62,10 +62,10 @@ class TestGitConfig:
         assert config.branch_types == [
             "feature",
             "bug",
-            "fix",
             "refactor",
             "docs",
             "hotfix",
+            "chore",
             "epic",
         ]
         assert config.protected_branches == ["main", "master", "develop"]
@@ -108,8 +108,9 @@ class TestGitConfig:
 
         assert config.has_branch_type("feature") is True
         assert config.has_branch_type("bug") is True
-        assert config.has_branch_type("fix") is True
+        assert config.has_branch_type("fix") is False
         assert config.has_branch_type("hotfix") is True
+        assert config.has_branch_type("chore") is True
         assert config.has_branch_type("epic") is True
         assert config.has_branch_type("FEATURE") is False
 
@@ -154,15 +155,16 @@ class TestGitConfig:
         """build_branch_type_regex should expose the configured branch alternatives."""
         config = _load_git_config()
 
-        assert config.build_branch_type_regex() == "(?:feature|bug|fix|refactor|docs|hotfix|epic)"
+        assert config.build_branch_type_regex() == "(?:feature|bug|refactor|docs|hotfix|chore|epic)"
 
     def test_extract_issue_number_returns_int_for_supported_branch_names(self) -> None:
         """extract_issue_number() should parse the numeric issue id from branch names."""
         config = _load_git_config()
 
         assert config.extract_issue_number("feature/42-test-branch") == 42
-        assert config.extract_issue_number("fix/7-hot-patch") == 7
+        assert config.extract_issue_number("bug/7-hot-patch") == 7
         assert config.extract_issue_number("docs/120-refresh-readme") == 120
+        assert config.extract_issue_number("chore/446-add-workflow") == 446
 
     def test_extract_issue_number_returns_none_for_invalid_branch_names(self) -> None:
         """extract_issue_number() should degrade gracefully when no issue id is present."""

@@ -68,6 +68,10 @@ class TestTypeLabelAssembly:
         assert "type:bug" in labels
         assert "type:hotfix" not in labels
 
+    def test_chore_produces_type_chore(self) -> None:
+        labels = make_tool()._assemble_labels(make_params(issue_type="chore"))
+        assert "type:chore" in labels
+
     def test_is_epic_overrides_type_to_type_epic(self) -> None:
         labels = make_tool()._assemble_labels(make_params(issue_type="feature", is_epic=True))
         assert "type:epic" in labels
@@ -127,6 +131,10 @@ class TestPhaseLabelAssembly:
 
     def test_bug_workflow_first_phase_is_research(self) -> None:
         labels = make_tool()._assemble_labels(make_params(issue_type="bug"))
+        assert "phase:research" in labels
+
+    def test_chore_workflow_first_phase_is_research(self) -> None:
+        labels = make_tool()._assemble_labels(make_params(issue_type="chore"))
         assert "phase:research" in labels
 
     def test_no_duplicate_phase_labels(self) -> None:

@@ -2888,6 +2888,213 @@ workflows:
             - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
             - Deferred-work transfer prepared for @co
             - PR submitted (merge requires human approval)
+  chore:
+    phases:
+      - name: research
+        exit_requires: []
+        instructions:
+          sub_role: researcher
+          phase_instructions: |
+            [ ] Read the issue and confirm the chore objective, affected surfaces,
+                and explicit exclusions.
+            [ ] Inspect only the configuration, code, tests, and documentation needed
+                to determine whether the change is safe and mechanical.
+            [ ] Identify dependencies, compatibility concerns, hidden consumers,
+                or architectural implications that could make the chore non-trivial.
+            [ ] Share a concise research outcome with the user:
+                - current behavior
+                - intended change and scope boundaries
+                - likely files and verification
+                - blockers or decisions, if any
+            [ ] Create a compact research document only when durable evidence,
+                alternatives, or risk analysis will be useful in later phases.
+                A research artifact is optional for a routine chore.
+            [ ] Do not require external research, a sub-agent, or a scaffolded artifact
+                when repository evidence is sufficient.
+            [ ] Obtain agreement on the implementation boundary before transitioning.
+          handover_template: |
+            ### Chore Research Outcome
+            #### Current behavior
+            - <concise finding>
+            #### Intended change and boundaries
+            - <approved scope and exclusions>
+            #### Expected files and verification
+            - <likely changes and checks>
+            #### Decisions or blockers
+            - None | <decision or blocker>
+
+      - name: implementation
+        cycle_based: false
+        exit_requires: []
+        instructions:
+          sub_role: implementer
+          phase_instructions: |
+            [ ] Load the approved chore boundary and confirm that it still matches
+                the current repository state.
+            [ ] Apply the smallest coherent maintenance change that satisfies the issue.
+            [ ] Do not broaden the chore into feature development, architectural redesign,
+                or unrelated refactoring.
+            [ ] Preserve the architecture contracts and keep workflow-dependent behavior
+                configuration-driven.
+            [ ] Add or update only the tests needed to prove changed behavior.
+                This phase is not cycle-based and does not require RED, GREEN,
+                and REFACTOR commits.
+            [ ] Update directly coupled configuration, fixtures, generated copies,
+                or current documentation when required for repository consistency.
+            [ ] Run focused tests after each coherent change and inspect the resulting diff
+                for accidental or unrelated modifications.
+            [ ] Stop and return the decision to the user when new evidence changes
+                the approved scope, compatibility strategy, or risk profile.
+            [ ] Commit the coherent implementation through git_add_or_commit.
+            [ ] Finish with an implementation handover containing scope, changed files,
+                satisfied deliverables, and exact verification results.
+                Stop and await the user's instruction before transitioning.
+          handover_template: |
+            ### Scope
+            - Chore objective completed: <summary>
+            - Intentionally out of scope: <summary>
+
+            ### Files
+            - Configuration: <files or none>
+            - Code and tests: <files or none>
+            - Documentation and derived artifacts: <files or none>
+
+            ### Deliverables
+            - <satisfied deliverable>
+
+            ### Stop-Go Proof
+            - Focused tests: <tool call and outcome>
+            - Quality checks performed during implementation: <tool call and outcome>
+            - Diff review: <outcome>
+
+      - name: validation
+        exit_requires: []
+        instructions:
+          sub_role: validator
+          phase_instructions: |
+            [ ] Re-read the issue objective and approved chore boundary before
+                assessing the result.
+            [ ] Validate the delivered behavior and repository consistency,
+                not merely whether focused tests pass.
+            [ ] Inspect the complete branch diff and status for unintended files,
+                stale terminology, missed consumers, and scope expansion.
+            [ ] Run focused tests for the changed behavior.
+            [ ] Run the complete workspace test suite after all implementation changes
+                have been completed: run_tests(scope='full').
+            [ ] Run the applicable workspace quality gates.
+            [ ] Inspect the detailed cached results and distinguish change-caused failures
+                from verified pre-existing failures.
+            [ ] Do not approve validation when the workspace-wide test result is missing,
+                stale, or contains an unexplained failure.
+            [ ] Verify the relevant alignment between configuration, schemas,
+                runtime behavior, tests, and current documentation.
+            [ ] Identify work discovered during validation that is relevant but outside
+                the approved chore boundary.
+            [ ] Record deferred work explicitly, including:
+                - finding
+                - reason for deferral
+                - likely impact or risk
+                - recommended follow-up
+            [ ] State explicitly when no deferred work was identified.
+            [ ] Record the exact verification performed, outcomes, residual risks,
+                and accepted pre-existing failures.
+            [ ] Do not repair implementation defects during validation;
+                return actionable findings to the implementation phase.
+            [ ] Treat the full workspace test result as stale when the branch changes
+                afterwards. Require a new full run before approving validation.
+            [ ] Finish with the validation handover and stop.
+                Await the user's instruction before transitioning.
+          handover_template: |
+            ### Workspace Verification
+            - Focused tests: <tool call and outcome>
+            - Full workspace test suite: <run_tests(scope='full') outcome>
+            - Quality gates: <tool call and outcome>
+            - Accepted pre-existing failures: None | <explained failures>
+
+            ### Delivered Behavior
+            - <validated result>
+
+            ### Residual Risks
+            - None | <risk>
+
+            ### Deferred Work
+            - None identified.
+            - Or, for each item:
+              - Finding: <finding>
+              - Reason for deferral: <reason>
+              - Impact or risk: <impact>
+              - Recommended follow-up: <recommendation>
+
+      - name: documentation
+        exit_requires: []
+        instructions:
+          sub_role: documenter
+          phase_instructions: |
+            [ ] Use the validated behavior and approved chore boundary
+                as the documentation baseline.
+            [ ] Identify current user, developer, configuration, and agent documentation
+                made inaccurate by the chore.
+            [ ] Update authoritative sources first and synchronize derived copies
+                through the documented generation process.
+            [ ] Describe the resulting current state without adding a historical
+                implementation trace or rewriting archived documentation.
+            [ ] Keep documentation changes proportional to the chore.
+            [ ] When no current documentation is affected, explicitly record
+                that no documentation change is required.
+            [ ] Verify links, examples, workflow tables, terminology,
+                and authoritative-to-derived consistency affected by the change.
+            [ ] Run the relevant documentation checks and summarize the outcome.
+            [ ] Commit documentation changes through git_add_or_commit when files changed.
+            [ ] Finish with a concise documentation result and stop.
+                Await the user's instruction before transitioning.
+          handover_template: |
+            ### Documentation Result
+            - Authoritative sources updated: <files or none required>
+            - Derived artifacts synchronized: <files or none required>
+            - Checks performed: <tool call and outcome>
+            - Deferred documentation work: None | <item for ready-phase triage>
+
+      - name: ready
+        instructions:
+          sub_role: implementer
+          phase_instructions: |
+            The branch is ready for PR preparation.
+
+            [ ] Confirm that validation passed and includes a successful,
+                current workspace-wide test run.
+            [ ] Confirm that quality-gate evidence is current and that any accepted
+                pre-existing failures are explicitly explained.
+            [ ] Confirm that current documentation and authoritative or derived
+                instruction sources are aligned where applicable.
+            [ ] Inspect the final branch status and diff for generated, unrelated,
+                temporary, or missing files.
+            [ ] Review the issue, research outcome, implementation handover,
+                validation outcome, documentation result, and final diff
+                for deferred work.
+            [ ] Do not rely solely on the validation handover. Actively look for
+                unresolved findings, intentionally excluded work, follow-up opportunities,
+                compatibility concerns, and residual risks.
+            [ ] Reconcile all identified deferred work into one explicit list.
+            [ ] Include a "Deferred work for @co triage" section in the pull request body.
+            [ ] For every deferred item, include:
+                - the finding
+                - why it was not included in this pull request
+                - its impact or risk
+                - the recommended follow-up
+            [ ] When no deferred work exists, include
+                "Deferred work for @co triage: None identified" in the pull request body.
+            [ ] Confirm that commits accurately describe the chore and include
+                all intended branch state.
+            [ ] Re-run the complete workspace test suite and applicable quality gates
+                if their validation evidence became stale.
+            [ ] Run the final branch quality gate: run_quality_gates(scope='branch').
+                If it fails, stop.
+            [ ] Prepare a concise pull request title and body covering the issue,
+                resulting behavior, verification, residual risks, and deferred work.
+            [ ] Submit the pull request through submit_pr.
+            [ ] Confirm that the branch is ready for review and do not merge
+                without explicit human approval.
+
   epic:
     phases:
       - name: research

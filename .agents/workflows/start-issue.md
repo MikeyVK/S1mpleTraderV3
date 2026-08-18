@@ -10,7 +10,7 @@ Bootstrap explicit lifecycle entry. This prompt models branch entry, not backgro
 
 Extract from the invocation argument:
 - `ISSUE_NUMBER` — the GitHub issue number
-- `WORKFLOW_TYPE` — one of: feature, bug, refactor, docs, hotfix, epic, chore
+- `WORKFLOW_TYPE` — one of: feature, bug, refactor, docs, hotfix, chore, epic
 
 If `WORKFLOW_TYPE` is missing, call `get_issue(ISSUE_NUMBER)` and derive it from authoritative issue context.
 If `ISSUE_NUMBER` is missing, stop and ask for it. Do not guess from branch names or free-form text.

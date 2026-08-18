@@ -67,7 +67,7 @@ Create a new GitHub issue. Uses a structured input contract: `issue_type`, `prio
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `issue_type` | `str` | **Yes** | Issue type enum — valid values injected at runtime from `LabelConfig` (e.g. `feature`, `bug`, `hotfix`, `chore`, `docs`, `epic`) |
+| `issue_type` | `str` | **Yes** | Issue type enum — valid values injected at runtime from `LabelConfig` (e.g. `feature`, `bug`, `hotfix`, `refactor`, `docs`, `chore`, `epic`) |
 | `title` | `str` | **Yes** | Issue title (Unicode-safe, maximum 72 characters) |
 | `priority` | `str` | **Yes** | Priority enum — valid values injected at runtime from `LabelConfig` (e.g. `critical`, `high`, `medium`, `low`, `triage`) |
 | `scope` | `str` | **Yes** | Scope enum — valid values injected at runtime from `ScopeConfig` (e.g. `architecture`, `mcp-server`, `platform`, `tooling`, `workflow`, `documentation`) |
@@ -547,7 +547,7 @@ List repository pull requests with optional state, base, and head filters.
     {
       "number": 44,
       "title": "Bugfix: Fix login issue",
-      "head": "bugfix/122-login",
+      "head": "bug/122-login",
       "base": "main",
       "state": "closed",
       "draft": false,

@@ -11,8 +11,6 @@ Issue #257 Cycle 2 RED:
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 from pathlib import Path
@@ -21,6 +19,7 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
+from mcp_server.core.exceptions import StateCorruptedError, StateNotFoundError
 from mcp_server.core.interfaces import IStateReader, IStateRepository
 from mcp_server.managers.state_repository import (
     BranchState,
@@ -28,11 +27,13 @@ from mcp_server.managers.state_repository import (
     FileStateRepository,
     InMemoryStateRepository,
     StateBranchMismatchError,
-    StateNotFoundError,
 )
-from mcp_server.core.exceptions import StateCorruptedError, StateVersionMismatchError
 from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class TestBranchState:
@@ -115,6 +116,7 @@ class TestFileStateRepository:
         backup_file = state_file.with_suffix(state_file.suffix + ".bak")
         assert not state_file.exists()
         assert backup_file.exists()
+
     def test_save_persists_branch_state(self, tmp_path: Path) -> None:
         """Saving BranchState should write state.json through the shared atomic writer."""
         state_file = tmp_path / get_default_server_root() / "state.json"

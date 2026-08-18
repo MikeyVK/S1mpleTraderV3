@@ -75,7 +75,7 @@ class TestIssue39CrossMachine:
 
         # Create branch for issue 42
         subprocess.run(
-            ["git", "checkout", "-b", "fix/42-cross-machine-test"],
+            ["git", "checkout", "-b", "bug/42-cross-machine-test"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -84,7 +84,7 @@ class TestIssue39CrossMachine:
         # Initialize project (Mode 1 - atomic creation)
         project_manager = make_project_manager(workspace_root)
         git_manager = MagicMock()
-        git_manager.get_current_branch.return_value = "fix/42-cross-machine-test"
+        git_manager.get_current_branch.return_value = "bug/42-cross-machine-test"
 
         state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
@@ -100,7 +100,7 @@ class TestIssue39CrossMachine:
 
         # Initialize state
         state_engine.initialize_branch(
-            branch="fix/42-cross-machine-test", issue_number=42, initial_phase=first_phase
+            branch="bug/42-cross-machine-test", issue_number=42, initial_phase=first_phase
         )
 
         # Verify deliverables register and branch state were created
@@ -114,6 +114,5 @@ class TestIssue39CrossMachine:
         projects = deliverables.get("projects", deliverables)
         assert "42" in projects
         state = json.loads(state_file.read_text())
-        assert state["branch"] == "fix/42-cross-machine-test"
+        assert state["branch"] == "bug/42-cross-machine-test"
         assert state["current_phase"] == "research"
-

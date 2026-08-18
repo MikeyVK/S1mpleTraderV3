@@ -16,7 +16,7 @@ Comprehensive git flow automation with TDD phase tracking.
 
 | Tool | Purpose | Parameters | Example |
 |------|---------|------------|---------|
-| **CreateBranchTool** | Create feature/bug/docs/refactor/hotfix branch | `name` (kebab-case), `base_branch` (**required**), `branch_type` (default: feature) | `create_branch(name="feature/123-add-metrics", base_branch="main")` |
+| **CreateBranchTool** | Create feature/bug/docs/refactor/hotfix/chore/epic branch | `name` (kebab-case), `base_branch` (**required**), `branch_type` (default: feature) | `create_branch(name="feature/123-add-metrics", base_branch="main")` |
 | **GitStatusTool** | Show working tree status | None | Returns current branch, staged, unstaged files |
 | **GitCommitTool** | Commit with phase prefix + issue suffix | `message`, `workflow_phase`, `sub_phase`, `cycle_number` | `git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="...")` |
 | **GitCheckoutTool** | Switch branches | `branch` | `checkout main` |

@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from mcp_server.managers.state_repository import StateNotFoundError
+from mcp_server.core.exceptions import StateNotFoundError
 from mcp_server.state.workflow_status import WorkflowStatusDTO
 
 if TYPE_CHECKING:

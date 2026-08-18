@@ -273,7 +273,7 @@ class TestGitHubManagerValidateIssueParams:
     @pytest.fixture
     def git_config(self) -> GitConfig:
         return GitConfig(
-            branch_types=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+            branch_types=["feature", "bug", "refactor", "docs", "hotfix", "epic"],
             protected_branches=["main", "master", "develop"],
             branch_name_pattern=r"^[a-z0-9-]+$",
             commit_types=[
