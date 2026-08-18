@@ -81,23 +81,6 @@ class ForceCycleTransitionOutput(CycleTransitionOutput):
     human_approval_message: str
 
 
-class SearchResultDTO(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-    title: str
-    path: str
-    score: float
-    snippet: str
-    start_line: int
-    end_line: int
-
-
-class SearchDocumentationOutput(BaseToolOutput):
-    query: str
-    scope: str
-    results_count: int
-    results: list[SearchResultDTO] = Field(default_factory=list)
-
-
 class GetWorkContextOutput(BaseToolOutput):
     current_branch: str
     workflow_name: str

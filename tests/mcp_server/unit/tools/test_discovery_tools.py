@@ -3,13 +3,12 @@ from tests.mcp_server.test_support import get_default_server_root
 # tests/mcp_server/unit/tools/test_discovery_tools.py
 # pyright: reportPrivateUsage=false
 """
-Tests for Discovery Tools (search_documentation, get_work_context).
+Tests for the get_work_context discovery tool.
 
 @layer: Tests (Unit)
 @dependencies: [pytest, tempfile, unittest.mock, mcp_server.tools.discovery_tools]
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -34,12 +33,7 @@ from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.exceptions import StateNotFoundError
 from mcp_server.managers.state_repository import StateBranchMismatchError
 from mcp_server.state.workflow_status import WorkflowStatusDTO
-from mcp_server.tools.discovery_tools import (
-    GetWorkContextInput,
-    GetWorkContextTool,
-    SearchDocumentationInput,
-    SearchDocumentationTool,
-)
+from mcp_server.tools.discovery_tools import GetWorkContextInput, GetWorkContextTool
 from tests.mcp_server.test_support import (
     make_phase_state_engine,
     make_project_manager,
@@ -88,98 +82,6 @@ def load_workphases_config() -> WorkphasesConfig:
 
 def load_contracts_config() -> ContractsConfig:
     return ConfigLoader(Path(f"{get_default_server_root()}/config")).load_contracts_config()
-
-
-class TestSearchDocumentationTool:
-    """Tests for SearchDocumentationTool."""
-
-    @pytest.fixture()
-    def tool(self) -> SearchDocumentationTool:
-        """Fixture to instantiate SearchDocumentationTool."""
-        return SearchDocumentationTool(settings=make_settings())
-
-    def test_tool_name(self, tool: SearchDocumentationTool) -> None:
-        """Should have correct tool name."""
-        assert tool.name == "search_documentation"
-
-    def test_tool_description(self, tool: SearchDocumentationTool) -> None:
-        """Should have a non-empty description."""
-        assert tool.description
-        assert len(tool.description) > 0
-
-    def test_tool_schema_has_query(self, tool: SearchDocumentationTool) -> None:  # noqa: ARG002
-        """Should require query parameter."""
-        with pytest.raises(ValidationError):
-            SearchDocumentationInput()  # Missing required query
-
-    def test_tool_schema_has_scope(self, tool: SearchDocumentationTool) -> None:  # noqa: ARG002
-        """Should have scope with default value."""
-        result = SearchDocumentationInput(query="test")
-        assert result.scope == "all"
-
-    @pytest.mark.asyncio
-    async def test_search_returns_results(self, tool: SearchDocumentationTool) -> None:
-        """Should return search results with snippets."""
-        from mcp_server.schemas.tool_outputs import SearchDocumentationOutput  # noqa: PLC0415
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create mock docs directory
-            docs_dir = Path(tmpdir) / "docs"
-            docs_dir.mkdir()
-
-            test_file = docs_dir / "test.md"
-            test_file.write_text("# Test Document\nContains worker implementation info.")
-
-            tool._settings.server.workspace_root = tmpdir
-            result = await tool.execute(SearchDocumentationInput(query="worker"), NoteContext())
-
-            assert isinstance(result, SearchDocumentationOutput)
-            assert result.success
-            assert len(result.results) > 0
-            assert "test.md" in result.results[0].path
-
-    @pytest.mark.asyncio
-    async def test_search_with_scope(self, tool: SearchDocumentationTool) -> None:
-        """Should filter by scope."""
-        from mcp_server.schemas.tool_outputs import SearchDocumentationOutput  # noqa: PLC0415
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            docs_dir = Path(tmpdir) / "docs"
-            (docs_dir / "architecture").mkdir(parents=True)
-
-            test_file = docs_dir / "architecture" / "design.md"
-            test_file.write_text("# Architecture Design")
-
-            tool._settings.server.workspace_root = tmpdir
-            result = await tool.execute(
-                SearchDocumentationInput(query="design", scope="architecture"), NoteContext()
-            )
-
-            assert isinstance(result, SearchDocumentationOutput)
-            assert result.success
-            assert len(result.results) > 0
-            assert "design.md" in result.results[0].path
-
-    @pytest.mark.asyncio
-    async def test_search_empty_results(self, tool: SearchDocumentationTool) -> None:
-        """Should handle no results gracefully."""
-        from mcp_server.schemas.tool_outputs import SearchDocumentationOutput  # noqa: PLC0415
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            docs_dir = Path(tmpdir) / "docs"
-            docs_dir.mkdir()
-
-            test_file = docs_dir / "test.md"
-            test_file.write_text("# Test")
-
-            tool._settings.server.workspace_root = tmpdir
-            result = await tool.execute(
-                SearchDocumentationInput(query="nonexistent123"), NoteContext()
-            )
-
-            assert isinstance(result, SearchDocumentationOutput)
-            assert result.success
-            assert len(result.results) == 0
 
 
 class TestGetWorkContextTool:

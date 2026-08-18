@@ -3,131 +3,25 @@
 # pyright: reportIncompatibleMethodOverride=false
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.config.settings import Settings
-from mcp_server.core.exceptions import ExecutionError, StateNotFoundError
+from mcp_server.core.exceptions import StateNotFoundError
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.schemas import WorkphasesConfig
-from mcp_server.schemas.tool_outputs import (
-    GetWorkContextOutput,
-    SearchDocumentationOutput,
-    SearchResultDTO,
-)
+from mcp_server.schemas.tool_outputs import GetWorkContextOutput
 from mcp_server.core.interfaces import ICoreTool
 from mcp_server.core.operation_notes import Note, NoteContext
-from mcp_server.services.document_indexer import DocumentIndexer
-from mcp_server.services.search_service import SearchService
 
 if TYPE_CHECKING:
     from mcp_server.config.schemas.contracts_config import ContractsConfig
     from mcp_server.core.interfaces import IContextLoadedWriter
     from mcp_server.managers.workflow_status_resolver import WorkflowStatusResolver
-
-
-class SearchDocumentationInput(BaseModel):
-    """Input for SearchDocumentationTool."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    query: str = Field(
-        ..., description="Search query (e.g., 'how to implement a worker', 'DTO validation rules')"
-    )
-    scope: str = Field(
-        default="all",
-        description="Optional scope to filter results",
-        pattern="^(all|architecture|coding_standards|development|reference|implementation)$",
-    )
-
-
-class SearchDocumentationTool(ICoreTool[SearchDocumentationInput, SearchDocumentationOutput]):
-    """Tool to search documentation files."""
-
-    output_model: ClassVar[type[BaseModel]] = SearchDocumentationOutput
-
-    @property
-    def name(self) -> str:
-        return "search_documentation"
-
-    @property
-    def description(self) -> str:
-        return (
-            "Semantic/fuzzy search across all docs/ files. "
-            "Returns ranked results with snippets for understanding project structure."
-        )
-
-    @property
-    def args_model(self) -> type[BaseModel] | None:
-        return SearchDocumentationInput
-
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        assert self.args_model is not None
-        return self.args_model.model_json_schema()
-
-    def __init__(self, settings: Settings) -> None:
-        self._settings = settings
-
-    async def execute(
-        self, params: SearchDocumentationInput, context: NoteContext
-    ) -> SearchDocumentationOutput:
-        """Execute documentation search using DocumentIndexer + SearchService."""
-        # Build index from docs directory
-        docs_dir = Path(self._settings.server.workspace_root) / "docs"
-
-        if not docs_dir.exists():
-            context.produce(
-                Note(key="docs_dir_not_found_expected", params={"expected_dir": str(docs_dir)})
-            )
-            context.produce(
-                Note(
-                    key="docs_dir_not_found_create",
-                    params={},
-                )
-            )
-            context.produce(
-                Note(
-                    key="docs_dir_not_found_add_files",
-                    params={},
-                )
-            )
-            raise ExecutionError("Documentation directory not found")
-
-        index = DocumentIndexer.build_index(docs_dir)
-
-        # Map scope filter (None if 'all')
-        scope_filter = None if params.scope == "all" else params.scope
-
-        # Search index
-        results = SearchService.search_index(
-            index=index, query=params.query, max_results=10, scope=scope_filter
-        )
-
-        mapped_results = [
-            SearchResultDTO(
-                title=r["title"],
-                path=r["path"],
-                score=r["_relevance"],
-                snippet=r["_snippet"],
-                start_line=r.get("start_line", 1),
-                end_line=r.get("end_line", 1),
-            )
-            for r in results
-        ]
-
-        return SearchDocumentationOutput(
-            success=True,
-            query=params.query,
-            scope=params.scope,
-            results_count=len(mapped_results),
-            results=mapped_results,
-        )
 
 
 class GetWorkContextInput(BaseModel):

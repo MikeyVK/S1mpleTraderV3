@@ -83,7 +83,7 @@ from mcp_server.state.pr_status_cache import PRStatusCache
 from mcp_server.state.response_cache import ResponseCacheManager
 from mcp_server.tools.admin_tools import RestartServerTool
 from mcp_server.tools.cycle_tools import ForceCycleTransitionTool, TransitionCycleTool
-from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
+from mcp_server.tools.discovery_tools import GetWorkContextTool
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.git_fetch_tool import GitFetchTool
 from mcp_server.tools.git_pull_tool import GitPullTool
@@ -532,7 +532,6 @@ class ServerBootstrapper:
             ScaffoldArtifactTool(manager=managers.artifact_manager),
             ScaffoldSchemaTool(manager=managers.artifact_manager),
             # Discovery tools
-            SearchDocumentationTool(settings=settings),
             GetWorkContextTool(
                 settings=settings,
                 git_manager=managers.git_manager,

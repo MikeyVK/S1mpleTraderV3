@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from mcp_server.tools.admin_tools import RestartServerInput
 from mcp_server.tools.cycle_tools import ForceCycleTransitionInput, TransitionCycleInput
-from mcp_server.tools.discovery_tools import GetWorkContextInput, SearchDocumentationInput
+from mcp_server.tools.discovery_tools import GetWorkContextInput
 from mcp_server.tools.git_analysis_tools import GitDiffInput, GitListBranchesInput
 from mcp_server.tools.git_fetch_tool import GitFetchInput
 from mcp_server.tools.git_pull_tool import GitPullInput
@@ -67,7 +67,6 @@ class TestExtraForbidOnAllInputModels:
                 {"to_cycle": 2, "skip_reason": "r", "human_approval_message": "ok"},
             ),
             # discovery
-            (SearchDocumentationInput, {"query": "test"}),
             (GetWorkContextInput, {}),
             # git_analysis
             (GitListBranchesInput, {}),
