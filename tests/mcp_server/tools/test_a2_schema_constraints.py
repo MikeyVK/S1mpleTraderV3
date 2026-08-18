@@ -3,7 +3,6 @@
 Covers:
 - ForcePhaseTransitionInput: skip_reason and human_approval_message have minLength=1 in JSON schema
 - CreateLabelInput: name pattern and color pattern constraints
-- InitializeProjectInput: model_validator requiring custom_phases for workflow_name='custom'
 
 @dependencies: phase_tools, label_tools, project_tools
 """
@@ -13,7 +12,6 @@ from pydantic import ValidationError
 
 from mcp_server.tools.label_tools import CreateLabelInput
 from mcp_server.tools.phase_tools import ForcePhaseTransitionInput
-from mcp_server.tools.project_tools import InitializeProjectInput
 from mcp_server.tools.cycle_tools import ForceCycleTransitionInput
 
 
@@ -86,43 +84,3 @@ class TestCreateLabelInputConstraints:
         for category in categories:
             label = CreateLabelInput(name=f"{category}:value", color="0e8a16")
             assert label.name.startswith(category)
-
-
-class TestInitializeProjectInputCustomPhases:
-    """C2.D4: InitializeProjectInput model_validator for custom workflow_name."""
-
-    def test_custom_workflow_without_custom_phases_raises(self) -> None:
-        with pytest.raises(ValidationError, match="custom_phases"):
-            InitializeProjectInput(
-                issue_number=42,
-                issue_title="Test",
-                workflow_name="custom",
-            )
-
-    def test_custom_workflow_with_empty_custom_phases_raises(self) -> None:
-        with pytest.raises(ValidationError, match="custom_phases"):
-            InitializeProjectInput(
-                issue_number=42,
-                issue_title="Test",
-                workflow_name="custom",
-                custom_phases=(),
-            )
-
-    def test_custom_workflow_with_custom_phases_accepted(self) -> None:
-        params = InitializeProjectInput(
-            issue_number=42,
-            issue_title="Test",
-            workflow_name="custom",
-            custom_phases=("phase1", "phase2"),
-        )
-        assert params.workflow_name == "custom"
-        assert params.custom_phases == ("phase1", "phase2")
-
-    def test_non_custom_workflow_without_custom_phases_accepted(self) -> None:
-        params = InitializeProjectInput(
-            issue_number=42,
-            issue_title="Test",
-            workflow_name="feature",
-        )
-        assert params.workflow_name == "feature"
-        assert params.custom_phases is None

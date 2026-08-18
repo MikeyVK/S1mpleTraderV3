@@ -25,7 +25,7 @@ _MINIMAL_ISSUES_YAML = {
         {"name": "feature", "workflow": "feature", "label": "type:feature"},
         {"name": "bug", "workflow": "bug", "label": "type:bug"},
         {"name": "hotfix", "workflow": "hotfix", "label": "type:bug"},
-        {"name": "chore", "workflow": "feature", "label": "type:chore"},
+        {"name": "chore", "workflow": "chore", "label": "type:chore"},
         {"name": "epic", "workflow": "epic", "label": "type:epic"},
     ],
     "required_label_categories": ["type", "priority", "scope"],
@@ -88,8 +88,8 @@ class TestIssueConfigGetWorkflow:
     def test_get_workflow_hotfix(self, issue_config: IssueConfig) -> None:
         assert issue_config.get_workflow("hotfix") == "hotfix"
 
-    def test_get_workflow_chore_maps_to_feature_workflow(self, issue_config: IssueConfig) -> None:
-        assert issue_config.get_workflow("chore") == "feature"
+    def test_get_workflow_chore_maps_to_chore_workflow(self, issue_config: IssueConfig) -> None:
+        assert issue_config.get_workflow("chore") == "chore"
 
     def test_get_workflow_raises_on_unknown_type(self, issue_config: IssueConfig) -> None:
         with pytest.raises(ValueError, match="Unknown issue type"):

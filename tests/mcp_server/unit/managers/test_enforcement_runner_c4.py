@@ -33,7 +33,7 @@ from mcp_server.schemas import GitConfig
 # Real GitConfig so extract_issue_number("feature/42-test") returns 42,
 # matching the issue_number written by _write_state_json.
 _GIT_CONFIG = GitConfig(
-    branch_types=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
+    branch_types=["feature", "bug", "refactor", "docs", "hotfix", "epic"],
     protected_branches=["main"],
     branch_name_pattern=r"^[a-z0-9-]+$",
     commit_types=["feat", "fix", "docs", "chore"],
@@ -80,8 +80,9 @@ def _write_state_json(tmp_path: Path) -> None:
     server_root = tmp_path / get_default_server_root()
     server_root.mkdir(parents=True, exist_ok=True)
     (server_root / "state.json").write_text(
-        '{"schema_version": "1.0.0", "branch": "feature/42-test", "current_phase": "implementation",'
-        ' "issue_number": 42, "workflow_name": "feature"}',
+        '{"schema_version": "1.0.0", "branch": "feature/42-test", '
+        '"current_phase": "implementation", "issue_number": 42, '
+        '"workflow_name": "feature"}',
         encoding="utf-8",
     )
 

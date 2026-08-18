@@ -677,6 +677,7 @@ class TestPlanningDeliverablesPhaseSchema:
             (workspace_root / get_default_server_root() / "deliverables.json").read_text()
         )
         data = _raw.get("projects", _raw)[str(issue_number)]
+        assert data["planning_deliverables"]["design"]["deliverables"][0]["id"] == "D-design-1"
 
     @pytest.mark.asyncio()
     async def test_save_rejects_unknown_phase_key(self, initialized: tuple[Path, int]) -> None:

@@ -3,9 +3,9 @@
   "branch": "feature/446-add-chore-as-a-first-class-workflow-and-branch-type",
   "issue_number": 446,
   "workflow_name": "feature",
-  "current_phase": "research",
-  "current_cycle": null,
-  "last_cycle": null,
+  "current_phase": "documentation",
+  "current_cycle": 1,
+  "last_cycle": 1,
   "cycle_history": [],
   "required_phases": [
     "research",
@@ -17,11 +17,68 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
+  "skip_reason": "Return from validation to repair all mechanically fixable repository lint and type findings explicitly approved by the user.",
   "issue_title": "Add chore as a first-class workflow and branch type",
   "parent_branch": "epic/290-workflow-intelligence-agent-ux",
   "created_at": "2026-08-18T10:51:31.430398+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "implementation",
+      "timestamp": "2026-08-18T11:28:27.584625+00:00",
+      "human_approval_message": "User approved direct transition to implementation on 2026-08-18: 'Oke naar de implemenatie fase, daar gaan we samen stap voor stap de wijzigingen doorvoeren.'",
+      "forced": true,
+      "skip_reason": "Design and planning are intentionally skipped because the approved research limits implementation to mechanical configuration, focused test, prompt, instruction-source, and documentation updates performed step by step with the user."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-18T14:13:20.097824+00:00",
+      "human_approval_message": "User approved transition to the validation phase.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "implementation",
+      "timestamp": "2026-08-18T14:18:29.449037+00:00",
+      "human_approval_message": "User explicitly approved returning to implementation and repairing the validation findings.",
+      "forced": true,
+      "skip_reason": "Return from failed validation to correct the focused chore workflow test and contract coverage findings."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-18T14:25:35.120840+00:00",
+      "human_approval_message": "User approved returning to validation after the focused implementation findings were corrected.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "implementation",
+      "timestamp": "2026-08-18T14:38:55.169974+00:00",
+      "human_approval_message": "User explicitly approved fixing all mechanically resolvable linter findings, including findings outside the branch scope.",
+      "forced": true,
+      "skip_reason": "Return from validation to repair all mechanically fixable repository lint and type findings explicitly approved by the user."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-18T14:52:55.858462+00:00",
+      "human_approval_message": "User approved returning to validation and performing a targeted rerun.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "documentation",
+      "timestamp": "2026-08-18T15:01:40.841276+00:00",
+      "human_approval_message": "User approved transition to documentation; the required validation report now records the exact non-green full-suite evidence and deferred items.",
+      "forced": false,
+      "skip_reason": null
+    }
+  ],
   "reconstructed": false,
   "current_sub_phase": null
 }

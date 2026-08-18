@@ -433,6 +433,15 @@ flowchart TD
 
 ---
 
+## Adding a Configured Workflow
+
+A new workflow normally extends the existing issue, workflow, contract, Git, and
+enforcement configuration files; it does not add a new config loader or schema.
+Follow [Adding a First-Class Workflow](workflow-extension-guide.md) for the
+complete dependency and verification procedure.
+
+---
+
 ## Adding a New Config File
 
 1. Create schema in `mcp_server/config/schemas/new_thing.py` (Pydantic `BaseModel`)

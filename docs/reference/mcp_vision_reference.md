@@ -437,7 +437,7 @@ TDD_PHASES = ["red", "green", "refactor"]
 **After** (Config):
 ```yaml
 # git.yaml
-branch_types: [feature, fix, refactor, docs, hotfix, epic]
+branch_types: [feature, bug, refactor, docs, hotfix, chore, epic]
 protected_branches: [main, master, develop]
 branch_name_pattern: "^[a-z0-9-]+$"
 commit_types: [feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert]

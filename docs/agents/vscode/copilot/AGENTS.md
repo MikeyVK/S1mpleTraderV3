@@ -177,10 +177,10 @@ Compatibility, migration, and breakage strategy is decided at the end of Researc
 | `docs` | planning, documentation, ready | Documentation-only changes |
 | `refactor` | research, planning, implementation, validation, documentation, ready | Code refactoring |
 | `hotfix` | implementation, validation, documentation, ready | Emergency fixes |
+| `chore` | research, implementation, validation, documentation, ready | Lightweight maintenance and housekeeping |
 | `epic` | See `.pgmcp/config/contracts.yaml` (SSOT for epic phase order) | Large multi-issue features |
-| `custom` | (user-defined) | Custom workflows |
 
-**Workflow Selection:** Use `initialize_project(issue_number, issue_title, workflow_name="feature|bug|docs|...")` to start.
+**Workflow Selection:** Use `initialize_project(issue_number, issue_title, workflow_name="feature|bug|refactor|docs|hotfix|chore|epic")` to start.
 
 ---
 

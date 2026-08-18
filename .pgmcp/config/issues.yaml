@@ -16,7 +16,7 @@ issue_types:
     workflow: docs
     label: "type:docs"
   - name: chore
-    workflow: feature
+    workflow: chore
     label: "type:chore"
   - name: epic
     workflow: epic

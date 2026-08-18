@@ -32,7 +32,7 @@ The MCP server provides **4 project/phase tools**:
 
 All tools interact with:
 - **PhaseStateEngine:** Phase state tracking and validation
-- **[.pgmcp/config/workflows.yaml](../../../../.pgmcp/config/workflows.yaml):** Workflow definitions (feature, bug, docs, refactor, hotfix, epic, custom)
+- **[.pgmcp/config/workflows.yaml](../../../../.pgmcp/config/workflows.yaml):** Workflow definitions (feature, bug, docs, refactor, hotfix, chore, epic)
 - **[.pgmcp/state.json](../../../../.pgmcp/state.json):** Current branch state (branch-local artifact, committed with branch history; neutralized by `submit_pr`)
 - **[.pgmcp/deliverables.json](../../../../.pgmcp/deliverables.json):** Workflow definition and planning deliverables (branch-local artifact)
 
@@ -46,7 +46,7 @@ All tools interact with:
 **Class:** `InitializeProjectTool`  
 **File:** [mcp_server/tools/project_tools.py](../../../../mcp_server/tools/project_tools.py)
 
-Initialize project with phase plan selection. Human selects workflow_name (feature/bug/docs/refactor/hotfix/epic/custom) to generate project-specific phase plan.
+Initialize project with phase plan selection. The configured `workflow_name` selects the project-specific phase plan.
 
 #### Parameters
 
@@ -54,22 +54,22 @@ Initialize project with phase plan selection. Human selects workflow_name (featu
 |-----------|------|----------|-------------|
 | `issue_number` | `int` | **Yes** | GitHub issue number |
 | `issue_title` | `str` | **Yes** | Issue title |
-| `workflow_name` | `str` | **Yes** | Workflow name. Valid values are populated at runtime from `contracts.yaml` via enum injection (C3 A4 override). Examples: `"feature"`, `"bug"`, `"docs"`, `"refactor"`, `"hotfix"`, `"epic"`, `"custom"`. |
+| `workflow_name` | `str` | **Yes** | Workflow name. Valid values are populated at runtime from `contracts.yaml` via enum injection (C3 A4 override). Examples: `"feature"`, `"bug"`, `"docs"`, `"refactor"`, `"hotfix"`, `"chore"`, `"epic"`. |
 | `parent_branch` | `str` | No | Parent branch this feature/bug branches from (auto-detected from git reflog if not provided) |
-| `custom_phases` | `list[str]` | **Conditional** | Custom phase list (REQUIRED if `workflow_name="custom"`) |
-| `skip_reason` | `str` | No | Reason for custom phases (audit trail) |
+| `custom_phases` | `list[str]` | No | Optional required-phase override stored in the selected configured project plan. It does not register a workflow or change strict contract transition order. |
+| `skip_reason` | `str` | **Conditional** | Required audit justification when `custom_phases` is provided |
 
 #### Workflow Types
 
 | Workflow | Phases | Use Case |
 |----------|--------|----------|
-| `feature` | 7 phases | New features (planning → research → red → green → refactor → documentation → merge-prep) |
-| `bug` | 6 phases | Bug fixes (investigation → red → green → refactor → documentation → merge-prep) |
-| `docs` | 2 phases | Documentation only (planning → documentation) |
-| `refactor` | 5 phases | Code refactoring (planning → research → refactor → documentation → merge-prep) |
-| `hotfix` | 3 phases | Critical fixes (red → green → merge-prep) |
-| `epic` | 2 phases | Epic coordination (planning → tracking) |
-| `custom` | User-defined | Custom workflows (requires `custom_phases` and `skip_reason`) |
+| `feature` | research → design → planning → implementation → validation → documentation → ready | New feature development |
+| `bug` | research → design → planning → implementation → validation → documentation → ready | Bug fixes |
+| `docs` | planning → documentation → ready | Documentation-only changes |
+| `refactor` | research → planning → implementation → validation → documentation → ready | Code refactoring |
+| `hotfix` | implementation → validation → documentation → ready | Emergency fixes |
+| `chore` | research → implementation → validation → documentation → ready | Lightweight maintenance and housekeeping |
+| `epic` | See `contracts.yaml` for the configured phase order | Multi-issue coordination |
 
 #### Returns (via MCP Resource Cache)
 
@@ -99,23 +99,13 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 }
 ```
 
-**Custom workflow:**
-```json
-{
-  "issue_number": 456,
-  "issue_title": "Experimental ML feature",
-  "workflow_name": "custom",
-  "custom_phases": ["research", "prototype", "evaluation", "implementation"],
-  "skip_reason": "ML workflow requires prototype/evaluation phases"
-}
-```
-
 #### Behavior Notes
 
 - **State Persistence:** Creates `.pgmcp/deliverables.json` (workflow definition) and `.pgmcp/state.json` (branch state) atomically
 - **Parent Branch Auto-Detection:** If `parent_branch` not provided, attempts detection via `git reflog`
 - **Branch Validation:** Current branch must match pattern `<type>/<issue_number>-*`
 - **Idempotency:** Re-running on same branch returns error (project already initialized)
+- **Configured workflow required:** `custom_phases` does not create an arbitrary workflow; `workflow_name` must exist in `contracts.yaml`, and strict transitions use that configured contract
 
 #### Workflow Responsibility
 
@@ -459,7 +449,7 @@ Workflow definition and planning deliverables (branch-local artifact):
 
 ## Workflow Definitions
 
-### .pgmcp/workflows.yaml
+### .pgmcp/config/workflows.yaml
 
 > **Note (Issue #271):** Phase membership and ordering are no longer defined in `workflows.yaml`. The file now contains only workflow metadata (name, description, execution mode). Phase sequences are exclusively defined in `.pgmcp/config/contracts.yaml`.
 
@@ -494,6 +484,11 @@ workflows:
     description: "Documentation-only workflow (planning → docs)"
     default_execution_mode: interactive
 
+  chore:
+    name: chore
+    description: "Lightweight maintenance workflow"
+    default_execution_mode: interactive
+
   epic:
     name: epic
     description: "Epic workflow for large initiatives (research → planning → design → coordination → documentation)"
@@ -502,7 +497,7 @@ workflows:
 ```
 
 
-For the phase sequences per workflow, see `.pgmcp/config/contracts.yaml`.
+For the phase sequences per workflow, see `.pgmcp/config/contracts.yaml`. For the complete extension procedure, see [Adding a First-Class Workflow](../workflow-extension-guide.md).
 
 ---
 
@@ -544,13 +539,13 @@ Phase state is **synchronized** with git branch operations:
 
 ```
 1. force_phase_transition(
-     branch="bugfix/456-security",
+     branch="bug/456-security",
      to_phase="merge-prep",
      skip_reason="Critical security vulnerability - zero-day exploit",
      human_approval_message="CTO approval (Jane Smith) - immediate production deployment"
    )
 2. git_push(set_upstream=True)
-3. submit_pr(title="HOTFIX: Security patch", body="...", head="bugfix/456-security")
+3. submit_pr(title="HOTFIX: Security patch", body="...", head="bug/456-security")
 4. merge_pr(pr_number=78, merge_method="merge")
 ```
 

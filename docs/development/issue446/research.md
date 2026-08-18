@@ -3,7 +3,7 @@
 # Issue #446 Research: Chore Workflow and Contract Maintainability
 
 **Status:** APPROVED  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-08-18
 
 ---
@@ -19,7 +19,7 @@ Capture the reproducible evidence, approved boundaries, implementation inventory
 - Remove the legacy `fix` branch type from current configuration, tests, prompts, and current documentation.
 - Remove `custom` from current workflow suggestions and current documentation.
 - Add `chore` as a first-class issue, branch, enforcement, workflow, and contract identity.
-- Use the lightweight phase sequence `implementation → validation → documentation → ready`.
+- Use the lightweight phase sequence `research → implementation → validation → documentation → ready`.
 - Keep chore implementation non-cycle-based.
 - Record a reproducible assessment of YAML anchors and aliases in `contracts.yaml`.
 - Add one workflow-extension guide that describes the complete addition contract across configuration, runtime-derived schemas, tests, prompts, agent-instruction sources, and documentation.
@@ -140,21 +140,23 @@ The approved decision is not to design or implement custom. Current suggestions 
 Approved phase order:
 
 ```text
-implementation → validation → documentation → ready
+research → implementation → validation → documentation → ready
 ```
 
 Contract characteristics:
 
+- research is lightweight and repository-focused;
+- a research artifact is optional for routine chores;
 - `implementation.cycle_based: false`;
 - no planning deliverables or TDD-cycle requirement;
-- no research or design phase;
+- no design or planning phase;
 - proportionate validation remains explicit;
 - documentation remains available for affected current references;
 - ready remains the terminal PR-readiness phase;
 - phase instructions are compact and chore-specific rather than copied wholesale from feature;
 - no new workphase vocabulary is required.
 
-This makes chore lighter than hotfix in process overhead because it does not impose cycle semantics, while retaining the shared validation, documentation, and readiness boundaries.
+This keeps chore proportionate for routine maintenance while hotfix remains the dedicated emergency route. Chore retains explicit validation, documentation, and readiness boundaries without imposing feature-style design, planning, or TDD cycles.
 
 ### 5. No cross-config validation is added
 
@@ -242,8 +244,8 @@ Tests must cover configuration-driven public behavior rather than introduce hard
 - branch enforcement contains chore and no fix;
 - issue config maps chore to chore;
 - workflow and contracts loaders expose chore;
-- project initialization accepts chore and starts in implementation;
-- chore phase order is exactly implementation, validation, documentation, ready;
+- project initialization accepts chore and starts in research;
+- chore phase order is exactly research, implementation, validation, documentation, ready;
 - chore implementation is not cycle-based;
 - static test fixtures and expected enums no longer advertise fix or custom;
 - existing feature, bug, hotfix, refactor, docs, and epic behavior remains unchanged.
@@ -333,7 +335,7 @@ Implement a config-driven clean break for new work:
 1. Remove `fix` from current branch configuration, enforcement, schemas derived from configuration, fixtures, prompts, and current documentation.
 2. Remove `custom` from current supported-workflow suggestions and descriptive surfaces; do not implement it.
 3. Add `chore` as a first-class issue, branch, enforcement, workflow, and contract identity.
-4. Use `implementation → validation → documentation → ready` with non-cycle-based implementation.
+4. Use `research → implementation → validation → documentation → ready`, with lightweight research and non-cycle-based implementation.
 5. Make no behavioral Python changes and add no cross-config validator. A narrowly targeted edit to user-facing descriptive metadata is permitted only when necessary to stop advertising custom.
 6. Add no YAML anchors, aliases, merge keys, or instruction-template mechanism.
 7. Keep chore instructions compact and purpose-specific.
@@ -348,10 +350,10 @@ Implement a config-driven clean break for new work:
 - `create_branch(branch_type="chore")` is accepted.
 - `create_branch(branch_type="fix")` is no longer offered or accepted for new branches.
 - `initialize_project(workflow_name="chore")` is accepted.
-- Chore initializes in `implementation`.
-- Strict chore transitions follow implementation, validation, documentation, ready.
+- Chore initializes in `research`.
+- Strict chore transitions follow research, implementation, validation, documentation, ready.
 - Chore implementation is not cycle-based.
-- Issue creation maps chore to the chore workflow and initial implementation phase.
+- Issue creation maps chore to the chore workflow and initial research phase.
 - Chore branch creation has an explicit allowed-base policy.
 - Current prompts, authoritative agent-instruction sources, generated consumers, tool references, and tests agree.
 - Current supported-workflow descriptions no longer advertise custom.
@@ -389,3 +391,4 @@ None. Strategy, compatibility boundaries, and expected results are approved.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-08-18 | Agent | Approved research baseline for chore workflow, fix/custom cleanup, contracts alias decision, and workflow-extension documentation |
+| 1.1 | 2026-08-18 | Agent | Align the approved chore sequence with the later decision to include lightweight optional research |

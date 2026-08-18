@@ -176,7 +176,7 @@ class TestFileQualityStateRepositoryApply:
         assert data.get("schema_version") == "1.0.0"
 
     def test_quality_repository_resets_on_error_after_backup(self, tmp_path: Path) -> None:
-        """Loading a corrupt or mismatched quality_state.json backs up file and returns reset state."""
+        """Back up corrupt or mismatched quality state and return reset state."""
         backing = tmp_path / get_default_server_root() / "quality_state.json"
         backing.parent.mkdir(parents=True, exist_ok=True)
         backing.write_text("{corrupt json", encoding="utf-8")
@@ -189,6 +189,7 @@ class TestFileQualityStateRepositoryApply:
         assert backup_file.exists()
         assert state.baseline_sha is None
         assert state.failed_files == []
+
     def test_apply_creates_parent_dirs(self, tmp_path: Path) -> None:
         """apply() creates parent directories if they don't exist."""
         backing = tmp_path / "deep" / "nested" / "quality_state.json"

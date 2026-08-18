@@ -22,7 +22,7 @@ For MCP server architecture details, see [docs/reference/mcp_vision_reference.md
 
 Phase-Gate MCP Server acts as an orchestrator and gatekeeper between an AI agent and a software repository. Rather than allowing arbitrary modifications, it mandates a structured workflow and prevents phase progression until all deliverables and quality contracts are fulfilled.
 
-**Supported workflow types:** `feature`, `bug`, `refactor`, `docs`, `hotfix`, `epic`, `custom`
+**Supported workflow types:** `feature`, `bug`, `refactor`, `docs`, `hotfix`, `chore`, `epic`
 
 Each workflow defines an ordered sequence of phases (e.g. `research → design → planning → implementation → validation → documentation → ready`). The server tracks which phase is active, enforces transitions, and manages TDD cycle state within implementation phases.
 

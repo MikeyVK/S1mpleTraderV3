@@ -65,7 +65,7 @@ class GitManager:
 
         Args:
             name: Branch name in kebab-case
-            branch_type: Type (feature, fix, refactor, docs, epic)
+            branch_type: Configured branch type from GitConfig
             base_branch: Base to create from (required - no default!)
 
         Returns:

@@ -19,7 +19,7 @@ quality gates, Git conventions, and GitHub integration.
 
 | Capability | Description |
 |------------|-------------|
-| **Workflow Enforcement** | Phase-gated development lifecycles with configurable workflows (feature, bug, hotfix, refactor, docs, epic, custom) |
+| **Workflow Enforcement** | Phase-gated development lifecycles with configurable workflows (feature, bug, hotfix, refactor, docs, chore, epic) |
 | **Semantic Context** | Exposes project status, coding standards, and GitHub issues as structured MCP Resources |
 | **Tool-Based Operations** | 50 tools encapsulating Git, GitHub, QA, scaffolding, and project management operations |
 | **Quality Gates** | Automated linting (ruff), type-checking (pyright), and test execution with configurable thresholds |
@@ -52,8 +52,8 @@ The server supports multiple workflow types, each with its own phase sequence de
 | `refactor` | research → planning → implementation → validation → documentation → ready | Code refactoring |
 | `docs` | planning → documentation → ready | Documentation-only changes |
 | `hotfix` | implementation → validation → documentation → ready | Emergency fixes |
+| `chore` | research → implementation → validation → documentation → ready | Lightweight maintenance and housekeeping |
 | `epic` | See `contracts.yaml` for the full epic phase order | Multi-issue features |
-| `custom` | User-defined | Custom workflows |
 
 > **Detailed phases and transitions:** See [PHASE_WORKFLOWS.md](./PHASE_WORKFLOWS.md).
 
