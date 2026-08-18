@@ -3,7 +3,7 @@
   "branch": "feature/446-add-chore-as-a-first-class-workflow-and-branch-type",
   "issue_number": 446,
   "workflow_name": "feature",
-  "current_phase": "validation",
+  "current_phase": "documentation",
   "current_cycle": 1,
   "last_cycle": 1,
   "cycle_history": [],
@@ -91,6 +91,14 @@
       "to_phase": "validation",
       "timestamp": "2026-08-18T17:05:26.153939+00:00",
       "human_approval_message": "User approved updating validation evidence and progressing toward ready after the deterministic test correction.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "documentation",
+      "timestamp": "2026-08-18T17:09:51.113207+00:00",
+      "human_approval_message": "Final validation report is PASS; full suite and functioning branch gates are green, with the accepted Ruff runner defect recorded as deferred work.",
       "forced": false,
       "skip_reason": null
     }
