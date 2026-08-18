@@ -3,7 +3,7 @@
   "branch": "refactor/443-remove-the-redundant-search-documentation-tool",
   "issue_number": 443,
   "workflow_name": "refactor",
-  "current_phase": "research",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -20,7 +20,16 @@
   "issue_title": "Remove the redundant search_documentation tool",
   "parent_branch": "main",
   "created_at": "2026-08-18T20:21:05.095754+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "planning",
+      "timestamp": "2026-08-18T20:31:42.441099+00:00",
+      "human_approval_message": "User explicitly approved moving issue #443 from research to planning after approving the clean-break and historical-archive strategy.",
+      "forced": false,
+      "skip_reason": null
+    }
+  ],
   "reconstructed": false,
   "current_sub_phase": null
 }
