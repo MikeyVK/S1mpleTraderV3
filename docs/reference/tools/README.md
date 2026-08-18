@@ -1,26 +1,26 @@
-<!-- docs/reference/mcp/tools/README.md -->
+<!-- docs/reference/tools/README.md -->
 <!-- template=reference version=064954ea created=2026-02-08T12:00:00+01:00 updated=2026-03-01 -->
 # MCP Tools Reference — Navigation Index
 
 **Status:** DEFINITIVE  
 **Version:** 3.0  
-**Last Updated:** 2026-06-15  
+**Last Updated:** 2026-08-18  
 
-**Source:** [mcp_server/server.py](../../../../mcp_server/server.py)  
-**Tests:** [tests/mcp_server/](../../../../tests/mcp_server/)  
+**Source:** [mcp_server/bootstrap.py](../../../mcp_server/bootstrap.py)  
+**Tests:** [tests/mcp_server/](../../../tests/mcp_server/)  
 
 ---
 
 ## Purpose
 
 Comprehensive navigation index for all 50 MCP server tools organized by functional category. This document serves as the entry point to the MCP Tools Reference suite, providing quick lookup and category-based navigation to detailed tool documentation.
-The MCP server exposes a rich set of tools across eight functional domains: Git workflow automation, GitHub API integration, project lifecycle management, file editing, code scaffolding, quality assurance, documentation discovery, and server administration.
+The MCP server exposes tools across seven functional categories: Git workflow automation, GitHub API integration, project lifecycle management, file editing, code scaffolding, quality assurance, and discovery/server administration.
 
 ---
 
 ## Tool Inventory Overview
 
-The MCP server has **50 registered tools** across 8 categories:
+The MCP server has **50 registered tools** across 7 categories:
 | Category | Tools | Documentation |
 |----------|-------|---------------|
 | **Git Workflow & Analysis** | 15 | [git.md](git.md) |
@@ -28,8 +28,8 @@ The MCP server has **50 registered tools** across 8 categories:
 | **Project & Phase Management** | 8 | [project.md](project.md) |
 | **File Editing** | 1 | [editing.md](editing.md) |
 | **Scaffolding** | 2 | [scaffolding.md](scaffolding.md) |
-| **Quality & Validation** | 3 | [quality.md](quality.md) |
-| **Discovery & Admin** | 4 | [discovery.md](discovery.md) |
+| **Quality & Validation** | 4 | [quality.md](quality.md) |
+| **Discovery & Admin** | 3 | [discovery.md](discovery.md) |
 | **TOTAL** | **50** | — |
 ## Quick Reference by Category
 
@@ -151,12 +151,13 @@ Unified artifact generation from Jinja2 templates for code and documentation art
 
 ---
 
-### 6. Quality & Validation (3 tools)
+### 6. Quality & Validation (4 tools)
 
 Automated quality gates, test execution, and architectural validation.
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
+| `auto_fix` | Apply configured mechanical quality fixes | None |
 | `run_quality_gates` | Run config-driven quality gates | `scope` (`auto`/`branch`/`project`/`files`), `files` (required only with `scope="files"`) |
 | `run_tests` | Run pytest — outputs presented human-readable text pointing to the DTO cached in the MCP Resource cache | `path` (space-sep), `scope` (`"full"`), `markers`, `last_failed_only`, `timeout`, `coverage`, `verbose`, `collect_only` |
 | `validate_template` | Validate file structure vs template | `path`, `template_type` |
@@ -165,25 +166,24 @@ Automated quality gates, test execution, and architectural validation.
 
 ---
 
-### 7. Discovery & Admin (4 tools)
+### 7. Discovery & Admin (3 tools)
 
-Documentation search, work context aggregation, and server administration.
+Work context aggregation and server administration.
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `search_documentation` | Semantic/fuzzy search across docs/ | `query`, `scope` |
 | `get_work_context` | Aggregate branch + workflow context | None |
 | `health_check` | Server health check | None |
 | `restart_server` | Hot-reload server via proxy mechanism | `reason` |
 
-**📖 See:** [discovery.md](discovery.md) for semantic search scopes, work context structure, and restart behavior.
+**📖 See:** [discovery.md](discovery.md) for work context structure, health checks, and restart behavior.
 
 ---
 
 ## Tool Registration Architecture
 
 | Tier | Tools | Count | Registration Condition |
-| **Always Available** | Git (15), Quality (3), File Editing (1), Project/Phase (8), Scaffolding (2), Discovery & Admin (4) | **33** | None |
+| **Always Available** | Git (15), Quality (4), File Editing (1), Project/Phase (8), Scaffolding (2), Discovery & Admin (3) | **33** | None |
 | **GitHub-Dependent** | Issues (5), PRs (4), Labels (5), Milestones (3) | **17** | Requires `GITHUB_TOKEN` environment variable |
 | **TOTAL (with token)** | — | **50** | — |
 | **TOTAL (without token)** | — | **38** | Issues (5) registered as schema-only (no `GITHUB_TOKEN`) |

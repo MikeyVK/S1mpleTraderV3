@@ -496,7 +496,7 @@ the new phase changes a global role boundary, ownership model, or lifecycle exce
 
 ## Related Documentation
 
-- **[tools/README.md][tools-ref]** \u2014 all 49 MCP tools with parameters and examples
+- **[tools/README.md][tools-ref]** \u2014 all 50 MCP tools with parameters and examples
 - **[mcp_vision_reference.md][vision-ref]** \u2014 MCP server architecture and vision
 - **[AGENTS.md][agents-md]** \u2014 single always-on instruction file
 - **[.github/agents/imp.agent.md][imp-agent]** \u2014 implementation agent full spec

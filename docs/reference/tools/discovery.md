@@ -1,19 +1,19 @@
-<!-- docs/reference/mcp/tools/discovery.md -->
+<!-- docs/reference/tools/discovery.md -->
 <!-- template=reference version=064954ea created=2026-02-08T12:00:00+01:00 updated=2026-05-24 -->
 # Discovery & Admin Tools
 
 **Status:** DEFINITIVE  
 **Version:** 3.0  
-**Last Updated:** 2026-06-15  
+**Last Updated:** 2026-08-18  
 
-**Source:** [mcp_server/tools/discovery_tools.py](../../../../mcp_server/tools/discovery_tools.py), [health_tools.py](../../../../mcp_server/tools/health_tools.py), [admin_tools.py](../../../../mcp_server/tools/admin_tools.py)  
-**Tests:** [tests/mcp_server/unit/tools/test_discovery_tools.py](../../../../tests/mcp_server/unit/tools/test_discovery_tools.py)  
+**Source:** [mcp_server/tools/discovery_tools.py](../../../mcp_server/tools/discovery_tools.py), [health_tools.py](../../../mcp_server/tools/health_tools.py), [admin_tools.py](../../../mcp_server/tools/admin_tools.py)  
+**Tests:** [tests/mcp_server/unit/tools/test_discovery_tools.py](../../../tests/mcp_server/unit/tools/test_discovery_tools.py)  
 
 ---
 
 ## Purpose
 
-Complete reference documentation for discovery and administration tools covering documentation search, work context aggregation, server health checks, and hot-reload functionality.
+Complete reference documentation for work context aggregation, server health checks, and hot-reload functionality.
 
 These tools support agent onboarding, project awareness, and server lifecycle management.
 
@@ -21,11 +21,10 @@ These tools support agent onboarding, project awareness, and server lifecycle ma
 
 ## Overview
 
-The MCP server provides **4 discovery/admin tools**:
+The MCP server provides **3 discovery/admin tools**:
 
 | Tool | Purpose | Key Features |
 |------|---------|-------------|
-| `search_documentation` | Semantic/fuzzy search across docs/ | Scope filtering, ranked results with snippets |
 | `get_work_context` | Aggregate branch + workflow context | Orientation header, phase instructions, invalid-state recovery warning, hand-over template |
 | `health_check` | Server health status | Uptime, memory, registered tools count |
 | `restart_server` | Hot-reload server via proxy | Zero-downtime restart for code changes |
@@ -33,93 +32,6 @@ The MCP server provides **4 discovery/admin tools**:
 ---
 
 ## API Reference
-
-### search_documentation
-
-**MCP Name:** `search_documentation`  
-**Class:** `SearchDocumentationTool`  
-**File:** [mcp_server/tools/discovery_tools.py](../../../../mcp_server/tools/discovery_tools.py)
-
-Semantic/fuzzy search across all docs/ files. Returns ranked results with snippets for understanding project structure.
-
-#### Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | `str` | **Yes** | Search query (e.g., `"how to implement a worker"`, `"DTO validation rules"`) |
-| `scope` | `str` | No | Optional scope: `"all"`, `"architecture"`, `"coding_standards"`, `"development"`, `"reference"`, `"implementation"` (default: `"all"`) |
-
-#### Returns
-
-```json
-{
-  "success": true,
-  "results": [
-    {
-      "file": "docs/architecture/worker-pattern.md",
-      "score": 0.92,
-      "snippet": "Workers must inherit from BaseWorker and implement the execute() method...",
-      "section": "Worker Implementation",
-      "context": "architecture"
-    },
-    {
-      "file": "docs/coding_standards/backend-conventions.md",
-      "score": 0.85,
-      "snippet": "Worker classes follow the pattern: <Name>Worker (e.g., OrderProcessingWorker)...",
-      "section": "Naming Conventions",
-      "context": "coding_standards"
-    }
-  ],
-  "count": 2,
-  "query": "how to implement a worker"
-}
-```
-
-#### Example Usage
-
-**Search across all docs:**
-```json
-{
-  "query": "how to implement a worker"
-}
-```
-
-**Search architecture docs only:**
-```json
-{
-  "query": "DTO validation rules",
-  "scope": "architecture"
-}
-```
-
-**Search coding standards:**
-```json
-{
-  "query": "naming conventions",
-  "scope": "coding_standards"
-}
-```
-
-#### Search Scopes
-
-| Scope | Directories | Use Case |
-|-------|-------------|----------|
-| `all` | `docs/**` | Broad search when you don't know where to look |
-| `architecture` | `docs/architecture/` | Design patterns, architectural decisions |
-| `coding_standards` | `docs/coding_standards/` | Style guides, conventions |
-| `development` | `docs/development/` | Issue tracking, research, planning |
-| `reference` | `docs/reference/` | API docs, tool references |
-| `implementation` | `docs/implementation/` | Implementation guides |
-
-#### Behavior Notes
-
-- **Semantic Matching:** Uses TF-IDF and fuzzy matching (not just exact string match)
-- **Ranking:** Results sorted by relevance score (0.0 to 1.0)
-- **Snippets:** Returns relevant text snippet (50-100 words) around match
-- **Section Detection:** Identifies which section of document contains match
-- **Case-Insensitive:** Search is case-insensitive
-
----
 
 ### get_work_context
 
@@ -330,23 +242,10 @@ The restart mechanism uses a transparent proxy:
 
 ## Common Use Cases
 
-### Agent Onboarding: Discover Project Structure
+### Find Repository Documentation
 
-```
-1. search_documentation(query="project structure overview")
-2. search_documentation(query="coding standards", scope="coding_standards")
-3. search_documentation(query="how to implement a worker", scope="architecture")
-4. get_work_context() → load the current branch orientation and phase script
-```
-
-### Find Relevant Documentation During Implementation
-
-```
-1. scaffold_artifact(artifact_type="worker", name="OrderWorker")
-2. search_documentation(query="worker validation rules")
-3. search_documentation(query="async patterns")
-4. Implement worker based on documentation
-```
+Use the host application's native repository search to locate code and documentation.
+The MCP server does not duplicate generic workspace-search capabilities.
 
 ### Load Branch Context And Phase Script
 
@@ -379,20 +278,6 @@ The restart mechanism uses a transparent proxy:
 
 ## Configuration
 
-### Documentation Search Paths
-
-Search scopes map to directories:
-
-```yaml
-scopes:
-  all: "docs/**/*.md"
-  architecture: "docs/architecture/**/*.md"
-  coding_standards: "docs/coding_standards/**/*.md"
-  development: "docs/development/**/*.md"
-  reference: "docs/reference/**/*.md"
-  implementation: "docs/implementation/**/*.md"
-```
-
 ### Restart Proxy Configuration
 
 Proxy behavior configured in [mcp_server/core/proxy.py](../../../../mcp_server/core/proxy.py):
@@ -405,13 +290,6 @@ Proxy behavior configured in [mcp_server/core/proxy.py](../../../../mcp_server/c
 ---
 
 ## Performance Characteristics
-
-### search_documentation
-
-- **Index Size:** ~100 documents (≈1MB total)
-- **Search Time:** 50-200ms (depends on query complexity)
-- **Memory:** ~20MB for search index
-- **Optimization:** Results cached for repeated queries (5 min TTL)
 
 ### get_work_context
 
@@ -445,6 +323,7 @@ Proxy behavior configured in [mcp_server/core/proxy.py](../../../../mcp_server/c
 ## Version History
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.0 | 2026-08-18 | Agent | Align discovery/admin reference with the current three-tool public surface |
 | 2.3 | 2026-07-20 | Agent | Update degraded mode section for workspace version check failures, and fix stale links |
 | 2.2 | 2026-05-24 | Agent | Document the invalid workflow-phase recovery warning and recovery path for `get_work_context` |
 | 2.1 | 2026-05-23 | Agent | Update `get_work_context` reference to the delivered text contract, phase instructions, hand-over template, and context-loaded behavior |

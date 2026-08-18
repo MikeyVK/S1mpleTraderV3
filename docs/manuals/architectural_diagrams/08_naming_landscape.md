@@ -87,7 +87,6 @@ Full mapping of all tool files. ⚠ marks known inconsistencies.
 | `safe_edit_tool.py` ⚠ | `SafeEditTool` | `safe_edit_file` | No `_tools` plural |
 | `health_tools.py` | `HealthCheckTool` | `health_check` | — |
 | `admin_tools.py` | `RestartServerTool` | `restart_server` | — |
-| `discovery_tools.py` | `SearchDocumentationTool` | `search_documentation` | — |
 | `discovery_tools.py` | `GetWorkContextTool` | `get_work_context` | — |
 
 ---

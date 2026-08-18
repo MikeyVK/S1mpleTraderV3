@@ -89,8 +89,7 @@ that import the manager directly.
 
 | File | Class | Responsibility | Used by |
 |------|-------|----------------|---------|
-| `document_indexer.py` | `DocumentIndexer` | Indexes workspace docs into searchable structure | `SearchService` |
-| `search_service.py` | `SearchService` | Full-text search over indexed documents | `discovery_tools` (`search_documentation`) |
+| `workspace_upgrader.py` | `WorkspaceUpgrader` | Upgrades managed workspace assets safely | CLI upgrade command |
 
 ---
 
