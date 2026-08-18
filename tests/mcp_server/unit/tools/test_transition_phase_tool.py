@@ -101,6 +101,42 @@ class TestTransitionPhaseTool:
         assert result.to_phase == feature_phases[1]
 
     @pytest.mark.asyncio
+    async def test_chore_workflow_enforces_its_configured_sequence(
+        self,
+        tool: TransitionPhaseTool,
+        project_manager: ProjectManager,
+        phase_engine: PhaseStateEngine,
+    ) -> None:
+        """Chore permits the next phase and rejects skipping a configured phase."""
+        project_manager.initialize_project(
+            issue_number=446,
+            issue_title="Add chore workflow",
+            workflow_name="chore",
+        )
+        branch = "chore/446-add-workflow"
+        phase_engine.initialize_branch(
+            branch=branch,
+            issue_number=446,
+            initial_phase="research",
+        )
+
+        next_result = await tool.execute(
+            TransitionPhaseInput(branch=branch, to_phase="implementation"),
+            NoteContext(),
+        )
+        skipped_result = await tool.execute(
+            TransitionPhaseInput(branch=branch, to_phase="documentation"),
+            NoteContext(),
+        )
+
+        assert next_result.success is True
+        assert next_result.from_phase == "research"
+        assert next_result.to_phase == "implementation"
+        assert skipped_result.success is False
+        assert skipped_result.error_message is not None
+        assert "Invalid transition" in skipped_result.error_message
+
+    @pytest.mark.asyncio
     async def test_transition_phase_tool_emits_advisory_info_note_after_success(
         self, tool: TransitionPhaseTool, initialized_branch: str, feature_phases: list[str]
     ) -> None:

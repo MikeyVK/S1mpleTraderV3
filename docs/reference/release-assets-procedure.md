@@ -111,11 +111,14 @@ The CLI `pgmcp --init` performs a strict flat copy of `mcp_server/assets/` to `.
 ---
 
 ## Related Documentation
+
 - **[docs/manuals/user-guide.md][related-1]**
+- **[Adding a First-Class Workflow][related-2]**
 
 <!-- Link definitions -->
 
 [related-1]: docs/manuals/user-guide.md
+[related-2]: workflow-extension-guide.md
 
 ---
 

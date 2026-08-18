@@ -23,7 +23,8 @@ import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from mcp_server.managers.state_repository import BranchState, StateNotFoundError
+from mcp_server.core.exceptions import StateNotFoundError
+from mcp_server.managers.state_repository import BranchState
 
 if TYPE_CHECKING:
     from mcp_server.core.interfaces import IStateRepository

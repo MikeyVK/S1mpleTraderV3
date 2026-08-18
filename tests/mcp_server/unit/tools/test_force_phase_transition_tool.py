@@ -11,7 +11,6 @@ Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE OK in response
 """
 
 from tests.mcp_server.test_support import get_default_server_root
-import json
 from pathlib import Path
 
 import pytest

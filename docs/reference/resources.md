@@ -96,7 +96,7 @@ schema:
       description: "Current Git branch name"
     branch_type:
       type: string
-      enum: [main, feature, fix, refactor, docs]
+      enum: [main, feature, bug, refactor, docs, hotfix, chore, epic]
     current_sprint:
       type: object
       description: "Active GitHub Project iteration"
@@ -373,7 +373,7 @@ schema:
         branch_naming:
           type: object
           properties:
-            patterns: { type: array, items: { type: string }, examples: ["feature/*", "fix/*", "docs/*"] }
+            patterns: { type: array, items: { type: string }, examples: ["feature/*", "bug/*", "docs/*"] }
     quality_gates:
       type: array
       items:

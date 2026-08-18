@@ -923,23 +923,22 @@ class TestContextLoadedWriterReset:
 
 
 class TestPhaseStateFreshSLambdaC1:
-    """C1 (#292): PSE write lambdas must derive result from _s, not pre-captured state.
+    """C1 (#292): PSE write lambdas derive results from the mutator-provided state.
 
-    Each of the 8 _apply_state() callers currently passes ``lambda _s: pre_captured_state``,
-    discarding the fresh state loaded under lock. These tests prove the stale-lambda bug by
-    giving the mutator a *different* _s than what was loaded before the call and asserting the
-    saved result is derived from that fresh _s.
+    The mutator callback input is authoritative and can differ from state observed before
+    ``apply()``. These deterministic unit tests supply that different state directly and
+    assert that each write preserves it. They do not use threads, shared-file contention,
+    or define concurrent same-branch transitions as a supported runtime contract.
 
-    RED: all four tests fail because the lambda ignores _s.
-    GREEN: all four tests pass after migrating callers to ``_s.with_updates()``.
+    RED: all four tests fail when the lambda ignores its callback input.
+    GREEN: all four tests pass when callers use ``_s.with_updates()``.
     """
 
     class _FreshSMutator:
-        """Mutator that calls the lambda with a caller-supplied _s.
+        """Invoke the mutation callback with a caller-supplied authoritative state.
 
-        Simulates a concurrent write that modified state between the outer
-        ``_load_state_or_reconstruct()`` and the lock acquisition inside ``apply()``.
-        The lambda receives this fresh _s, which differs from the stale pre-loaded state.
+        This test double isolates callback semantics without concurrent execution or file I/O.
+        The supplied state intentionally differs from the state observed before ``apply()``.
         """
 
         def __init__(self, repo: InMemoryStateRepository, fresh_s: BranchState) -> None:

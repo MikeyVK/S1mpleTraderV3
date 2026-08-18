@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from mcp_server.core.exceptions import StateNotFoundError
 from mcp_server.core.interfaces import IStateReader
-from mcp_server.managers.state_repository import StateNotFoundError
 from mcp_server.schemas import GitConfig
 
 

@@ -27,4 +27,3 @@ class IStateRepository(IStateReader, Protocol):
 
     def save(self, state: BranchState) -> None:
         raise NotImplementedError
-

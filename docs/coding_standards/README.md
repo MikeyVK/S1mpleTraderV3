@@ -75,7 +75,7 @@ Feature branch workflow with strict quality requirements.
 
 **Topics:**
 - Main branch requirements (always stable)
-- Feature branch naming (`feature/*`, `fix/*`, `refactor/*`, `docs/*`)
+- Branch naming (`feature/*`, `bug/*`, `refactor/*`, `docs/*`, `hotfix/*`, `chore/*`, `epic/*`)
 - Feature development flow (create → TDD cycle → quality gates → merge)
 - Commit message conventions (Conventional Commits)
 - Commit best practices (atomic, descriptive)

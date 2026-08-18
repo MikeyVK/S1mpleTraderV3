@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import anyio
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.core.interfaces import ICoreTool
 from mcp_server.core.operation_notes import Note, NoteContext
@@ -45,10 +45,7 @@ class InitializeProjectInput(BaseModel):
     issue_title: str = Field(..., description="Issue title")
     workflow_name: str = Field(
         ...,
-        description=(
-            "Workflow from workflows.yaml: feature (7 phases), bug (6), docs (4), "
-            "refactor (5), hotfix (3), or custom"
-        ),
+        description="Workflow name; valid values are injected from contracts.yaml",
     )
     parent_branch: str | None = Field(
         default=None,
@@ -59,19 +56,13 @@ class InitializeProjectInput(BaseModel):
         ),
     )
     custom_phases: tuple[str, ...] | None = Field(
-        default=None, description="Custom phase list (required if workflow_name=custom)"
+        default=None,
+        description="Optional phase sequence override for the selected configured workflow",
     )
-    skip_reason: str | None = Field(default=None, description="Reason for custom phases")
-
-    @model_validator(mode="after")
-    def require_custom_phases_for_custom_workflow(self) -> "InitializeProjectInput":
-        """Require custom_phases when workflow_name is 'custom'."""
-        if self.workflow_name == "custom" and not self.custom_phases:
-            raise ValueError(
-                "custom_phases is required when workflow_name='custom'. "
-                "Provide a non-empty list of phase names."
-            )
-        return self
+    skip_reason: str | None = Field(
+        default=None,
+        description="Required justification when custom_phases overrides the configured sequence",
+    )
 
 
 class InitializeProjectTool(ICoreTool[InitializeProjectInput, InitializeProjectOutput]):
@@ -90,9 +81,8 @@ class InitializeProjectTool(ICoreTool[InitializeProjectInput, InitializeProjectO
     @property
     def description(self) -> str:
         return (
-            "Initialize project with phase plan selection. "
-            "Human selects workflow_name (feature/bug/docs/refactor/hotfix/custom) "
-            "to generate project-specific phase plan."
+            "Initialize a project with a configured workflow and optional justified "
+            "phase-sequence override."
         )
 
     @property

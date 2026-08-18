@@ -735,7 +735,7 @@ List git branches with optional verbose info and remotes.
   "branches": [
     {"name": "main", "current": false},
     {"name": "feature/123-oauth", "current": true},
-    {"name": "bugfix/122-login", "current": false}
+    {"name": "bug/122-login", "current": false}
   ]
 }
 ```
@@ -916,10 +916,10 @@ Git conventions loaded on server startup:
 branch_types:
   - feature
   - bug
-  - fix
   - refactor
   - docs
   - hotfix
+  - chore
   - epic
 
 # Branches that cannot be deleted

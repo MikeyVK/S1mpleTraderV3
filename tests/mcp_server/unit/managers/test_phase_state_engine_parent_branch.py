@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
 
@@ -259,7 +258,6 @@ class TestTddCycleTrackingFields:
         assert state.current_cycle is None
         assert state.last_cycle is None
         assert state.cycle_history == []
-
 
         # Verify - initial values (None/[])
         assert state.current_cycle is None

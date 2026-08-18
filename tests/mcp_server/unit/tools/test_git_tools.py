@@ -63,7 +63,7 @@ def mock_git_manager() -> MagicMock:
     """Fixture for mocked GitManager."""
     manager = MagicMock()
     git_config = MagicMock()
-    git_config.branch_types = ["feature", "bug", "fix", "docs", "refactor", "epic"]
+    git_config.branch_types = ["feature", "bug", "docs", "refactor", "hotfix", "epic"]
     git_config.commit_types = ["feat", "fix", "docs", "chore", "test", "refactor"]
     git_config.has_branch_type.side_effect = lambda value: value in git_config.branch_types
     git_config.has_commit_type.side_effect = lambda value: value.lower() in git_config.commit_types
@@ -105,21 +105,21 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(
 async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager: MagicMock) -> None:
     """Test creating branch from another branch name."""
     tool = CreateBranchTool(manager=mock_git_manager)
-    mock_git_manager.create_branch.return_value = "fix/new-fix"
+    mock_git_manager.create_branch.return_value = "bug/new-fix"
 
     params = CreateBranchInput(
-        name="new-fix", branch_type="fix", base_branch="refactor/51-labels-yaml"
+        name="new-fix", branch_type="bug", base_branch="refactor/51-labels-yaml"
     )
     result = await tool.execute(params, NoteContext())
 
     mock_git_manager.create_branch.assert_called_once_with(
-        "new-fix", "fix", "refactor/51-labels-yaml", ANY
+        "new-fix", "bug", "refactor/51-labels-yaml", ANY
     )
 
     assert isinstance(result, CreateBranchOutput)
     assert result.success is True
-    assert result.branch_name == "fix/new-fix"
-    assert result.branch_type == "fix"
+    assert result.branch_name == "bug/new-fix"
+    assert result.branch_type == "bug"
     assert result.base_branch == "refactor/51-labels-yaml"
 
 

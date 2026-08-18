@@ -234,12 +234,12 @@ class TestGetWorkContextTool:
     async def test_get_context_extracts_issue_number_alternate_format(
         self, tool: GetWorkContextTool
     ) -> None:
-        """Issue number from BranchState for fix/ branches after C1 (issue #268)."""
+        """Issue number from BranchState for bug/ branches after C1 (issue #268)."""
         from mcp_server.schemas.tool_outputs import GetWorkContextOutput  # noqa: PLC0415
 
         tool._state_engine.get_state.return_value.issue_number = 99
         mock_git = MagicMock()
-        mock_git.get_current_branch.return_value = "fix/99-bug"
+        mock_git.get_current_branch.return_value = "bug/99-bug"
         tool._git_manager = mock_git
         tool._settings.github.token = None
 
