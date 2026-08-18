@@ -27,7 +27,6 @@ tools:
   - phase-gate-mcp/git_diff_stat
   - phase-gate-mcp/git_list_branches
   - phase-gate-mcp/get_parent_branch
-  - phase-gate-mcp/search_documentation
   - phase-gate-mcp/get_issue
   - phase-gate-mcp/list_issues
   - phase-gate-mcp/health_check

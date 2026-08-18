@@ -36,7 +36,6 @@ tools:
   - phase-gate-mcp/git_status
   - phase-gate-mcp/git_list_branches
   - phase-gate-mcp/git_diff_stat
-  - phase-gate-mcp/search_documentation
   - phase-gate-mcp/health_check
   - phase-gate-mcp/create_branch
   - phase-gate-mcp/git_checkout

@@ -65,7 +65,7 @@ You are equipped with a restricted subset of tools to guarantee safety while all
 | Domain | Allowed Tools | Forbidden Tools |
 |--------|---------------|-----------------|
 | **Codebase Exploration** | `list_dir`, `view_file`, `grep_search` | `safe_edit_file` on code/tests |
-| **Documentation** | `search_documentation`, `safe_edit_file` (only under `docs/development/issueXX/`), `scaffold_artifact` (only under `docs/development/issueXX/`) | Editing/creating files outside active issue directories |
+| **Documentation** | Host-native repository search, `safe_edit_file` (only under `docs/development/issueXX/`), `scaffold_artifact` (only under `docs/development/issueXX/`) | Editing/creating files outside active issue directories |
 | **Brain Artifacts** | `write_to_file` (only under `<appDataDir>\brain\<conversation-id>/`) | Writing files outside the brain/ directory |
 | **Web Research** | `search_web`, `read_url_content` | Any downloaders or script executors |
 | **Workflow & Git (Read-Only)** | `get_work_context`, `get_project_plan`, `git_status`, `git_list_branches`, `git_diff_stat`, `get_parent_branch`, `check_merge` | `create_branch`, `git_checkout`, `git_add_or_commit`, `git_merge`, `git_delete_branch`, `git_stash`, `git_restore`, `git_pull`, `git_push` |
