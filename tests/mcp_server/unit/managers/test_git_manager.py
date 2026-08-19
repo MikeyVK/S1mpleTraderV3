@@ -23,7 +23,7 @@ from mcp_server.core.exceptions import ExecutionError, PreflightError, Validatio
 from mcp_server.core.operation_notes import Note, NoteContext
 
 # Module under test
-from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.git_manager import GitManager, GitPushResult
 
 _TEST_WORKPHASES = WorkphasesConfig(
     phases={
@@ -820,3 +820,81 @@ class TestGitManagerRollbackPush:
         notes = [n for n in context.entries if n.key == "rollback_local_reset_failed_recovery"]
         assert len(notes) == 1
         assert "reset failed" in notes[0].params.get("error_details", "")
+
+
+class TestGitManagerPush:
+    """Tests for GitManager.push method and GitPushResult contract."""
+
+    @pytest.fixture
+    def mock_adapter(self) -> MagicMock:
+        """Fixture for mocked GitAdapter."""
+        return MagicMock()
+
+    @pytest.fixture
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
+        """Fixture for GitManager with mocked adapter."""
+        return GitManager(git_config=git_config, adapter=mock_adapter)
+
+    def test_push_new_upstream_created_when_no_prior_tracking(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test push with set_upstream=True creates new tracking branch when none existed."""
+        mock_adapter.get_current_branch.return_value = "feature/new"
+        mock_adapter.has_upstream.side_effect = [False, True]
+
+        result = manager.push(set_upstream=True)
+
+        assert isinstance(result, GitPushResult)
+        assert result.branch == "feature/new"
+        assert result.set_upstream is True
+        assert result.new_upstream_created is True
+        mock_adapter.push.assert_called_once_with(set_upstream=True)
+
+    def test_push_upstream_not_created_when_preexisting_tracking(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test push with set_upstream=True on existing tracking branch.
+
+        Reports new_upstream_created=False.
+        """
+        mock_adapter.get_current_branch.return_value = "feature/existing"
+        mock_adapter.has_upstream.side_effect = [True, True]
+
+        result = manager.push(set_upstream=True)
+
+        assert isinstance(result, GitPushResult)
+        assert result.branch == "feature/existing"
+        assert result.set_upstream is True
+        assert result.new_upstream_created is False
+        mock_adapter.push.assert_called_once_with(set_upstream=True)
+
+    def test_push_without_set_upstream_does_not_create_new_upstream(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test push with set_upstream=False reports new_upstream_created=False."""
+        mock_adapter.get_current_branch.return_value = "feature/existing"
+        mock_adapter.has_upstream.side_effect = [False, False]
+
+        result = manager.push(set_upstream=False)
+
+        assert isinstance(result, GitPushResult)
+        assert result.branch == "feature/existing"
+        assert result.set_upstream is False
+        assert result.new_upstream_created is False
+        mock_adapter.push.assert_called_once_with(set_upstream=False)
+
+    def test_push_set_upstream_fails_if_no_upstream_after(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test push with set_upstream=True raises error when tracking missing."""
+        mock_adapter.get_current_branch.return_value = "feature/broken"
+        mock_adapter.has_upstream.side_effect = [False, False]
+
+        with pytest.raises(
+            ExecutionError,
+            match=(
+                r"Requested upstream tracking branch could not be established "
+                r"on 'origin/feature/broken'"
+            ),
+        ):
+            manager.push(set_upstream=True)

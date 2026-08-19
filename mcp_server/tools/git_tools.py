@@ -705,26 +705,15 @@ class GitPushTool(ICoreTool[GitPushInput, GitPushOutput]):
     async def execute(self, params: GitPushInput, context: NoteContext) -> GitPushOutput:
         del context
 
-        try:
-            status = self.manager.get_status()
-            self.manager.push(set_upstream=params.set_upstream)
-            return GitPushOutput(
-                success=True,
-                branch=status["branch"],
-                set_upstream=params.set_upstream,
-                new_upstream_created=False,
-            )
-        except Exception as e:
-            try:
-                branch = self.manager.get_current_branch()
-            except Exception:
-                branch = ""
-            return GitPushOutput(
-                success=False,
-                error_message=str(e),
-                branch=branch,
-                set_upstream=params.set_upstream,
-            )
+        result = await anyio.to_thread.run_sync(
+            lambda: self.manager.push(set_upstream=params.set_upstream)
+        )
+        return GitPushOutput(
+            success=True,
+            branch=result.branch,
+            set_upstream=result.set_upstream,
+            new_upstream_created=result.new_upstream_created,
+        )
 
 
 class GitMergeInput(BaseModel):

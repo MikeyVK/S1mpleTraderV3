@@ -7,6 +7,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from git.remote import PushInfo
 
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import ExecutionError
@@ -179,8 +180,8 @@ class TestGitAdapterCheckout:
 class TestGitAdapterPush:
     """Tests for push functionality."""
 
-    def test_push_to_origin(self) -> None:
-        """Test push to origin remote."""
+    def test_push_to_origin_success(self) -> None:
+        """Test push to origin remote with success flag."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
             mock_origin = MagicMock()
@@ -188,6 +189,10 @@ class TestGitAdapterPush:
             mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
             mock_repo.remote.return_value = mock_origin
             mock_repo.active_branch.name = "feature/test"
+            mock_info = MagicMock()
+            mock_info.flags = PushInfo.FAST_FORWARD
+            mock_info.summary = "Fast-forward"
+            mock_origin.push.return_value = [mock_info]
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -195,7 +200,7 @@ class TestGitAdapterPush:
 
             mock_origin.push.assert_called_once()
 
-    def test_push_with_set_upstream(self) -> None:
+    def test_push_with_set_upstream_success(self) -> None:
         """Test push with --set-upstream flag."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
@@ -203,6 +208,10 @@ class TestGitAdapterPush:
             mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
             mock_repo.remote.return_value = mock_origin
             mock_repo.active_branch.name = "feature/new"
+            mock_info = MagicMock()
+            mock_info.flags = PushInfo.NEW_HEAD
+            mock_info.summary = "New head"
+            mock_origin.push.return_value = [mock_info]
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -222,6 +231,98 @@ class TestGitAdapterPush:
 
             with pytest.raises(ExecutionError, match="origin"):
                 adapter.push()
+
+    def test_push_rejected_by_remote_raises_execution_error(self) -> None:
+        """Test push rejected by remote (non-fast-forward) raises ExecutionError with summary."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_origin = MagicMock()
+            mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
+            mock_repo.remote.return_value = mock_origin
+            mock_repo.active_branch.name = "feature/test"
+            mock_info = MagicMock()
+            mock_info.flags = PushInfo.REJECTED
+            mock_info.summary = "[rejected] (non-fast-forward)"
+            mock_origin.push.return_value = [mock_info]
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            with pytest.raises(
+                ExecutionError,
+                match=r"Push rejected by remote: \[rejected\] \(non-fast-forward\)",
+            ):
+                adapter.push()
+
+    @pytest.mark.parametrize(
+        ("flag", "summary_text"),
+        [
+            (PushInfo.ERROR, "General push error"),
+            (PushInfo.REMOTE_REJECTED, "[remote rejected] (pre-receive hook declined)"),
+            (PushInfo.REMOTE_FAILURE, "Remote failure occurred"),
+        ],
+    )
+    def test_push_error_flags_raise_execution_error(self, flag: int, summary_text: str) -> None:
+        """Test push encountering various GitPython error flags raises ExecutionError."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_origin = MagicMock()
+            mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
+            mock_repo.remote.return_value = mock_origin
+            mock_repo.active_branch.name = "feature/test"
+            mock_info = MagicMock()
+            mock_info.flags = flag
+            mock_info.summary = summary_text
+            mock_origin.push.return_value = [mock_info]
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            with pytest.raises(ExecutionError, match=r"Push rejected by remote"):
+                adapter.push()
+
+    def test_push_empty_result_list_raises_execution_error(self) -> None:
+        """Test empty push result list raises ExecutionError."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_origin = MagicMock()
+            mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
+            mock_repo.remote.return_value = mock_origin
+            mock_repo.active_branch.name = "feature/test"
+            mock_origin.push.return_value = []
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            with pytest.raises(ExecutionError, match="No push status returned by remote"):
+                adapter.push()
+
+    @pytest.mark.parametrize(
+        "success_flag",
+        [
+            PushInfo.NEW_HEAD,
+            PushInfo.NEW_TAG,
+            PushInfo.FAST_FORWARD,
+            PushInfo.UP_TO_DATE,
+            PushInfo.FORCED_UPDATE,
+        ],
+    )
+    def test_push_success_flags_do_not_raise(self, success_flag: int) -> None:
+        """Test valid push success flags execute cleanly without raising exceptions."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_origin = MagicMock()
+            mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
+            mock_repo.remote.return_value = mock_origin
+            mock_repo.active_branch.name = "feature/test"
+            mock_info = MagicMock()
+            mock_info.flags = success_flag
+            mock_info.summary = "OK"
+            mock_origin.push.return_value = [mock_info]
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.push()
 
 
 class TestGitAdapterMerge:

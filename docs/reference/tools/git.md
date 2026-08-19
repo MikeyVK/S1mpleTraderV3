@@ -273,8 +273,9 @@ Push current branch to origin remote.
 ```json
 {
   "success": true,
-  "message": "Branch 'feature/123-oauth' pushed to origin",
-  "branch": "feature/123-oauth"
+  "branch": "feature/123-oauth",
+  "set_upstream": true,
+  "new_upstream_created": true
 }
 ```
 
@@ -296,11 +297,13 @@ Push current branch to origin remote.
 
 #### Behavior Notes
 
-- **Upstream Tracking:** Use `set_upstream=true` for new branches to enable `git pull` later
-- **No Remote:** Returns error if no `origin` remote configured
-- **Protected Branches:** Push to protected branches may be blocked by remote (not enforced locally)
-- **Force Push:** NOT supported (safety)
-
+- **Upstream Tracking:** Use `set_upstream=true` for new branches to enable `git pull` later.
+- **Dynamic Tracking Delta:** `new_upstream_created` returns `true` if and only if tracking did not exist prior to this push and was newly established; returns `false` if tracking was already configured or not requested.
+- **Upstream Verification:** When `set_upstream=true` is requested, the operation verifies that upstream tracking exists post-push, failing fast if tracking could not be established.
+- **Remote Error Diagnostics:** Remote rejections (e.g. non-fast-forward push or pre-receive hook rejections) return `success=false` with the diagnostic summary provided by the remote.
+- **No Remote:** Returns error if no `origin` remote configured.
+- **Protected Branches:** Push to protected branches may be blocked by remote (not enforced locally).
+- **Force Push:** NOT supported (safety).
 ---
 
 ### git_merge
