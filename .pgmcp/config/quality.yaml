@@ -61,7 +61,8 @@ gates:
           "--output-format=json",
           "--select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,T20,ISC,RET,SIM,ARG,PLC",
           "--ignore=E501,PLC0415",
-          "--per-file-ignores=tests/**/*.py:ANN,ARG",
+          "--per-file-ignores",
+          "tests/**/*.py:ANN,tests/**/*.py:ARG",
           "--line-length=100",
           "--target-version=py311"
         ]
@@ -76,7 +77,8 @@ gates:
         "--fix",
         "--select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,T20,ISC,RET,SIM,ARG,PLC",
         "--ignore=E501,PLC0415",
-        "--per-file-ignores=tests/**/*.py:ANN,ARG",
+        "--per-file-ignores",
+        "tests/**/*.py:ANN,tests/**/*.py:ARG",
         "--line-length=100",
         "--target-version=py311"
       ]

@@ -10,8 +10,6 @@ filtering behavior for the quality gate configuration layer.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 
@@ -28,6 +26,7 @@ from mcp_server.config.schemas.quality_config import (
     TextViolationsParsing,
 )
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 _PGMCP_CONFIG = Path(__file__).resolve().parents[4] / get_default_server_root() / "config"
 
