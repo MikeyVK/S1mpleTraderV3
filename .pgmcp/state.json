@@ -2,7 +2,7 @@
   "branch": "bug/fix-git-push-detection",
   "issue_number": 442,
   "workflow_name": "bug",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -20,7 +20,16 @@
   "issue_title": "Fix git_push false-success reporting and upstream result detection",
   "parent_branch": "main",
   "created_at": "2026-08-19T08:46:20.332097+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-19T11:39:44.093381+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
+    }
+  ],
   "reconstructed": false,
   "current_sub_phase": null
 }
