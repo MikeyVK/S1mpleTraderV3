@@ -68,40 +68,47 @@ class GitManager:
         return self.adapter.get_status()
 
     def create_branch(
-        self, name: str, branch_type: str, base_branch: str, note_context: NoteContext
+        self,
+        issue_number: int,
+        name: str,
+        branch_type: str,
+        base_branch: str,
+        note_context: NoteContext,
     ) -> str:
-        """Create a new branch with explicit base_branch (Issue #64).
+        """Create a new branch with explicit issue_number and base_branch (Issue #116).
 
         Args:
-            name: Branch name in kebab-case
+            issue_number: GitHub issue number
+            name: Branch name in kebab-case (leading issue prefix stripped if present)
             branch_type: Configured branch type from GitConfig
             base_branch: Base to create from (required - no default!)
+            note_context: NoteContext for typed note production
 
         Returns:
             Full branch name (e.g., 'feature/123-my-feature')
 
         Raises:
-            ValidationError: If name or type invalid
+            ValidationError: If name, issue_number, or type invalid
             PreflightError: If working directory not clean
         """
         logger = get_logger("managers.git")
 
-        # Convention #1: Branch type validation via GitConfig
-        if not self._git_config.has_branch_type(branch_type):
-            note_context.produce(
-                Note(
-                    key="allowed_branch_types",
-                    params={"types": ", ".join(self._git_config.branch_types)},
+        try:
+            full_name = self._git_config.format_branch_name(issue_number, name, branch_type)
+        except ValueError as exc:
+            if not self._git_config.has_branch_type(branch_type):
+                note_context.produce(
+                    Note(
+                        key="allowed_branch_types",
+                        params={"types": ", ".join(self._git_config.branch_types)},
+                    )
                 )
-            )
-            raise ValidationError(
-                f"Invalid branch type: {branch_type}",
-                error_code="invalid_branch_type",
-                params={"branch_type": branch_type},
-            )
+                raise ValidationError(
+                    f"Invalid branch type: {branch_type}",
+                    error_code="invalid_branch_type",
+                    params={"branch_type": branch_type},
+                ) from exc
 
-        # Convention #5: Branch name pattern via GitConfig
-        if not self._git_config.validate_branch_name(name):
             note_context.produce(
                 Note(
                     key="branch_name_pattern_mismatch",
@@ -109,12 +116,10 @@ class GitManager:
                 )
             )
             raise ValidationError(
-                f"Invalid branch name: {name}",
+                str(exc),
                 error_code="invalid_branch_name",
-                params={"name": name},
-            )
-
-        full_name = f"{branch_type}/{name}"
+                params={"name": name, "issue_number": issue_number},
+            ) from exc
 
         current_branch = self.adapter.get_current_branch()
 
@@ -122,6 +127,7 @@ class GitManager:
             "Creating branch",
             extra={
                 "props": {
+                    "issue_number": issue_number,
                     "full_name": full_name,
                     "branch_type": branch_type,
                     "base_branch": base_branch,

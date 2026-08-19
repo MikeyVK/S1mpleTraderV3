@@ -233,16 +233,23 @@ class TestGitToolsIntegration:
     async def test_create_branch_tool_flow(self) -> None:
         """Test create branch tool complete flow."""
         mock_manager = make_mock_git_manager()
-        mock_manager.create_branch.return_value = "feature/test-feature"
+        mock_manager.create_branch.return_value = "feature/123-test-feature"
 
         tool = make_create_branch_tool(mock_manager)
         result = await tool.execute(
-            CreateBranchInput(name="test-feature", branch_type="feature", base_branch="HEAD"),
+            CreateBranchInput(
+                issue_number=123,
+                name="test-feature",
+                branch_type="feature",
+                base_branch="HEAD",
+            ),
             NoteContext(),
         )
 
-        assert result.branch_name == "feature/test-feature"
-        mock_manager.create_branch.assert_called_once_with("test-feature", "feature", "HEAD", ANY)
+        assert result.branch_name == "feature/123-test-feature"
+        mock_manager.create_branch.assert_called_once_with(
+            123, "test-feature", "feature", "HEAD", ANY
+        )
 
     @pytest.mark.asyncio
     async def test_git_status_tool_flow(self) -> None:

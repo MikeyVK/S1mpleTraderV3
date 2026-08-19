@@ -27,7 +27,7 @@ def test_git_manager_produces_generic_note_when_dirty(git_config: GitConfig) -> 
     context = NoteContext()
 
     with pytest.raises(PreflightError):
-        manager.create_branch("my-branch", "feature", "HEAD", context)
+        manager.create_branch(123, "my-branch", "feature", "HEAD", context)
 
     # Generic Note key and params assertion
     notes = context.entries

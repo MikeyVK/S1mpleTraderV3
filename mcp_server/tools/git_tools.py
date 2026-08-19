@@ -100,6 +100,7 @@ class CreateBranchInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    issue_number: int = Field(..., ge=1, description="GitHub issue number")
     name: str = Field(..., description="Branch name (kebab-case)")
     branch_type: str = Field(default="feature", description="Branch type")
 
@@ -154,6 +155,7 @@ class CreateBranchTool(ICoreTool[CreateBranchInput, CreateBranchOutput]):
             "Branch creation requested",
             extra={
                 "props": {
+                    "issue_number": params.issue_number,
                     "name": params.name,
                     "branch_type": params.branch_type,
                     "base_branch": params.base_branch,
@@ -163,7 +165,7 @@ class CreateBranchTool(ICoreTool[CreateBranchInput, CreateBranchOutput]):
 
         try:
             branch_name = self.manager.create_branch(
-                params.name, params.branch_type, params.base_branch, context
+                params.issue_number, params.name, params.branch_type, params.base_branch, context
             )
             return CreateBranchOutput(
                 success=True,
