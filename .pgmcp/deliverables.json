@@ -14,6 +14,73 @@
     ],
     "skip_reason": null,
     "parent_branch": "main",
-    "created_at": "2026-08-19T08:46:20.321606+00:00"
+    "created_at": "2026-08-19T08:46:20.321606+00:00",
+    "planning_deliverables": {
+      "cycles": {
+        "total": 4,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "name": "Adapter PushInfo Validation",
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "Unit tests in test_git_adapter.py validating observable push outcomes (remote rejection, empty result list, hook refusal, up-to-date, new head) via public adapter.push() API"
+              },
+              {
+                "id": "D1.2",
+                "description": "GitAdapter.push() implementation validating PushInfoList flags and raising ExecutionError on failure"
+              }
+            ],
+            "exit_criteria": "GitAdapter.push() raises ExecutionError with remote summary when PushInfo.ERROR, REJECTED, REMOTE_REJECTED, REMOTE_FAILURE is set or list is empty; returns None on valid successes; all adapter tests pass."
+          },
+          {
+            "cycle_number": 2,
+            "name": "Manager Tracking Delta & Domain Contract",
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "Unit tests in test_git_manager.py testing upstream state delta calculation, preexisting tracking retention, and failed tracking verification via public manager.push() API"
+              },
+              {
+                "id": "D2.2",
+                "description": "GitPushResult dataclass and GitManager.push() returning GitPushResult"
+              }
+            ],
+            "exit_criteria": "GitManager.push() calculates new_upstream_created accurately based on pre/post push tracking state; raises ExecutionError if set_upstream=True fails to establish tracking; all manager unit tests pass."
+          },
+          {
+            "cycle_number": 3,
+            "name": "Tool Async Execution & DTO Mapping",
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "Unit tests in test_git_tools.py testing GitPushTool.execute() success mapping, dynamic new_upstream_created propagation, and exception bubbling to decorator pipeline"
+              },
+              {
+                "id": "D3.2",
+                "description": "GitPushTool.execute() refactored with anyio.to_thread.run_sync and GitPushResult mapping"
+              }
+            ],
+            "exit_criteria": "GitPushTool executes asynchronously, maps all domain fields to GitPushOutput, and passes all tool tests."
+          },
+          {
+            "cycle_number": 4,
+            "name": "Integration Verification & Quality Gates",
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "Integration test suite verification confirming submit-pr rollback and recovery behavior"
+              },
+              {
+                "id": "D4.2",
+                "description": "Quality gates verification (Pylint 10.00/10.00, strict Mypy 0 errors, branch coverage >= 90%)"
+              }
+            ],
+            "exit_criteria": "All unit and integration test suites pass; strict quality gates pass with zero warnings or errors."
+          }
+        ]
+      }
+    }
   }
 }
