@@ -16,7 +16,7 @@ from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IContextLoadedWriter
 from mcp_server.core.operation_notes import NoteContext
-from mcp_server.managers.git_manager import BranchDeleteResult, GitManager
+from mcp_server.managers.git_manager import BranchDeleteResult, GitManager, GitPushResult
 from mcp_server.managers.state_repository import StateBranchMismatchError
 from mcp_server.schemas.tool_outputs import (
     CheckMergeOutput,
@@ -688,10 +688,14 @@ async def test_git_checkout_tool_no_parent_branch(mock_git_manager: MagicMock) -
 
 
 @pytest.mark.asyncio
-async def test_git_push_tool(mock_git_manager: MagicMock) -> None:
-    """Test git push tool."""
+async def test_git_push_tool_success_maps_result(mock_git_manager: MagicMock) -> None:
+    """Test git push tool maps GitPushResult accurately."""
     tool = GitPushTool(manager=mock_git_manager)
-    mock_git_manager.get_status.return_value = {"branch": "feature/foo"}
+    mock_git_manager.push.return_value = GitPushResult(
+        branch="feature/foo",
+        set_upstream=True,
+        new_upstream_created=True,
+    )
 
     params = GitPushInput(set_upstream=True)
     result = await tool.execute(params, NoteContext())
@@ -702,6 +706,26 @@ async def test_git_push_tool(mock_git_manager: MagicMock) -> None:
     assert result.success is True
     assert result.branch == "feature/foo"
     assert result.set_upstream is True
+    assert result.new_upstream_created is True
+
+
+@pytest.mark.asyncio
+async def test_git_push_tool_propagates_execution_error(
+    mock_git_manager: MagicMock,
+) -> None:
+    """Test git push tool lets ExecutionError bubble to decorator pipeline."""
+    tool = GitPushTool(manager=mock_git_manager)
+    mock_git_manager.push.side_effect = ExecutionError(
+        "Push rejected by remote: [rejected] (non-fast-forward)"
+    )
+
+    params = GitPushInput(set_upstream=False)
+
+    with pytest.raises(
+        ExecutionError,
+        match=r"Push rejected by remote: \[rejected\] \(non-fast-forward\)",
+    ):
+        await tool.execute(params, NoteContext())
 
 
 @pytest.mark.asyncio
