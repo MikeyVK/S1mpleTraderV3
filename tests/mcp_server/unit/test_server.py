@@ -352,6 +352,7 @@ class TestServerToolRegistration:
                 params=CallToolRequestParams(
                     name="create_branch",
                     arguments={
+                        "issue_number": 123,
                         "name": "new-thing",
                         "branch_type": "feature",
                         "base_branch": "release/1.0",

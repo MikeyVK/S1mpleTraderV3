@@ -118,7 +118,8 @@ class TestMergePRToolPRStatusWriter:
             "MergePRTool.__init__ must accept pr_status_writer: IPRStatusWriter"
         )
 
-    def test_merge_pr_sets_pr_status_absent_on_success(self) -> None:
+    @pytest.mark.asyncio
+    async def test_merge_pr_sets_pr_status_absent_on_success(self) -> None:
         """PRStatus.ABSENT must be written after a successful merge."""
         manager = MagicMock(spec=GitHubManager)
         manager.merge_pr.return_value = {
@@ -131,14 +132,15 @@ class TestMergePRToolPRStatusWriter:
         tool = self._make_merge_tool(manager, pr_status_writer)
         params = MergePRInput(pr_number=42)
 
-        result = asyncio.get_event_loop().run_until_complete(tool.execute(params, NoteContext()))
+        result = await tool.execute(params, NoteContext())
 
         assert result.success is True
         pr_status_writer.set_pr_status.assert_called_once()
         _branch, status = pr_status_writer.set_pr_status.call_args[0]
         assert status == PRStatus.ABSENT
 
-    def test_merge_pr_does_not_set_pr_status_on_failure(self) -> None:
+    @pytest.mark.asyncio
+    async def test_merge_pr_does_not_set_pr_status_on_failure(self) -> None:
         """PRStatus must NOT be written when merge fails."""
         manager = MagicMock(spec=GitHubManager)
         manager.merge_pr.side_effect = ExecutionError("Merge conflict")
@@ -148,6 +150,6 @@ class TestMergePRToolPRStatusWriter:
         params = MergePRInput(pr_number=42)
 
         with pytest.raises(ExecutionError):
-            asyncio.get_event_loop().run_until_complete(tool.execute(params, NoteContext()))
+            await tool.execute(params, NoteContext())
 
         pr_status_writer.set_pr_status.assert_not_called()
