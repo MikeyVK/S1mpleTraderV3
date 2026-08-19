@@ -3,7 +3,7 @@
   "branch": "feature/116-create-branch-issue-number",
   "issue_number": 116,
   "workflow_name": "feature",
-  "current_phase": "design",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -26,6 +26,14 @@
       "from_phase": "research",
       "to_phase": "design",
       "timestamp": "2026-08-19T14:15:02.974889+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-08-19T14:24:01.093884+00:00",
       "human_approval_message": null,
       "forced": false,
       "skip_reason": null
