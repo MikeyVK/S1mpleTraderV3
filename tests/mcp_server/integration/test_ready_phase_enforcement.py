@@ -30,7 +30,6 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-from mcp_server.core.interfaces import IPRStatusReader, PRStatus, IContextLoadedReader
 
 # Third-party
 import pytest
@@ -38,6 +37,7 @@ import pytest
 # Project modules
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.exceptions import ValidationError
+from mcp_server.core.interfaces import IContextLoadedReader, IPRStatusReader, PRStatus
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.enforcement_runner import (
     EnforcementContext,

@@ -9,9 +9,9 @@ Validates that all base templates have enforcement/level/validates structure.
 """
 
 import pytest
-from tests.mcp_server.test_support import get_template_root
 
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
+from tests.mcp_server.test_support import get_template_root
 
 
 class TestTier0ValidationMetadata:

@@ -13,7 +13,6 @@ Tests verify:
 @dependencies: [pytest, pathlib, mcp_server.tools.project_tools]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -23,6 +22,7 @@ import pytest
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     load_contracts_config,
     make_git_manager,
     make_phase_state_engine,

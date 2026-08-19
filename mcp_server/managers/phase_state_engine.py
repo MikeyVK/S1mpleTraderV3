@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
 from pydantic import ValidationError
 
 from mcp_server.core.exceptions import StateNotFoundError
@@ -102,7 +103,9 @@ class PhaseStateEngine:
         self._scope_decoder = scope_decoder
         self._workflow_gate_runner = workflow_gate_runner
         if workflow_state_mutator is None:
-            from mcp_server.managers.workflow_state_mutator import WorkflowStateMutator  # noqa: PLC0415
+            from mcp_server.managers.workflow_state_mutator import (
+                WorkflowStateMutator,  # noqa: PLC0415
+            )
 
             workflow_state_mutator = WorkflowStateMutator(state_repository=state_repository)
         self._workflow_state_mutator = workflow_state_mutator

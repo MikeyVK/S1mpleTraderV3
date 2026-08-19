@@ -6,8 +6,6 @@ Cycle 1 goals covered here:
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 
@@ -22,7 +20,7 @@ from mcp_server.managers.phase_contract_resolver import (
 )
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
-from tests.mcp_server.test_support import make_project_manager
+from tests.mcp_server.test_support import get_default_server_root, make_project_manager
 
 
 class FakeGateRunner:

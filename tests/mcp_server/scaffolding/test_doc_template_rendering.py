@@ -6,8 +6,9 @@ Tests that all templates render correctly with tier3 patterns after refactoring.
 """
 
 import pytest
-from tests.mcp_server.test_support import get_template_root
 from jinja2 import Environment, FileSystemLoader
+
+from tests.mcp_server.test_support import get_template_root
 
 TEMPLATES_DIR = get_template_root()
 

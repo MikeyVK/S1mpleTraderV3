@@ -20,8 +20,9 @@ RED phase: output_path=None / '' → compact single-line HTML-comment.
 
 # Third-party
 import pytest
-from tests.mcp_server.test_support import get_template_root
 from jinja2 import Environment, FileSystemLoader, Template
+
+from tests.mcp_server.test_support import get_template_root
 
 TEMPLATE_DIR = get_template_root()
 

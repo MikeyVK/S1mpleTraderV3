@@ -8,7 +8,7 @@ CQRS cache interfaces.
 """
 
 # Standard library
-from typing import Protocol, Type, TypeVar, runtime_checkable
+from typing import Protocol, TypeVar, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -35,7 +35,7 @@ class IToolResponsePublisher(Protocol):
 class IToolResponseReader(Protocol):
     """Read-only interface for retrieving cached tool execution results."""
 
-    def get(self, run_id: str, response_model: Type[T]) -> T | None:
+    def get(self, run_id: str, response_model: type[T]) -> T | None:
         """Retrieve and deserialize a cached DTO using the expected type-safe model."""
         ...
 

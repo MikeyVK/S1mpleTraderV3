@@ -29,13 +29,11 @@ Verifies that:
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 # Standard library
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 # Third-party
@@ -44,11 +42,10 @@ import pytest
 # Project modules
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.exceptions import ValidationError
-from mcp_server.core.interfaces import IPRStatusReader, PRStatus
+from mcp_server.core.interfaces import ICoreTool, IPRStatusReader, PRStatus
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.state_repository import FileStateRepository
-from mcp_server.core.interfaces import ICoreTool
 from mcp_server.tools.cycle_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.git_pull_tool import GitPullTool
 from mcp_server.tools.git_tools import (
@@ -68,6 +65,7 @@ from mcp_server.tools.project_tools import (
 )
 from mcp_server.tools.safe_edit_tool import SafeEditTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
+from tests.mcp_server.test_support import get_default_server_root
 
 if TYPE_CHECKING:
     pass

@@ -10,7 +10,6 @@ Tests configuration loading from artifacts.yaml with:
 @dependencies: pytest, yaml, mcp_server.config.schemas.artifact_registry_config
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +24,7 @@ from mcp_server.config.schemas import (
     StateMachine,
 )
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 # config_path is always passed explicitly to load_*; config_root is only used as
 # a required constructor argument. We point it at the real .pgmcp/config directory

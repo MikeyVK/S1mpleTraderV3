@@ -10,8 +10,9 @@ Tests for CachedResponseResource validation and reading.
 """
 
 # Third-party
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from pydantic import BaseModel
 
 # Project modules

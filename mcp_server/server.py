@@ -24,16 +24,16 @@ from pydantic import AnyUrl
 
 # Config
 from mcp_server.config.settings import Settings
-from mcp_server.core.logging import get_logger
-from mcp_server.core.operation_notes import NoteContext
-from mcp_server.presenters.text_presenter import TextPresenter
-from mcp_server.resources.base import BaseResource
 
 # Resources
 # Resources
 # Scaffolding infrastructure (Issue #72)
 from mcp_server.core.interfaces.itool import ITool
 from mcp_server.core.interfaces.itool_response_cache import IToolResponsePublisher
+from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import NoteContext
+from mcp_server.presenters.text_presenter import TextPresenter
+from mcp_server.resources.base import BaseResource
 
 # Tools
 from mcp_server.tools.tool_result import ToolResult

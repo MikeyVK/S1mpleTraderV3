@@ -10,7 +10,7 @@ Read/apply access to persisted quality-gate baseline state.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol, TYPE_CHECKING, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from mcp_server.state.quality_state import QualityState

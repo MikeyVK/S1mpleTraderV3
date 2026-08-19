@@ -17,10 +17,10 @@ import logging
 from pathlib import Path
 
 from mcp_server.core.exceptions import (
-    StateNotFoundError,
-    StateCorruptedError,
-    StateVersionMismatchError,
     PlanningVersionMismatchError,
+    StateCorruptedError,
+    StateNotFoundError,
+    StateVersionMismatchError,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,13 +70,12 @@ class StateVersionValidator:
                     actual_version=str(actual_version),
                     expected_version=expected_version,
                 )
-            else:
-                raise StateVersionMismatchError(
-                    message=msg,
-                    file_path=str(file_path),
-                    actual_version=str(actual_version),
-                    expected_version=expected_version,
-                )
+            raise StateVersionMismatchError(
+                message=msg,
+                file_path=str(file_path),
+                actual_version=str(actual_version),
+                expected_version=expected_version,
+            )
 
     def backup_file(self, file_path: Path) -> None:
         """Rename the invalid file at file_path to file_path.bak (Command).

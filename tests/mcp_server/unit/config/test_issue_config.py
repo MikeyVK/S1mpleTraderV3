@@ -6,7 +6,6 @@
                    -> type:bug mapping), and optional_label_inputs.
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import tempfile
 from pathlib import Path
 
@@ -16,6 +15,7 @@ import yaml
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import IssueConfig
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 _PGMCP_CONFIG = Path(__file__).resolve().parents[4] / get_default_server_root() / "config"
 

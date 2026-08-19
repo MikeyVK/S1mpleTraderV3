@@ -4,9 +4,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.schemas.tool_outputs import TemplateValidationErrorDTO, TemplateValidationOutput
-from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.validation.template_validator import TemplateValidator
 
 

@@ -11,12 +11,13 @@ Cycle 2 — Verify .pgmcp/config/labels.yaml conventions:
 @dependencies: pytest, yaml, .pgmcp/config/labels.yaml
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import re
 from pathlib import Path
 
 import pytest
 import yaml
+
+from tests.mcp_server.test_support import get_default_server_root
 
 LABELS_PATH = Path(f"{get_default_server_root()}/config/labels.yaml")
 

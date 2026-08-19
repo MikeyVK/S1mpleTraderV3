@@ -19,8 +19,6 @@ signature verification and key behavioral delegation via ContractsConfig.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import inspect
 import json
@@ -40,6 +38,7 @@ from mcp_server.config.schemas.contracts_config import (
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.issue_tools import CreateIssueTool
+from tests.mcp_server.test_support import get_default_server_root
 
 _STUB_INSTRUCTIONS = PhaseInstructionsSpec(
     sub_role="test-role",

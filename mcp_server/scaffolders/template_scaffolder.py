@@ -1,7 +1,6 @@
 # mcp_server/scaffolders/template_scaffolder.py
 from __future__ import annotations
 
-
 """
 
 Single scaffolder implementation that replaces 9 separate scaffolder classes.

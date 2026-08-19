@@ -9,8 +9,6 @@ Tests exercise the public runner.run() API exclusively; no private-method access
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -30,6 +28,7 @@ from mcp_server.managers.enforcement_runner import (
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.state_repository import FileStateRepository
 from mcp_server.state.pr_status_cache import PRStatusCache
+from tests.mcp_server.test_support import get_default_server_root
 
 
 def _make_ctx(tmp_path: Path, tool_name: str = "any_tool") -> EnforcementContext:

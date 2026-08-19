@@ -8,6 +8,7 @@ for tier3 pattern injection.
 """
 
 import pytest
+
 from tests.mcp_server.test_support import get_template_root
 
 TEMPLATES_DIR = get_template_root()

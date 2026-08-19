@@ -12,7 +12,6 @@ This approach tests behavior, not implementation details, making tests:
 @layer: Tests (Unit - Behavioral)
 """
 
-from tests.mcp_server.test_support import get_default_server_root, get_template_root
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -23,6 +22,7 @@ from mcp_server.config.schemas import ArtifactDefinition, ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
+from tests.mcp_server.test_support import get_default_server_root, get_template_root
 
 
 class TestServiceTemplateResolution:

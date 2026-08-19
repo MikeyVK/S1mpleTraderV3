@@ -11,7 +11,7 @@ Tests for ResponseCacheManager key validation and normalization.
 
 # Third-party
 import pytest
-from pydantic import ValidationError, BaseModel
+from pydantic import BaseModel, ValidationError
 
 # Project modules
 from mcp_server.schemas.cache_publication import CachePublication

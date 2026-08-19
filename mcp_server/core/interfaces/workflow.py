@@ -10,7 +10,7 @@ Command-side seam for coordinated workflow state writes.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol, TYPE_CHECKING, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from mcp_server.managers.state_repository import BranchState

@@ -3,7 +3,6 @@ Unit tests for _validate_tool_arguments failure path and schema://validation res
 Scope: Cycle 2, Change A — argument validation returns ToolResult on failure.
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 from pathlib import Path
 from typing import Any
@@ -13,12 +12,12 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams, EmbeddedResource
 from pydantic import BaseModel, Field
 
-from mcp_server.core.operation_notes import NoteContext
-from mcp_server.server import MCPServer
 from mcp_server.core.interfaces.icore_tool import ICoreTool
-from mcp_server.tools.tool_result import ToolResult
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.tool_factory import ToolFactory
-from tests.mcp_server.test_support import make_test_server
+from mcp_server.server import MCPServer
+from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import get_default_server_root, make_test_server
 
 # ---------------------------------------------------------------------------
 # Helpers

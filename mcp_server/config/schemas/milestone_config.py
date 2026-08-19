@@ -13,6 +13,7 @@ Defines typed value objects for milestone metadata loaded by the config layer.
 """
 
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 

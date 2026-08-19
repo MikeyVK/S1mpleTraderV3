@@ -21,7 +21,7 @@ import asyncio
 import re
 from difflib import get_close_matches
 from pathlib import Path
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 # Third-party
 from pydantic import BaseModel, ConfigDict, Field
@@ -86,7 +86,7 @@ class PatternReplaceOp(BaseModel):
 
 
 OperationType = Annotated[
-    Union[ReplaceOp, AppendOp, RewriteOp, PatternReplaceOp],
+    ReplaceOp | AppendOp | RewriteOp | PatternReplaceOp,
     Field(discriminator="op"),
 ]
 

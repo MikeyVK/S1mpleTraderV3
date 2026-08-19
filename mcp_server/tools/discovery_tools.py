@@ -9,14 +9,14 @@ from pydantic import BaseModel, ConfigDict
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import StateNotFoundError
+from mcp_server.core.interfaces import ICoreTool
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.schemas import WorkphasesConfig
 from mcp_server.schemas.tool_outputs import GetWorkContextOutput
-from mcp_server.core.interfaces import ICoreTool
-from mcp_server.core.operation_notes import NoteContext
 
 if TYPE_CHECKING:
     from mcp_server.config.schemas.contracts_config import ContractsConfig

@@ -9,7 +9,6 @@ C3 Deliverables:
 @dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.phase_state_engine
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import logging
 from pathlib import Path
 
@@ -18,7 +17,11 @@ import pytest
 from mcp_server.core.interfaces import GateReport
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class _StaticGateRunner:

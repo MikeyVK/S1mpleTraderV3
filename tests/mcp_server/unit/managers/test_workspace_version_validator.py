@@ -2,6 +2,7 @@
 """Unit tests for WorkspaceVersionValidator."""
 
 from pathlib import Path
+
 import pytest
 
 from mcp_server.core.exceptions import ConfigError

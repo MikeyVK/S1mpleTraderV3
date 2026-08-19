@@ -21,8 +21,8 @@ import anyio
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.core.exceptions import MCPError
-from mcp_server.core.logging import get_logger
 from mcp_server.core.interfaces import ICoreTool
+from mcp_server.core.logging import get_logger
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.schemas.tool_outputs import GitFetchOutput

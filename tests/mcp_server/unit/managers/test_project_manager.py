@@ -10,18 +10,18 @@ Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 @dependencies: pytest, tests.mcp_server.test_support, mcp_server.managers.project_manager
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.core.exceptions import PlanningVersionMismatchError
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 from mcp_server.managers.state_repository import StateBranchMismatchError, StateNotFoundError
 from mcp_server.state.workflow_status import WorkflowStatusDTO
-from mcp_server.core.exceptions import PlanningVersionMismatchError
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     load_contracts_config,
     load_workflow_config,
     make_project_manager,

@@ -9,8 +9,6 @@ C20: Union newly failed files with persisted failed_files set.
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 from pathlib import Path
@@ -19,7 +17,7 @@ from unittest.mock import MagicMock, patch
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.managers.quality_state_repository import FileQualityStateRepository
 from mcp_server.state.quality_state import QualityState
-from tests.mcp_server.test_support import make_qa_manager
+from tests.mcp_server.test_support import get_default_server_root, make_qa_manager
 
 
 def _make_quality_repo(

@@ -9,10 +9,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.config.schemas.label_config import validate_phase_label
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.interfaces import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import LabelConfig, WorkphasesConfig
-from mcp_server.core.interfaces import ICoreTool
 from mcp_server.schemas.tool_outputs import (
     CreateLabelOutput,
     DeleteLabelOutput,

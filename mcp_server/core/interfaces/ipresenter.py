@@ -8,6 +8,7 @@ Interfaces for translating execution results, operation notes, and presentation 
 """
 
 from typing import Any, Protocol, runtime_checkable
+
 from pydantic import BaseModel
 
 from mcp_server.core.operation_notes import NoteEntry

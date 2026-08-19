@@ -16,7 +16,7 @@ from typing import Any, ClassVar, Generic, TypeVar
 import anyio
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from mcp_server.core.interfaces import GateViolation, IWorkflowGateRunner, ICoreTool
+from mcp_server.core.interfaces import GateViolation, ICoreTool, IWorkflowGateRunner
 from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine

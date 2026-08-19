@@ -15,6 +15,7 @@ import re
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
+
 from mcp_server.resources.base import BaseResource
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ class CachedResponseResource(BaseResource):
         """Check if the URI matches the cached runs pattern with a valid hex UUID."""
         if not uri.startswith("pgmcp://cache/runs/"):
             return False
-        run_id = uri.split("/")[-1]
+        run_id = uri.rsplit("/", maxsplit=1)[-1]
         return bool(re.match(r"^[a-f0-9]{32}$", run_id))
 
     async def read(self, uri: str) -> str:
@@ -43,7 +44,7 @@ class CachedResponseResource(BaseResource):
         if not uri.startswith("pgmcp://cache/runs/"):
             raise ValueError(f"Invalid resource URI: {uri}")
 
-        run_id = uri.split("/")[-1]
+        run_id = uri.rsplit("/", maxsplit=1)[-1]
         if not re.match(r"^[a-f0-9]{32}$", run_id):
             raise ValueError(f"Invalid run_id format: {run_id}")
 

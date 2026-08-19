@@ -19,8 +19,6 @@ Affected tools:
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -37,7 +35,11 @@ from mcp_server.tools.phase_tools import (
     TransitionPhaseInput,
     TransitionPhaseTool,
 )
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 # ---------------------------------------------------------------------------
 # Shared helpers

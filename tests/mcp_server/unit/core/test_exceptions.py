@@ -8,8 +8,6 @@
   - Ensure ConfigError format includes file_path
 """
 
-from tests.mcp_server.test_support import get_default_server_root
-
 # Third-party
 import pytest
 
@@ -22,6 +20,7 @@ from mcp_server.core.exceptions import (
     PreflightError,
     ValidationError,
 )
+from tests.mcp_server.test_support import get_default_server_root
 
 
 def test_mcp_error_base_contract() -> None:

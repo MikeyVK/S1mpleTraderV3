@@ -14,6 +14,7 @@ Unit tests for ITextPresenter, IResourcePresenter, and IPresenter protocols.
 """
 
 from typing import Any
+
 from pydantic import BaseModel
 
 from mcp_server.core.interfaces.ipresenter import IPresenter, IResourcePresenter, ITextPresenter
@@ -70,6 +71,7 @@ class MockPresenter:
 
 class IncompletePresenter:
     """Invalid presenter missing required methods."""
+
     pass
 
 

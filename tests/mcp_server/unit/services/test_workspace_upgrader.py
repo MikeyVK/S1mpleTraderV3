@@ -4,6 +4,7 @@
 import json
 from pathlib import Path
 from unittest.mock import MagicMock
+
 import pytest
 
 from mcp_server.config.settings import Settings

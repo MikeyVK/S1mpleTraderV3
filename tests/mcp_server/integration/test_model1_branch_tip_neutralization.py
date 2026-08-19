@@ -25,8 +25,6 @@ Three scenarios (D5 test contract):
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 from pathlib import Path
@@ -39,6 +37,7 @@ from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.git_tools import GitCommitInput, GitCommitTool
+from tests.mcp_server.test_support import get_default_server_root
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 

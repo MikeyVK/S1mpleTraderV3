@@ -12,6 +12,7 @@ These tests must all be GREEN after the settings and loader flag-day work.
 import importlib.util
 import inspect
 import re
+
 import mcp_server.config.settings as _settings_module
 from mcp_server.config.settings import Settings
 

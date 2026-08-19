@@ -19,10 +19,10 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.core.exceptions import ConfigError, MCPError, ValidationError
+from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.schemas.tool_outputs import ScaffoldArtifactOutput
-from mcp_server.core.interfaces.icore_tool import ICoreTool
 
 
 class ScaffoldArtifactInput(BaseModel):

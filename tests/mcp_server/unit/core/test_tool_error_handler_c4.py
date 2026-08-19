@@ -13,8 +13,6 @@ using only message, error_code, and file_path. No hints field exists on ToolResu
     - Verify exception constructors reject legacy kwargs
 """
 
-from tests.mcp_server.test_support import get_default_server_root
-
 # Third-party
 import pytest
 
@@ -28,6 +26,7 @@ from mcp_server.core.exceptions import (
     ValidationError,
 )
 from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestToolErrorHandlerC4:

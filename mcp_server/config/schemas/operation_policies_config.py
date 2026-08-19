@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import fnmatch
 from pathlib import Path
-
 from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 import uuid
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Type, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from mcp_server.core.interfaces import IToolResponsePublisher, IToolResponseReader
 from mcp_server.schemas.cache_publication import CachePublication
@@ -51,7 +51,7 @@ class ResponseCacheManager(IToolResponsePublisher, IToolResponseReader):
         except Exception:
             return CachePublication(run_id=None, success=False, error_code="write_failed")
 
-    def get(self, run_id: str, response_model: Type[T] | None = None) -> T | None:
+    def get(self, run_id: str, response_model: type[T] | None = None) -> T | None:
         """Retrieve and deserialize a cached DTO using the expected type-safe model."""
         if not re.match(r"^[a-f0-9]{32}$", run_id):
             return None

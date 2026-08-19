@@ -8,14 +8,12 @@ C22: Resolve scope=branch using git diff parent...HEAD (merge-base semantics).
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from tests.mcp_server.test_support import make_qa_manager
+from tests.mcp_server.test_support import get_default_server_root, make_qa_manager
 
 
 def _make_workspace(tmp_path: Path, files: list[str]) -> None:

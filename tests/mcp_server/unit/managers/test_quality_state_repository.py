@@ -15,8 +15,6 @@ Tests verify:
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import inspect
 import json
@@ -32,6 +30,7 @@ from mcp_server.managers.quality_state_repository import FileQualityStateReposit
 
 # RED: will fail with ModuleNotFoundError until C5 GREEN creates quality_state.py
 from mcp_server.state.quality_state import QualityState
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestIQualityStateRepositoryProtocol:
@@ -63,7 +62,7 @@ class TestQualityState:
     def test_quality_state_includes_schema_version(self) -> None:
         """Verify that QualityState defaults schema_version to '1.0.0'."""
         state = QualityState(baseline_sha="abc", failed_files=[])
-        assert getattr(state, "schema_version") == "1.0.0"
+        assert state.schema_version == "1.0.0"
 
 
 class TestFileQualityStateRepositoryLoad:

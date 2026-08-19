@@ -12,10 +12,10 @@ Tests verify:
 @dependencies: [pytest, pathlib, jinja2]
 """
 
-from tests.mcp_server.test_support import get_template_root
-
 import pytest
 from jinja2 import Environment, FileSystemLoader, Template
+
+from tests.mcp_server.test_support import get_template_root
 
 _DOC_HEADER = {
     "status": "DRAFT",

@@ -19,8 +19,9 @@ import re
 
 # Third-party
 import pytest
-from tests.mcp_server.test_support import get_template_root
 from jinja2 import Environment, FileSystemLoader
+
+from tests.mcp_server.test_support import get_template_root
 
 
 @pytest.fixture

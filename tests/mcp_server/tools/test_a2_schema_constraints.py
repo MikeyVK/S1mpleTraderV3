@@ -10,9 +10,9 @@ Covers:
 import pytest
 from pydantic import ValidationError
 
+from mcp_server.tools.cycle_tools import ForceCycleTransitionInput
 from mcp_server.tools.label_tools import CreateLabelInput
 from mcp_server.tools.phase_tools import ForcePhaseTransitionInput
-from mcp_server.tools.cycle_tools import ForceCycleTransitionInput
 
 
 class TestForcePhaseTransitionInputSchema:
