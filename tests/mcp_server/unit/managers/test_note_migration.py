@@ -1,12 +1,13 @@
-from tests.mcp_server.test_support import get_default_server_root
-import pytest
-from unittest.mock import MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 from mcp_server.config.schemas import GitConfig
-from mcp_server.core.operation_notes import NoteContext, Note
-from mcp_server.managers.git_manager import GitManager
 from mcp_server.core.exceptions import PreflightError
+from mcp_server.core.operation_notes import Note, NoteContext
+from mcp_server.managers.git_manager import GitManager
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture
@@ -27,7 +28,7 @@ def test_git_manager_produces_generic_note_when_dirty(git_config: GitConfig) -> 
     context = NoteContext()
 
     with pytest.raises(PreflightError):
-        manager.create_branch("my-branch", "feature", "HEAD", context)
+        manager.create_branch(123, "my-branch", "feature", "HEAD", context)
 
     # Generic Note key and params assertion
     notes = context.entries

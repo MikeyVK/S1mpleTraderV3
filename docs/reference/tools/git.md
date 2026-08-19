@@ -45,13 +45,14 @@ The MCP server provides **15 Git tools** across 4 functional categories:
 **Class:** `CreateBranchTool`  
 **File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
 
-Create a new branch from specified base branch.
+Create a new branch from specified base branch. Automatically formats the canonical branch name as `{branch_type}/{issue_number}-{name}`.
 
 #### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | `str` | **Yes** | Branch name (kebab-case) — e.g., `"feature/123-my-feature"` |
+| `issue_number` | `int` | **Yes** | GitHub issue number (must be >= 1) — automatically formatted as `{type}/{issue_number}-{name}` |
+| `name` | `str` | **Yes** | Branch name slug (kebab-case) — e.g., `"oauth-integration"` (leading `{issue_number}-` prefix is normalized if present) |
 | `base_branch` | `str` | **Yes** | Base branch to create from (e.g., `"HEAD"`, `"main"`, `"develop"`) |
 | `branch_type` | `str` | No | Branch type (default: `"feature"`). Valid values are populated at runtime from `git.yaml` via the `branch_types` config; enum is injected via A4 schema override. |
 
@@ -60,8 +61,8 @@ Create a new branch from specified base branch.
 ```json
 {
   "success": true,
-  "message": "Branch 'feature/123-my-feature' created from 'main'",
-  "branch": "feature/123-my-feature"
+  "message": "Branch 'feature/123-oauth-integration' created from 'main'",
+  "branch": "feature/123-oauth-integration"
 }
 ```
 
@@ -69,7 +70,8 @@ Create a new branch from specified base branch.
 
 ```json
 {
-  "name": "feature/123-oauth-integration",
+  "issue_number": 123,
+  "name": "oauth-integration",
   "base_branch": "main",
   "branch_type": "feature"
 }

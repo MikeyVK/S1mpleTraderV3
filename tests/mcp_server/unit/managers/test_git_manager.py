@@ -4,10 +4,8 @@
 @dependencies: pytest, mcp_server.managers.git_manager, mcp_server.config.schemas
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false, reportPrivateUsage=false
 # Suppress Pydantic false positives; reportPrivateUsage allows protected member access in test setup
-
 # Standard library
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -24,6 +22,7 @@ from mcp_server.core.operation_notes import Note, NoteContext
 
 # Module under test
 from mcp_server.managers.git_manager import GitManager, GitPushResult
+from tests.mcp_server.test_support import get_default_server_root
 
 _TEST_WORKPHASES = WorkphasesConfig(
     phases={
@@ -78,15 +77,15 @@ class TestGitManagerValidation:
 
     def test_create_branch_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test creating a branch with explicit base."""
-        name = manager.create_branch("my-feature", "feature", "HEAD", NoteContext())
+        name = manager.create_branch(123, "my-feature", "feature", "HEAD", NoteContext())
 
-        assert name == "feature/my-feature"
-        mock_adapter.create_branch.assert_called_once_with("feature/my-feature", base="HEAD")
+        assert name == "feature/123-my-feature"
+        mock_adapter.create_branch.assert_called_once_with("feature/123-my-feature", base="HEAD")
         mock_adapter.is_clean.assert_called_once()
 
     def test_create_branch_epic_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test creating an epic branch with explicit base."""
-        name = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD", NoteContext())
+        name = manager.create_branch(91, "test-suite-cleanup", "epic", "HEAD", NoteContext())
 
         assert name == "epic/91-test-suite-cleanup"
         mock_adapter.create_branch.assert_called_once_with(
@@ -97,19 +96,19 @@ class TestGitManagerValidation:
     def test_create_branch_invalid_type(self, manager: GitManager) -> None:
         """Test validation of branch type."""
         with pytest.raises(ValidationError, match="Invalid branch type"):
-            manager.create_branch("valid-name", "invalid-type", "HEAD", NoteContext())
+            manager.create_branch(123, "valid-name", "invalid-type", "HEAD", NoteContext())
 
     def test_create_branch_invalid_name(self, manager: GitManager) -> None:
         """Test validation of branch name (regex)."""
         with pytest.raises(ValidationError, match="Invalid branch name"):
-            manager.create_branch("Bad Name!", "feature", "HEAD", NoteContext())
+            manager.create_branch(123, "Bad Name!", "feature", "HEAD", NoteContext())
 
     def test_create_branch_dirty(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test pre-flight check failure for dirty working directory."""
         mock_adapter.is_clean.return_value = False
 
         with pytest.raises(PreflightError, match="Working directory is not clean"):
-            manager.create_branch("valid-name", "feature", "HEAD", NoteContext())
+            manager.create_branch(123, "valid-name", "feature", "HEAD", NoteContext())
 
     def test_delete_branch_protected(self, manager: GitManager) -> None:
         """Test deletion of protected branch is prevented."""
@@ -277,15 +276,15 @@ class TestGitManagerCreateBranch:
     def test_create_branch_requires_base_branch_parameter(self, manager: GitManager) -> None:
         """RED: create_branch should require base_branch parameter (no default)."""
         with pytest.raises(TypeError):
-            manager.create_branch("test", "feature")  # type: ignore[call-arg]
+            manager.create_branch(123, "test", "feature")  # type: ignore[call-arg]
 
     def test_create_branch_passes_base_to_adapter(
         self, manager: GitManager, mock_adapter: MagicMock
     ) -> None:
         """RED: Should pass base_branch to adapter.create_branch as base."""
-        manager.create_branch("test", "feature", "main", NoteContext())
+        manager.create_branch(123, "test", "feature", "main", NoteContext())
 
-        mock_adapter.create_branch.assert_called_once_with("feature/test", base="main")
+        mock_adapter.create_branch.assert_called_once_with("feature/123-test", base="main")
 
 
 class TestGitManagerCommitWithScope:

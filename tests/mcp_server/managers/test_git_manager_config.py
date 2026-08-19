@@ -4,7 +4,6 @@
 @dependencies: pytest, mcp_server.adapters.git_adapter, mcp_server.managers.git_manager
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -15,6 +14,7 @@ from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestGitManagerConfigIntegration:
@@ -40,21 +40,21 @@ class TestGitManagerConfigIntegration:
     def test_create_branch_uses_git_config_branch_types(self) -> None:
         """Test create_branch() validates branch_type via GitConfig."""
         ctx = NoteContext()
-        self.manager.create_branch("123-test", "feature", "main", ctx)
+        self.manager.create_branch(123, "test", "feature", "main", ctx)
         self.mock_adapter.create_branch.assert_called_once_with("feature/123-test", base="main")
 
         with pytest.raises(ValidationError, match="Invalid branch type: invalid-type"):
-            self.manager.create_branch("123-test", "invalid-type", "main", NoteContext())
+            self.manager.create_branch(123, "test", "invalid-type", "main", NoteContext())
 
     def test_create_branch_uses_git_config_name_pattern(self) -> None:
         """Test create_branch() validates name via GitConfig pattern."""
-        self.manager.create_branch("valid-name-123", "feature", "main", NoteContext())
+        self.manager.create_branch(123, "valid-name-123", "feature", "main", NoteContext())
 
-        with pytest.raises(ValidationError, match="Invalid branch name: Invalid-Name"):
-            self.manager.create_branch("Invalid-Name", "feature", "main", NoteContext())
+        with pytest.raises(ValidationError, match="Invalid branch name slug: 'Invalid-Name'"):
+            self.manager.create_branch(123, "Invalid-Name", "feature", "main", NoteContext())
 
-        with pytest.raises(ValidationError, match="Invalid branch name: invalid_name"):
-            self.manager.create_branch("invalid_name", "feature", "main", NoteContext())
+        with pytest.raises(ValidationError, match="Invalid branch name slug: 'invalid_name'"):
+            self.manager.create_branch(123, "invalid_name", "feature", "main", NoteContext())
 
     def test_commit_with_scope_uses_workflow_and_subphase_validation(self) -> None:
         """Test commit_with_scope validates workflow/subphase and uses explicit types."""

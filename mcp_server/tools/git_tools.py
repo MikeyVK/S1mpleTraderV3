@@ -1,15 +1,15 @@
 """Git tools."""
 
 import contextlib
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Literal
 
 import anyio
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.core.exceptions import MCPError
-from mcp_server.core.interfaces import IContextLoadedWriter, IStateReader, ICoreTool
+from mcp_server.core.interfaces import IContextLoadedWriter, ICoreTool, IStateReader
 from mcp_server.core.logging import get_logger
 from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.managers import phase_state_engine
@@ -29,7 +29,6 @@ from mcp_server.schemas.tool_outputs import (
     GitStashOutput,
     GitStatusOutput,
 )
-
 
 logger = get_logger("tools.git")
 
@@ -100,6 +99,7 @@ class CreateBranchInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    issue_number: int = Field(..., ge=1, description="GitHub issue number")
     name: str = Field(..., description="Branch name (kebab-case)")
     branch_type: str = Field(default="feature", description="Branch type")
 
@@ -154,6 +154,7 @@ class CreateBranchTool(ICoreTool[CreateBranchInput, CreateBranchOutput]):
             "Branch creation requested",
             extra={
                 "props": {
+                    "issue_number": params.issue_number,
                     "name": params.name,
                     "branch_type": params.branch_type,
                     "base_branch": params.base_branch,
@@ -163,7 +164,7 @@ class CreateBranchTool(ICoreTool[CreateBranchInput, CreateBranchOutput]):
 
         try:
             branch_name = self.manager.create_branch(
-                params.name, params.branch_type, params.base_branch, context
+                params.issue_number, params.name, params.branch_type, params.base_branch, context
             )
             return CreateBranchOutput(
                 success=True,

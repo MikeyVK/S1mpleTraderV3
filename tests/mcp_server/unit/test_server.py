@@ -1,5 +1,3 @@
-from tests.mcp_server.test_support import get_default_server_root
-
 # pyright: reportMissingImports=false
 """Tests for MCP Server tool registration and dispatch hooks.
 
@@ -12,41 +10,41 @@ import logging
 import os
 import shutil
 import subprocess
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from mcp.types import CallToolRequest, CallToolRequestParams
 from pydantic import BaseModel
 
-from mcp_server.server import MCPServer
 from mcp_server.bootstrap import ServerBootstrapper, TemplateRegistry
-from mcp.types import CallToolRequest, CallToolRequestParams
-
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.schemas.cache_publication import CachePublication
-from mcp_server.core.operation_notes import NoteContext
-from mcp_server.managers.state_repository import InMemoryStateRepository
-from mcp_server.schemas.tool_outputs import PhaseTransitionOutput
 from mcp_server.core.interfaces import ICoreTool
+from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.tool_factory import ToolFactory
+from mcp_server.managers.state_repository import InMemoryStateRepository
+from mcp_server.schemas.cache_publication import CachePublication
+from mcp_server.schemas.tool_outputs import PhaseTransitionOutput
+from mcp_server.server import MCPServer
 from mcp_server.tools.git_tools import CreateBranchTool
 from mcp_server.tools.phase_tools import (
     ForcePhaseTransitionTool,
     TransitionPhaseTool,
 )
+from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+    make_test_server,
+)
 
 TRANSITION_ADVISORY_NOTE = (
     "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call "
     "to load the current phase context for this branch."
-)
-from mcp_server.tools.tool_result import ToolResult
-from mcp_server.core.tool_factory import ToolFactory
-from tests.mcp_server.test_support import (
-    make_phase_state_engine,
-    make_project_manager,
-    make_test_server,
 )
 
 
@@ -352,6 +350,7 @@ class TestServerToolRegistration:
                 params=CallToolRequestParams(
                     name="create_branch",
                     arguments={
+                        "issue_number": 123,
                         "name": "new-thing",
                         "branch_type": "feature",
                         "base_branch": "release/1.0",
@@ -682,7 +681,7 @@ class TestServerToolRegistration:
         @asynccontextmanager
         async def fake_stdio_server(
             *_args: object, **_kwargs: object
-        ) -> AsyncIterator[tuple[MagicMock, MagicMock]]:
+        ) -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
             yield MagicMock(), MagicMock()
 
         with patch("mcp_server.config.settings.Settings") as mock_settings_cls:
@@ -709,8 +708,9 @@ async def test_handle_call_tool_cache_error_intercept() -> None:
     and format the fallback message correctly without crashing.
     """
     from pydantic import BaseModel  # noqa: PLC0415
-    from mcp_server.state.response_cache import ResponseCacheManager  # noqa: PLC0415
+
     from mcp_server.presenters.text_presenter import TextPresenter  # noqa: PLC0415
+    from mcp_server.state.response_cache import ResponseCacheManager  # noqa: PLC0415
 
     class DummyTool(ICoreTool[BaseModel, ToolResult]):
         @property

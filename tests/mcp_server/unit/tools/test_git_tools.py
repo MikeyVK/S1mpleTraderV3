@@ -4,7 +4,6 @@
 @dependencies: [pytest, pathlib, mcp_server.tools.git_tools]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 from unittest.mock import ANY, MagicMock
 
@@ -56,6 +55,7 @@ from mcp_server.tools.git_tools import (
     GitStatusInput,
     GitStatusTool,
 )
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture
@@ -78,7 +78,27 @@ def mock_git_manager() -> MagicMock:
 async def test_create_branch_tool_requires_base_branch() -> None:
     """Test that base_branch parameter is required."""
     with pytest.raises(Exception):  # noqa: B017 — Pydantic validation error; exact type varies by version
-        CreateBranchInput(name="test-branch", branch_type="feature")
+        CreateBranchInput(issue_number=123, name="test-branch", branch_type="feature")
+
+
+@pytest.mark.asyncio
+async def test_create_branch_tool_requires_issue_number() -> None:
+    """Test that CreateBranchInput requires issue_number."""
+    with pytest.raises(Exception):  # noqa: B017
+        CreateBranchInput(name="test-branch", branch_type="feature", base_branch="HEAD")
+
+
+@pytest.mark.asyncio
+async def test_create_branch_tool_rejects_non_positive_issue_number() -> None:
+    """Test that CreateBranchInput rejects issue_number < 1."""
+    with pytest.raises(Exception):  # noqa: B017
+        CreateBranchInput(
+            issue_number=0, name="test-branch", branch_type="feature", base_branch="HEAD"
+        )
+    with pytest.raises(Exception):  # noqa: B017
+        CreateBranchInput(
+            issue_number=-5, name="test-branch", branch_type="feature", base_branch="HEAD"
+        )
 
 
 @pytest.mark.asyncio
@@ -87,16 +107,20 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(
 ) -> None:
     """Test that tool passes all parameters including base_branch to manager."""
     tool = CreateBranchTool(manager=mock_git_manager)
-    mock_git_manager.create_branch.return_value = "feature/test-branch"
+    mock_git_manager.create_branch.return_value = "feature/123-test-branch"
 
-    params = CreateBranchInput(name="test-branch", branch_type="feature", base_branch="HEAD")
+    params = CreateBranchInput(
+        issue_number=123, name="test-branch", branch_type="feature", base_branch="HEAD"
+    )
     result = await tool.execute(params, NoteContext())
 
-    mock_git_manager.create_branch.assert_called_once_with("test-branch", "feature", "HEAD", ANY)
+    mock_git_manager.create_branch.assert_called_once_with(
+        123, "test-branch", "feature", "HEAD", ANY
+    )
 
     assert isinstance(result, CreateBranchOutput)
     assert result.success is True
-    assert result.branch_name == "feature/test-branch"
+    assert result.branch_name == "feature/123-test-branch"
     assert result.branch_type == "feature"
     assert result.base_branch == "HEAD"
 
@@ -105,20 +129,23 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(
 async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager: MagicMock) -> None:
     """Test creating branch from another branch name."""
     tool = CreateBranchTool(manager=mock_git_manager)
-    mock_git_manager.create_branch.return_value = "bug/new-fix"
+    mock_git_manager.create_branch.return_value = "bug/51-new-fix"
 
     params = CreateBranchInput(
-        name="new-fix", branch_type="bug", base_branch="refactor/51-labels-yaml"
+        issue_number=51,
+        name="new-fix",
+        branch_type="bug",
+        base_branch="refactor/51-labels-yaml",
     )
     result = await tool.execute(params, NoteContext())
 
     mock_git_manager.create_branch.assert_called_once_with(
-        "new-fix", "bug", "refactor/51-labels-yaml", ANY
+        51, "new-fix", "bug", "refactor/51-labels-yaml", ANY
     )
 
     assert isinstance(result, CreateBranchOutput)
     assert result.success is True
-    assert result.branch_name == "bug/new-fix"
+    assert result.branch_name == "bug/51-new-fix"
     assert result.branch_type == "bug"
     assert result.base_branch == "refactor/51-labels-yaml"
 
