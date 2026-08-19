@@ -2,7 +2,6 @@
 """MCP Server Entrypoint."""
 
 import asyncio
-import json
 import sys
 import time
 import uuid
@@ -145,7 +144,7 @@ class MCPServer:
                         if self.response_cache_manager is not None:
                             cache_pub = self.response_cache_manager.put(tool.name, result_dto)
 
-                        # 3. Generate presentation output (resilient; formats DTO, notes, and resources)
+                        # 3. Generate presentation output (formats DTO, notes, resources)
                         if self.presenter is not None:
                             presented = self.presenter.present(
                                 tool_name=tool.name,
