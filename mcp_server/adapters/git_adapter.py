@@ -22,10 +22,19 @@ from pathlib import Path
 from typing import Any, Literal
 
 from git import GitCommandError, InvalidGitRepositoryError, Repo
+from git.remote import PushInfo
 
 from mcp_server.config.settings import Settings
 from mcp_server.core import logging as core_logging
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
+
+
+_PUSH_ERROR_MASK: int = (
+    PushInfo.ERROR
+    | PushInfo.REJECTED
+    | PushInfo.REMOTE_REJECTED
+    | PushInfo.REMOTE_FAILURE
+)
 
 
 class GitAdapter:
@@ -263,7 +272,12 @@ class GitAdapter:
             raise ExecutionError(f"Failed to checkout {branch_name}: {e}") from e
 
     def push(self, set_upstream: bool = False) -> None:
-        """Push current branch to origin."""
+        """Push current branch to origin.
+
+        Raises:
+            ExecutionError: If origin remote is missing, push is rejected by remote,
+                            Git returns error flags, or push result list is empty.
+        """
         try:
             origin = self.repo.remote("origin")
         except ValueError as e:
@@ -272,11 +286,21 @@ class GitAdapter:
         try:
             branch = self.get_current_branch()
             if set_upstream:
-                origin.push(refspec=f"{branch}:{branch}", set_upstream=True)
+                push_infos = origin.push(refspec=f"{branch}:{branch}", set_upstream=True)
             else:
-                origin.push()
+                push_infos = origin.push()
+        except ExecutionError:
+            raise
         except Exception as e:
             raise ExecutionError(f"Failed to push: {e}") from e
+
+        if not push_infos:
+            raise ExecutionError("No push status returned by remote")
+
+        for info in push_infos:
+            if info.flags & _PUSH_ERROR_MASK:
+                summary = info.summary.strip() if info.summary else "Unknown remote error"
+                raise ExecutionError(f"Push rejected by remote: {summary}")
 
     def fetch(self, remote: str = "origin", prune: bool = False) -> str:
         """Fetch updates from a remote."""
