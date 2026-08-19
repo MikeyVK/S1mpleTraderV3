@@ -34,7 +34,7 @@ This document is a **binding contract**. Code that violates these principles is 
 ### Git Operations
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
-| Create branch | `create_branch(name, base_branch, branch_type)` | `run_in_terminal("git branch")` |
+| Create branch | `create_branch(issue_number, name, base_branch, branch_type)` | `run_in_terminal("git branch")` |
 | Commit | `git_add_or_commit(workflow_phase, message)` | `run_in_terminal("git commit")` |
 | Checkout | `git_checkout(branch)` | `run_in_terminal("git checkout")` |
 | Push | `git_push(set_upstream)` | `run_in_terminal("git push")` |
