@@ -36,6 +36,15 @@ class BranchDeleteResult:
     remote_status: Literal["deleted", "absent", "skipped"]
 
 
+@dataclass(frozen=True)
+class GitPushResult:
+    """Domain result of a git push operation."""
+
+    branch: str
+    set_upstream: bool
+    new_upstream_created: bool
+
+
 class GitManager:
     """Manager for Git operations and conventions."""
 
@@ -257,9 +266,35 @@ class GitManager:
         """Checkout to an existing branch."""
         self.adapter.checkout(branch_name)
 
-    def push(self, set_upstream: bool = False) -> None:
-        """Push current branch to origin."""
+    def push(self, set_upstream: bool = False) -> GitPushResult:
+        """Push current branch to origin and calculate upstream tracking delta.
+
+        Returns:
+            GitPushResult containing branch name, set_upstream flag, and whether
+            a new tracking branch relationship was established.
+
+        Raises:
+            ExecutionError: If push fails or requested upstream tracking is not established.
+        """
+        branch = self.adapter.get_current_branch()
+        has_upstream_before = self.adapter.has_upstream()
+
         self.adapter.push(set_upstream=set_upstream)
+
+        has_upstream_after = self.adapter.has_upstream()
+
+        if set_upstream and not has_upstream_after:
+            raise ExecutionError(
+                f"Requested upstream tracking branch could not be established on 'origin/{branch}'"
+            )
+
+        new_upstream_created = (not has_upstream_before) and has_upstream_after
+
+        return GitPushResult(
+            branch=branch,
+            set_upstream=set_upstream,
+            new_upstream_created=new_upstream_created,
+        )
 
     def fetch(self, remote: str = "origin", prune: bool = False) -> str:
         """Fetch updates from a remote.

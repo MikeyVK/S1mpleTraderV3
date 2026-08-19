@@ -831,10 +831,8 @@ class TestGitManagerPush:
         return MagicMock()
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        config_loader = ConfigLoader()
-        git_config = config_loader.load_git_config()
         return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_push_new_upstream_created_when_no_prior_tracking(
