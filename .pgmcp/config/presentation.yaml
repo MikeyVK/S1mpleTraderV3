@@ -136,9 +136,6 @@ tools:
     template_success: "Transitioned to Cycle {to_cycle}/{total_cycles} ({cycle_name}) on branch '{branch}' (Passed gates: {passing_gates_count}, Skipped gates: {skipped_gates_count})."
     next_instructions:
       - "context_reset"
-  search_documentation:
-    category: query
-    template_success: "Found {results_count} documentation matches for query '{query}' in scope '{scope}'."
   get_work_context:
     category: query
     template_success: |

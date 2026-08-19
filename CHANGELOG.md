@@ -7,6 +7,11 @@ All notable changes to Phase-Gate MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+- **Breaking — Generic documentation search**: Removed the `search_documentation` MCP tool, its dedicated indexing/search services, contracts, tests, and agent allowlist entries. Agents now use host-native repository search; upgraded MCP clients must refresh or reconnect before requesting the new tool inventory (#443).
+
 ## [2.0.0] - 2026-07-22
 
 ### Added

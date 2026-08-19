@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Show the tool layer: all 49 MCP tools grouped by file, their base class hierarchy, naming
+Show the tool layer: all 50 MCP tools grouped by file, their base class hierarchy, naming
 conventions, and existing inconsistencies.
 
 ## Scope
@@ -56,12 +56,12 @@ a visibility mismatch (see Known Issues).
 
 ## 2. Tool Groups by File
 
-All 49 tools grouped by source file. Files marked (⚠) have naming convention violations.
+All 50 tools grouped by source file. Files marked (⚠) have naming convention violations.
 
 ```mermaid
 graph LR
     subgraph Git
-        GT["git_tools.py<br/>13 tools"]
+        GT["git_tools.py<br/>11 tools"]
         GA["git_analysis_tools.py<br/>2 tools"]
         GF["git_fetch_tool.py ⚠<br/>1 tool"]
         GP["git_pull_tool.py ⚠<br/>1 tool"]
@@ -75,13 +75,20 @@ graph LR
         IT["issue_tools.py<br/>5 tools"]
         LT["label_tools.py<br/>5 tools"]
         MT["milestone_tools.py<br/>3 tools"]
-        PR["pr_tools.py<br/>3 tools"]
+        PR["pr_tools.py<br/>4 tools"]
     end
     subgraph Quality
-        QT["quality_tools.py<br/>1 tool"]
+        QT["quality_tools.py<br/>2 tools"]
         TT["test_tools.py<br/>1 tool"]
-        VT["validation_tools.py<br/>1 tool"]
         TV["template_validation_tool.py ⚠<br/>1 tool"]
+    end
+    subgraph Workspace
+        SE["safe_edit_tool.py ⚠<br/>1 tool"]
+        SA["scaffold_artifact.py ⚠<br/>1 tool"]
+        SS["scaffold_schema_tool.py ⚠<br/>1 tool"]
+        DT["discovery_tools.py<br/>1 tool"]
+        HT["health_tools.py<br/>1 tool"]
+        AT["admin_tools.py<br/>1 tool"]
     end
 ```
 

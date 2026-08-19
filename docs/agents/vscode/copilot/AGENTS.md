@@ -90,7 +90,7 @@ This document is a **binding contract**. Code that violates these principles is 
 ### Discovery & Admin
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
-| Search docs | `search_documentation(query, scope)` | `grep_search` on docs/ |
+| Search code and docs | Host-native repository search | N/A |
 | Get work context | `get_work_context()` | Manual file reading |
 | Health check | `health_check()` | N/A |
 | Restart server | `restart_server(reason)` | Process kill |

@@ -67,11 +67,11 @@ This document defines the 7 development phases that PhaseGate follows, including
 
 ### 2.1 Phase Summary Table
 
-| Phase | Name | Purpose | GitHub Issue Template | Key MCP Tools |
-|-------|------|---------|----------------------|---------------|
-| 0 | Discovery | Problem exploration | `type:discussion` | `search_documentation` |
+| Phase | Name | Purpose | GitHub Issue Template | Key Capability / MCP Tool |
+|-------|------|---------|----------------------|---------------------------|
+| 0 | Discovery | Problem exploration | `type:discussion` | Host-native repository search |
 | 1 | Planning | Work breakdown | `type:feature` | `create_issue` |
-| 2 | Architectural | System design | Architecture Design | `scaffold_artifact`, `search_documentation` |
+| 2 | Architectural | System design | Architecture Design | Host-native repository search, `scaffold_artifact` |
 | 3 | Component | Detailed design | Component Design | `scaffold_artifact` |
 | 4 | TDD | Implementation | TDD Task | `run_quality_gates`, `run_tests` |
 | 5 | Integration | Wiring & testing | TDD Task | `run_tests` |
@@ -106,10 +106,10 @@ Exploration of a problem, requirement, or idea. No commitments, just building un
 
 ### 3.3 Activities
 
-| Activity | Description | MCP Tool |
-|----------|-------------|----------|
+| Activity | Description | Capability / MCP Tool |
+|----------|-------------|-----------------------|
 | Create Discussion | Open GitHub Issue with `type:discussion` | `create_issue` |
-| Explore Codebase | Understand existing structure | `search_documentation` |
+| Explore Codebase | Understand existing structure | Host-native repository search |
 | Guidelines Check | Research patterns and standards | `pgmcp://rules/coding_standards` |
 
 ### 3.4 Exit Criteria
@@ -166,9 +166,9 @@ System-level design decisions. How do components fit together?
 
 ### 5.3 Activities
 
-| Activity | Description | MCP Tool |
-|----------|-------------|----------|
-| Review Existing Arch | Understand current architecture | `search_documentation` |
+| Activity | Description | Capability / MCP Tool |
+|----------|-------------|-----------------------|
+| Review Existing Arch | Understand current architecture | Host-native repository search |
 | Draft Design | Write architectural design | `scaffold_artifact` |
 | Validate Patterns | Check against PhaseGate patterns | `check_arch_compliance` |
 | Request Review | Assign reviewers | `update_issue` |

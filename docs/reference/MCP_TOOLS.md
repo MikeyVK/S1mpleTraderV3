@@ -163,12 +163,13 @@ Generate new artifacts from templates (unified system).
 
 See `.pgmcp/templates/config.yaml` for complete list and required fields per type.
 
-### 6. Quality & Validation (3 tools)
+### 6. Quality & Validation (4 tools)
 
-Run quality gates, tests, and template validation.
+Apply mechanical fixes, run quality gates and tests, and validate templates.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
+| **AutoFixTool** | Apply configured mechanical quality fixes | None | Modified-file and gate summary |
 | **RunQualityGatesTool** | Run config-driven quality gates | `scope` (`auto`/`branch`/`project`/`files`), `files` (required + non-empty only when `scope="files"`), `verbose` (optional: bool) | Single text block with summary + resource cache link to `RunQualityGatesOutput` DTO |
 | **RunTestsTool** | Run pytest | `path` (space-sep, mutually exclusive with `scope`), `scope` (`"full"`), `markers`, `last_failed_only`, `timeout`, `coverage`, `verbose` | Single text block with summary + resource cache link to `RunTestsOutput` DTO |
 | **TemplateValidationTool** | Validate file structure against template | `path`, `template_type` | Pass/fail with violation details |
@@ -179,13 +180,12 @@ Run quality gates, tests, and template validation.
 - **Gate 4b:** Pyright type gate
 - Test execution belongs to `run_tests` (not `run_quality_gates`).
 
-### 7. Discovery & Admin (4 tools)
+### 7. Discovery & Admin (3 tools)
 
-Documentation search, work context aggregation, and server administration.
+Work context aggregation and server administration.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **SearchDocumentationTool** | Search docs semantically | `query`, `scope` (optional: all/architecture/coding_standards/development/reference/implementation) | Ranked results with file path, line number, snippet |
 | **GetWorkContextTool** | Get current work state | `none` | Orientation header with TODO reminder, phase instructions, optional hand-over template |
 | **HealthCheckTool** | Server health check | None | OK/ERROR (Sole tool registered in degraded mode) |
 | **RestartServerTool** | Hot-reload server via proxy mechanism | `reason` | Confirmation (Unavailable in degraded mode) |
@@ -201,7 +201,6 @@ Documentation search, work context aggregation, and server administration.
    TODO discipline: create or refresh your TODO list now; keep exactly one item in progress and update it after each material step.
    ---
    ### 🎯 Phase Instructions
-2. search_documentation query="how to implement worker" → Returns: Ranked docs with examples
 ```
 
 ## Architecture
@@ -213,10 +212,10 @@ All tools are registered in `mcp_server/server.py`:
 **Always Available (33 tools):**
 - Git tools (15)
 - Project/Phase tools (8)
-- Quality tools (3)
+- Quality tools (4)
 - File Editing (1)
 - Scaffold tools (2)
-- Discovery & Admin tools (4)
+- Discovery & Admin tools (3)
 
 **GitHub-Dependent (17 tools, requires GITHUB_TOKEN):**
 - Issue tools (5)
@@ -384,7 +383,7 @@ DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update 
 ### Documentation with Tools
 
 ```
-1. search_documentation query="related topic"
+1. Use the host application's native repository search to find the related topic
 2. scaffold_artifact artifact_type="design" name="new-feature-design" context='{"issue_number":"42","title":"New Feature Design","author":"Developer"}'
 3. write content in created file
 4. validate_doc file_path=path/to/doc.md

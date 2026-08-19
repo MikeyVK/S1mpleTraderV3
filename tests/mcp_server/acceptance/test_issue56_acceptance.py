@@ -4,7 +4,7 @@
 @dependencies: pytest, mcp_server tools, managers
 @responsibilities:
   - Issue #56 acceptance criteria validation
-  - Repeatable smoke test for scaffold + search workflow
+  - Repeatable smoke tests for scaffold workflows
   - Verify unified artifact system end-to-end
 """
 
@@ -12,10 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.settings import Settings
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
-from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
 
 
@@ -115,30 +113,3 @@ async def test_scaffold_dto_with_description(
     assert "Acceptance test DTO for Issue #56 validation" in file_content
     assert "test_id" in file_content
     assert "status" in file_content
-
-
-@pytest.mark.asyncio
-async def test_search_finds_scaffolded_artifacts() -> None:
-    """
-    Acceptance: search_documentation finds scaffolded artifacts.
-
-    Validates Issue #56 Slice 7 requirement: scaffolded artifacts are immediately
-    searchable via semantic search.
-
-    This is the smoke test: scaffold → search → verify findability.
-
-    NOTE: This test validates API contract only. SearchDocumentationTool
-    searches production docs/, not temp test workspace.
-    """
-    # Act: Search for existing design doc (production)
-    search_tool = SearchDocumentationTool(settings=Settings(server={"workspace_root": "."}))
-    search_params = SearchDocumentationInput(
-        query="unified artifact system",
-        scope="all",
-    )
-    search_result = await search_tool.execute(search_params, NoteContext())
-
-    # Assert: Search tool returns valid response
-    assert search_result is not None
-    assert search_result.success
-    assert search_result.results_count >= 0

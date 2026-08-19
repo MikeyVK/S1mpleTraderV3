@@ -179,7 +179,7 @@ graph TD
 | **Tools** | 50 `ICoreTool` instances wrapped in a decorator pipeline | Delegate business logic to managers and return semantic DTOs |
 | **Resources** | 4 `BaseResource` subclasses | Expose read-only project context via `pgmcp://` URIs |
 | **Managers** | 19 manager classes (including `WorkspaceVersionValidator`) | Business logic, workflow state, quality gates, version validation |
-| **Services** | `WorkspaceUpgrader`, `DocumentIndexer`, `SearchService` | Application services for workspace upgrading, search, and indexing |
+| **Services** | `WorkspaceUpgrader`, `TemplateEngine` | Application services for workspace upgrades and template rendering |
 | **Adapters** | `FilesystemAdapter`, `GitAdapter`, `GitHubAdapter` | External system integration |
 
 ---
@@ -282,7 +282,7 @@ mcp_server/
 │   ├── project_tools.py           # Project init, planning deliverables
 │   ├── quality_tools.py           # RunQualityGates
 │   ├── test_tools.py              # RunTests
-│   ├── discovery_tools.py         # SearchDocumentation, GetWorkContext
+│   ├── discovery_tools.py         # GetWorkContext
 │   ├── safe_edit_tool.py          # SafeEdit
 │   ├── scaffold_artifact.py       # ScaffoldArtifact
 │   ├── scaffold_schema_tool.py    # ScaffoldSchema
@@ -542,7 +542,7 @@ sequenceDiagram
 | Project Management | 4 | `initialize_project`, `get_project_plan`, `save_planning_deliverables`, `update_planning_deliverables` |
 | Quality & Testing | 3 | `run_quality_gates`, `run_tests`, `validate_template` |
 | Scaffolding | 2 | `scaffold_artifact`, `scaffold_schema` |
-| Discovery | 2 | `search_documentation`, `get_work_context` |
+| Discovery | 1 | `get_work_context` |
 | File Editing | 1 | `safe_edit_file` |
 | Admin | 2 | `health_check`, `restart_server` |
 
