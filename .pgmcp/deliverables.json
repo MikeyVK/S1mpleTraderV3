@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "projects": {
+    "116": {
+      "issue_title": "Enhancement: create_branch tool should accept issue_number parameter for automatic branch name formatting",
+      "workflow_name": "feature",
+      "execution_mode": "interactive",
+      "required_phases": [
+        "research",
+        "design",
+        "planning",
+        "implementation",
+        "validation",
+        "documentation",
+        "ready"
+      ],
+      "skip_reason": null,
+      "parent_branch": "main",
+      "created_at": "2026-08-19T13:47:37.753853+00:00"
+    }
+  }
+}
