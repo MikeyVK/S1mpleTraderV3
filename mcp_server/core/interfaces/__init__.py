@@ -6,7 +6,11 @@ from __future__ import annotations
 
 from mcp_server.core.interfaces.icore_tool import ICoreTool as ICoreTool
 from mcp_server.core.interfaces.itool import ITool as ITool
-from mcp_server.core.interfaces.ipresenter import IPresenter as IPresenter
+from mcp_server.core.interfaces.ipresenter import (
+    IPresenter as IPresenter,
+    IResourcePresenter as IResourcePresenter,
+    ITextPresenter as ITextPresenter,
+)
 from mcp_server.core.interfaces.itool_response_cache import (
     IToolResponsePublisher as IToolResponsePublisher,
     IToolResponseReader as IToolResponseReader,
