@@ -70,6 +70,7 @@ class TestValidationResourcePresenter:
         schema = {"type": "object", "properties": {"name": {"type": "string"}}}
         dto = ValidationErrorOutput(
             error_message="Invalid input",
+            validation_errors=[],
             input_schema=schema,
         )
 
@@ -87,6 +88,7 @@ class TestValidationResourcePresenter:
         data = {
             "error_type": "ValidationError",
             "error_message": "Invalid input",
+            "validation_errors": [],
             "input_schema": schema,
         }
 
@@ -156,6 +158,15 @@ class TestTextPresenter:
                         "View resource: pgmcp://cache/runs/{run_id})*"
                     ),
                 },
+                "notes": {
+                    "groups": {
+                        "suggestions": {"header": "Suggestions", "emoji": "💡"},
+                        "recoveries": {"header": "Recovery", "emoji": "🔧"},
+                    },
+                    "templates": {
+                        "suggestions": {"try_this": "Try {action}"},
+                    },
+                },
             },
             "tools": {
                 "dummy_tool": {
@@ -179,11 +190,11 @@ class TestTextPresenter:
     def test_present_text_failure(self, mock_yaml_config: dict[str, Any]) -> None:
         """Test presenting failure output with custom template and emoji prefix."""
         presenter = TextPresenter(config_data=mock_yaml_config)
-        dto = DummyOutput(success=False, result="Operation failed")
+        dto = ExecutionErrorOutput(error_message="Operation failed")
 
         text = presenter.present_text(tool_name="dummy_tool", success=False, data=dto)
 
-        assert text == "❌ Error: Operation failed\n\n🚀 TEST ADVISORY WARNING"
+        assert text == "❌ Error: Operation failed"
 
     def test_present_text_default_failure_template(
         self, mock_yaml_config: dict[str, Any]
@@ -209,14 +220,13 @@ class TestTextPresenter:
         presenter = TextPresenter(config_data=mock_yaml_config)
         dto = DummyOutput(success=True, result="Done")
         notes = [
-            Note.warning("Warning message"),
-            Note.tip("Tip message"),
+            Note(key="try_this", params={"action": "re-running the test"}),
         ]
 
         text = presenter.present_text(tool_name="dummy_tool", success=True, data=dto, notes=notes)
 
-        assert "⚠️ Warning message" in text
-        assert "💡 Tip message" in text
+        assert "💡 Suggestions" in text
+        assert "Try re-running the test" in text
 
     def test_present_text_fallback_run_id_none_validation_error(
         self, mock_yaml_config: dict[str, Any]
@@ -225,6 +235,7 @@ class TestTextPresenter:
         presenter = TextPresenter(config_data=mock_yaml_config)
         dto = ValidationErrorOutput(
             error_message="Validation Failed",
+            validation_errors=[],
             input_schema={"type": "object", "properties": {"name": {"type": "string"}}},
         )
 
