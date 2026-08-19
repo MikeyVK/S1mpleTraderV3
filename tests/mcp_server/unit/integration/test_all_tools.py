@@ -12,6 +12,7 @@ from unittest.mock import ANY, MagicMock
 import pytest
 
 from mcp_server.core.operation_notes import NoteContext
+from mcp_server.managers.git_manager import GitPushResult
 from mcp_server.managers.pytest_runner import PytestRunner
 from mcp_server.schemas.github_models import IssueReadModel
 
@@ -74,6 +75,11 @@ def make_mock_git_manager() -> MagicMock:
         "modified_files": [],
     }
     manager.stash_list.return_value = []
+    manager.push.return_value = GitPushResult(
+        branch="feature/test",
+        set_upstream=False,
+        new_upstream_created=False,
+    )
     return manager
 
 
