@@ -474,6 +474,20 @@ class TestArtifactLoggingConfig:
         assert "--output-format=json" in gate.execution.command
         assert "--ignore=E501,PLC0415" in gate.execution.command
 
+        expected_per_file_ignores = [
+            "--per-file-ignores",
+            "tests/**/*.py:ANN,tests/**/*.py:ARG",
+        ]
+        command_index = gate.execution.command.index("--per-file-ignores")
+        fix_command = gate.execution.fix_command
+        assert fix_command is not None
+        fix_command_index = fix_command.index("--per-file-ignores")
+
+        assert gate.execution.command[command_index : command_index + 2] == (
+            expected_per_file_ignores
+        )
+        assert fix_command[fix_command_index : fix_command_index + 2] == expected_per_file_ignores
+
     def test_gate2_imports_loads_from_yaml(self) -> None:
         """gate2_imports definition loads correctly from quality.yaml."""
         quality_yaml = Path(f"{get_default_server_root()}/config/quality.yaml")
