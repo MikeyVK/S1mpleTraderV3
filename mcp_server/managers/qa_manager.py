@@ -939,6 +939,7 @@ class QAManager:
                 assert gate.capabilities.json_violations is not None, (
                     "json_violations capabilities required when parsing_strategy='json_violations'"
                 )
+                exit_code_ok = proc.returncode in gate.success.exit_codes_ok
                 raw: list[dict[str, Any]] | dict[str, Any] = json.loads(proc.stdout or "[]")
                 violations = ViolationParser.parse_json_violations(
                     ViolationParser.extract_violations_array(
@@ -958,15 +959,33 @@ class QAManager:
                     }
                     for v in violations
                 ]
-                result["passed"] = len(violations) == 0
+                result["passed"] = exit_code_ok and len(violations) == 0
+                if not exit_code_ok and not result["issues"]:
+                    output_capture = self._build_output_capture(
+                        proc.stdout or "", proc.stderr or ""
+                    )
+                    result["output"] = output_capture
+                    result["issues"] = [
+                        {
+                            "message": f"Gate failed with exit code {proc.returncode}",
+                            "details": output_capture["details"],
+                        }
+                    ]
                 result["score"] = (
-                    "Pass" if result["passed"] else f"Fail ({len(violations)} violations)"
+                    "Pass"
+                    if result["passed"]
+                    else (
+                        f"Fail (exit={proc.returncode})"
+                        if not exit_code_ok
+                        else f"Fail ({len(violations)} violations)"
+                    )
                 )
 
             elif gate.capabilities.parsing_strategy == "text_violations":
                 assert gate.capabilities.text_violations is not None, (
                     "text_violations capabilities required when parsing_strategy='text_violations'"
                 )
+                exit_code_ok = proc.returncode in gate.success.exit_codes_ok
                 text_violations = ViolationParser.parse_text_violations(
                     proc.stdout or "",
                     gate.capabilities.text_violations,
@@ -984,9 +1003,26 @@ class QAManager:
                     }
                     for v in text_violations
                 ]
-                result["passed"] = len(text_violations) == 0
+                result["passed"] = exit_code_ok and len(text_violations) == 0
+                if not exit_code_ok and not result["issues"]:
+                    output_capture = self._build_output_capture(
+                        proc.stdout or "", proc.stderr or ""
+                    )
+                    result["output"] = output_capture
+                    result["issues"] = [
+                        {
+                            "message": f"Gate failed with exit code {proc.returncode}",
+                            "details": output_capture["details"],
+                        }
+                    ]
                 result["score"] = (
-                    "Pass" if result["passed"] else f"Fail ({len(text_violations)} violations)"
+                    "Pass"
+                    if result["passed"]
+                    else (
+                        f"Fail (exit={proc.returncode})"
+                        if not exit_code_ok
+                        else f"Fail ({len(text_violations)} violations)"
+                    )
                 )
 
             else:  # no parsing_strategy → pass/fail on exit code

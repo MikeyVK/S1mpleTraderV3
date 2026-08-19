@@ -24,6 +24,7 @@ import yaml  # type: ignore[import-untyped]
 from mcp_server.config.schemas.quality_config import (
     CapabilitiesMetadata,
     ExecutionConfig,
+    QualityConfig,
     QualityGate,
     SuccessCriteria,
 )
@@ -952,6 +953,137 @@ class TestRuffJsonParsing:
             assert result["passed"], "Gate should pass with clean code"
             assert result["issues"] == [], "Expected no issues"
             assert result["score"] == "Pass", f"Expected 'Pass' score, got {result['score']}"
+
+    def test_ruff_json_parsing_with_command_failure_fails_even_without_violations(
+        self, manager: QAManager
+    ) -> None:
+        """Test command failures still fail when parsing_strategy=json_violations."""
+        mock_gate = QualityGate(
+            name="Test Ruff Gate",
+            description="Test gate for JSON parsing",
+            execution=ExecutionConfig(
+                command=["ruff", "check", "--output-format=json"],
+                timeout_seconds=60,
+            ),
+            success=SuccessCriteria(exit_codes_ok=[0]),
+            capabilities=CapabilitiesMetadata(
+                file_types=[".py"],
+                supports_autofix=False,
+                parsing_strategy="json_violations",
+                json_violations={
+                    "violations_path": None,
+                    "field_map": {
+                        "file": "filename",
+                        "line": "location/row",
+                        "col": "location/column",
+                        "rule": "code",
+                        "message": "message",
+                    },
+                    "fixable_when": "fix/applicability",
+                },
+            ),
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 2
+            mock_proc.stdout = ""
+            mock_proc.stderr = "error: invalid configuration"
+            mock_run.return_value = mock_proc
+
+            result = manager.execute_gate(mock_gate, ["test_file.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert result["score"] == "Fail (exit=2)"
+            assert result["issues"][0]["message"] == "Gate failed with exit code 2"
+            assert "details" in result["issues"][0]
+            assert "invalid configuration" in result["issues"][0]["details"]
+
+    def test_text_parsing_with_command_failure_fails_without_violations(
+        self, manager: QAManager
+    ) -> None:
+        """Test text-parsed command failures remain failures with empty stdout."""
+        mock_gate = QualityGate.model_validate(
+            {
+                "name": "Test Text Gate",
+                "description": "Test gate for text parsing",
+                "execution": {
+                    "command": ["ruff", "format", "--check"],
+                    "timeout_seconds": 60,
+                },
+                "success": {"exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "parsing_strategy": "text_violations",
+                    "text_violations": {
+                        "pattern": r"^(?P<file>.+):(?P<line>\d+):(?P<col>\d+): (?P<message>.+)$",
+                    },
+                },
+            }
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=2,
+                stdout="",
+                stderr="error: invalid invocation",
+            )
+
+            result = manager.execute_gate(mock_gate, ["test_file.py"], gate_number=1)
+
+        assert result["passed"] is False
+        assert result["score"] == "Fail (exit=2)"
+        assert "invalid invocation" in result["issues"][0]["details"]
+
+    def test_auto_fix_reports_nonzero_fixer_exit(self, tmp_path: Path) -> None:
+        """Test autofix cannot report success when a configured fixer fails."""
+        target = tmp_path / "target.py"
+        target.write_text("value = 1\n", encoding="utf-8")
+        quality_config = QualityConfig.model_validate(
+            {
+                "version": "1.0.0",
+                "artifact_logging": {
+                    "enabled": False,
+                    "output_dir": None,
+                    "max_files": 10,
+                },
+                "active_gates": ["fixer"],
+                "gates": {
+                    "fixer": {
+                        "name": "Test Fixer",
+                        "description": "Test autofix failure propagation",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "fix_command": ["ruff", "check", "--fix"],
+                            "timeout_seconds": 60,
+                        },
+                        "success": {"exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                        },
+                    }
+                },
+            }
+        )
+        git_reader = MagicMock()
+        git_reader.get_status.side_effect = [
+            {"modified_files": [], "untracked_files": []},
+            {"modified_files": [], "untracked_files": []},
+        ]
+        manager = make_qa_manager(
+            workspace_root=tmp_path,
+            quality_config=quality_config,
+            git_context_reader=git_reader,
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=2, stdout="", stderr="invalid")
+            result = manager.run_auto_fix(scope="files", files=[str(target)])
+
+        assert result.success is False
+        assert result.error_message == "Gate 'Test Fixer' failed with exit code 2"
 
 
 class TestGateSchemaEnrichment:
