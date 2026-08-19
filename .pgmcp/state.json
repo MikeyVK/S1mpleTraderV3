@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0.0",
+  "branch": "refactor/414-delegate-validation-schema-to-presenter",
+  "issue_number": 414,
+  "workflow_name": "refactor",
+  "current_phase": "research",
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
+  "required_phases": [
+    "research",
+    "planning",
+    "implementation",
+    "validation",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": null,
+  "issue_title": "refactor: Delegate validation resource schema generation to IPresenter",
+  "parent_branch": "main",
+  "created_at": "2026-08-19T16:06:38.554913+00:00",
+  "transitions": [],
+  "reconstructed": false,
+  "current_sub_phase": null
+}
