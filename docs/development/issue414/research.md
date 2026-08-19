@@ -1,26 +1,25 @@
 <!-- docs\development\issue414\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-08-19T17:40Z updated=2026-08-19T18:25Z -->
+<!-- template=research version=8b7bb3ab created=2026-08-19T17:40Z updated=2026-08-19T18:30Z -->
 # Research: Delegate Validation Resource Schema Generation to IPresenter
 
 **Status:** APPROVED  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-08-19
 
 ---
 
 ## Purpose
 
-Investigate the problem space, architectural boundaries, and migration constraints regarding the delegation of `schema://validation` resource generation from the transport layer (`MCPServer`) to the presentation layer.
+Investigate the problem space, architectural boundaries, blast radius, and migration strategy for delegating `schema://validation` resource generation from the transport layer (`MCPServer`) to the presentation layer.
 
 ## Scope
 
 **In Scope:**
-- Analysis of current coupling in [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py) where transport logic constructs `schema://validation` resources.
+- Analysis of coupling in [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py) where transport logic constructs `schema://validation` resources.
 - Analysis of current presentation boundaries in [`mcp_server/core/interfaces/ipresenter.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py) and [`mcp_server/presenters/text_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/text_presenter.py).
-- Analysis of [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md) constraints regarding SRP, ISP, DIP, and composition.
-- Exploration of structural options and trade-offs for decoupling transport from presentation.
-- Mapping of the blast radius across production files, test suites, and fixtures.
-- Definition of the Approved Strategy and Expected Results.
+- Analysis of [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md) constraints regarding SRP (Rule 1.1), ISP (Rule 1.4), DIP (Rule 1.5), and composition.
+- Exhaustive blast radius audit across production subsystems, test suites, configuration, and documentation.
+- Definition of the Approved Strategy (per boundary) and Expected Results.
 
 **Out of Scope:**
 - Specifying concrete class designs, method bodies, or interface implementations (reserved for Design phase).
@@ -44,8 +43,8 @@ This produces architectural tensions:
 
 1. Investigate the current flow of validation errors from tool execution through caching and presentation to protocol serialization.
 2. Analyze the architectural constraints (SRP, ISP, DIP) governing the separation between Markdown text rendering and embedded resource generation.
-3. Identify trade-offs between monolithic presentation and composite presentation models.
-4. Establish preservation invariants and candidate seams for subsequent design and planning phases.
+3. Verify the complete blast radius across all production files, tests, configs, and active documentation.
+4. Establish the Approved Strategy per boundary and expected results for subsequent design and planning phases.
 
 ---
 
@@ -67,70 +66,59 @@ Investigation of the MCP client behavior (e.g. in VS Code and agent environments
 - **Transport Independence:**
   The transport layer (`server.py`) should remain completely agnostic of specific error types (`ValidationError`), schema extraction, or presentation resource construction.
 
-### 3. Structural Options Explored
+---
 
-| Option | Description | Architectural Assessment |
-|---|---|---|
-| **Option 1: Monolithic Presenter Extension** | Extend `TextPresenter` to directly generate both text and resource payloads. | Violates SRP; conflates text templating with resource serialization. |
-| **Option 2: Transport-Level Protocol Converter** | Move resource generation to transport converters (`mcp_converters.py`). | Leaves presentation formatting logic within the transport adapter layer. |
-| **Option 3: Composite Presentation Architecture** | Separate text formatting from resource payload generation, unified by a coordinating presentation facade returning a presentation envelope. | Satisfies SRP, ISP, and DIP; keeps transport layer completely agnostic. |
+## Comprehensive Blast Radius Audit
+
+An exhaustive audit of the codebase identified the following affected surfaces:
+
+### 1. Production Subsystems
+- [`mcp_server/core/interfaces/ipresenter.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py): Core interface for the presentation layer.
+- [`mcp_server/core/interfaces/__init__.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/__init__.py): Re-export facade for core interfaces.
+- [`mcp_server/presenters/text_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/text_presenter.py): Text presentation implementation and `validate_presentation_alignment`.
+- [`mcp_server/presenters/__init__.py`](file:///c:/temp/pgmcp/mcp_server/presenters/__init__.py): Presenter package exports.
+- [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py): `MCPServer.__init__` type annotation and `MCPServer.handle_call_tool` presentation orchestration.
+- [`mcp_server/bootstrap.py`](file:///c:/temp/pgmcp/mcp_server/bootstrap.py): Composition root instantiating and injecting the presenter into `MCPServer`.
+- [`mcp_server/core/operation_notes.py`](file:///c:/temp/pgmcp/mcp_server/core/operation_notes.py): Interacts with `presenter.present_notes(tool_name, entries)` (verified for contract compatibility).
+
+### 2. Test Suites
+- [`tests/mcp_server/unit/test_presenter.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_presenter.py): Direct unit tests for presenter methods, templates, notes, and alignment checks.
+- [`tests/mcp_server/unit/server/test_validate_tool_arguments.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/server/test_validate_tool_arguments.py): Unit tests verifying that `schema://validation` `EmbeddedResource` is present on validation failure.
+- [`tests/mcp_server/integration/test_strict_input_validation_response.py`](file:///c:/temp/pgmcp/tests/mcp_server/integration/test_strict_input_validation_response.py): Integration tests verifying end-to-end MCP `CallToolResult` schema resources.
+- [`tests/mcp_server/integration/test_pipeline_e2e.py`](file:///c:/temp/pgmcp/tests/mcp_server/integration/test_pipeline_e2e.py): Integration pipeline tests configuring `server.presenter`.
+- [`tests/mcp_server/unit/server/test_bootstrap.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/server/test_bootstrap.py): Verifies presenter instantiation and injection in `bootstrap.py`.
+- [`tests/mcp_server/unit/core/test_note_context_unit.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/core/test_note_context_unit.py): Verifies `NoteContext` delegation to `presenter.present_notes`.
+- [`tests/mcp_server/unit/managers/test_enforcement_runner_unit.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/managers/test_enforcement_runner_unit.py): Mocks `note_context.presenter`.
+- [`tests/mcp_server/unit/test_server.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_server.py): Server orchestration unit tests with mocked presenter.
+
+### 3. Configuration & Schemas
+- `.pgmcp/config/presentation.yaml`: SSOT for presentation templates, emojis, and failure messages (no schema changes required).
+- `mcp_server/config/schemas/presentation_config.py`: Pydantic config models for presentation settings.
+
+### 4. Active Documentation
+- [`docs/manuals/architecture.md`](file:///c:/temp/pgmcp/docs/manuals/architecture.md): Reference to `ipresenter.py` and presenter subsystem structure.
 
 ---
 
-## Invariants & Preservation Goals
+## Approved Strategy (per Boundary)
 
-1. **Protocol Compatibility:**
-   Tool calls failing validation must continue to return `CallToolResult(isError=True)` containing both `TextContent` and the `EmbeddedResource` for `schema://validation`.
-2. **Strict Type Safety:**
-   All components must adhere to strict typing without global ignores.
-3. **Transport Purity:**
-   `MCPServer` must depend strictly on `IPresenter` (DIP) and perform zero inspection of domain error types or validation schema extraction.
+### Boundary 1: Internal Python Interfaces (`IPresenter`, `MCPServer`, Presenters)
+- **Selected Strategy:** **Clean Break**
+- **Rationale:** This is internal repository code without external package consumers. A clean break allows immediate replacement of outdated signatures without maintaining legacy shims, transitional wrappers, or technical debt.
+- **Rules:** Replace internal signatures and interfaces in one cohesive refactor.
 
----
-
-## Blast Radius Analysis
-
-### Production Subsystems
-- **Core Interfaces:** [`mcp_server/core/interfaces/ipresenter.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py)
-- **Presentation Layer:** [`mcp_server/presenters/`](file:///c:/temp/pgmcp/mcp_server/presenters/)
-- **Transport / Server Layer:** [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py)
-- **Composition Root:** [`mcp_server/bootstrap.py`](file:///c:/temp/pgmcp/mcp_server/bootstrap.py)
-
-### Test Suites
-- Presenter unit tests: [`tests/mcp_server/unit/test_presenter.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_presenter.py)
-- Server argument validation unit tests: [`tests/mcp_server/unit/server/test_validate_tool_arguments.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/server/test_validate_tool_arguments.py)
-- Server integration tests: [`tests/mcp_server/integration/test_strict_input_validation_response.py`](file:///c:/temp/pgmcp/tests/mcp_server/integration/test_strict_input_validation_response.py)
-
----
-
-## Candidate Seams for Later Phases
-
-1. **Seam 1: Presentation Contracts & Components** (Presentation layer decoupling)
-2. **Seam 2: Transport Layer Integration** (`MCPServer` DIP and generic presentation consumption)
-3. **Seam 3: End-to-End Verification & Quality Gates** (Regression testing)
-
----
-
-## Approved Strategy
-
-**Selected Strategy:** Preserve Compatibility
-
-**Boundary & Preservation Scope:**
-- Preserves 100% backward compatibility for all external MCP clients and JSON-RPC consumers.
-- Preserves the exact structure, MIME type (`application/json`), and URI (`schema://validation`) of the validation error resource block.
-- Internal refactoring will cleanly separate presentation from transport in accordance with [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md).
-
-**Constraints for Later Phases:**
-- The Design phase will define the concrete interfaces, presentation envelope schemas, and component breakdown.
-- The Planning and Implementation phases will execute the refactoring via strict TDD cycles.
+### Boundary 2: External MCP Protocol (`CallToolResult` Wire Contract)
+- **Selected Strategy:** **Preserve Wire Contract**
+- **Rationale:** External MCP clients (VS Code, Copilot, agent runtimes) expect `CallToolResult(isError=True)` containing both `TextContent` (error message) and `EmbeddedResource` (`schema://validation`).
+- **Rules:** The wire-level JSON-RPC representation must remain 100% identical and fully compatible.
 
 ---
 
 ## Expected Results
 
-1. `mcp_server/server.py` is completely free of `schema://validation` construction and error DTO inspection.
-2. `MCPServer` depends solely on the `IPresenter` abstraction.
-3. The presentation layer coordinates both text rendering and resource generation without violating SRP.
+1. `mcp_server/server.py` is completely free of `schema://validation` construction, hardcoded resource dicts, and error DTO inspection.
+2. `MCPServer` depends strictly on the `IPresenter` abstraction.
+3. The presentation layer coordinates both text rendering and resource generation without violating SRP or ISP.
 4. All unit and integration test suites pass with 100% type safety and zero linter warnings.
 
 ---
@@ -158,3 +146,4 @@ Investigation of the MCP client behavior (e.g. in VS Code and agent environments
 | 1.1 | 2026-08-19 | Agent | Refined presentation architecture with PresentedOutput DTO |
 | 1.2 | 2026-08-19 | Agent | Applied ARCHITECTURE_PRINCIPLES.md composite design |
 | 1.3 | 2026-08-19 | Agent | Enforced documentation standard boundaries by removing premature design specifications |
+| 1.4 | 2026-08-19 | Agent | Explicitly defined Approved Strategy per boundary (Clean Break internally / Preserve Wire Contract externally) and completed exhaustive blast radius audit |
