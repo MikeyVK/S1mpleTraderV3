@@ -3,9 +3,9 @@
   "branch": "bug/449-fix-ruff-command-validation-quality-gate-result-integrity",
   "issue_number": 449,
   "workflow_name": "bug",
-  "current_phase": "implementation",
+  "current_phase": "validation",
   "current_cycle": 1,
-  "last_cycle": 0,
+  "last_cycle": 1,
   "cycle_history": [],
   "required_phases": [
     "research",
@@ -29,8 +29,16 @@
       "human_approval_message": "Akkoord, we gaan direct door naar implementation, zonder planning",
       "forced": true,
       "skip_reason": "Issue #449 is a narrowly scoped corrective bug. Research established the exact Ruff CLI syntax and a clean-correction strategy; the change does not alter architecture or public schemas. The human collaborator explicitly directed proceeding straight to implementation without design or planning."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-19T06:07:11.523966+00:00",
+      "human_approval_message": "User requested a compact validation run followed by ready and PR creation.",
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "green"
+  "current_sub_phase": null
 }
