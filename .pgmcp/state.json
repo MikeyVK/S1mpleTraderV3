@@ -3,9 +3,16 @@
   "issue_number": 442,
   "workflow_name": "bug",
   "current_phase": "implementation",
-  "current_cycle": 1,
-  "last_cycle": 0,
-  "cycle_history": [],
+  "current_cycle": 2,
+  "last_cycle": 1,
+  "cycle_history": [
+    {
+      "cycle_number": 2,
+      "name": "Manager Tracking Delta & Domain Contract",
+      "forced": false,
+      "entered": "2026-08-19T12:41:25.500489+00:00"
+    }
+  ],
   "required_phases": [
     "research",
     "design",
@@ -47,5 +54,5 @@
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "refactor"
+  "current_sub_phase": "red"
 }
