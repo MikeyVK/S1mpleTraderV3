@@ -853,7 +853,10 @@ class TestGitManagerPush:
     def test_push_upstream_not_created_when_preexisting_tracking(
         self, manager: GitManager, mock_adapter: MagicMock
     ) -> None:
-        """Test push with set_upstream=True on existing tracking branch reports new_upstream_created=False."""
+        """Test push with set_upstream=True on existing tracking branch.
+
+        Reports new_upstream_created=False.
+        """
         mock_adapter.get_current_branch.return_value = "feature/existing"
         mock_adapter.has_upstream.side_effect = [True, True]
 
@@ -883,12 +886,15 @@ class TestGitManagerPush:
     def test_push_set_upstream_fails_if_no_upstream_after(
         self, manager: GitManager, mock_adapter: MagicMock
     ) -> None:
-        """Test push with set_upstream=True raises ExecutionError if tracking is not present post-push."""
+        """Test push with set_upstream=True raises error when tracking missing."""
         mock_adapter.get_current_branch.return_value = "feature/broken"
         mock_adapter.has_upstream.side_effect = [False, False]
 
         with pytest.raises(
             ExecutionError,
-            match="Requested upstream tracking branch could not be established on 'origin/feature/broken'",
+            match=(
+                r"Requested upstream tracking branch could not be established "
+                r"on 'origin/feature/broken'"
+            ),
         ):
             manager.push(set_upstream=True)
