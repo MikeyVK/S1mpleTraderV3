@@ -152,8 +152,10 @@ graph TD
     Pipeline["ITool Pipeline (Decorators)"]
     Tool["ICoreTool (Concrete Tool)"]
     Cache["ResponseCacheManager (Cache)"]
-    Presenter["TextPresenter (Presenter)"]
-    Result["CallToolResult (Markdown)"]
+    Presenter["ResponsePresenter (IPresenter)"]
+    TextPresenter["TextPresenter (ITextPresenter)"]
+    ResPresenter["ValidationResourcePresenter (IResourcePresenter)"]
+    Result["CallToolResult (Markdown + Resources)"]
 
     Client -->|"1. CALL"| MCPServer
     MCPServer -->|"2. execute"| Pipeline
@@ -167,7 +169,9 @@ graph TD
     Enforcement -->|"3. execute"| Tool
     Tool -->|"4. return DTO"| Cache
     Cache -->|"5. publish & return CachePub"| Presenter
-    Presenter -->|"6. present & return Markdown"| Result
+    Presenter -->|"delegates text"| TextPresenter
+    Presenter -->|"delegates resources"| ResPresenter
+    Presenter -->|"6. present & return PresentedOutput"| Result
 ```
 
 ### 3.2 Layer Responsibilities
@@ -503,7 +507,9 @@ sequenceDiagram
     participant Pipeline as Decorator Pipeline (ITool)
     participant Tool as Concrete Tool (ICoreTool)
     participant Cache as ResponseCacheManager
-    participant Presenter as TextPresenter
+    participant Presenter as ResponsePresenter (IPresenter)
+    participant TextPres as TextPresenter (ITextPresenter)
+    participant ResPres as ValidationResourcePresenter (IResourcePresenter)
 
     Agent->>Server: CALL tool_name(params)
     Server->>Pipeline: execute(params, note_context)
@@ -523,10 +529,14 @@ sequenceDiagram
     Server->>Cache: put(data)
     Cache-->>Server: CachePublication (DTO)
     
-    Server->>Presenter: present(data, cache_pub)
-    Presenter-->>Server: presented_text (Markdown)
+    Server->>Presenter: present(tool_name, data, notes, cache_pub, success)
+    Presenter->>TextPres: present_text(tool_name, data, notes, ...)
+    TextPres-->>Presenter: markdown_text (str)
+    Presenter->>ResPres: present_resources(tool_name, data)
+    ResPres-->>Presenter: resources (list[PresentationResource])
+    Presenter-->>Server: PresentedOutput(text, resources)
     
-    Server-->>Agent: CallToolResult (Markdown + Cache/Validation Resource)
+    Server-->>Agent: CallToolResult (Markdown + EmbeddedResource)
 ```
 
 ### 6.3 Tool Categories (50 tools)

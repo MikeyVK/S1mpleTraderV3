@@ -1,7 +1,5 @@
-from tests.mcp_server.test_support import get_default_server_root
-
 # tests\mcp_server\unit\server\test_bootstrap.py
-# template=unit_test version=3d15d309 created=2026-06-09T09:48Z updated=
+# template=unit_test version=3d15d309 created=2026-06-09T09:48Z updated=2026-08-19T19:50Z
 """Unit tests for mcp_server.bootstrap.
 
 @layer: Tests (Unit)
@@ -55,6 +53,7 @@ from mcp_server.scaffolding.template_registry import TemplateRegistry
 from mcp_server.server import MCPServer
 from mcp_server.state.context_loaded_cache import ContextLoadedCache
 from mcp_server.state.pr_status_cache import PRStatusCache
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestBootstrap:
