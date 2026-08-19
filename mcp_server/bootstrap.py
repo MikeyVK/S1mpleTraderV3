@@ -73,9 +73,13 @@ from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.managers.workflow_state_mutator import WorkflowStateMutator
 from mcp_server.managers.workflow_status_resolver import WorkflowStatusResolver
 from mcp_server.managers.workspace_version_validator import WorkspaceVersionValidator
+from mcp_server.presenters.response_presenter import ResponsePresenter
 from mcp_server.presenters.text_presenter import (
     TextPresenter,
     validate_presentation_alignment,
+)
+from mcp_server.presenters.validation_resource_presenter import (
+    ValidationResourcePresenter,
 )
 from mcp_server.resources.base import BaseResource
 from mcp_server.resources.cache import CachedResponseResource
@@ -236,8 +240,13 @@ class ServerBootstrapper:
         core_tools = self._build_tools(configs, managers)
         resources = self._build_resources(configs, managers)
 
-        presenter = TextPresenter(config=configs.presentation_config)
-        validate_presentation_alignment(presenter, core_tools)
+        text_presenter = TextPresenter(config=configs.presentation_config)
+        validate_presentation_alignment(text_presenter, core_tools)
+        resource_presenter = ValidationResourcePresenter()
+        presenter = ResponsePresenter(
+            text_presenter=text_presenter,
+            resource_presenter=resource_presenter,
+        )
 
         # Decorate core tools using ToolFactory composition root
         factory = CoreToolFactory(
