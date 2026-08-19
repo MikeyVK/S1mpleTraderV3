@@ -22,6 +22,9 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 from pydantic import BaseModel
 
+from mcp_server.core.exceptions import (
+    ValidationError as CoreValidationError,
+)
 from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.tool_factory import ToolFactory
@@ -32,6 +35,7 @@ from mcp_server.presenters.validation_resource_presenter import (
     ValidationResourcePresenter,
 )
 from mcp_server.schemas.cache_publication import CachePublication
+from mcp_server.schemas.error_outputs import EnforcementErrorOutput
 from mcp_server.state.response_cache import ResponseCacheManager
 from tests.mcp_server.test_support import assert_itool_result, make_test_server
 
@@ -195,11 +199,6 @@ class TestPipelineE2E:
         """Verify that when the enforcement runner raises a ValidationError,
         the pipeline maps it to EnforcementErrorOutput DTO and returns it formatted.
         """
-        from mcp_server.core.exceptions import (
-            ValidationError as CoreValidationError,  # noqa: PLC0415
-        )
-        from mcp_server.schemas.error_outputs import EnforcementErrorOutput  # noqa: PLC0415
-
         cache_manager = ResponseCacheManager()
         enforcement_runner = MagicMock(spec=EnforcementRunner)
         enforcement_runner.run.side_effect = CoreValidationError(

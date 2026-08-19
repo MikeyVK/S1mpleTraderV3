@@ -136,9 +136,6 @@ class TestStrictInputValidationResponse:
         assert isinstance(content, list), "content must be a list"
 
         # Look for embedded resource item (schema://validation)
-        print("DEBUG RESULT CONTENT:", result.content)
-        for item in result.content:
-            print("ITEM TYPE:", type(item), "ITEM:", item)
         resource_items = [c for c in content if isinstance(c, EmbeddedResource)]
         assert len(resource_items) > 0, "Expected schema://validation EmbeddedResource"
 
