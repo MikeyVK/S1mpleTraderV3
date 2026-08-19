@@ -30,10 +30,7 @@ from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
 
 _PUSH_ERROR_MASK: int = (
-    PushInfo.ERROR
-    | PushInfo.REJECTED
-    | PushInfo.REMOTE_REJECTED
-    | PushInfo.REMOTE_FAILURE
+    PushInfo.ERROR | PushInfo.REJECTED | PushInfo.REMOTE_REJECTED | PushInfo.REMOTE_FAILURE
 )
 
 
