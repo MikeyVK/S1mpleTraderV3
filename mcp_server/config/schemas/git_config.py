@@ -99,3 +99,35 @@ class GitConfig(BaseModel):
         if match is None:
             return None
         return int(match.group(1))
+
+
+    def format_branch_name(self, issue_number: int, name: str, branch_type: str) -> str:
+        """Format and validate a canonical branch name from components.
+
+        Args:
+            issue_number: GitHub issue number (must be >= 1).
+            name: Branch name slug in kebab-case (leading issue prefix stripped if present).
+            branch_type: Configured branch type (feature, bug, epic, etc.).
+
+        Returns:
+            Canonical full branch name (e.g. 'feature/116-create-branch-issue-number').
+
+        Raises:
+            ValueError: If issue_number < 1, branch_type is invalid, or slug fails pattern.
+        """
+        if issue_number < 1:
+            raise ValueError(f"Invalid issue number: {issue_number}. Must be >= 1.")
+
+        if not self.has_branch_type(branch_type):
+            raise ValueError(
+                f"Invalid branch type: '{branch_type}'. Allowed types: {', '.join(self.branch_types)}"
+            )
+
+        slug = name.removeprefix(f"{issue_number}-")
+
+        if not self.validate_branch_name(slug):
+            raise ValueError(
+                f"Invalid branch name slug: '{slug}'. Must match pattern: {self.branch_name_pattern}"
+            )
+
+        return f"{branch_type}/{issue_number}-{slug}"
