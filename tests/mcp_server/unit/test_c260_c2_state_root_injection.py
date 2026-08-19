@@ -7,8 +7,6 @@ TDD: These tests FAIL before the GREEN implementation.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import inspect
 import json
@@ -33,6 +31,7 @@ from mcp_server.tools.admin_tools import (
 )
 from mcp_server.tools.cycle_tools import TransitionCycleTool
 from mcp_server.tools.git_tools import build_phase_guard
+from tests.mcp_server.test_support import get_default_server_root
 
 # ---------------------------------------------------------------------------
 # F1 / normalize_config_root — dir-name-agnostic

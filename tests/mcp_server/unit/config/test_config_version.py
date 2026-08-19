@@ -8,6 +8,7 @@ Unit tests for config version validation.
 """
 
 from pathlib import Path
+
 import pytest
 
 from mcp_server.config.loader import ConfigLoader

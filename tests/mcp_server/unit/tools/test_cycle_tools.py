@@ -10,16 +10,16 @@ from tests.mcp_server.test_support import get_default_server_root
 """
 
 from collections.abc import Awaitable, Callable
-from typing import Any
 from pathlib import Path
 from shutil import copytree
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
-from mcp_server.bootstrap import ServerBootstrapper, TemplateRegistry
 from pydantic import BaseModel
 
+from mcp_server.bootstrap import ServerBootstrapper, TemplateRegistry
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.tools.cycle_tools import (
@@ -33,13 +33,13 @@ TRANSITION_ADVISORY_NOTE = (
     "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call "
     "to load the current phase context for this branch."
 )
+from mcp_server.core.tool_factory import ToolFactory
 from tests.mcp_server.test_support import (
     make_git_manager,
     make_phase_state_engine,
     make_project_manager,
     make_test_server,
 )
-from mcp_server.core.tool_factory import ToolFactory
 
 
 def _get_test_bootstrap_context(settings: Any) -> tuple[Any, Path]:
@@ -772,8 +772,9 @@ class TestForceCycleToolFormatting:
 
     def test_force_cycle_transition_input_rejects_boolean_approval(self) -> None:
         """Reject boolean input for human_approval_message (C_CYCLE_TOOLS.3)."""
-        from mcp_server.tools.cycle_tools import ForceCycleTransitionInput  # noqa: PLC0415
         from pydantic import ValidationError  # noqa: PLC0415
+
+        from mcp_server.tools.cycle_tools import ForceCycleTransitionInput  # noqa: PLC0415
 
         with pytest.raises(ValidationError, match="human_approval_message"):
             ForceCycleTransitionInput(
@@ -790,8 +791,9 @@ class TestForceCycleToolFormatting:
 
     def test_force_cycle_transition_input_rejects_empty_approval_and_reason(self) -> None:
         """Reject empty/whitespace approval/reason (C_CYCLE_TOOLS.3)."""
-        from mcp_server.tools.cycle_tools import ForceCycleTransitionInput  # noqa: PLC0415
         from pydantic import ValidationError  # noqa: PLC0415
+
+        from mcp_server.tools.cycle_tools import ForceCycleTransitionInput  # noqa: PLC0415
 
         with pytest.raises(ValidationError, match="String should have at least 1 character"):
             ForceCycleTransitionInput(

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.core.exceptions import ExecutionError, PreflightError
-from mcp_server.core.interfaces import IBranchParentReader, IPRStatusWriter, PRStatus, ICoreTool
+from mcp_server.core.interfaces import IBranchParentReader, ICoreTool, IPRStatusWriter, PRStatus
 from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext

@@ -1,9 +1,8 @@
 # tests\mcp_server\integration\test_pipeline_e2e.py
-# template=integration_test version=85ea75d4 created=2026-06-20T05:50Z updated=
-"""
-Integration tests for pipeline_e2e.
+# template=integration_test version=85ea75d4 created=2026-06-20T05:50Z updated=2026-08-19T19:05Z
+"""Integration tests for pipeline_e2e.
 
-E2E pipeline integration tests verifying Russian doll decorator wrapping, caching and presenting
+E2E pipeline integration tests verifying decorator wrapping, caching and presenting
 
 @layer: Tests (Integration)
 @dependencies: [pytest, pytest-asyncio, tempfile, ResponseCacheManager, EnforcementRunner]
@@ -20,17 +19,25 @@ from unittest.mock import MagicMock
 
 # Third-party
 import pytest
+from mcp.types import CallToolRequest, CallToolRequestParams
 from pydantic import BaseModel
 
-from mcp_server.state.response_cache import ResponseCacheManager
-from mcp_server.managers.enforcement_runner import EnforcementRunner
+from mcp_server.core.exceptions import (
+    ValidationError as CoreValidationError,
+)
 from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.core.tool_factory import ToolFactory
+from mcp_server.managers.enforcement_runner import EnforcementRunner
+from mcp_server.presenters.response_presenter import ResponsePresenter
 from mcp_server.presenters.text_presenter import TextPresenter
-from mcp.types import CallToolRequest, CallToolRequestParams
-from tests.mcp_server.test_support import make_test_server, assert_itool_result
+from mcp_server.presenters.validation_resource_presenter import (
+    ValidationResourcePresenter,
+)
 from mcp_server.schemas.cache_publication import CachePublication
+from mcp_server.schemas.error_outputs import EnforcementErrorOutput
+from mcp_server.state.response_cache import ResponseCacheManager
+from tests.mcp_server.test_support import assert_itool_result, make_test_server
 
 
 # Dummy Core Tool for E2E validation
@@ -77,8 +84,6 @@ class TestPipelineE2E:
     @pytest.mark.asyncio
     async def test_pipeline_e2e_flow(self, temp_workspace):
         """Test the end-to-end flow of the new pipeline structure."""
-        # Initialize dependencies
-
         cache_manager = ResponseCacheManager()
         enforcement_runner = MagicMock(spec=EnforcementRunner)
 
@@ -105,7 +110,11 @@ class TestPipelineE2E:
                 }
             },
         }
-        server.presenter = TextPresenter(config_data=config_data)
+        text_presenter = TextPresenter(config_data=config_data)
+        server.presenter = ResponsePresenter(
+            text_presenter=text_presenter,
+            resource_presenter=ValidationResourcePresenter(),
+        )
         server.tools = [decorated_tool]
 
         # Act - Trigger tool call request
@@ -123,7 +132,6 @@ class TestPipelineE2E:
         assert "Value: 42" in text_content
 
         # Verify run_id cache resolution
-
         match = re.search(r"pgmcp://cache/runs/([a-f0-9\-]+)", text_content)
         assert match is not None
         run_id = match.group(1)
@@ -139,9 +147,7 @@ class TestPipelineE2E:
         """
         cache_manager = MagicMock(spec=ResponseCacheManager)
         cache_pub_fail = CachePublication(run_id=None, success=False, error_code="write_failed")
-        cache_manager.put.return_value = (
-            cache_pub_fail  # Force failure / CachePublication fail return
-        )
+        cache_manager.put.return_value = cache_pub_fail
         enforcement_runner = MagicMock(spec=EnforcementRunner)
 
         factory = ToolFactory(enforcement_runner=enforcement_runner, workspace_root=temp_workspace)
@@ -165,7 +171,11 @@ class TestPipelineE2E:
                 }
             },
         }
-        server.presenter = TextPresenter(config_data=config_data)
+        text_presenter = TextPresenter(config_data=config_data)
+        server.presenter = ResponsePresenter(
+            text_presenter=text_presenter,
+            resource_presenter=ValidationResourcePresenter(),
+        )
         server.tools = [decorated_tool]
 
         handler = server.server.request_handlers[CallToolRequest]
@@ -189,12 +199,8 @@ class TestPipelineE2E:
         """Verify that when the enforcement runner raises a ValidationError,
         the pipeline maps it to EnforcementErrorOutput DTO and returns it formatted.
         """
-        from mcp_server.core.exceptions import ValidationError as CoreValidationError  # noqa: PLC0415
-        from mcp_server.schemas.error_outputs import EnforcementErrorOutput  # noqa: PLC0415
-
         cache_manager = ResponseCacheManager()
         enforcement_runner = MagicMock(spec=EnforcementRunner)
-        # Configure preflight enforcement to raise ValidationError
         enforcement_runner.run.side_effect = CoreValidationError(
             message="Dirty workdir detected",
             error_code="dirty_workdir",
@@ -214,7 +220,11 @@ class TestPipelineE2E:
             },
             "tools": {},
         }
-        server.presenter = TextPresenter(config_data=config_data)
+        text_presenter = TextPresenter(config_data=config_data)
+        server.presenter = ResponsePresenter(
+            text_presenter=text_presenter,
+            resource_presenter=ValidationResourcePresenter(),
+        )
         server.tools = [decorated_tool]
 
         handler = server.server.request_handlers[CallToolRequest]
@@ -226,16 +236,11 @@ class TestPipelineE2E:
         )
         response = await handler(req)
 
-        # Check that is_error is True
         assert getattr(response.root, "is_error", False) or getattr(response.root, "isError", False)
-
-        # Get the text content from response.root.content
         assert len(response.root.content) == 1
         text_content = response.root.content[0].text
-        # The presenter should format the failure with the custom failure message and emoji
         assert "❌ Branch feature-branch is dirty!" in text_content
 
-        # Extract run_id to verify the error output was correctly cached
         match = re.search(r"pgmcp://cache/runs/([a-f0-9\-]+)", text_content)
         assert match is not None
         run_id = match.group(1)

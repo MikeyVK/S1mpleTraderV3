@@ -14,8 +14,9 @@ Test scaffolding of TypeScript DTO artifact.
 """
 
 # Third-party
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Project modules
 from tests.mcp_server.test_support import make_artifact_manager

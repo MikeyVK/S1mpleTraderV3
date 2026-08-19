@@ -1,8 +1,6 @@
 """Tests for WorkflowStatusResolver (C3: C_RESOLVER_CORE RED phase)."""
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 from typing import Any
@@ -23,6 +21,7 @@ from mcp_server.managers.state_repository import (
 )
 from mcp_server.managers.workflow_status_resolver import WorkflowStatusResolver
 from mcp_server.state.workflow_status import WorkflowStatusDTO
+from tests.mcp_server.test_support import get_default_server_root
 
 _TEST_WORKPHASES = WorkphasesConfig(
     phases={

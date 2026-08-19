@@ -51,6 +51,7 @@ from mcp_server.core.commit_phase_detector import CommitPhaseDetector
 from mcp_server.core.interfaces import IToolResponsePublisher, IToolResponseReader
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.core.phase_detection import ScopeDecoder
+from mcp_server.core.tool_factory import ToolFactory as CoreToolFactory
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.managers.branch_parent_reader import BranchStateParentReader
 from mcp_server.managers.deliverable_checker import DeliverableChecker
@@ -72,12 +73,21 @@ from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.managers.workflow_state_mutator import WorkflowStateMutator
 from mcp_server.managers.workflow_status_resolver import WorkflowStatusResolver
 from mcp_server.managers.workspace_version_validator import WorkspaceVersionValidator
+from mcp_server.presenters.response_presenter import ResponsePresenter
+from mcp_server.presenters.text_presenter import (
+    TextPresenter,
+    validate_presentation_alignment,
+)
+from mcp_server.presenters.validation_resource_presenter import (
+    ValidationResourcePresenter,
+)
 from mcp_server.resources.base import BaseResource
 from mcp_server.resources.cache import CachedResponseResource
 from mcp_server.resources.github import GitHubIssuesResource
 from mcp_server.resources.standards import StandardsResource
 from mcp_server.resources.status import StatusResource
 from mcp_server.scaffolding.template_registry import TemplateRegistry
+from mcp_server.server import MCPServer
 from mcp_server.state.context_loaded_cache import ContextLoadedCache
 from mcp_server.state.pr_status_cache import PRStatusCache
 from mcp_server.state.response_cache import ResponseCacheManager
@@ -136,12 +146,6 @@ from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.scaffold_schema_tool import ScaffoldSchemaTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
 from mcp_server.tools.test_tools import RunTestsTool
-from mcp_server.presenters.text_presenter import (
-    TextPresenter,
-    validate_presentation_alignment,
-)
-from mcp_server.core.tool_factory import ToolFactory as CoreToolFactory
-from mcp_server.server import MCPServer
 
 if TYPE_CHECKING:
     from mcp_server.server import MCPServer
@@ -236,8 +240,13 @@ class ServerBootstrapper:
         core_tools = self._build_tools(configs, managers)
         resources = self._build_resources(configs, managers)
 
-        presenter = TextPresenter(config=configs.presentation_config)
-        validate_presentation_alignment(presenter, core_tools)
+        text_presenter = TextPresenter(config=configs.presentation_config)
+        validate_presentation_alignment(text_presenter, core_tools)
+        resource_presenter = ValidationResourcePresenter()
+        presenter = ResponsePresenter(
+            text_presenter=text_presenter,
+            resource_presenter=resource_presenter,
+        )
 
         # Decorate core tools using ToolFactory composition root
         factory = CoreToolFactory(

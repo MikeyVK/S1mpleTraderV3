@@ -4,11 +4,12 @@
 @dependencies: [pytest, pathlib, jinja2]
 """
 
-from tests.mcp_server.test_support import get_template_root
 from typing import Any
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
+
+from tests.mcp_server.test_support import get_template_root
 
 
 @pytest.fixture

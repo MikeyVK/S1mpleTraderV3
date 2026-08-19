@@ -6,8 +6,6 @@
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 
@@ -18,6 +16,7 @@ from mcp_server.managers.phase_contract_resolver import PhaseContractResolver
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     make_phase_config_context,
     make_phase_state_engine,
     make_project_manager,

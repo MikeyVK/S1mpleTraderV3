@@ -203,6 +203,7 @@ def test_cli_init_flat_copy(tmp_path: Path) -> None:
 def test_cli_degraded_server_on_config_error(tmp_path: Path) -> None:
     """Test that CLI boots DegradedMCPServer when ConfigError is raised."""
     from unittest.mock import AsyncMock  # noqa: PLC0415
+
     from mcp_server.core.exceptions import ConfigError  # noqa: PLC0415
 
     workspace = tmp_path / "workspace"
@@ -358,6 +359,7 @@ def test_cli_upgrade_failure_exits_1(tmp_path: Path, capsys: pytest.CaptureFixtu
 def test_version_consistency() -> None:
     """Verify version parity across SSOT files (pyproject.toml, manifest, settings.py)."""
     import yaml  # noqa: PLC0415
+
     from mcp_server.config.settings import Settings  # noqa: PLC0415
 
     repo_root = Path(__file__).resolve().parent.parent.parent.parent

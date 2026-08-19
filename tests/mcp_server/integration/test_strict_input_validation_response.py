@@ -4,21 +4,21 @@ Scope: Cycle 2, Change A — ensures early-return guard works correctly.
 """
 
 import json
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from unittest.mock import patch
 from mcp.types import CallToolRequest, CallToolRequestParams, EmbeddedResource
 from pydantic import BaseModel, ConfigDict
 
-from pathlib import Path
-from mcp_server.config.settings import Settings
 from mcp_server.bootstrap import ServerBootstrapper, TemplateRegistry
-from mcp_server.server import MCPServer
+from mcp_server.config.settings import Settings
 from mcp_server.core.interfaces.icore_tool import ICoreTool
-from mcp_server.tools.tool_result import ToolResult
 from mcp_server.core.tool_factory import ToolFactory
+from mcp_server.server import MCPServer
+from mcp_server.tools.tool_result import ToolResult
 from tests.mcp_server.test_support import make_test_server
 
 
@@ -136,9 +136,6 @@ class TestStrictInputValidationResponse:
         assert isinstance(content, list), "content must be a list"
 
         # Look for embedded resource item (schema://validation)
-        print("DEBUG RESULT CONTENT:", result.content)
-        for item in result.content:
-            print("ITEM TYPE:", type(item), "ITEM:", item)
         resource_items = [c for c in content if isinstance(c, EmbeddedResource)]
         assert len(resource_items) > 0, "Expected schema://validation EmbeddedResource"
 

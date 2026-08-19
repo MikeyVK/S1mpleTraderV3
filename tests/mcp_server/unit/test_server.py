@@ -709,7 +709,11 @@ async def test_handle_call_tool_cache_error_intercept() -> None:
     """
     from pydantic import BaseModel  # noqa: PLC0415
 
+    from mcp_server.presenters.response_presenter import ResponsePresenter  # noqa: PLC0415
     from mcp_server.presenters.text_presenter import TextPresenter  # noqa: PLC0415
+    from mcp_server.presenters.validation_resource_presenter import (  # noqa: PLC0415
+        ValidationResourcePresenter,
+    )
     from mcp_server.state.response_cache import ResponseCacheManager  # noqa: PLC0415
 
     class DummyTool(ICoreTool[BaseModel, ToolResult]):
@@ -738,7 +742,11 @@ async def test_handle_call_tool_cache_error_intercept() -> None:
             },
             "tools": {},
         }
-        presenter = TextPresenter(config_data=config_data)
+        text_presenter = TextPresenter(config_data=config_data)
+        presenter = ResponsePresenter(
+            text_presenter=text_presenter,
+            resource_presenter=ValidationResourcePresenter(),
+        )
 
         managers, workspace_root = _get_test_bootstrap_context(
             mock_settings_cls.from_env.return_value

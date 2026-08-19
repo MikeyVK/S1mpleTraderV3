@@ -15,8 +15,6 @@ prove runtime ownership through observable outcomes, not private seam inspection
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 
@@ -29,7 +27,11 @@ from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, Phas
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class BlockingGateRunner:

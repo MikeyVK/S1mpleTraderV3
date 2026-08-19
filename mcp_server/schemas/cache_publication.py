@@ -13,6 +13,7 @@ from __future__ import annotations
 
 # Third-party
 from typing import Annotated
+
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 HexUUID = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{32}$")]

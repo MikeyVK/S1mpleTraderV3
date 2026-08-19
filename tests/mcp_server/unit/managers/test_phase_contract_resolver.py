@@ -7,8 +7,6 @@
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 from pathlib import Path
@@ -19,7 +17,7 @@ from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers.phase_contract_resolver import (
     PhaseContractResolver,
 )
-from tests.mcp_server.test_support import make_phase_config_context
+from tests.mcp_server.test_support import get_default_server_root, make_phase_config_context
 
 
 @pytest.fixture

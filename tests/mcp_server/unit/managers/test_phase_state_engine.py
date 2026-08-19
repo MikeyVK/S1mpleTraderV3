@@ -7,12 +7,11 @@ Issue #146 Cycle 4: implementation phase lifecycle hooks.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
 
-
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
-import json
+
 import pytest
 
 from mcp_server.core.interfaces import IContextLoadedWriter
@@ -23,7 +22,11 @@ from mcp_server.managers.state_repository import (
     InMemoryStateRepository,
     StateBranchMismatchError,
 )
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class TestTDDPhaseHooks:

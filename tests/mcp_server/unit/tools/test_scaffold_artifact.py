@@ -4,7 +4,6 @@
 @dependencies: [pytest, unittest.mock, mcp_server.tools.scaffold_artifact]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,6 +16,7 @@ from mcp_server.tools.scaffold_artifact import (
     ScaffoldArtifactInput,
     ScaffoldArtifactTool,
 )
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestScaffoldArtifactTool:

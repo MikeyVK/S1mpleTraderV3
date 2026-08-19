@@ -6,7 +6,6 @@ Tests config loading and validation for artifacts.yaml.
 @dependencies: pytest, pathlib, mcp_server.config.loader, mcp_server.config.schemas
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 
 def _load_artifact_registry(config_path: Path | None = None) -> ArtifactRegistryConfig:

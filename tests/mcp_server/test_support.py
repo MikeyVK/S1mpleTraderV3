@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -16,7 +15,7 @@ from mcp_server.config.loader import (
     ConfigLoader,
     normalize_config_root,
 )
-
+from mcp_server.config.settings import Settings as RealSettings
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.interfaces import GateReport
 from mcp_server.core.phase_detection import ScopeDecoder
@@ -44,7 +43,6 @@ from mcp_server.schemas import (
     WorkphasesConfig,
 )
 from mcp_server.tools.issue_tools import CreateIssueTool
-from mcp_server.config.settings import Settings as RealSettings
 
 if TYPE_CHECKING:
     from mcp_server.config.settings import Settings

@@ -1,8 +1,6 @@
 """Tests for PhaseStateEngine state.json persistence."""
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 from pathlib import Path
@@ -12,7 +10,11 @@ import pytest
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import StateAlreadyExistsError
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class TestPhaseStateEnginePersistence:

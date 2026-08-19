@@ -2084,6 +2084,98 @@ workflows:
 
             #### Stop-Go Proof
             - Research doc committed
+      - name: design
+        exit_requires:
+          - id: design-doc
+            type: file_glob
+            required: true
+            dir: docs/development
+            pattern: issue*/design*.md
+        instructions:
+          sub_role: designer
+          phase_instructions: |
+            [ ] Read the research artifact, the research hand-over, and the Approved Strategy from the previous phase.
+            [ ] Read ARCHITECTURE_PRINCIPLES.md before making design decisions.
+            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the design document.
+            [ ] Evaluate the Design Necessity Check:
+                - If this is a lightweight refactor without new interfaces, DTOs, or architectural changes:
+                  Suggest to the user to execute:
+                  force_phase_transition(branch='...', to_phase='planning', skip_reason='Lightweight refactor without new contracts', human_approval_message='...')
+                - If this is an architectural or contract-heavy refactor:
+                  Proceed with the full design steps below.
+
+            [ ] Use explore_subagent to gather concrete evidence about this refactor design.
+                Ask it to identify:
+                - candidate interface contracts, signatures, and Pydantic DTO models
+                - affected modules, composition wiring, and downstream call sites
+                - affected test suites, helpers, and fixtures
+                - architectural constraints and forbidden approaches
+                - design options within the Approved Strategy and trade-offs
+
+            [ ] Interaction checkpoint: present the design framing to the user before going deeper.
+                Include:
+                - current understanding of the refactor architecture
+                - the Approved Strategy constraints
+                - proposed interface contracts and component composition
+                - key architectural constraints and blast radius
+                - major unknowns still blocking sound design
+
+            [ ] Keep the design in-bounds while forming the design nucleus and before scaffolding:
+                - Include option comparison, chosen direction, rationale, interface contracts,
+                  Pydantic models (without method bodies), composition diagrams,
+                  affected test suites, architectural constraints, the Approved Strategy,
+                  design-level validation strategy, assumptions, open questions, and risks.
+                - Follow DOCUMENTATION_STANDARD.md for presentation rules,
+                  drafting discipline, tables, Mermaid, and diagram format.
+                - Exclude method implementation bodies, patch sequences, task breakdown,
+                  and TDD cycle sequencing (reserved for planning).
+
+            [ ] Before scaffolding, produce a short design nucleus that is stable enough
+                for first-time-right drafting.
+
+            [ ] Create the design artifact: scaffold_artifact(artifact_type='design', name='design', context={...}).
+            [ ] Fill the scaffolded document with evidence-backed content.
+                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+
+            [ ] Self-check before the final user checkpoint:
+                - Verify interface contracts contain only signatures and type annotations (no method bodies).
+                - Verify the design strictly respects the Approved Strategy from research.
+                - Verify the draft follows DOCUMENTATION_STANDARD.md.
+
+            [ ] Interaction checkpoint before internal QA: present the chosen design,
+                interface contracts, option comparison, and open questions to the user.
+
+            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role design-reviewer.
+                Ask QA to verify:
+                - alignment with research findings and the Approved Strategy
+                - interface contracts are explicit and free of implementation bleed
+                - compliance with ARCHITECTURE_PRINCIPLES.md (SRP, ISP, DIP)
+                - blast radius and test impacts are fully addressed
+                Return PASS or FAIL with exact gaps.
+
+            [ ] If internal QA returns FAIL, revise the design and repeat the QA checkpoint.
+            [ ] Commit: git_add_or_commit(workflow_phase='design', message='Design for #N')
+            [ ] Produce the hand-over required by the handover_template before ending the session.
+          handover_template: |
+            ### Design → Planning Hand-over
+            #### Scope
+            - Issue: #N
+            - Design focus: <one sentence>
+
+            #### Architecture & Contracts
+            - Interface contracts: <new/updated interfaces and DTOs>
+            - Composition model: <how components are wired>
+            - Approved Strategy alignment: <how strategy is operationalized>
+            - Blast radius / test impact: <affected modules and tests>
+
+            #### Open Questions
+            - <question that planning must resolve>
+
+            #### Files
+            - docs/development/issueN/design.md (new)
+
+            #### Stop-Go Proof
+            - Design doc committed
       - name: planning
         exit_requires:
           - id: planning-doc

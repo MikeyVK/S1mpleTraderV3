@@ -33,8 +33,6 @@ Verifies that:
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -52,7 +50,11 @@ from mcp_server.schemas import GitConfig
 from mcp_server.state.context_loaded_cache import ContextLoadedCache
 from mcp_server.tools.git_pull_tool import GitPullInput, GitPullTool
 from mcp_server.tools.git_tools import GitCheckoutInput, GitCheckoutTool
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 pytestmark = pytest.mark.asyncio
 

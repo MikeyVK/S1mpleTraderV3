@@ -15,14 +15,14 @@ None
 
 # No external mocks/dependencies needed for import verification
 # Project modules
-from mcp_server.core.interfaces.gate import GateReport, GateViolation, IWorkflowGateRunner
-from mcp_server.core.interfaces.state import IStateReader, IStateRepository
-from mcp_server.core.interfaces.ipr_status import PRStatus, IPRStatusReader, IPRStatusWriter
-from mcp_server.core.interfaces.ipytest_runner import IPytestRunner
-from mcp_server.core.interfaces.git import IGitContextReader, IBranchParentReader
-from mcp_server.core.interfaces.quality import IQualityStateRepository
-from mcp_server.core.interfaces.workflow import IWorkflowStateMutator
 from mcp_server.core.interfaces.context import IContextLoadedReader, IContextLoadedWriter
+from mcp_server.core.interfaces.gate import GateReport, GateViolation, IWorkflowGateRunner
+from mcp_server.core.interfaces.git import IBranchParentReader, IGitContextReader
+from mcp_server.core.interfaces.ipr_status import IPRStatusReader, IPRStatusWriter, PRStatus
+from mcp_server.core.interfaces.ipytest_runner import IPytestRunner
+from mcp_server.core.interfaces.quality import IQualityStateRepository
+from mcp_server.core.interfaces.state import IStateReader, IStateRepository
+from mcp_server.core.interfaces.workflow import IWorkflowStateMutator
 
 
 class TestInterfaceImports:

@@ -11,9 +11,7 @@ Using existing DTO template to verify metadata injection works.
 @dependencies: [pytest, pathlib, mcp_server.managers.artifact_manager]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 # pyright: basic
-
 from pathlib import Path
 
 import pytest
@@ -22,7 +20,11 @@ from mcp_server.core.exceptions import MetadataParseError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
 from mcp_server.scaffolding.template_registry import TemplateRegistry
-from tests.mcp_server.test_support import make_artifact_manager, make_metadata_parser
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_artifact_manager,
+    make_metadata_parser,
+)
 
 
 class TestMetadataEndToEnd:

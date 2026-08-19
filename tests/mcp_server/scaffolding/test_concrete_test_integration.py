@@ -5,10 +5,10 @@ Unit tests for concrete/test_integration.py.jinja2 template.
 @dependencies: [pytest, jinja2, pathlib, mcp_server.scaffolding]
 """
 
-from tests.mcp_server.test_support import get_template_root
-
 import pytest
 from jinja2 import Environment, FileSystemLoader
+
+from tests.mcp_server.test_support import get_template_root
 
 
 @pytest.fixture

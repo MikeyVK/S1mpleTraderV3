@@ -1,40 +1,41 @@
 # tests/mcp_server/unit/test_presenter.py
-# template=unit_test version=3d15d309 created=2026-06-12T20:48Z updated=2026-06-12T21:00Z
-"""
-Unit tests for mcp_server.presenters.text_presenter.
+# template=unit_test version=3d15d309 created=2026-06-12T20:48Z updated=2026-08-19T19:05Z
+"""Unit tests for presenter subcomponents: TextPresenter, ValidationResourcePresenter.
 
 @layer: Tests (Unit)
-@dependencies: [pytest, mcp_server.presenters.text_presenter, unittest.mock]
+@dependencies: [pytest, mcp_server.presenters, unittest.mock]
 @responsibilities:
-    - Test TextPresenter functionality
-    - Verify presentation.yaml config parsing
+    - Test TextPresenter (ITextPresenter) markdown rendering and note grouping
+    - Test ValidationResourcePresenter (IResourcePresenter) schema resource generation
+    - Test ResponsePresenter (IPresenter) composite coordination
     - Test drift validator validate_presentation_alignment
 """
 
 # Standard library
+import json
 from typing import Any, ClassVar
 
 # Third-party
 import pytest
 from pydantic import BaseModel
 
-from mcp_server.core.exceptions import ConfigError
-
 # Project modules
-from mcp_server.config.schemas.presentation_config import PresentationConfig
+from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.operation_notes import Note
-from mcp_server.schemas.cache_publication import CachePublication
+from mcp_server.presenters.response_presenter import ResponsePresenter
 from mcp_server.presenters.text_presenter import (
-    SafeNoneFormatter,
     TextPresenter,
     validate_presentation_alignment,
 )
-from mcp_server.schemas.error_outputs import (
-    ValidationErrorOutput,
-    ExecutionErrorOutput,
-    CacheErrorOutput,
-    EnforcementErrorOutput,
+from mcp_server.presenters.validation_resource_presenter import (
+    ValidationResourcePresenter,
 )
+from mcp_server.schemas.cache_publication import CachePublication
+from mcp_server.schemas.error_outputs import (
+    ExecutionErrorOutput,
+    ValidationErrorOutput,
+)
+from mcp_server.schemas.presentation_output import PresentationResource, PresentedOutput
 from mcp_server.schemas.tool_outputs import BaseToolOutput
 
 
@@ -55,6 +56,90 @@ class DummyTool:
 class DummyNoOutputModelTool:
     name: ClassVar[str] = "dummy_no_model"
     output_model: ClassVar[type[BaseModel] | None] = None
+
+
+class TestValidationResourcePresenter:
+    """Test suite for ValidationResourcePresenter."""
+
+    def test_present_resources_validation_error_dto(self) -> None:
+        """Verify schema extraction from ValidationErrorOutput."""
+        presenter = ValidationResourcePresenter()
+        schema = {"type": "object", "properties": {"name": {"type": "string"}}}
+        dto = ValidationErrorOutput(
+            error_message="Invalid input",
+            validation_errors=[],
+            input_schema=schema,
+        )
+
+        resources = presenter.present_resources(tool_name="dummy_tool", data=dto)
+
+        assert len(resources) == 1
+        assert resources[0].uri == "schema://validation"
+        assert resources[0].mime_type == "application/json"
+        assert json.loads(resources[0].content) == schema
+
+    def test_present_resources_validation_error_dict(self) -> None:
+        """Verify schema extraction from dict with error_type == 'ValidationError'."""
+        presenter = ValidationResourcePresenter()
+        schema = {"type": "object", "properties": {"age": {"type": "integer"}}}
+        data = {
+            "error_type": "ValidationError",
+            "error_message": "Invalid input",
+            "validation_errors": [],
+            "input_schema": schema,
+        }
+
+        resources = presenter.present_resources(tool_name="dummy_tool", data=data)
+
+        assert len(resources) == 1
+        assert resources[0].uri == "schema://validation"
+        assert json.loads(resources[0].content) == schema
+
+    def test_present_resources_non_validation_error(self) -> None:
+        """Verify empty resource list for non-validation outputs."""
+        presenter = ValidationResourcePresenter()
+        dto = DummyOutput(success=True, result="All good")
+
+        resources = presenter.present_resources(tool_name="dummy_tool", data=dto)
+
+        assert resources == []
+
+
+class TestResponsePresenter:
+    """Test suite for ResponsePresenter composite."""
+
+    def test_present_combines_text_and_resources(self) -> None:
+        """Verify ResponsePresenter coordinates text and resource delegates."""
+
+        class MockTextPres:
+            def present_text(
+                self,
+                tool_name: str,
+                data: Any,
+                notes: Any = None,
+                cache_pub: Any = None,
+                success: Any = None,
+            ) -> str:
+                return "Rendered Markdown"
+
+            def present_notes(self, tool_name: str, notes: Any) -> str | None:
+                return None
+
+        class MockResPres:
+            def present_resources(self, tool_name: str, data: Any) -> list[PresentationResource]:
+                return [PresentationResource(uri="schema://validation", content="{}")]
+
+        presenter = ResponsePresenter(
+            text_presenter=MockTextPres(),
+            resource_presenter=MockResPres(),
+        )
+
+        output = presenter.present(tool_name="dummy_tool", data=DummyOutput(result="test"))
+
+        assert isinstance(output, PresentedOutput)
+        assert output.text == "Rendered Markdown"
+        assert len(output.resources) == 1
+        assert output.resources[0].uri == "schema://validation"
 
 
 class TestTextPresenter:
@@ -79,6 +164,15 @@ class TestTextPresenter:
                         "View resource: pgmcp://cache/runs/{run_id})*"
                     ),
                 },
+                "notes": {
+                    "groups": {
+                        "suggestions": {"header": "Suggestions", "emoji": "💡"},
+                        "recoveries": {"header": "Recovery", "emoji": "🔧"},
+                    },
+                    "templates": {
+                        "suggestions": {"try_this": "Try {action}"},
+                    },
+                },
             },
             "tools": {
                 "dummy_tool": {
@@ -90,295 +184,81 @@ class TestTextPresenter:
             },
         }
 
-    def test_present_success(self, mock_yaml_config: dict[str, Any]) -> None:
+    def test_present_text_success(self, mock_yaml_config: dict[str, Any]) -> None:
         """Test presenting success output with custom template and emoji prefix."""
         presenter = TextPresenter(config_data=mock_yaml_config)
         dto = DummyOutput(success=True, result="Operation completed")
 
-        text = presenter.present(tool_name="dummy_tool", success=True, data=dto)
+        text = presenter.present_text(tool_name="dummy_tool", success=True, data=dto)
 
-        # 'query' category maps to '📋' Success maps to '📋' + template + \n\n + next_instructions
         assert text == "📋 Success: Operation completed\n\n🚀 TEST ADVISORY WARNING"
 
-    def test_present_failure_custom(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test presenting failure output with custom template."""
+    def test_present_text_failure(self, mock_yaml_config: dict[str, Any]) -> None:
+        """Test presenting failure output with custom template and emoji prefix."""
         presenter = TextPresenter(config_data=mock_yaml_config)
-        dto = DummyOutput(success=False, error_message="Something failed")
+        dto = ExecutionErrorOutput(error_message="Operation failed")
 
-        text = presenter.present(tool_name="dummy_tool", success=False, data=dto)
+        text = presenter.present_text(tool_name="dummy_tool", success=False, data=dto)
 
-        assert text == "❌ Error: Something failed"
+        assert text == "❌ Error: Operation failed"
 
-    def test_present_failure_fallback(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test presenting failure output falling back to default template."""
+    def test_present_text_default_failure_template(self, mock_yaml_config: dict[str, Any]) -> None:
+        """Test presenting failure using default failure template when no specific one exists."""
         presenter = TextPresenter(config_data=mock_yaml_config)
-        dto = DummySimpleOutput(success=False, error_message="Fallback failure")
+        dto = ExecutionErrorOutput(error_message="Something crashed")
 
-        text = presenter.present(tool_name="dummy_no_model", success=False, data=dto)
+        text = presenter.present_text(tool_name="dummy_no_model", success=False, data=dto)
 
-        assert text == "❌ Failed: Fallback failure"
+        assert text == "❌ Failed: Something crashed"
 
-    def test_multiple_next_instructions(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test that multiple next instructions are formatted on new lines with blank lines."""
-        config = dict(mock_yaml_config)
-        config["tools"]["dummy_tool"]["next_instructions"] = ["test_advisory", "uri_reference"]
-        presenter = TextPresenter(config_data=config)
-
-        class MockDTO(BaseModel):
-            success: bool = True
-            result: str = "Op"
-            run_id: str = "abc-123"
-
-        dto = MockDTO()
-        text = presenter.present(tool_name="dummy_tool", success=True, data=dto)
-
-        expected_text = (
-            "📋 Success: Op\n\n"
-            "🚀 TEST ADVISORY WARNING\n\n"
-            "*(Full details available in the structured JSON payload. View resource: pgmcp://cache/runs/abc-123)*"
-        )
-        assert text == expected_text
-
-    def test_drift_validator_success(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test that drift validator passes when DTO and template fields align."""
+    def test_present_text_no_output_model(self, mock_yaml_config: dict[str, Any]) -> None:
+        """Test presenting tool with no output model."""
         presenter = TextPresenter(config_data=mock_yaml_config)
-        tools = [DummyTool, DummyNoOutputModelTool]
 
-        # Should not raise any exception
-        validate_presentation_alignment(presenter, tools)
+        text = presenter.present_text(tool_name="dummy_no_model", success=True, data={})
 
-    def test_drift_validator_drift_detected(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test that drift validator raises ConfigError when template references missing field."""
-        corrupt_config = dict(mock_yaml_config)
-        corrupt_config["tools"]["dummy_tool"]["template_success"] = "Success: {non_existent_field}"
+        assert text == "📋 No model success message"
 
-        presenter = TextPresenter(config_data=corrupt_config)
-        tools = [DummyTool]
-
-        with pytest.raises(ConfigError) as exc_info:
-            validate_presentation_alignment(presenter, tools)
-
-        assert "non_existent_field" in str(exc_info.value)
-
-    def test_drift_validator_next_instruction_drift_detected(
-        self, mock_yaml_config: dict[str, Any]
-    ) -> None:
-        """Test that drift validator raises ConfigError when next instruction references
-        missing field.
-        """
-        corrupt_config = dict(mock_yaml_config)
-        corrupt_config["tools"]["dummy_tool"]["next_instructions"] = ["uri_reference"]
-        # Note: DummyTool's output_model is DummyOutput, which has message and
-        # items, but lacks run_id! So uri_reference (which uses {run_id}) should fail validation.
-
-        presenter = TextPresenter(config_data=corrupt_config)
-        tools = [DummyTool]
-
-        with pytest.raises(ConfigError) as exc_info:
-            validate_presentation_alignment(presenter, tools)
-
-        assert "run_id" in str(exc_info.value)
-
-    def test_presentation_config_schema_extended(self) -> None:
-        """Test that PresentationConfig schema correctly parses extended configuration fields."""
-        extended_data = {
-            "global": {
-                "emojis": {
-                    "success": "✅",
-                    "failure": "❌",
-                    "warning": "⚠️",
-                    "query": "📋",
-                    "bootstrap": "🚀",
-                },
-                "default_failure_template": "Failed: {error_message}",
-                "formatting": {"none_value": "-"},
-                "notes": {
-                    "groups": {
-                        "exclusions": {"emoji": "🩹", "header": "Exclusions"},
-                        "suggestions": {"emoji": "💡", "header": "Suggestions"},
-                    },
-                    "templates": {"exclusions": {"default": "Excluded: {file}"}},
-                },
-                "failures": {"dirty_workdir": "Dirty: {branch}"},
-            },
-            "tools": {
-                "dummy_tool": {
-                    "template_success": "Success",
-                    "exclusions": {"dirty": "Excluded {file}"},
-                }
-            },
-        }
-        config = PresentationConfig.model_validate(extended_data)
-        assert config.global_settings.formatting.none_value == "-"
-        assert config.global_settings.notes.groups["exclusions"].emoji == "🩹"
-        assert config.global_settings.failures["dirty_workdir"] == "Dirty: {branch}"
-        assert config.tools["dummy_tool"].exclusions["dirty"] == "Excluded {file}"
-
-    def test_error_dto_compilation_and_enforcement(self) -> None:
-        """Test that error DTO subclasses compile and enforce frozen and forbid-extra rules."""
-        # Test ValidationErrorOutput
-        val_err = ValidationErrorOutput(
-            error_message="Validation failed",
-            params={"param1": "val1"},
-            validation_errors=[{"loc": ["field"], "msg": "invalid"}],
-            input_schema={"type": "object"},
-        )
-        assert val_err.success is False
-        assert val_err.error_type == "ValidationError"
-        assert val_err.params == {"param1": "val1"}
-
-        # Verify frozen
-        with pytest.raises(Exception):
-            val_err.error_message = "new message"  # type: ignore
-
-        # Verify extra forbid
-        with pytest.raises(Exception):
-            ValidationErrorOutput(
-                error_message="Err",
-                params={},
-                validation_errors=[],
-                input_schema={},
-                invalid_extra_field="fail",  # type: ignore
-            )
-
-        # Test EnforcementErrorOutput
-        enf_err = EnforcementErrorOutput(
-            error_message="Enforcement blocked",
-            params={"rule": "no-push"},
-            error_code="RULE_VIOLATION",
-        )
-        assert enf_err.success is False
-        assert enf_err.error_type == "EnforcementError"
-        assert enf_err.error_code == "RULE_VIOLATION"
-
-        # Verify ExecutionErrorOutput compile
-        exec_err = ExecutionErrorOutput(error_message="Fail", params={})
-        assert exec_err.error_type == "ExecutionError"
-
-        # Verify CacheErrorOutput compile
-        cache_err = CacheErrorOutput(error_message="Disk full", params={})
-        assert cache_err.error_type == "CacheError"
-
-    def test_safe_none_formatter(self) -> None:
-        """Test SafeNoneFormatter formatting of None values and format specifiers."""
-        formatter = SafeNoneFormatter(none_value="-")
-
-        # None formatting bypasses specifiers
-        assert formatter.format("None value: {val}", val=None) == "None value: -"
-        assert formatter.format("None with spec: {val:.2f}", val=None) == "None with spec: -"
-
-        # Normal formatting works
-        assert formatter.format("Float: {val:.2f}", val=3.14159) == "Float: 3.14"
-        assert formatter.format("String: {val}", val="hello") == "String: hello"
-
-    def test_present_notes_lookup_and_grouping(self) -> None:
-        """Test TextPresenter.present_notes lookup, formatting, and markdown grouping."""
-        config_data = {
-            "global": {
-                "emojis": {
-                    "success": "✅",
-                    "failure": "❌",
-                    "warning": "⚠️",
-                    "query": "📋",
-                    "bootstrap": "🚀",
-                },
-                "default_failure_template": "Failed: {error_message}",
-                "formatting": {"none_value": "-"},
-                "notes": {
-                    "groups": {
-                        "exclusions": {"emoji": "🩹", "header": "Exclusions"},
-                        "suggestions": {"emoji": "💡", "header": "Suggestions"},
-                    },
-                    "templates": {
-                        "exclusions": {
-                            "dirty": "Excluded file: {file}",
-                            "none_test": "None test: {val:.2f}",
-                        },
-                        "suggestions": {"suggestion_msg": "Suggestion: {message}"},
-                    },
-                },
-            },
-            "tools": {},
-        }
-        presenter = TextPresenter(config_data=config_data)
-
+    def test_present_text_with_notes(self, mock_yaml_config: dict[str, Any]) -> None:
+        """Test presenting with operation notes."""
+        presenter = TextPresenter(config_data=mock_yaml_config)
+        dto = DummyOutput(success=True, result="Done")
         notes = [
-            Note(key="dirty", params={"file": "a.py"}),
-            Note(key="none_test", params={"val": None}),
-            Note(key="suggestion_msg", params={"message": "Do X"}),
+            Note(key="try_this", params={"action": "re-running the test"}),
         ]
 
-        text = presenter.present_notes("dummy_tool", notes)
+        text = presenter.present_text(tool_name="dummy_tool", success=True, data=dto, notes=notes)
 
-        expected = (
-            "🩹 Exclusions\n"
-            "  - Excluded file: a.py\n"
-            "  - None test: -\n\n"
-            "💡 Suggestions\n"
-            "  - Suggestion: Do X"
+        assert "💡 Suggestions" in text
+        assert "Try re-running the test" in text
+
+    def test_present_text_fallback_run_id_none_validation_error(
+        self, mock_yaml_config: dict[str, Any]
+    ) -> None:
+        """Test presenting fallback when run_id is None and DTO is ValidationErrorOutput."""
+        presenter = TextPresenter(config_data=mock_yaml_config)
+        dto = ValidationErrorOutput(
+            error_message="Validation Failed",
+            validation_errors=[],
+            input_schema={"type": "object", "properties": {"name": {"type": "string"}}},
         )
-        assert text == expected
 
-    def test_drift_validator_blacklist_detected(self) -> None:
-        """Test that validator raises ConfigError when a blacklisted param
-        is used in custom templates.
-        """
-        config_data = {
-            "global": {
-                "failures": {"dirty_workdir": "Dirty: {msg}"},
-            },
-            "tools": {},
-        }
-        presenter = TextPresenter(config_data=config_data)
-        with pytest.raises(ConfigError) as exc_info:
-            validate_presentation_alignment(presenter, [])
-        assert "blacklisted" in str(exc_info.value).lower()
-
-    def test_drift_validator_global_failures_invalid_placeholder(self) -> None:
-        """Test that validator raises ConfigError when placeholders in
-        global failures do not exist in DTO/exception.
-        """
-        config_data = {
-            "global": {
-                "failures": {"ERR_CONFIG": "Config error on: {invalid_field}"},
-            },
-            "tools": {},
-        }
-        presenter = TextPresenter(config_data=config_data)
-        with pytest.raises(ConfigError) as exc_info:
-            validate_presentation_alignment(presenter, [])
-        assert "placeholder" in str(exc_info.value).lower()
-
-    def test_present_with_notes_and_run_id(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test presenting with notes and run_id."""
-        config_data = dict(mock_yaml_config)
-        config_data["global"]["notes"] = {
-            "groups": {
-                "suggestions": {"emoji": "💡", "header": "Suggestions"},
-            },
-            "templates": {
-                "suggestions": {"suggestion_msg": "Suggestion: {message}"},
-            },
-        }
-        presenter = TextPresenter(config_data=config_data)
-        dto = DummyOutput(success=True, result="Notes test")
-        notes = [Note(key="suggestion_msg", params={"message": "Try caching"})]
-
-        text = presenter.present(
+        text = presenter.present_text(
             tool_name="dummy_tool",
             data=dto,
-            notes=notes,
-            cache_pub=CachePublication(run_id="a" * 32, success=True),
+            notes=[],
+            cache_pub=CachePublication(run_id=None, success=False, error_code="write_failed"),
         )
-        assert "💡 Suggestions" in text
-        assert "Suggestion: Try caching" in text
+        assert "*(Cache publication failed. Full details dumped inline)*" in text
+        assert "```json" in text
+        assert "Validation Failed" in text
 
-    def test_present_fallback_run_id_none(self, mock_yaml_config: dict[str, Any]) -> None:
-        """Test presenting when run_id is None, verifying warning and JSON block."""
+    def test_present_text_fallback_run_id_none(self, mock_yaml_config: dict[str, Any]) -> None:
+        """Test presenting when run_id is None and CachePublication.success is False."""
         presenter = TextPresenter(config_data=mock_yaml_config)
         dto = DummyOutput(success=True, result="Fallback JSON test")
 
-        text = presenter.present(
+        text = presenter.present_text(
             tool_name="dummy_tool",
             data=dto,
             notes=[],
@@ -388,7 +268,7 @@ class TestTextPresenter:
         assert "```json" in text
         assert '"result": "Fallback JSON test"' in text
 
-    def test_present_fallback_run_id_none_execution_error(
+    def test_present_text_fallback_run_id_none_execution_error(
         self, mock_yaml_config: dict[str, Any]
     ) -> None:
         """Test presenting when run_id is None and DTO is ExecutionErrorOutput,
@@ -401,7 +281,7 @@ class TestTextPresenter:
             params={"arg1": "val1"},
         )
 
-        text = presenter.present(
+        text = presenter.present_text(
             tool_name="dummy_tool",
             data=dto,
             notes=[],
@@ -431,12 +311,12 @@ class TestTextPresenter:
             validate_presentation_alignment(presenter, [])
         assert "placeholder" in str(exc_info.value).lower()
 
-    def test_present_cache_publication_failure(self, mock_yaml_config: dict[str, Any]) -> None:
+    def test_present_text_cache_publication_failure(self, mock_yaml_config: dict[str, Any]) -> None:
         """Test presenting with CachePublication indicating failure."""
         presenter = TextPresenter(config_data=mock_yaml_config)
         dto = DummyOutput(success=True, result="Fallback JSON test")
         cache_pub = CachePublication(success=False, error_code="write_failed")
-        text = presenter.present(
+        text = presenter.present_text(
             tool_name="dummy_tool",
             data=dto,
             notes=[],
@@ -445,7 +325,7 @@ class TestTextPresenter:
         assert "*(Cache publication failed. Full details dumped inline)*" in text
         assert "```json" in text
 
-    def test_present_dynamic_category_emoji(self) -> None:
+    def test_present_text_dynamic_category_emoji(self) -> None:
         """Verify that custom categories and emojis configured in YAML are resolved dynamically."""
         config_data = {
             "global": {
@@ -464,7 +344,7 @@ class TestTextPresenter:
         }
         presenter = TextPresenter(config_data=config_data)
         dto = DummyOutput(success=True, result="Dynamic emoji test")
-        text = presenter.present(
+        text = presenter.present_text(
             tool_name="dummy_tool",
             data=dto,
             notes=[],

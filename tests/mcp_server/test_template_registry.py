@@ -9,8 +9,6 @@ current version tracking, JSON persistence, and YAML->JSON migration.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 from datetime import UTC, datetime
@@ -20,6 +18,7 @@ import pytest
 import yaml
 
 from mcp_server.scaffolding.template_registry import TemplateRegistry
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestTemplateRegistryInitialization:

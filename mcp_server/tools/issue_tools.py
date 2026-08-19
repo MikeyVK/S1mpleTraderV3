@@ -10,13 +10,13 @@ from mcp_server.config.schemas.git_config import GitConfig
 from mcp_server.config.schemas.label_config import LabelConfig
 from mcp_server.config.schemas.scope_config import ScopeConfig
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.interfaces import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.schemas import (
     IssueConfig,
     MilestoneConfig,
 )
-from mcp_server.core.interfaces import ICoreTool
 from mcp_server.schemas.github_models import IssueReadModel
 from mcp_server.schemas.tool_outputs import (
     CloseIssueOutput,

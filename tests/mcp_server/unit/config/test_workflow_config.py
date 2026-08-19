@@ -15,7 +15,6 @@ Quality Requirements:
 @dependencies: pytest, yaml, pydantic, mcp_server.config.schemas
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 
 import pytest
@@ -25,6 +24,7 @@ from pydantic import ValidationError
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import WorkflowConfig, WorkflowTemplate
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 _PGMCP_CONFIG = Path(__file__).resolve().parents[4] / get_default_server_root() / "config"
 

@@ -58,7 +58,7 @@ class ToolErrorHandlerDecorator(ITool):
     def _tool(self) -> Any:
         inner = self._inner_tool
         while hasattr(inner, "_inner_tool"):
-            inner = getattr(inner, "_inner_tool")
+            inner = inner._inner_tool
         return inner
 
     @property

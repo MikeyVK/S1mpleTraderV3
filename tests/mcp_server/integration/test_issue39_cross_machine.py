@@ -13,7 +13,6 @@ This validates that the dual-mode system works end-to-end across machines.
 @dependencies: [pytest, subprocess, tests.mcp_server.test_support]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 import subprocess
 from pathlib import Path
@@ -21,7 +20,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
+from tests.mcp_server.test_support import (
+    get_default_server_root,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class TestIssue39CrossMachine:

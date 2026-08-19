@@ -15,7 +15,6 @@ Issue #229 Cycle 8: update_planning_deliverables per-phase merge + exit_criteria
 @dependencies: [pytest, pathlib, mcp_server.tools.project_tools]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -35,6 +34,7 @@ from mcp_server.tools.project_tools import (
     UpdatePlanningDeliverablesTool,
 )
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     make_git_manager,
     make_phase_state_engine,
     make_project_manager,

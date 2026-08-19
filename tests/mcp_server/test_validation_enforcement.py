@@ -7,9 +7,8 @@ and concrete templates have GUIDELINE enforcement.
 @dependencies: pytest, mcp_server.validation.template_analyzer
 """
 
-from tests.mcp_server.test_support import get_template_root
-
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
+from tests.mcp_server.test_support import get_template_root
 
 
 class TestValidationEnforcementConsistency:

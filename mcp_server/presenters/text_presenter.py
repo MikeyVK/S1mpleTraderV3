@@ -17,6 +17,7 @@ from mcp_server.config.schemas.presentation_config import (
     ToolPresentationConfig,
 )
 from mcp_server.core.exceptions import ConfigError
+from mcp_server.core.interfaces.ipresenter import ITextPresenter
 from mcp_server.core.operation_notes import NoteEntry
 from mcp_server.schemas.cache_publication import CachePublication
 
@@ -28,7 +29,7 @@ class SafeNoneFormatter(string.Formatter):
         super().__init__()
         self.none_value = none_value
 
-    def format_field(self, value: Any, format_spec: str) -> str:
+    def format_field(self, value: object, format_spec: str) -> str:
         if value is None:
             return self.none_value
         try:
@@ -43,7 +44,7 @@ class SafeNoneFormatter(string.Formatter):
 _DEFAULT_RUN_ID = "DEFAULT_RUN_ID_SENTINEL"
 
 
-class TextPresenter:
+class TextPresenter(ITextPresenter):
     """Formats structured tool outputs into markdown text fallbacks using templates."""
 
     global_config: GlobalPresentationConfig
@@ -87,7 +88,7 @@ class TextPresenter:
         """Get the placeholder string for None values."""
         return self.global_config.formatting.none_value
 
-    def present(
+    def present_text(
         self,
         tool_name: str,
         data: BaseModel | dict[str, Any],
@@ -268,6 +269,8 @@ class TextPresenter:
             text = f"{text}\n\n{warning_note}\n```json\n{json_str}\n```"
 
         return text
+
+    present = present_text
 
     def present_notes(self, tool_name: str, notes: list[NoteEntry]) -> str | None:
         """Format notes into markdown text blocks using templates."""

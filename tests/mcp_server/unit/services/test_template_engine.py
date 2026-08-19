@@ -8,12 +8,12 @@ to backend/services/template_engine.py for reusability.
 """
 
 import tempfile
-from tests.mcp_server.test_support import get_template_root
 
 import pytest
 from jinja2 import TemplateNotFound, UndefinedError
 
 from mcp_server.services.template_engine import TemplateEngine
+from tests.mcp_server.test_support import get_template_root
 
 
 class TestTemplateEngineInitialization:

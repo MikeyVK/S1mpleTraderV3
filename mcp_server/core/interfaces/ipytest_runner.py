@@ -9,7 +9,7 @@ Run a pytest invocation and return a structured PytestResult.
 
 from __future__ import annotations
 
-from typing import Protocol, TYPE_CHECKING, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from mcp_server.managers.pytest_runner import PytestResult

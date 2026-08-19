@@ -14,9 +14,9 @@ Validates:
 @dependencies: pytest, jinja2, mcp_server.scaffolding.templates
 """
 
-from tests.mcp_server.test_support import get_template_root
-
 from jinja2 import Environment, FileSystemLoader
+
+from tests.mcp_server.test_support import get_template_root
 
 # Template directory
 TEMPLATE_DIR = get_template_root()

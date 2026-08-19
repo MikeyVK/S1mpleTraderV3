@@ -8,8 +8,6 @@
   - E2E test helpers
 """
 
-from tests.mcp_server.test_support import get_default_server_root
-
 # Standard library
 from collections.abc import Generator
 from dataclasses import dataclass, field
@@ -27,6 +25,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.validation.validation_service import ValidationService
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture(name="temp_workspace")

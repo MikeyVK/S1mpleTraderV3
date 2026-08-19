@@ -8,7 +8,6 @@ Issue #229 Cycle 10: GAP-17 — blocking deliverables must appear BEFORE OK in r
 @dependencies: [pytest, pathlib, mcp_server.tools.cycle_tools]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -23,6 +22,7 @@ from mcp_server.tools.cycle_tools import (
     TransitionCycleTool,
 )
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     make_git_manager,
     make_phase_state_engine,
     make_project_manager,

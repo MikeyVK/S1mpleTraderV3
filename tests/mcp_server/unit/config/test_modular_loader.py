@@ -14,11 +14,12 @@ Verify loading and merging of modular artifact config files from the artifacts/ 
 """
 
 # Third-party
-import pytest
 from pathlib import Path
 
+import pytest
+
 # Project modules
-from mcp_server.config.loader import ConfigLoader, ArtifactRegistryConfig
+from mcp_server.config.loader import ArtifactRegistryConfig, ConfigLoader
 from mcp_server.core.exceptions import ConfigError
 
 

@@ -30,8 +30,6 @@ Also verifies:
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import asyncio
 import inspect
@@ -45,13 +43,14 @@ import mcp_server.server as server_module
 from mcp_server.config.schemas.contracts_config import BranchLocalArtifact
 from mcp_server.core.exceptions import ExecutionError, PreflightError
 from mcp_server.core.interfaces import IBranchParentReader, IPRStatusWriter, PRStatus
-from mcp_server.core.operation_notes import NoteContext, Note
+from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas.github_models import PRReadModel
 from mcp_server.tools import git_tools
 from mcp_server.tools.pr_tools import SubmitPRInput, SubmitPRTool
+from tests.mcp_server.test_support import get_default_server_root
 
 _STATE_ARTIFACT = BranchLocalArtifact(
     path=f"{get_default_server_root()}/state.json",

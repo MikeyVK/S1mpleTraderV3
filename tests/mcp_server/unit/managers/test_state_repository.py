@@ -65,7 +65,7 @@ class TestBranchState:
             cycle_history=[],
             transitions=[],
         )
-        assert getattr(state, "schema_version") == "1.0.0"
+        assert state.schema_version == "1.0.0"
 
 
 class TestFileStateRepository:

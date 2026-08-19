@@ -14,10 +14,11 @@ This is a MACRO LIBRARY template (no {% extends %}), provides composable macros 
 """
 
 import re
-from tests.mcp_server.test_support import get_template_root
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
+
+from tests.mcp_server.test_support import get_template_root
 
 
 @pytest.fixture

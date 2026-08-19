@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager

@@ -11,8 +11,6 @@ C24: Resolve scope=auto edge cases — no baseline fallback and empty union.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import json
 import subprocess
@@ -21,7 +19,7 @@ from unittest.mock import MagicMock, patch
 
 from mcp_server.managers.quality_state_repository import FileQualityStateRepository
 from mcp_server.state.quality_state import QualityState
-from tests.mcp_server.test_support import make_qa_manager
+from tests.mcp_server.test_support import get_default_server_root, make_qa_manager
 
 
 def _write_state(tmp_path: Path, baseline_sha: str, failed_files: list[str]) -> None:

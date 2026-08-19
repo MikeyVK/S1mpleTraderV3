@@ -13,13 +13,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mcp_server.dtos.upgrade_log import UpgradeLogDTO
 from mcp_server.core.logging import get_logger
+from mcp_server.dtos.upgrade_log import UpgradeLogDTO
 
 if TYPE_CHECKING:
     from mcp_server.config.settings import Settings
@@ -148,7 +148,7 @@ class WorkspaceUpgrader:
         Raises:
             ConfigError / OSError: If backup creation or asset renewal fails.
         """
-        timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp_str = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         from_version = self.get_current_workspace_version()
         to_version = self._settings.server.version
 
@@ -157,7 +157,7 @@ class WorkspaceUpgrader:
         self.update_version_file(to_version)
 
         log_dto = UpgradeLogDTO(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             from_version=from_version,
             to_version=to_version,
             backup_path=backup_path.as_posix(),

@@ -4,7 +4,6 @@
 @dependencies: [pytest, pathlib, mcp_server.server]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -12,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mcp_server.config.settings import GitHubSettings, LogSettings, ServerSettings, Settings
-from tests.mcp_server.test_support import make_test_server
+from tests.mcp_server.test_support import get_default_server_root, make_test_server
 
 
 def _make_test_settings(audit_log: Path) -> Settings:

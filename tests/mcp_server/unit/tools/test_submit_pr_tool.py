@@ -6,16 +6,15 @@
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import asyncio
 import inspect
 from pathlib import Path
 from unittest.mock import MagicMock
-from mcp_server.config.loader import ConfigLoader
+
 import pytest
 
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.interfaces import IBranchParentReader, IPRStatusWriter
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
@@ -24,6 +23,7 @@ from mcp_server.managers.phase_contract_resolver import MergeReadinessContext
 from mcp_server.schemas.github_models import PRReadModel
 from mcp_server.schemas.tool_outputs import PROutput
 from mcp_server.tools.pr_tools import SubmitPRInput, SubmitPRTool
+from tests.mcp_server.test_support import get_default_server_root
 
 
 class TestSubmitPRInput:

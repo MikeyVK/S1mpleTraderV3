@@ -26,10 +26,10 @@ workflows:
     description: "Emergency fix workflow (implementation → validation → docs only)"
     default_execution_mode: autonomous
 
-  # Refactor (no design phase by default)
+  # Refactor (with optional design phase)
   refactor:
     name: refactor
-    description: "Code refactoring workflow (research → planning → implementation → validation → docs)"
+    description: "Code refactoring workflow (research → design (optional) → planning → implementation → validation → docs)"
     default_execution_mode: interactive
 
   # Documentation (minimal workflow)

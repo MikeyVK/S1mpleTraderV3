@@ -14,9 +14,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.core.interfaces import IPytestRunner
+from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.schemas.tool_outputs import RunTestsOutput, TestFailureDTO
-from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.utils.schema_utils import resolve_schema_refs
 
 if TYPE_CHECKING:

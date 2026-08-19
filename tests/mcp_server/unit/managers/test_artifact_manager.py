@@ -13,7 +13,7 @@ from mcp_server.config.schemas.artifact_registry_config import (
     ArtifactRegistryConfig,
     SchemaFieldDef,
 )
-from mcp_server.core.exceptions import ValidationError, ConfigError
+from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from tests.mcp_server.test_support import make_artifact_manager
@@ -214,7 +214,9 @@ class TestArtifactManagerDynamicContext:
 
     def test_artifact_definition_has_context_class(self) -> None:
         """Verify context_class field is present on ArtifactDefinition."""
-        from mcp_server.config.schemas.artifact_registry_config import ArtifactDefinition  # noqa: PLC0415
+        from mcp_server.config.schemas.artifact_registry_config import (
+            ArtifactDefinition,  # noqa: PLC0415
+        )
 
         assert "context_schema" in ArtifactDefinition.model_fields
         assert "context_class" in ArtifactDefinition.model_fields

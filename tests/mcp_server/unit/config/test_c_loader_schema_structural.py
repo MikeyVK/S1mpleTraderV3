@@ -10,8 +10,6 @@ No manager/tool consumer rewiring is validated here.
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 import inspect
 from pathlib import Path
@@ -41,6 +39,7 @@ from mcp_server.config.schemas import (
 )
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers import enforcement_runner, phase_contract_resolver
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture

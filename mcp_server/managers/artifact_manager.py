@@ -24,7 +24,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
+
 from pydantic import BaseModel
+
 from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
@@ -198,8 +200,9 @@ class ArtifactManager:
         base_class: type[BaseModel],
     ) -> type[BaseModel]:
         """Build a dynamic frozen Pydantic model for context validation."""
-        from pydantic import create_model, Field, ConfigDict  # noqa: PLC0415
         from typing import Any  # noqa: PLC0415
+
+        from pydantic import ConfigDict, Field, create_model  # noqa: PLC0415
 
         fields: dict[str, Any] = {}
 

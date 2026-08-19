@@ -9,8 +9,6 @@ Tests exercise the public runner.run() API exclusively; no private-method access
 """
 
 from __future__ import annotations
-from tests.mcp_server.test_support import get_default_server_root
-
 
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -29,6 +27,7 @@ from mcp_server.managers.enforcement_runner import (
 )
 from mcp_server.managers.state_repository import FileStateRepository
 from mcp_server.schemas import GitConfig
+from tests.mcp_server.test_support import get_default_server_root
 
 # Real GitConfig so extract_issue_number("feature/42-test") returns 42,
 # matching the issue_number written by _write_state_json.

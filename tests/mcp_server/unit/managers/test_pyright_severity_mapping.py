@@ -14,7 +14,6 @@ instead of reading ``fmap["severity"]`` via ``_resolve_field_path``.
 
 from __future__ import annotations
 
-
 import pytest
 
 from mcp_server.config.schemas.quality_config import JsonViolationsParsing

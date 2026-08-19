@@ -2,7 +2,6 @@
 """MCP Server Entrypoint."""
 
 import asyncio
-import json
 import sys
 import time
 import uuid
@@ -24,16 +23,17 @@ from pydantic import AnyUrl
 
 # Config
 from mcp_server.config.settings import Settings
-from mcp_server.core.logging import get_logger
-from mcp_server.core.operation_notes import NoteContext
-from mcp_server.presenters.text_presenter import TextPresenter
-from mcp_server.resources.base import BaseResource
 
 # Resources
 # Resources
 # Scaffolding infrastructure (Issue #72)
+from mcp_server.core.interfaces.ipresenter import IPresenter
 from mcp_server.core.interfaces.itool import ITool
 from mcp_server.core.interfaces.itool_response_cache import IToolResponsePublisher
+from mcp_server.core.logging import get_logger
+from mcp_server.core.operation_notes import NoteContext
+from mcp_server.resources.base import BaseResource
+from mcp_server.schemas.presentation_output import PresentedOutput
 
 # Tools
 from mcp_server.tools.tool_result import ToolResult
@@ -53,7 +53,7 @@ class MCPServer:
         settings: Settings,
         tools: list[ITool],
         resources: list[BaseResource],
-        presenter: TextPresenter | None = None,
+        presenter: IPresenter | None = None,
         publisher: IToolResponsePublisher | None = None,
     ) -> None:
         """Initialize the MCP server with resources and tools."""
@@ -144,36 +144,33 @@ class MCPServer:
                         if self.response_cache_manager is not None:
                             cache_pub = self.response_cache_manager.put(tool.name, result_dto)
 
-                        # 3. Generate markdown output (resilient; formats DTO and notes)
+                        # 3. Generate presentation output (formats DTO, notes, resources)
                         if self.presenter is not None:
-                            markdown = self.presenter.present(
+                            presented = self.presenter.present(
                                 tool_name=tool.name,
                                 data=result_dto,
                                 notes=note_context.entries,
                                 cache_pub=cache_pub,
                             )
                         else:
-                            markdown = str(result_dto)
-                        # 4. Construct and return normalized ToolResult
-                        raw_result = ToolResult.text(markdown)
+                            presented = PresentedOutput(text=str(result_dto), resources=[])
 
-                        # In case result DTO indicates an error, flag the ToolResult as an error
+                        # 4. Construct and return normalized ToolResult
+                        content: list[dict[str, Any]] = [{"type": "text", "text": presented.text}]
+                        for res in presented.resources:
+                            content.append(
+                                {
+                                    "type": "resource",
+                                    "resource": {
+                                        "uri": res.uri,
+                                        "mimeType": res.mime_type,
+                                        "text": res.content,
+                                    },
+                                }
+                            )
+
                         success = getattr(result_dto, "success", True)
-                        if not success:
-                            raw_result = raw_result.model_copy(update={"is_error": True})
-                            if getattr(result_dto, "error_type", None) == "ValidationError":
-                                raw_result.content.append(
-                                    {
-                                        "type": "resource",
-                                        "resource": {
-                                            "uri": "schema://validation",
-                                            "mimeType": "application/json",
-                                            "text": json.dumps(
-                                                getattr(result_dto, "input_schema", {})
-                                            ),
-                                        },
-                                    }
-                                )
+                        raw_result = ToolResult(content=content, is_error=not success)
                         response_content = self._convert_tool_result_to_mcp_result(raw_result)
 
                         duration_ms = (time.perf_counter() - start_time) * 1000.0

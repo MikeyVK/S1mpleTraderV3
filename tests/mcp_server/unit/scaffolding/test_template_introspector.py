@@ -18,9 +18,6 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 
 # pyright: basic, reportPrivateUsage=false
 # Standard library
-from pathlib import Path
-from tests.mcp_server.test_support import get_template_root
-
 # Third-party
 import jinja2
 import pytest
@@ -31,6 +28,7 @@ from mcp_server.scaffolding.template_introspector import (
     introspect_template,
     introspect_template_with_inheritance,
 )
+from tests.mcp_server.test_support import get_template_root
 
 
 @pytest.fixture(name="jinja2_env")
