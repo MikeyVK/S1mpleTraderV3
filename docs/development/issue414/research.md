@@ -1,16 +1,16 @@
 <!-- docs\development\issue414\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-08-19T17:40Z updated=2026-08-19T18:15Z -->
+<!-- template=research version=8b7bb3ab created=2026-08-19T17:40Z updated=2026-08-19T18:20Z -->
 # Research: Delegate Validation Resource Schema Generation to IPresenter
 
-**Status:** DRAFT  
-**Version:** 1.1  
+**Status:** APPROVED  
+**Version:** 1.2  
 **Last Updated:** 2026-08-19
 
 ---
 
 ## Purpose
 
-Investigate architectural boundaries, interface designs, presentation mechanisms, and migration strategies for delegating `schema://validation` resource generation from the transport layer (`MCPServer`) to the presentation layer (`IPresenter` / `TextPresenter`).
+Investigate architectural boundaries, interface designs, presentation mechanisms, and migration strategies for delegating `schema://validation` resource generation from the transport layer (`MCPServer`) to the presentation layer (`IPresenter`).
 
 ## Scope
 
@@ -18,8 +18,8 @@ Investigate architectural boundaries, interface designs, presentation mechanisms
 - Analysis of `MCPServer.handle_call_tool` and `MCPServer.__init__` in [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py).
 - Analysis of the [`IPresenter`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py) contract and [`TextPresenter`](file:///c:/temp/pgmcp/mcp_server/presenters/text_presenter.py) implementation.
 - Handling of [`ValidationErrorOutput`](file:///c:/temp/pgmcp/mcp_server/schemas/error_outputs.py) and generation of `schema://validation` embedded presentation resources.
-- Comparison of presentation models: string-only rendering, protocol-level mapping, and unified presentation envelopes (`PresentedOutput` / `PresentationResource`).
-- Assessment of architectural nomenclature tensions (e.g. `TextPresenter` vs. multi-resource presentation).
+- Enforcement of [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md) (SRP, ISP, DIP, Composition over Inheritance).
+- Composite presentation design: separating `ITextPresenter` (Markdown text rendering), `IResourcePresenter` (structured payload generation), and `ResponsePresenter` (coordination returning `PresentedOutput`).
 - Mapping of the blast radius across production code, unit tests, and integration test suites.
 - Definition of candidate planning seams and preservation invariants.
 
@@ -34,18 +34,18 @@ Investigate architectural boundaries, interface designs, presentation mechanisms
 
 In the current implementation of [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py#L160-L176), the transport layer (`MCPServer`) directly inspects the execution result DTO for `error_type == "ValidationError"`, extracts `result_dto.input_schema`, and appends an embedded resource dictionary (`{"type": "resource", "resource": {"uri": "schema://validation", ...}}`) to `ToolResult.content`.
 
-This creates several architectural violations:
-1. **Presentation Boundary Violation:** The transport layer performs formatting and assembly of presentation resources instead of leaving output rendering entirely to the presentation layer.
-2. **Single Responsibility Principle (SRP):** `MCPServer` mixes transport orchestration (request routing, caching, response serialization) with domain-specific presentation logic.
-3. **Dependency Inversion Principle (DIP):** `MCPServer.__init__` is annotated with the concrete class `TextPresenter` instead of the abstraction `IPresenter`.
+This creates several architectural violations according to [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md):
+1. **Presentation Boundary & SRP (Rule 1.1):** The transport layer performs formatting and assembly of presentation resources instead of leaving output rendering entirely to the presentation layer.
+2. **SRP & Nomenclature Violation on Presenter:** If `TextPresenter` were modified to generate both Markdown text and JSON-schema payloads, it would fail the single-sentence SRP test (*"TextPresenter formats markdown text and extracts and formats JSON validation schema resources"*).
+3. **Dependency Inversion Principle (Rule 1.5):** `MCPServer.__init__` is annotated with the concrete class `TextPresenter` instead of the abstraction `IPresenter`.
 
 ---
 
 ## Research Goals
 
 1. Analyze current responsibilities and coupling between `MCPServer`, `IPresenter`, and validation schema formatting.
-2. Investigate the semantic nature of `schema://validation` as an interactive client presentation element.
-3. Evaluate interface models (`PresentedOutput` envelope vs. string-only presentation vs. transport converter).
+2. Formulate a composition-based presentation architecture that strictly satisfies SRP, ISP, and DIP.
+3. Clarify the distinction between text URI references in Markdown and `PresentationResource` payload identifiers.
 4. Identify all invariants and externally observable behaviors that must be preserved.
 5. Map the full blast radius across production files, test suites, and helpers.
 6. Define candidate seams for safe planning and execution.
@@ -56,12 +56,18 @@ This creates several architectural violations:
 
 ### 1. The Interactive Presentation Nature of `schema://validation`
 
-In MCP-compliant client environments (such as VS Code and AI agent chats), embedded resources in a `CallToolResult` are not merely hidden protocol metadata; they are active UI elements:
-- An `EmbeddedResource` with `uri="schema://validation"` is rendered as a clickable, expandable schema view for the user and LLM.
+In MCP-compliant client environments (such as VS Code and AI agent chats), embedded resources in a `CallToolResult` are active UI elements:
+- An `EmbeddedResource` with `uri="schema://validation"` is rendered as an interactive, clickable schema view for the user and LLM.
 - It directly informs the client of the expected schema structure alongside the formatted error text.
-- Consequently, the generation of `schema://validation` is fundamentally a **Presentation concern** (how domain error data is visualised and structured for the client), rather than a pure transport routing concern.
+- Consequently, the generation of `schema://validation` is fundamentally a **Presentation concern** (how domain error data is visualised and structured for the client), rather than a transport routing concern.
 
-### 2. Current Code Paths and Responsibilities
+### 2. Distinction Between Text References and Resource Payloads
+
+A critical architectural distinction emerged regarding URIs:
+- **Chat Markdown Text (`TextPresenter`):** The visible text presented in chat to the user/LLM (e.g. error summaries, tips, next steps, and explanatory footnote text). Formatted entirely from templates in `presentation.yaml`.
+- **Resource Payload (`ValidationResourcePresenter`):** The structured data payload with its identifier (`uri="schema://validation"`), MIME-type (`application/json`), and serialized JSON schema string.
+
+### 3. Current Code Paths and Responsibilities
 
 #### Transport Layer (`mcp_server/server.py`)
 In `MCPServer.handle_call_tool`:
@@ -106,75 +112,59 @@ response_content = self._convert_tool_result_to_mcp_result(raw_result)
 
 **Key Observation:** `server.py` assumes `IPresenter.present()` only returns a plain Markdown string (`str`). Because `IPresenter` currently cannot return structured embedded resources, `server.py` compensates by mutating `ToolResult.content` directly.
 
-#### Presentation Layer (`mcp_server/core/interfaces/ipresenter.py` & `text_presenter.py`)
-- `IPresenter` is defined as:
-  ```python
-  @runtime_checkable
-  class IPresenter(Protocol):
-      def present(
-          self,
-          tool_name: str,
-          data: BaseModel,
-          notes: list[Note],
-          cache_pub: CachePublication | None = None,
-      ) -> str: ...
-  ```
-- `TextPresenter.present` formats Markdown text. It already receives the full `data` DTO (`BaseModel | dict[str, Any]`), including `ValidationErrorOutput` when an error occurs.
-- **Nomenclature Tension:** The class name `TextPresenter` reflects the initial design when presentation was text-only. However, `IPresenter` represents the architectural capability of presenting tool execution results (which encompasses text, notes, links, and embedded schema resources).
-
 ---
 
-## Architectural Options & Evaluation
+## Architectural Design: Composite Presentation Architecture
 
-We evaluate the architectural models for resolving this boundary violation:
+In strict compliance with [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md), we establish a composite architecture in the presentation layer:
 
 ```mermaid
 graph TD
-    subgraph Model 1 [Model 1: Unified Presentation Envelope - Recommended]
-        P1[IPresenter / TextPresenter] -->|returns PresentedOutput: text + resources| S1[MCPServer]
-        S1 -->|generically converts to ToolResult| TR1[ToolResult]
-        TR1 -->|converts to| MCP1[CallToolResult]
+    CR[Composition Root: bootstrap.py] -->|injects| TP[TextPresenter : ITextPresenter]
+    CR -->|injects| VP[ValidationResourcePresenter : IResourcePresenter]
+    CR -->|injects TP + VP| RP[ResponsePresenter : IPresenter]
+    CR -->|injects RP| MS[MCPServer]
+
+    subgraph Presentation Layer
+        RP -->|renders Markdown text| TP
+        RP -->|extracts and formats schema resources| VP
+        RP -->|bundles into| PO[PresentedOutput: text + resources]
     end
 
-    subgraph Model 2 [Model 2: Direct ToolResult Coupling - Anti-Pattern]
-        P2[IPresenter] -->|returns ToolResult directly| S2[MCPServer]
-        Note2[Couples Presenter to Server Transport DTO]
-    end
-
-    subgraph Model 3 [Model 3: Transport Protocol Converter]
-        P3[IPresenter] -->|returns str| S3[MCPServer]
-        Conv3[mcp_converters.py] -->|inspects ValidationErrorOutput| S3
-        Note3[Leaves presentation formatting in transport adapter]
-    end
+    MS -->|maps PresentedOutput into| TR[ToolResult]
+    TR -->|converts to| MCP[CallToolResult]
 ```
 
-### Option Comparison Table
+### Component Responsibilities & Contracts
 
-| Dimension | Model 1: `PresentedOutput` DTO (Recommended) | Model 2: `IPresenter -> ToolResult` | Model 3: Transport Converter |
-|---|---|---|---|
-| **Interface Contract** | `present(...) -> PresentedOutput` (with `text` and `resources`) | `present(...) -> ToolResult` | `present(...) -> str` |
-| **Layering & Ownership** | **Pure:** Presenter owns `PresentedOutput`; `MCPServer` owns `ToolResult`. | **Violation:** Leaks server transport DTO (`ToolResult`) into core interfaces. | **Compromise:** Treats schema resources as transport rather than presentation. |
-| **SRP & Presentation Boundary** | **Clean:** Presenter formats all human- and machine-visible presentation elements. | **Clean:** Single presentation call. | **Leaky:** Presentation logic split across presenter and converter. |
-| **Transport Simplicity** | `server.py` is a dumb pipe with zero DTO/error-type knowledge. | `server.py` is a dumb pipe. | `server.py` or converter must inspect `ValidationErrorOutput`. |
-| **Type Safety & DIP** | 100% strict Pydantic DTOs with frozen configuration. | 100% typed. | 100% typed. |
+1. **`ITextPresenter` / `TextPresenter`:**
+   - **Responsibility (SRP):** Formats DTOs and operation notes into Markdown text using `presentation.yaml` templates.
+   - **Contract:** `present_text(tool_name, data, notes, cache_pub, success) -> str`.
+2. **`IResourcePresenter` / `ValidationResourcePresenter`:**
+   - **Responsibility (SRP):** Translates `ValidationErrorOutput.input_schema` into a `PresentationResource` payload.
+   - **Contract:** `present_resources(tool_name, data) -> list[PresentationResource]`.
+3. **`IPresenter` / `ResponsePresenter` (Coordinating Facade):**
+   - **Responsibility (ISP & DIP):** Injected with `ITextPresenter` and `IResourcePresenter` at the composition root (`bootstrap.py`). Coordinates both text and resource generation and returns a frozen `PresentedOutput` DTO.
+   - **Contract:** `present(tool_name, data, notes, cache_pub, success) -> PresentedOutput`.
+4. **`MCPServer` in `server.py`:**
+   - **Responsibility:** Pure transport coordinator. Receives `IPresenter`, obtains `PresentedOutput`, and generically translates `PresentedOutput.text` and `PresentedOutput.resources` into `ToolResult`. Zero knowledge of validation errors or schema URIs.
 
-### Rationale for Model 1 (`PresentedOutput`)
+### Presentation Schemas
 
-1. **Clean Layering:** The Presenter should not know about `ToolResult` (a server transport envelope). Instead, the Presenter returns a pure, frozen presentation model:
-   ```python
-   class PresentationResource(BaseModel):
-       model_config = ConfigDict(frozen=True)
-       uri: str
-       mime_type: str = "application/json"
-       content: str
+```python
+class PresentationResource(BaseModel):
+    """Immutable representation of an embedded MCP resource payload."""
+    model_config = ConfigDict(frozen=True)
+    uri: str
+    mime_type: str = "application/json"
+    content: str
 
-   class PresentedOutput(BaseModel):
-       model_config = ConfigDict(frozen=True)
-       text: str
-       resources: list[PresentationResource] = Field(default_factory=list)
-   ```
-2. **Generic Transport Mapping:** `MCPServer` simply converts `presented.text` to `TextContent` and any `presented.resources` to `EmbeddedResource`, without knowing what specific resources are inside or why they were created.
-3. **Evolution of `TextPresenter`:** While `TextPresenter` retains its historic name, it satisfies `IPresenter` by coordinating both Markdown text formatting and associated presentation resources.
+class PresentedOutput(BaseModel):
+    """Unified presentation result containing chat text and embedded resources."""
+    model_config = ConfigDict(frozen=True)
+    text: str
+    resources: list[PresentationResource] = Field(default_factory=list)
+```
 
 ---
 
@@ -198,16 +188,18 @@ graph TD
 
 ### Production Files
 - [`mcp_server/schemas/presentation_output.py`](file:///c:/temp/pgmcp/mcp_server/schemas/presentation_output.py) *(NEW)*: Define `PresentationResource` and `PresentedOutput`.
-- [`mcp_server/core/interfaces/ipresenter.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py): Update `present()` signature to return `PresentedOutput`.
-- [`mcp_server/presenters/text_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/text_presenter.py): Update `present()` to construct `PresentedOutput`, attaching `schema://validation` resource on `ValidationErrorOutput`.
+- [`mcp_server/core/interfaces/ipresenter.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py): Update `IPresenter` protocol to return `PresentedOutput`. Add `ITextPresenter` and `IResourcePresenter` protocols.
+- [`mcp_server/presenters/text_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/text_presenter.py): Implement `ITextPresenter` (retains pure text formatting focus).
+- [`mcp_server/presenters/validation_resource_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/validation_resource_presenter.py) *(NEW)*: Implement `IResourcePresenter` for `schema://validation`.
+- [`mcp_server/presenters/response_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/response_presenter.py) *(NEW)*: Implement `IPresenter` composite.
 - [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py):
   - Change `presenter: TextPresenter | None` parameter to `presenter: IPresenter | None`.
   - Remove inline `schema://validation` resource appending.
   - Map `PresentedOutput.resources` to `ToolResult.content`.
-- [`mcp_server/bootstrap.py`](file:///c:/temp/pgmcp/mcp_server/bootstrap.py): Verify presenter wiring.
+- [`mcp_server/bootstrap.py`](file:///c:/temp/pgmcp/mcp_server/bootstrap.py): Wire composite presenter at the composition root.
 
 ### Test Files
-- [`tests/mcp_server/unit/test_presenter.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_presenter.py): Update tests to assert on `result.text` and `result.resources`.
+- [`tests/mcp_server/unit/test_presenter.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_presenter.py): Verify `TextPresenter` and composite `ResponsePresenter`.
 - [`tests/mcp_server/unit/server/test_validate_tool_arguments.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/server/test_validate_tool_arguments.py): Validate server argument validation tests continue to receive `schema://validation`.
 - [`tests/mcp_server/integration/test_strict_input_validation_response.py`](file:///c:/temp/pgmcp/tests/mcp_server/integration/test_strict_input_validation_response.py): Verify end-to-end MCP response structure.
 - [`tests/mcp_server/unit/test_server.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_server.py): Update mocked presenter fixtures to return `PresentedOutput`.
@@ -216,16 +208,17 @@ graph TD
 
 ## Candidate Seams for Planning
 
-1. **Seam 1: Presentation Schema & Contract (`PresentedOutput` & `IPresenter`)**
-   - Introduce `PresentedOutput` and `PresentationResource` DTOs.
-   - Update `IPresenter` protocol.
-   - Update `TextPresenter.present` to return `PresentedOutput` (with `schema://validation` generation).
-   - Update `test_presenter.py`.
+1. **Seam 1: Presentation Schemas & Presenter Subcomponents**
+   - Introduce `PresentedOutput` / `PresentationResource` schemas.
+   - Define `ITextPresenter`, `IResourcePresenter`, and updated `IPresenter` interfaces.
+   - Implement `ValidationResourcePresenter` and `ResponsePresenter`.
+   - Update and add unit tests in `test_presenter.py`.
 
-2. **Seam 2: Transport Layer Integration (`MCPServer`)**
+2. **Seam 2: Transport Layer Integration & Decoupling (`MCPServer`)**
    - Decouple `MCPServer` type annotations to `IPresenter | None`.
    - Update `MCPServer.handle_call_tool` to map `PresentedOutput` into `ToolResult`.
    - Remove inline error checking and manual resource construction from `server.py`.
+   - Wire dependencies in `bootstrap.py`.
    - Update server unit tests.
 
 3. **Seam 3: End-to-End Verification & Quality Gates**
@@ -241,10 +234,10 @@ graph TD
 **Boundary & Preservation Scope:**
 - Preserves 100% backward compatibility for all external MCP clients and JSON-RPC consumers.
 - Preserves the exact structure, mime-type (`application/json`), and URI (`schema://validation`) of the validation error resource block.
-- Introduces `PresentedOutput` as a clean presentation-layer boundary, eliminating transport leakage and respecting ownership boundaries.
+- Introduces composite presentation components (`ResponsePresenter`, `TextPresenter`, `ValidationResourcePresenter`) and `PresentedOutput`, strictly adhering to `ARCHITECTURE_PRINCIPLES.md`.
 
 **Constraints for Later Phases:**
-- Design must specify the exact Pydantic schema for `PresentedOutput` and `PresentationResource`.
+- Design must specify the exact Pydantic schema for `PresentedOutput` and `PresentationResource` and interface signatures.
 - Implementation must follow strict TDD (Red -> Green -> Refactor) across each planning seam.
 
 ---
@@ -253,7 +246,7 @@ graph TD
 
 1. `mcp_server/server.py` contains zero references to `schema://validation` or inline resource dictionary generation.
 2. `MCPServer` depends strictly on `IPresenter` abstraction.
-3. `TextPresenter` generates the `schema://validation` resource block whenever a `ValidationErrorOutput` with `input_schema` is presented.
+3. Composite `ResponsePresenter` coordinates `TextPresenter` and `ValidationResourcePresenter` to produce `PresentedOutput`.
 4. All existing presenter tests, server tests, and validation integration tests pass with 100% type safety and zero linter warnings.
 
 ---
@@ -278,4 +271,5 @@ graph TD
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-08-19 | Agent | Initial research document analyzing presentation delegation and interface design |
-| 1.1 | 2026-08-19 | Agent | Refined presentation architecture with PresentedOutput DTO, resolving nomenclature and layering boundaries |
+| 1.1 | 2026-08-19 | Agent | Refined presentation architecture with PresentedOutput DTO |
+| 1.2 | 2026-08-19 | Agent | Applied ARCHITECTURE_PRINCIPLES.md composite design (TextPresenter + ValidationResourcePresenter -> ResponsePresenter) |
