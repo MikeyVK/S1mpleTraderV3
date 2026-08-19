@@ -3,7 +3,7 @@
   "branch": "refactor/414-delegate-validation-schema-to-presenter",
   "issue_number": 414,
   "workflow_name": "refactor",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -16,11 +16,28 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
+  "skip_reason": "Explicit design phase needed to formally specify new presentation contracts, DTOs, and composition architecture before planning",
   "issue_title": "refactor: Delegate validation resource schema generation to IPresenter",
   "parent_branch": "main",
   "created_at": "2026-08-19T16:06:38.554913+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "planning",
+      "timestamp": "2026-08-19T18:27:47.355073+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "design",
+      "timestamp": "2026-08-19T18:29:19.671283+00:00",
+      "human_approval_message": "User requested explicit design phase to specify contracts and architecture before planning",
+      "forced": true,
+      "skip_reason": "Explicit design phase needed to formally specify new presentation contracts, DTOs, and composition architecture before planning"
+    }
+  ],
   "reconstructed": false,
   "current_sub_phase": null
 }

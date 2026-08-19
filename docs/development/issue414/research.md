@@ -1,9 +1,9 @@
 <!-- docs\development\issue414\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-08-19T17:40Z updated=2026-08-19T18:30Z -->
+<!-- template=research version=8b7bb3ab created=2026-08-19T17:40Z updated=2026-08-19T18:45Z -->
 # Research: Delegate Validation Resource Schema Generation to IPresenter
 
 **Status:** APPROVED  
-**Version:** 1.4  
+**Version:** 1.5  
 **Last Updated:** 2026-08-19
 
 ---
@@ -18,6 +18,7 @@ Investigate the problem space, architectural boundaries, blast radius, and migra
 - Analysis of coupling in [`mcp_server/server.py`](file:///c:/temp/pgmcp/mcp_server/server.py) where transport logic constructs `schema://validation` resources.
 - Analysis of current presentation boundaries in [`mcp_server/core/interfaces/ipresenter.py`](file:///c:/temp/pgmcp/mcp_server/core/interfaces/ipresenter.py) and [`mcp_server/presenters/text_presenter.py`](file:///c:/temp/pgmcp/mcp_server/presenters/text_presenter.py).
 - Analysis of [ARCHITECTURE_PRINCIPLES.md](file:///c:/temp/pgmcp/docs/coding_standards/ARCHITECTURE_PRINCIPLES.md) constraints regarding SRP (Rule 1.1), ISP (Rule 1.4), DIP (Rule 1.5), and composition.
+- Justification of workflow scope widening to include a formal `design` phase for architectural refactors.
 - Exhaustive blast radius audit across production subsystems, test suites, configuration, and documentation.
 - Definition of the Approved Strategy (per boundary) and Expected Results.
 
@@ -43,8 +44,9 @@ This produces architectural tensions:
 
 1. Investigate the current flow of validation errors from tool execution through caching and presentation to protocol serialization.
 2. Analyze the architectural constraints (SRP, ISP, DIP) governing the separation between Markdown text rendering and embedded resource generation.
-3. Verify the complete blast radius across all production files, tests, configs, and active documentation.
-4. Establish the Approved Strategy per boundary and expected results for subsequent design and planning phases.
+3. Formulate the justification for including a formal `design` phase within the `refactor` workflow for contract-heavy refactorings.
+4. Verify the complete blast radius across all production files, tests, configs, and active documentation.
+5. Establish the Approved Strategy per boundary and expected results for subsequent design and planning phases.
 
 ---
 
@@ -65,6 +67,24 @@ Investigation of the MCP client behavior (e.g. in VS Code and agent environments
   - Embedded resource payloads (JSON schemas with MIME types and URI identifiers) represent structured presentation data.
 - **Transport Independence:**
   The transport layer (`server.py`) should remain completely agnostic of specific error types (`ValidationError`), schema extraction, or presentation resource construction.
+
+---
+
+## Scope Widening & Workflow Evolution Justification
+
+### Why Issue #414 Requires a Formal Design Phase
+Refactorings vary widely in their architectural blast radius:
+- **Lightweight Refactorings:** Local code cleanups, private helper extractions, or dead code removal require no new interfaces or DTO contracts. In those cases, a formal `design.md` is ceremony overhead.
+- **Contract-Heavy / Architectural Refactorings (Issue #414):** This issue introduces multiple new Pydantic models (`PresentedOutput`, `PresentationResource`), segregates presentation interfaces (`ITextPresenter`, `IResourcePresenter`, `IPresenter`), and rewires the composition root in `bootstrap.py`.
+
+Skipping a formal `design` phase for Issue #414 forces interface design decisions into the Planning phase, violating the documentation standard and risking interface drift during implementation.
+
+### Workflow Configuration Evolution
+To support this natively without triggering state-machine warnings (`invalid_phase_warning`):
+1. The `refactor` workflow in [`contracts.yaml`](file:///c:/temp/pgmcp/.pgmcp/config/contracts.yaml) is updated to include `design` as an official phase between `research` and `planning`.
+2. The `design` phase in `refactor` includes an `exit_requires` check for `issue*/design*.md` on sequential transitions.
+3. For lightweight refactorings that do not introduce new contracts, the phase instructions instruct the agent to use `force_phase_transition(to_phase='planning', skip_reason='...')` to explicitly skip `design` with an audited reason.
+4. Downstream phases (`planning`, `implementation`, `validation`) in `refactor` have no dependency on `design.md`, ensuring 100% downstream safety and zero gate lockups.
 
 ---
 
@@ -92,6 +112,7 @@ An exhaustive audit of the codebase identified the following affected surfaces:
 - [`tests/mcp_server/unit/test_server.py`](file:///c:/temp/pgmcp/tests/mcp_server/unit/test_server.py): Server orchestration unit tests with mocked presenter.
 
 ### 3. Configuration & Schemas
+- `mcp_server/assets/config/contracts.yaml`: Workflow definitions (updated to include `design` under `refactor.phases`).
 - `.pgmcp/config/presentation.yaml`: SSOT for presentation templates, emojis, and failure messages (no schema changes required).
 - `mcp_server/config/schemas/presentation_config.py`: Pydantic config models for presentation settings.
 
@@ -146,4 +167,5 @@ An exhaustive audit of the codebase identified the following affected surfaces:
 | 1.1 | 2026-08-19 | Agent | Refined presentation architecture with PresentedOutput DTO |
 | 1.2 | 2026-08-19 | Agent | Applied ARCHITECTURE_PRINCIPLES.md composite design |
 | 1.3 | 2026-08-19 | Agent | Enforced documentation standard boundaries by removing premature design specifications |
-| 1.4 | 2026-08-19 | Agent | Explicitly defined Approved Strategy per boundary (Clean Break internally / Preserve Wire Contract externally) and completed exhaustive blast radius audit |
+| 1.4 | 2026-08-19 | Agent | Explicitly defined Approved Strategy per boundary and completed exhaustive blast radius audit |
+| 1.5 | 2026-08-19 | Agent | Added formal Scope Widening & Workflow Evolution Justification for the Design phase |
