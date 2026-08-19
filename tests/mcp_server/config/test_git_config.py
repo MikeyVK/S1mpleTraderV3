@@ -1,5 +1,3 @@
-from tests.mcp_server.test_support import get_default_server_root
-
 # tests/mcp_server/config/test_git_config.py
 """
 Tests for GitConfig (Issue #55).
@@ -18,6 +16,7 @@ import pytest
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 
 def _load_git_config(config_path: Path | None = None) -> GitConfig:
@@ -174,12 +173,13 @@ class TestGitConfig:
         assert config.extract_issue_number("feature/no-number") is None
         assert config.extract_issue_number("unknown/42-test") is None
 
-
-
     def test_format_branch_name_valid(self) -> None:
         """format_branch_name should format canonical branch name."""
         config = _load_git_config()
-        assert config.format_branch_name(116, "create-branch", "feature") == "feature/116-create-branch"
+        assert (
+            config.format_branch_name(116, "create-branch", "feature")
+            == "feature/116-create-branch"
+        )
         assert config.format_branch_name(42, "fix-bug", "bug") == "bug/42-fix-bug"
         assert config.format_branch_name(91, "cleanup", "epic") == "epic/91-cleanup"
 
@@ -212,6 +212,7 @@ class TestGitConfig:
             config.format_branch_name(116, "Invalid Name!", "feature")
         with pytest.raises(ValueError, match="Invalid branch name slug"):
             config.format_branch_name(116, "invalid_underscores", "feature")
+
     def test_is_protected(self) -> None:
         """Test is_protected() helper (Convention #4)."""
         config = _load_git_config()

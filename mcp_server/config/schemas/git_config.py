@@ -100,7 +100,6 @@ class GitConfig(BaseModel):
             return None
         return int(match.group(1))
 
-
     def format_branch_name(self, issue_number: int, name: str, branch_type: str) -> str:
         """Format and validate a canonical branch name from components.
 
@@ -119,15 +118,15 @@ class GitConfig(BaseModel):
             raise ValueError(f"Invalid issue number: {issue_number}. Must be >= 1.")
 
         if not self.has_branch_type(branch_type):
-            raise ValueError(
-                f"Invalid branch type: '{branch_type}'. Allowed types: {', '.join(self.branch_types)}"
-            )
+            allowed = ", ".join(self.branch_types)
+            raise ValueError(f"Invalid branch type: '{branch_type}'. Allowed types: {allowed}")
 
         slug = name.removeprefix(f"{issue_number}-")
 
         if not self.validate_branch_name(slug):
             raise ValueError(
-                f"Invalid branch name slug: '{slug}'. Must match pattern: {self.branch_name_pattern}"
+                f"Invalid branch name slug: '{slug}'. "
+                f"Must match pattern: {self.branch_name_pattern}"
             )
 
         return f"{branch_type}/{issue_number}-{slug}"
