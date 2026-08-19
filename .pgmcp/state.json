@@ -3,7 +3,7 @@
   "branch": "bug/449-fix-ruff-command-validation-quality-gate-result-integrity",
   "issue_number": 449,
   "workflow_name": "bug",
-  "current_phase": "validation",
+  "current_phase": "ready",
   "current_cycle": 1,
   "last_cycle": 1,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Issue #449 is a narrowly scoped corrective bug. Research established the exact Ruff CLI syntax and a clean-correction strategy; the change does not alter architecture or public schemas. The human collaborator explicitly directed proceeding straight to implementation without design or planning.",
+  "skip_reason": "Issue #449 is an internal tooling correction with no user-facing documentation contract change. The user explicitly requested a compact validation followed directly by ready and PR creation. Research and validation artifacts contain the durable technical record.",
   "issue_title": "Fix Ruff command validation and quality-gate result integrity",
   "parent_branch": "main",
   "created_at": "2026-08-19T05:30:13.041226+00:00",
@@ -37,6 +37,14 @@
       "human_approval_message": "User requested a compact validation run followed by ready and PR creation.",
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "ready",
+      "timestamp": "2026-08-19T06:09:12.775850+00:00",
+      "human_approval_message": "Push ook naar remoten en daarna door naar validation phase voor een compacte validatie run, geen uitgebreide doorloop, puur gericht op bewijs en daarna door naar ready voor pr aanmaak.",
+      "forced": true,
+      "skip_reason": "Issue #449 is an internal tooling correction with no user-facing documentation contract change. The user explicitly requested a compact validation followed directly by ready and PR creation. Research and validation artifacts contain the durable technical record."
     }
   ],
   "reconstructed": false,
