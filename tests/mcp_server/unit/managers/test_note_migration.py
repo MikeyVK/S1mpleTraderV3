@@ -1,12 +1,13 @@
-from tests.mcp_server.test_support import get_default_server_root
-import pytest
-from unittest.mock import MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 from mcp_server.config.schemas import GitConfig
-from mcp_server.core.operation_notes import NoteContext, Note
-from mcp_server.managers.git_manager import GitManager
 from mcp_server.core.exceptions import PreflightError
+from mcp_server.core.operation_notes import Note, NoteContext
+from mcp_server.managers.git_manager import GitManager
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture

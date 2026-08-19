@@ -6,7 +6,6 @@
     mcp_server.managers.git_manager
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -17,6 +16,7 @@ from mcp_server.config.schemas import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.git_manager import GitManager
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture(name="mock_git_adapter")

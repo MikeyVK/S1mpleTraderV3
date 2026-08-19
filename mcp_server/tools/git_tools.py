@@ -1,15 +1,15 @@
 """Git tools."""
 
 import contextlib
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Literal
 
 import anyio
 from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.core.exceptions import MCPError
-from mcp_server.core.interfaces import IContextLoadedWriter, IStateReader, ICoreTool
+from mcp_server.core.interfaces import IContextLoadedWriter, ICoreTool, IStateReader
 from mcp_server.core.logging import get_logger
 from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.managers import phase_state_engine
@@ -29,7 +29,6 @@ from mcp_server.schemas.tool_outputs import (
     GitStashOutput,
     GitStatusOutput,
 )
-
 
 logger = get_logger("tools.git")
 

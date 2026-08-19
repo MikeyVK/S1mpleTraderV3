@@ -4,7 +4,6 @@
 @dependencies: [pytest, pathlib, mcp_server.tools.git_tools]
 """
 
-from tests.mcp_server.test_support import get_default_server_root
 from pathlib import Path
 from unittest.mock import ANY, MagicMock
 
@@ -56,6 +55,7 @@ from mcp_server.tools.git_tools import (
     GitStatusInput,
     GitStatusTool,
 )
+from tests.mcp_server.test_support import get_default_server_root
 
 
 @pytest.fixture
