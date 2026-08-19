@@ -174,6 +174,44 @@ class TestGitConfig:
         assert config.extract_issue_number("feature/no-number") is None
         assert config.extract_issue_number("unknown/42-test") is None
 
+
+
+    def test_format_branch_name_valid(self) -> None:
+        """format_branch_name should format canonical branch name."""
+        config = _load_git_config()
+        assert config.format_branch_name(116, "create-branch", "feature") == "feature/116-create-branch"
+        assert config.format_branch_name(42, "fix-bug", "bug") == "bug/42-fix-bug"
+        assert config.format_branch_name(91, "cleanup", "epic") == "epic/91-cleanup"
+
+    def test_format_branch_name_normalizes_existing_prefix(self) -> None:
+        """format_branch_name should normalize leading issue prefix from name."""
+        config = _load_git_config()
+        assert (
+            config.format_branch_name(116, "116-create-branch", "feature")
+            == "feature/116-create-branch"
+        )
+
+    def test_format_branch_name_invalid_issue_number(self) -> None:
+        """format_branch_name should reject non-positive issue numbers."""
+        config = _load_git_config()
+        with pytest.raises(ValueError, match="Invalid issue number"):
+            config.format_branch_name(0, "create-branch", "feature")
+        with pytest.raises(ValueError, match="Invalid issue number"):
+            config.format_branch_name(-5, "create-branch", "feature")
+
+    def test_format_branch_name_invalid_type(self) -> None:
+        """format_branch_name should reject unconfigured branch types."""
+        config = _load_git_config()
+        with pytest.raises(ValueError, match="Invalid branch type"):
+            config.format_branch_name(116, "create-branch", "invalid-type")
+
+    def test_format_branch_name_invalid_slug_pattern(self) -> None:
+        """format_branch_name should reject names that fail branch_name_pattern."""
+        config = _load_git_config()
+        with pytest.raises(ValueError, match="Invalid branch name slug"):
+            config.format_branch_name(116, "Invalid Name!", "feature")
+        with pytest.raises(ValueError, match="Invalid branch name slug"):
+            config.format_branch_name(116, "invalid_underscores", "feature")
     def test_is_protected(self) -> None:
         """Test is_protected() helper (Convention #4)."""
         config = _load_git_config()
