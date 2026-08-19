@@ -16,7 +16,138 @@
       ],
       "skip_reason": null,
       "parent_branch": "main",
-      "created_at": "2026-08-19T16:06:38.539314+00:00"
+      "created_at": "2026-08-19T16:06:38.539314+00:00",
+      "planning_deliverables": {
+        "cycles": {
+          "total": 4,
+          "cycles": [
+            {
+              "cycle_number": 1,
+              "name": "Cycle 1: Presentation Schemas & Interfaces",
+              "deliverables": [
+                {
+                  "id": "D1.1",
+                  "description": "Create immutable PresentationResource and PresentedOutput models in mcp_server/schemas/presentation_output.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/schemas/presentation_output.py"
+                  }
+                },
+                {
+                  "id": "D1.2",
+                  "description": "Define ITextPresenter, IResourcePresenter, and IPresenter protocols in mcp_server/core/interfaces/ipresenter.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/core/interfaces/ipresenter.py"
+                  }
+                },
+                {
+                  "id": "D1.3",
+                  "description": "Create unit tests for schemas and presenter protocols",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/schemas/test_presentation_output.py"
+                  }
+                }
+              ],
+              "exit_criteria": "PresentationResource and PresentedOutput models are frozen; ITextPresenter, IResourcePresenter, and IPresenter protocols are runtime_checkable; unit tests pass."
+            },
+            {
+              "cycle_number": 2,
+              "name": "Cycle 2: Presenter Subcomponents & Composition",
+              "deliverables": [
+                {
+                  "id": "D2.1",
+                  "description": "Implement ValidationResourcePresenter extracting schema://validation in mcp_server/presenters/validation_resource_presenter.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/presenters/validation_resource_presenter.py"
+                  }
+                },
+                {
+                  "id": "D2.2",
+                  "description": "Refactor TextPresenter to implement ITextPresenter in mcp_server/presenters/text_presenter.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/presenters/text_presenter.py"
+                  }
+                },
+                {
+                  "id": "D2.3",
+                  "description": "Implement ResponsePresenter coordinating text and resource delegates in mcp_server/presenters/response_presenter.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/presenters/response_presenter.py"
+                  }
+                },
+                {
+                  "id": "D2.4",
+                  "description": "Add comprehensive unit tests in tests/mcp_server/unit/test_presenter.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/test_presenter.py"
+                  }
+                }
+              ],
+              "exit_criteria": "ValidationResourcePresenter extracts schema://validation; TextPresenter implements ITextPresenter; ResponsePresenter delegates to both and returns PresentedOutput; all unit tests pass."
+            },
+            {
+              "cycle_number": 3,
+              "name": "Cycle 3: Transport Layer Decoupling & Bootstrap Wiring",
+              "deliverables": [
+                {
+                  "id": "D3.1",
+                  "description": "Decouple MCPServer to accept IPresenter | None via constructor injection and generically map PresentedOutput in mcp_server/server.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/server.py"
+                  }
+                },
+                {
+                  "id": "D3.2",
+                  "description": "Wire composite ResponsePresenter in mcp_server/bootstrap.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/bootstrap.py"
+                  }
+                },
+                {
+                  "id": "D3.3",
+                  "description": "Update server and bootstrap unit tests",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/server/test_validate_tool_arguments.py"
+                  }
+                }
+              ],
+              "exit_criteria": "MCPServer contains zero schema://validation or ValidationError inspection; bootstrap.py wires ResponsePresenter; server unit tests pass."
+            },
+            {
+              "cycle_number": 4,
+              "name": "Cycle 4: End-to-End Verification & Quality Gates",
+              "deliverables": [
+                {
+                  "id": "D4.1",
+                  "description": "Verify end-to-end MCP wire compatibility in tests/mcp_server/integration/test_strict_input_validation_response.py",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/integration/test_strict_input_validation_response.py"
+                  }
+                },
+                {
+                  "id": "D4.2",
+                  "description": "Run branch quality gates ensuring 10.00/10 linting and 100% type safety",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/integration/test_pipeline_e2e.py"
+                  }
+                }
+              ],
+              "exit_criteria": "End-to-end integration tests pass verifying wire contract compatibility; branch quality gates pass with 10.00/10 linting and 0 typing errors."
+            }
+          ]
+        }
+      }
     }
   }
 }
