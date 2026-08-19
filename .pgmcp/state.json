@@ -9,6 +9,7 @@
   "cycle_history": [],
   "required_phases": [
     "research",
+    "design",
     "planning",
     "implementation",
     "validation",
