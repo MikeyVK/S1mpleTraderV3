@@ -1,17 +1,17 @@
 # mcp_server\presenters\validation_resource_presenter.py
 # template=generic version=e866e4ff created=2026-08-19T19:00Z updated=2026-08-19T19:05Z
-"""
-Presenter for validation error schemas as embedded resources.
+"""Presenter for validation error schemas as embedded resources.
 
 @layer: Presentation
-@dependencies: [json, pydantic, mcp_server.core.interfaces.ipresenter, mcp_server.schemas.presentation_output]
+@dependencies: [json, pydantic, mcp_server.core.interfaces.ipresenter]
 @responsibilities:
     - Implement IResourcePresenter protocol
-    - Extract input_schema from ValidationErrorOutput or validation error dict and return schema://validation PresentationResource
+    - Extract input_schema and return schema://validation PresentationResource
 """
 
 import json
 from typing import Any
+
 from pydantic import BaseModel
 
 from mcp_server.core.interfaces.ipresenter import IResourcePresenter
@@ -24,7 +24,7 @@ class ValidationResourcePresenter(IResourcePresenter):
 
     def present_resources(
         self,
-        tool_name: str,
+        tool_name: str,  # noqa: ARG002
         data: BaseModel | dict[str, Any],
     ) -> list[PresentationResource]:
         """Extract and format presentation resources from the execution data."""

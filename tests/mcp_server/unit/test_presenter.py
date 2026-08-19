@@ -1,7 +1,6 @@
 # tests/mcp_server/unit/test_presenter.py
 # template=unit_test version=3d15d309 created=2026-06-12T20:48Z updated=2026-08-19T19:05Z
-"""
-Unit tests for presenter subcomponents: TextPresenter, ValidationResourcePresenter, and ResponsePresenter.
+"""Unit tests for presenter subcomponents: TextPresenter, ValidationResourcePresenter.
 
 @layer: Tests (Unit)
 @dependencies: [pytest, mcp_server.presenters, unittest.mock]
@@ -13,28 +12,26 @@ Unit tests for presenter subcomponents: TextPresenter, ValidationResourcePresent
 """
 
 # Standard library
-from typing import Any, ClassVar
 import json
+from typing import Any, ClassVar
 
 # Third-party
 import pytest
 from pydantic import BaseModel
 
 # Project modules
-from mcp_server.config.schemas.presentation_config import PresentationConfig
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.operation_notes import Note
 from mcp_server.presenters.response_presenter import ResponsePresenter
 from mcp_server.presenters.text_presenter import (
-    SafeNoneFormatter,
     TextPresenter,
     validate_presentation_alignment,
 )
-from mcp_server.presenters.validation_resource_presenter import ValidationResourcePresenter
+from mcp_server.presenters.validation_resource_presenter import (
+    ValidationResourcePresenter,
+)
 from mcp_server.schemas.cache_publication import CachePublication
 from mcp_server.schemas.error_outputs import (
-    CacheErrorOutput,
-    EnforcementErrorOutput,
     ExecutionErrorOutput,
     ValidationErrorOutput,
 )
@@ -113,9 +110,18 @@ class TestResponsePresenter:
 
     def test_present_combines_text_and_resources(self) -> None:
         """Verify ResponsePresenter coordinates text and resource delegates."""
+
         class MockTextPres:
-            def present_text(self, tool_name: str, data: Any, notes: Any = None, cache_pub: Any = None, success: Any = None) -> str:
+            def present_text(
+                self,
+                tool_name: str,
+                data: Any,
+                notes: Any = None,
+                cache_pub: Any = None,
+                success: Any = None,
+            ) -> str:
                 return "Rendered Markdown"
+
             def present_notes(self, tool_name: str, notes: Any) -> str | None:
                 return None
 
@@ -196,9 +202,7 @@ class TestTextPresenter:
 
         assert text == "❌ Error: Operation failed"
 
-    def test_present_text_default_failure_template(
-        self, mock_yaml_config: dict[str, Any]
-    ) -> None:
+    def test_present_text_default_failure_template(self, mock_yaml_config: dict[str, Any]) -> None:
         """Test presenting failure using default failure template when no specific one exists."""
         presenter = TextPresenter(config_data=mock_yaml_config)
         dto = ExecutionErrorOutput(error_message="Something crashed")

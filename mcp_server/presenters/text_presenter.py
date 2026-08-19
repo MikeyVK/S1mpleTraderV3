@@ -29,7 +29,7 @@ class SafeNoneFormatter(string.Formatter):
         super().__init__()
         self.none_value = none_value
 
-    def format_field(self, value: Any, format_spec: str) -> str:
+    def format_field(self, value: object, format_spec: str) -> str:
         if value is None:
             return self.none_value
         try:

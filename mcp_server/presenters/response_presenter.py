@@ -1,10 +1,9 @@
 # mcp_server\presenters\response_presenter.py
 # template=generic version=e866e4ff created=2026-08-19T19:00Z updated=2026-08-19T19:05Z
-"""
-Composite presenter coordinating text rendering and resource formatting into PresentedOutput.
+"""Composite presenter coordinating text rendering and resource formatting.
 
 @layer: Presentation
-@dependencies: [pydantic, mcp_server.core.interfaces.ipresenter, mcp_server.schemas.presentation_output]
+@dependencies: [pydantic, mcp_server.core.interfaces.ipresenter]
 @responsibilities:
     - Implement IPresenter protocol via composition
     - Delegate text rendering to ITextPresenter and resource extraction to IResourcePresenter
@@ -12,6 +11,7 @@ Composite presenter coordinating text rendering and resource formatting into Pre
 """
 
 from typing import Any
+
 from pydantic import BaseModel
 
 from mcp_server.core.interfaces.ipresenter import IPresenter, IResourcePresenter, ITextPresenter
