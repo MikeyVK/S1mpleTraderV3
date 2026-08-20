@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Design
 
 **Status:** APPROVED  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-08-20
 
 ---
@@ -125,6 +125,7 @@ Create specialized renderer logic for each long-output tool.
 |---|---|---|
 | Tool and output DTO | Produce complete structured result data. | Markdown, item limits, byte limits. |
 | ConfigLoader and PresentationConfig | Parse and validate presentation policy. | Runtime rendering or cache publication. |
+| SafeNoneFormatter | Format scalar values and bounded flat scalar sequences consistently. | Tool identity, nested model rendering, final byte enforcement. |
 | CollectionTextRenderer | Project configured list fields into bounded Markdown in DTO order. | Tool identity, sorting, filtering, final byte enforcement. |
 | TextBudgetLimiter | Enforce the final UTF-8 byte ceiling and retain required tail content. | DTO traversal or tool-specific semantics. |
 | TextPresenter | Coordinate scalar template, collections, instructions, notes, cache fallback, URI, and limiter. | Tool execution and resource creation. |
@@ -149,6 +150,8 @@ The following design-level Pydantic contracts are authoritative; method bodies a
     class FormattingConfig(BaseModel):
         model_config = ConfigDict(frozen=True, extra="forbid")
         none_value: str = "-"
+        inline_sequence_separator: str = ", "
+        inline_sequence_omission_template: str
         collection_omission_template: str
         truncation_notice: str
         cache_unavailable_truncation_notice: str
@@ -166,9 +169,9 @@ The following design-level Pydantic contracts are authoritative; method bodies a
 
 Contract rules:
 
-- A tool with one or more collections must define max_items.
-- A tool without collections must not define max_items.
-- The same max_items applies independently to every sibling collection and recursively at every child depth.
+- A tool with configured collections or an inline scalar-sequence placeholder must define max_items.
+- max_items applies independently to every sibling collection, recursively at every child depth, and to every inline scalar sequence rendered for that tool.
+- A max_items value unused by either mechanism is rejected by startup alignment as orphaned configuration.
 - field names a direct list field on the current model; dotted paths are deliberately unsupported.
 - For a list of Pydantic models, item_template may reference only fields on the element model.
 - For a list of scalar values, item_template may reference only item.
@@ -176,10 +179,15 @@ Contract rules:
 - heading is optional literal Markdown and has no placeholders.
 - Sibling field declarations must be unique.
 - collection_omission_template accepts only omitted_count and field.
+- inline_sequence_omission_template accepts only omitted_count.
+- Inline scalar sequences preserve source order, join retained values with inline_sequence_separator, append the configured inline omission text when bounded, and render an empty sequence as none_value.
+- Model-valued or nested sequences may not be interpolated as scalar placeholders; they require a collection declaration.
 - truncation notices contain no dynamic payload content.
 - Cross-field validation rejects a byte budget that cannot contain the configured truncation notice plus a formatted cache URI using the fixed 32-character run-id shape.
 
 The recursive shape is intentionally minimal. It supports phases → tasks, but does not introduce selectors, sorting, filters, arbitrary JSON paths, per-depth limits, or conditional expressions.
+
+SafeNoneFormatter remains the generic value-formatting boundary for both scalar templates and collection item templates. In addition to its existing None behavior, it formats only flat scalar sequences (for example list[str]) according to inline_sequence_separator, inline_sequence_omission_template, and the active tool's max_items. This yields labels such as bug, priority:high, … 2 more rather than Python repr output. It does not inspect field or tool names.
 
 ### 3.3. Presentation Service Contracts
 
@@ -262,7 +270,7 @@ Limits reflect item density: five diagnostic failures, ten normal records, and t
 | git_list_branches | 20 | branches | — | Name, current marker, upstream |
 | git_status | 20 | modified_files, untracked_files | — | Path |
 | git_stash | 10 | stashes | — | Stash description |
-| list_issues | 10 | issues | — | Number, title, state, labels, URL |
+| list_issues | 10 | issues | — | Number, title, state, URL, and labels as an inline scalar sequence bounded to 10 per issue |
 | list_prs | 10 | pull_requests | — | Number, title, state, refs, URL |
 | list_labels | 20 | labels | — | Name, color, description |
 | list_milestones | 10 | milestones | — | Number, title, state |
@@ -271,14 +279,14 @@ Limits reflect item density: five diagnostic failures, ten normal records, and t
 | run_tests | 5 | failures | — | Test id, location, short reason; traceback excluded |
 | validate_template | 10 | errors | — | Severity and message |
 
-The four scalar templates add these fields without collection configuration:
+The four scalar templates add these fields; only get_issue requires max_items because labels is an inline scalar sequence:
 
-| Tool | Added scalar content |
-|---|---|
-| get_work_context | phase_instructions and handover_template |
-| get_issue | html_url, labels, and body |
-| get_pr | state and body |
-| safe_edit_file | issues |
+| Tool | max_items | Added scalar content |
+|---|---:|---|
+| get_work_context | — | phase_instructions and handover_template |
+| get_issue | 10 | html_url, labels rendered as a bounded comma-separated sequence, and body |
+| get_pr | — | state and body |
+| safe_edit_file | — | issues |
 
 The semantic templates become outcome-neutral:
 
@@ -296,15 +304,18 @@ validate_presentation_alignment remains the startup authority and recursively va
 | Unknown root or child field | Startup ConfigError naming tool and path. |
 | Field is not a list | Startup ConfigError naming the incompatible field. |
 | Invalid model-item placeholder | Startup ConfigError naming template, DTO, and placeholder. |
-| Scalar-list template uses anything except item | Startup ConfigError. |
-| Missing or orphaned max_items | Pydantic configuration error. |
+| Scalar-list collection item_template uses anything except item | Startup ConfigError. |
+| Inline placeholder targets a model-valued or nested sequence | Startup ConfigError requiring a collection declaration. |
+| Inline scalar-sequence placeholder has no max_items | Startup ConfigError naming tool and field. |
+| max_items is unused by collections or inline scalar sequences | Startup ConfigError for orphaned configuration. |
 | Duplicate sibling collection field | Pydantic configuration error. |
 | Budget cannot preserve mandatory tail | Startup configuration error. |
 | Empty collection | No heading, items, or omission line. |
 | More items than max_items | Preserve first items in DTO order and add omission notice. |
 | Oversized scalar or collection text | Apply final limiter; cache stays complete. |
 | Cache publication fails | Preserve current sanitized inline fallback, bound it, and use the cache-unavailable notice. |
-| Formatter receives None | Preserve existing none_value behavior. |
+| Formatter receives None or an empty inline sequence | Render none_value. |
+| Inline scalar sequence exceeds max_items | Preserve the first values in DTO order, join with the configured separator, and append the inline omission text. |
 
 No new persisted state, metrics store, migration task, or cache format is introduced. The visible truncation and omission notices are sufficient user-facing observability; complete evidence remains at the existing resource URI.
 
@@ -327,12 +338,14 @@ Tests are organized around lasting public behavior, not around the wording of al
 
 | Test seam | Durable behavior |
 |---|---|
-| PresentationConfig validation | Frozen recursive config loads; invalid max_items combinations, duplicates, and insufficient budget fail. |
+| PresentationConfig validation | Frozen recursive config and inline-sequence formatting settings load; invalid max_items combinations, duplicates, and insufficient budget fail. |
+| SafeNoneFormatter public formatting contract | Ordered scalar-sequence joining, empty sequence, exact limit, omission count, multibyte values, and rejection through alignment for nested/model sequences. |
 | CollectionTextRenderer.render | Flat model lists, scalar lists, empty lists, order, per-list limit, omission count, and nested phases/tasks. |
 | TextBudgetLimiter.limit | Under-budget identity, exact boundary, multibyte safety, block/line preference, fenced-block closure, hard byte ceiling, notice, URI retention, and cache-unavailable behavior. |
-| validate_presentation_alignment | Reject unknown/non-list fields and invalid root, item, or nested placeholders; accept representative flat/scalar/nested declarations. |
+| validate_presentation_alignment | Reject unknown/non-list fields, invalid root/item/nested placeholders, unbounded inline sequences, model-valued inline sequences, and orphaned max_items; accept representative flat, scalar-sequence, and nested declarations. |
 | TextPresenter.present_text | Correct block order, scalar expansion, collection append, notes/instructions retention where space permits, and final budget enforcement. |
 | Representative output DTOs | run_tests excludes traceback/stderr; run_quality_gates excludes details; both expose bounded actionable rows. |
+| Issue label regression | get_issue and list_issues render ordered, bounded labels without Python list representation or tool-specific logic. |
 | Semantic outcome regression | overall_pass=False and passed=False produce neutral, non-contradictory summaries. |
 | Server/presenter integration | Cached DTO content remains complete while presented text is bounded. |
 
@@ -380,3 +393,4 @@ None. The design is ready for independent review and Planning after approval.
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0 | 2026-08-20 | Agent | Approved configuration, presentation-service, failure, compatibility, and test design |
+| 1.1 | 2026-08-20 | Agent | Define generic bounded inline scalar-sequence formatting for issue labels |
