@@ -16,7 +16,218 @@
       ],
       "skip_reason": null,
       "parent_branch": "main",
-      "created_at": "2026-08-20T09:17:18.739826+00:00"
+      "created_at": "2026-08-20T09:17:18.739826+00:00",
+      "planning_deliverables": {
+        "cycles": {
+          "total": 8,
+          "cycles": [
+            {
+              "cycle_number": 1,
+              "name": "C_AGENT_AUTHORITY",
+              "deliverables": [
+                {
+                  "id": "D_AGENT_GLOBAL",
+                  "description": "Authoritative global host instructions align TDD, verification, document reads, delegation, hand-over, Ready, and phase authority with the Approved Strategy."
+                },
+                {
+                  "id": "D_QA_BOOTSTRAP",
+                  "description": "Every authoritative QA role and skill starts with anti-anchoring and invocation-authority rules."
+                },
+                {
+                  "id": "D_AGENT_CONSUMERS",
+                  "description": "All changed tracked consumers are synchronized from their authoritative host source."
+                },
+                {
+                  "id": "D_AGENT_PARITY_TESTS",
+                  "description": "Durable topology-based source-consumer parity and QA-bootstrap tests pass."
+                },
+                {
+                  "id": "D_AUDIT_LEDGER",
+                  "description": "Issue-local contract-audit.md contains 39 unapproved contract records using the research evidence fields.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "docs/development/issue399/contract-audit.md"
+                  }
+                }
+              ],
+              "exit_criteria": "Authoritative and derived QA entrypoints contain equivalent anti-anchoring semantics; delegated review is findings-only; static global rules do not contradict the Approved Strategy; changed source-consumer pairs are byte-equal; the 39-record audit ledger exists with no pre-marked PASS."
+            },
+            {
+              "cycle_number": 2,
+              "name": "C_READY",
+              "deliverables": [
+                {
+                  "id": "D_READY_INSTRUCTIONS",
+                  "description": "All seven Ready phase instructions are rewritten to one identical contract."
+                },
+                {
+                  "id": "D_READY_HANDOVERS",
+                  "description": "All seven Ready hand-over templates are identical and use the canonical compact structure."
+                },
+                {
+                  "id": "D_READY_TESTS",
+                  "description": "Durable Ready equality and structural terminal-invariant tests pass."
+                },
+                {
+                  "id": "D_READY_AUDIT",
+                  "description": "Seven Ready effective-contract audit records pass C01-C23."
+                }
+              ],
+              "exit_criteria": "All Ready instructions and hand-overs are exactly equal; required terminal activations remain; no merge-approval check is present; all seven Ready records pass C01-C23."
+            },
+            {
+              "cycle_number": 3,
+              "name": "C_FEATURE",
+              "deliverables": [
+                {
+                  "id": "D_FEATURE_CONTRACTS",
+                  "description": "Six non-Ready Feature effective contracts are rewritten instruction and hand-over together."
+                },
+                {
+                  "id": "D_FEATURE_AUDIT",
+                  "description": "Six Feature audit records pass C01-C23 with feature-specific evidence."
+                }
+              ],
+              "exit_criteria": "All six Feature contracts pass C01-C23; feature discovery, design, planning, durable behavior proof, test-code quality, documentation reconciliation, and QA authority remain explicit without valueless test pressure."
+            },
+            {
+              "cycle_number": 4,
+              "name": "C_BUG",
+              "deliverables": [
+                {
+                  "id": "D_BUG_CONTRACTS",
+                  "description": "Six non-Ready Bug effective contracts are rewritten instruction and hand-over together."
+                },
+                {
+                  "id": "D_BUG_AUDIT",
+                  "description": "Six Bug audit records pass C01-C23 with corrected-behavior and regression evidence."
+                }
+              ],
+              "exit_criteria": "All six Bug contracts pass C01-C23; root cause, corrected behavior, supported boundaries, durable regression value, collateral test impact, and external QA authority remain explicit."
+            },
+            {
+              "cycle_number": 5,
+              "name": "C_REFACTOR_HOTFIX",
+              "deliverables": [
+                {
+                  "id": "D_REFACTOR_CONTRACTS",
+                  "description": "Six non-Ready Refactor effective contracts are rewritten and independently audited."
+                },
+                {
+                  "id": "D_HOTFIX_CONTRACTS",
+                  "description": "Three non-Ready Hotfix effective contracts are rewritten and independently audited."
+                },
+                {
+                  "id": "D_REFACTOR_HOTFIX_AUDIT",
+                  "description": "Nine Refactor and Hotfix audit records pass C01-C23."
+                }
+              ],
+              "exit_criteria": "All nine contracts pass C01-C23; Refactor preserves an existing-green baseline without feature-style test pressure; Hotfix retains minimum-safe containment evidence without full feature ceremony."
+            },
+            {
+              "cycle_number": 6,
+              "name": "C_CHORE_DOCS",
+              "deliverables": [
+                {
+                  "id": "D_CHORE_CONTRACTS",
+                  "description": "Four non-Ready Chore effective contracts are rewritten and independently audited."
+                },
+                {
+                  "id": "D_DOCS_CONTRACTS",
+                  "description": "Two non-Ready Docs effective contracts are rewritten and independently audited."
+                },
+                {
+                  "id": "D_CHORE_DOCS_AUDIT",
+                  "description": "Six Chore and Docs audit records pass C01-C23."
+                }
+              ],
+              "exit_criteria": "All six contracts pass C01-C23; Chore remains lightweight with focused proof and deferred-work responsibility; Docs introduces no production-code TDD and remains documentation-bounded."
+            },
+            {
+              "cycle_number": 7,
+              "name": "C_EPIC",
+              "deliverables": [
+                {
+                  "id": "D_EPIC_CONTRACTS",
+                  "description": "Five non-Ready Epic effective contracts are rewritten instruction and hand-over together."
+                },
+                {
+                  "id": "D_EPIC_AUDIT",
+                  "description": "Five Epic audit records pass C01-C23, including Coordination proportionality."
+                }
+              ],
+              "exit_criteria": "All five Epic contracts pass C01-C23; cross-workstream boundaries, child acceptance, shared contracts, and integration proof remain explicit; Coordination stays mechanical and harness-neutral."
+            },
+            {
+              "cycle_number": 8,
+              "name": "C_ALIGNMENT",
+              "deliverables": [
+                {
+                  "id": "D_AUDIT_COMPLETE",
+                  "description": "All 39 effective-contract audit records are complete and pass C01-C23."
+                },
+                {
+                  "id": "D_METRICS_FINAL",
+                  "description": "Final parsed instruction, hand-over, combined character, and lexical proxy metrics are recorded against baseline."
+                },
+                {
+                  "id": "D_CONTRACT_INVARIANTS",
+                  "description": "Contracts-wide structural, workflow, hand-over, Ready, activation, QA, and orchestration invariants pass."
+                },
+                {
+                  "id": "D_AGENT_PARITY_FINAL",
+                  "description": "All relevant authoritative-to-derived pairs and agent authority semantics are aligned."
+                },
+                {
+                  "id": "D_LIVE_CONTEXT",
+                  "description": "Server restart and focused live get_work_context smoke checks prove startup-loaded configuration."
+                }
+              ],
+              "exit_criteria": "All 39 records pass without hidden failures; final combined size is below baseline without semantic loss; prohibited QA/orchestration patterns are absent; focused suites, branch gates, source parity, and live config evidence are current for Validation."
+            }
+          ]
+        },
+        "validation": {
+          "deliverables": [
+            {
+              "id": "V_FULL_TESTS",
+              "description": "Run the complete workspace test suite once against final implementation state."
+            },
+            {
+              "id": "V_QUALITY",
+              "description": "Run applicable branch quality gates and inspect cached structured evidence."
+            },
+            {
+              "id": "V_CONTRACT_REVIEW",
+              "description": "Independently assess all 39 audit records, final diff, strategy preservation, test-code quality, and live context behavior."
+            },
+            {
+              "id": "V_DEFERRED",
+              "description": "Identify residual and deferred work explicitly for Ready triage."
+            }
+          ]
+        },
+        "documentation": {
+          "deliverables": [
+            {
+              "id": "DOC_AGENT_MODEL",
+              "description": "Update the current Agent Instructions Model for delegation, QA authority, anti-anchoring, and hand-over ownership."
+            },
+            {
+              "id": "DOC_WORKFLOW_GUIDE",
+              "description": "Reconcile the current Workflow Extension Guide with compact contract and verification policy where needed."
+            },
+            {
+              "id": "DOC_RELEASE_ASSETS",
+              "description": "Update Release Assets Procedure only if validated source-consumer behavior changes."
+            },
+            {
+              "id": "DOC_CURRENT_ONLY",
+              "description": "Update current active documentation without migration diary or archive rewrites."
+            }
+          ]
+        }
+      }
     }
   }
 }

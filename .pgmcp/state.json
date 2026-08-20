@@ -3,7 +3,7 @@
   "branch": "refactor/399-audit-and-streamline-phase-instruction-contracts",
   "issue_number": 399,
   "workflow_name": "refactor",
-  "current_phase": "research",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -17,11 +17,20 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
+  "skip_reason": "Issue #399 is a contract-text refactor with an approved research strategy and no separate target-design deliverable. The user explicitly requested research followed by planning; Design is intentionally skipped.",
   "issue_title": "refactor: Audit and streamline phase instruction contracts",
   "parent_branch": "main",
   "created_at": "2026-08-20T09:17:18.752131+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "planning",
+      "timestamp": "2026-08-20T11:41:14.016942+00:00",
+      "human_approval_message": "Mee eens, ga verder naar planing!",
+      "forced": true,
+      "skip_reason": "Issue #399 is a contract-text refactor with an approved research strategy and no separate target-design deliverable. The user explicitly requested research followed by planning; Design is intentionally skipped."
+    }
+  ],
   "reconstructed": false,
   "current_sub_phase": null
 }
