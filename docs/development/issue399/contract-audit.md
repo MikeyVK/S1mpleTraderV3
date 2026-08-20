@@ -291,100 +291,94 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 
 #### `bug/research`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Establish reproducible defect evidence, root cause, corrected behavior, proportional blast radius, and approved strategy.
+- **Workflow distinction:** Bug research distinguishes symptoms from causal evidence and frames correction/regression boundaries.
+- **Retained activations:** Reproduction/direct evidence; causal alternatives; full proportional blast radius; conditional discovery; human Approved Strategy; research scaffold/commit/first push; review request.
+- **Removed or relocated content:** Unconditional document reads, harness-specific exploration, repeated interaction scripts, premature fix design, and generic feature framing.
+- **Test/evidence policy:** Identify affected regression surfaces and corrected behavior; leave durable test design to Design/Planning.
+- **Document reads:** Required research boundary; standards/references conditional on affected uncertainty.
+- **Delegation/QA:** Optional causal discovery is bounded, counterevidence-seeking, direct-source-based, producer-verified, and non-authoritative.
+- **Hand-over:** Canonical links to Research and reproduction/root-cause evidence.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (later test design), C20 (Ready), C21 (Coordination).
+- **Size:** Before instruction/hand-over/effective/units = 5793/1019/6812/1222; after = 2108/583/2691/521.
+- **Residual concern:** None.
 #### `bug/design`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Design the smallest root-cause correction with preserved supported behavior and durable regression coverage.
+- **Workflow distinction:** Bug design removes an evidenced cause instead of introducing general new capability.
+- **Retained activations:** Causal input; option comparison; smallest correction; preservation/strategy; first-class regression design; conditional discovery/preflight; design scaffold/commit; independent review request.
+- **Removed or relocated content:** Internal QA PASS loop, model selection, harness-specific exploration, repeated checkpoints, symptom-only or planning work.
+- **Test/evidence policy:** Durable public-boundary regression or invariant; adapt existing coverage; reject diagnostic/detail ballast.
+- **Document reads:** Research/strategy required; applicable Architecture/Documentation sections conditional.
+- **Delegation/QA:** Discovery/preflight findings-only, bounded, producer-verified.
+- **Hand-over:** Canonical links to Design, Research, and causal seams.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research), C20 (Ready), C21 (Coordination).
+- **Size:** Before instruction/hand-over/effective/units = 6539/623/7162/1256; after = 2090/598/2688/507.
+- **Residual concern:** None.
 #### `bug/planning`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Slice root-cause correction, regression protection, and cleanup into executable cycles.
+- **Workflow distinction:** Bug planning maps cause and corrected behavior directly to minimal correction cycles.
+- **Retained activations:** Approved inputs; cycle/deliverable/dependency mapping; regression-value policy; focused checks; conditional discovery; Planning scaffold; saved payload; commit/review.
+- **Removed or relocated content:** Mandatory reference reads, harness/internal QA, PASS loops, repeated interactions, blanket full gates.
+- **Test/evidence policy:** Default durable failing regression; reuse existing failing coverage; no diagnostic ballast or artificial mechanical RED; production-quality tests.
+- **Document reads:** Approved artifacts required; other standards conditional on planned seams.
+- **Delegation/QA:** Bounded causal/sequencing discovery, producer-verified, findings-only.
+- **Hand-over:** Canonical links to Planning, Design, and Research plus payload proof.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research), C20 (Ready), C21 (Coordination).
+- **Size:** Before instruction/hand-over/effective/units = 7292/794/8086/1413; after = 2208/591/2799/559.
+- **Residual concern:** None.
 #### `bug/implementation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Execute active correction cycles against root cause and corrected behavior without scope/strategy drift.
+- **Workflow distinction:** Bug implementation defaults behavior fixes to durable regression RED evidence and minimal root-cause GREEN.
+- **Retained activations:** Plan/context; causal stop checks; bounded execution; first-class test code; change-appropriate RED/GREEN/REFACTOR; focused tests/file gates; self-check; cycle transition; final review.
+- **Removed or relocated content:** Mandatory explore, internal QA PASS/auto-progression, blanket TDD duplicates, verbose narration, and missing hand-over.
+- **Test/evidence policy:** Durable failing regression or existing failing test; no duplicate/diagnostic test; mechanical exception; Validation owns broad checks.
+- **Document reads:** Plan/cycle and causal inputs required; other reads active-boundary only.
+- **Delegation/QA:** Execution bounded and producer-verified; adversarial preflight findings-only; objective producer progression.
+- **Hand-over:** Canonical proportional production/regression links plus branch diff inventory.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research), C06 (pre-draft), C20 (Ready), C21 (Coordination).
+- **Size:** Before instruction/hand-over/effective/units = 4310/0/4310/829; after = 2174/708/2882/551.
+- **Residual concern:** None.
 #### `bug/validation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Prove branch-wide corrected behavior, root-cause removal, preservation, and regression safety.
+- **Workflow distinction:** Bug validation makes before/after defect evidence and durable regression scope explicit.
+- **Retained activations:** Approved inputs; evidence mapping; one full suite; branch gates; visible regression proof; demo/fallback; deferred work; Validation artifact/commit; independent QA request.
+- **Removed or relocated content:** Harness exploration, unconditional full-doc reads, duplicated self-checks, patching/redesign permission, and producer verdict.
+- **Test/evidence policy:** Full suite/branch gates once; explicit regression scope if needed; permanent test only for new stable gap.
+- **Document reads:** Approved artifacts required; standards conditional on validation boundary.
+- **Delegation/QA:** No delegated review required; separate independent QA owns GO/NOGO.
+- **Hand-over:** Canonical links to Validation, Planning, and regression/reproduction evidence.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06, C12 (no delegation), C20, C21.
+- **Size:** Before instruction/hand-over/effective/units = 4143/874/5017/914; after = 1832/669/2501/505.
+- **Residual concern:** None.
 #### `bug/documentation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Reconcile current docs and instruction consumers with validated corrected behavior.
+- **Workflow distinction:** Bug documentation removes obsolete failure guidance and explains corrected behavior or residual limits.
+- **Retained activations:** Validation intake; active docs/source-consumer inventory; minimal updates; source-first synchronization/parity; focused docs checks; deferred capture; commit/review.
+- **Removed or relocated content:** Harness scan, repeated historical prose, blanket tests/gates, unsupported readiness/behavior claims.
+- **Test/evidence policy:** Only invalidated documentation/link/template/parity checks; reuse fresh runtime evidence.
+- **Document reads:** Validation/applicable doc boundary required; historical/context and other reads conditional.
+- **Delegation/QA:** No delegation required; producer owns scan and cannot authorize progression.
+- **Hand-over:** Canonical clickable docs/source-consumer/Validation evidence.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20,C21.
+- **Size:** Before instruction/hand-over/effective/units = 3072/591/3663/661; after = 1443/584/2027/365.
+- **Residual concern:** None.
 ### C_REFACTOR_HOTFIX
 
 #### `refactor/research`

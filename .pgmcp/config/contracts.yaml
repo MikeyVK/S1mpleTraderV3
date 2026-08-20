@@ -485,134 +485,66 @@ workflows:
         instructions:
           sub_role: researcher
           phase_instructions: |
-            [ ] Read the issue: get_issue(issue_number=N).
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before drawing conclusions.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the research document.
-            [ ] Use explore_subagent to gather concrete evidence about this bug.
-                Ask it to identify:
-                - observed failure behavior and relevant code paths
-                - likely blast radius, affected callers, affected boundaries,
-                  and affected test suites, helpers, and fixtures
-                - root cause candidates supported by code evidence
-                - architectural constraints and forbidden approaches relevant to the fix
-                - any consumers or boundaries where supported contracts versus accidental
-                  dependence on faulty behavior may require explicit human choice
-                - unknowns that the design phase must resolve
+            Establish reproducible defect evidence, root cause, and strategy boundaries.
 
-            [ ] Interaction checkpoint: present a short orientation to the user before going deeper.
-                Include:
-                - current understanding of the bug
-                - observed versus expected behavior
-                - likely affected surface, including relevant test suites,
-                  fixtures, and helpers
-                - major unknowns still blocking good research
-                Ask whether external research should be included, for example:
-                - upstream library or framework behavior
-                - protocol, API, or standards documentation
-                - known ecosystem issues, release notes, or vendor guidance
-                - comparable failure cases or domain references
+            [ ] Load get_work_context and get_issue(issue_number=N). Define the Research
+                boundary before drafting: own observed versus expected behavior, reproduction,
+                causal evidence, blast radius, and strategy choices; do not select the fix,
+                design its structure, or sequence implementation.
 
-            [ ] If external research is requested, or if repo-only evidence is insufficient,
-                define a narrow external research target before proceeding.
-                Clarify:
-                - what exact bug symptom or behavior the external research must explain
-                - which libraries, protocols, or sources are relevant
-                - whether the goal is expected-behavior confirmation, root-cause insight,
-                  feasibility insight, or regression-risk discovery
-                Do not default to broad web research without a concrete reason.
+            [ ] Reproduce or otherwise evidence the failure through direct code, configuration,
+                logs, tests, and call paths. Distinguish root cause from symptoms and record
+                conditions where the defect does and does not occur.
 
-            [ ] If no external browsing capability is available in the current tool context,
-                ask the user for links, names, screenshots, logs, notes, or examples to analyze.
-                Do not make broad external claims without traceable sources.
+            [ ] Map proportional blast radius across production code, configuration, tests,
+                helpers/fixtures, current docs, agent instructions/templates, enforcement, and
+                consumers. Read only standards or references governing an affected or uncertain
+                boundary.
 
-            [ ] Keep the content in-bounds while forming the research nucleus and before scaffolding:
-                - Include defect symptoms, context, affected code paths, affected callers,
-                  affected test suites, fixtures and helpers, root cause evidence,
-                  external references, architectural constraints,
-                  supported-contract versus defect-dependence distinctions when materially relevant,
-                  assumptions, open questions, regression risks, and corrected behavior
-                  as design/planning input.
-                - Follow DOCUMENTATION_STANDARD.md for presentation rules,
-                  drafting discipline, tables, Mermaid, and diagram format.
-                - Exclude chosen fix, implementation details, code or pseudo-code,
-                  task breakdown, TDD cycles, estimates, milestones, and exact patch plans.
-                - Exclude "we will implement X" style commitments, even when inspired by
-                  external examples.
+            [ ] If bounded discovery is delegated, give direct source paths, reproduction facts,
+                competing causal hypotheses, counterevidence sought, scope/exclusions, evidence
+                output, uncertainty, and stop conditions. Verify decisive evidence yourself.
 
-            [ ] Before scaffolding, produce a short research nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the current bug framing
-                - observed versus expected behavior
-                - reproduction preconditions or failure triggers
-                - the likely root-cause area, affected surface,
-                  and affected test suites, fixtures, and helpers
-                - architectural constraints already visible
-                - strategy-sensitive boundaries, consumers, and viable policy options
-                  when materially relevant
-                - unknowns, assumptions, and regression risks
-                - corrected behavior that should inform design or planning
+            [ ] Identify corrected-behavior and regression boundaries. For compatibility,
+                migration, or breakage-sensitive consumers, present strategies with cost, risk,
+                and impact. Analyze rollback/migration only when defect evidence requires it.
 
-            [ ] Do not scaffold the research document until the research nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Obtain an explicit human Approved Strategy per affected boundary. Stop if the
+                defect is not evidenced, root cause remains materially ambiguous, issue scope
+                must change, or strategy is undecided.
 
-            [ ] Create the research artifact: scaffold_artifact(artifact_type='research', name='research', context={..., 'approved_strategy': '...', 'expected_results': '...'}).
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the research.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+            [ ] Scaffold the research artifact with
+                scaffold_artifact(artifact_type='research', name='research', context={...}).
+                Apply relevant Documentation Standard boundaries; link evidence and state
+                reproduction, root cause, blast radius, corrected behavior, risks, and strategy.
+                Keep fix design and planning out.
 
-            [ ] Self-check before finalizing:
-                - If a statement sounds like a chosen fix, implementation instruction,
-                  test plan, or plan commitment, move it out of research.
-                - Treat external findings as evidence, not as decisions.
-                - If strategy-sensitive boundaries are in scope, present options and a recommendation
-                  as decision input, not as a chosen policy.
-                - Verify the research closes with an Approved Strategy entry,
-                  even if it records that no special migration policy is needed
-                  beyond preserving supported contracts.
-                - Prefer concrete evidence over general statements: cite specific files,
-                  symbols, behaviors, logs, and references where possible.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
-            [ ] Interaction checkpoint before commit: present the root-cause framing,
-                affected surface, corrected behavior, unresolved questions,
-                and any strategy-sensitive boundaries requiring approval to the user.
-                If strategy-sensitive boundaries are in scope, ask the user to choose the policy
-                per relevant boundary and capture the result in the research document as Approved Strategy.
-                If no special policy is needed, capture that explicitly as the Approved Strategy
-                before committing.
-                If research suggests the issue is upstream, duplicated, mis-scoped, or
-                broader than filed, stop and ask before committing.
+            [ ] Commit with git_add_or_commit(workflow_phase='research',
+                message='Research findings (#N)').
+                On the branch's first commit only, call git_push(set_upstream=True).
 
-            [ ] Commit: git_add_or_commit(workflow_phase='research', message='Research findings (#N)')
-            [ ] First push: git_push(set_upstream=True)  # creates remote tracking branch; do once on this branch
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Research → Design Hand-over
+            ### Bug / Research Hand-over
+
             #### Scope
-            - Issue: #N
-            - Bug symptom: <one sentence>
+            - Investigated defect and exclusions: <summary>
 
-            #### Findings
-            - Observed versus expected behavior: <concise comparison>
-            - Likely root-cause area: <files, methods, flows, or boundaries involved>
-            - Affected surface: <callers, consumers, test suites, fixtures, helpers, and regression-sensitive paths>
-            - Architectural constraints: <principles, boundaries, or forbidden approaches>
-            - Corrected behavior: <outcome framing for design and planning>
+            #### Deliverables
+            - [Research](docs/development/issueN/research.md)
+            - Reproduction/root-cause evidence: <repository-relative Markdown links>
 
-            #### Approved Strategy
-            - Boundary / consumer scope: <affected boundaries and consumers, or 'no special migration policy required'>
-            - Selected strategy: <preserve compatibility | temporary bridge | clean break>
-            - Supported contract vs defect dependence: <what later phases must preserve versus may correct>
-            - Constraints for later phases: <what design and planning must respect>
+            #### Evidence
+            - Observed versus expected behavior: <summary>
+            - Root cause and blast radius: <code, config, tests, docs, agents/consumers>
+            - Approved Strategy: <boundary decisions and rationale>
 
-            #### Open Questions
-            - <question that design must resolve>
+            #### Open Work
+            - Design questions, regression risks, and unknowns: <items or None>
+            - Deferred work: <items or None>
 
-            #### Files
-            - docs/development/issueN/research.md (new)
-
-            #### Stop-Go Proof
-            - Research doc committed
+            #### Review Request
+            - Review requested
       - name: design
         exit_requires:
           - id: design-doc
@@ -623,134 +555,66 @@ workflows:
         instructions:
           sub_role: designer
           phase_instructions: |
-            [ ] Read the research artifact, the research hand-over,
-                and the Approved Strategy from the previous phase.
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before making design decisions.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the design document.
-            [ ] Use explore_subagent to gather concrete evidence about this bug-fix design.
-                Ask it to identify:
-                - viable fix strategies supported by the current root-cause area
-                - affected callers, interfaces, data flows, regression-sensitive paths,
-                  and affected test suites, helpers, and fixtures
-                - constraints that make some fixes safe versus brittle
-                - the technical consequences of the Approved Strategy for supported contracts,
-                  defect dependence, and corrected behavior
-                - unknowns that planning or implementation would otherwise discover too late
+            Design the smallest robust correction for the evidenced defect.
 
-            [ ] Interaction checkpoint: present the bug-fix framing to the user before going deeper.
-                Include:
-                - current understanding of the corrected behavior
-                - the Approved Strategy and the constraints it imposes on design
-                - likely fix directions or containment strategies within that strategy
-                - highest-risk regression surfaces and compatibility concerns
-                - key trade-offs between minimal change, clarity, and robustness
-                - major unknowns still blocking a sound design
-                Ask whether any business, operational, or release constraints
-                should influence the design.
+            [ ] Load get_work_context, Bug Research, root-cause evidence, corrected behavior,
+                and Approved Strategy. Define the Design boundary before drafting: own correction
+                architecture, interfaces, failure behavior, regression design, and alternatives;
+                do not write cycle sequencing or implementation steps.
 
-            [ ] If research left unresolved questions that require external comparison,
-                define a narrow external research target before proceeding.
-                Clarify:
-                - what exact behavior or fix question the external research must answer
-                - which sources, libraries, protocols, or references are relevant
-                - whether the goal is expected-behavior confirmation, feasibility insight,
-                  compatibility insight, or regression-risk discovery
-                Do not default to broad web research without a concrete reason.
+            [ ] Inspect the causal production and test seams directly. Read applicable Architecture
+                and Documentation Standard sections; load other references only for uncertain
+                affected boundaries.
 
-            [ ] If no external browsing capability is available in the current tool context,
-                ask the user for links, examples, screenshots, logs, notes, or references to analyze.
-                Do not make broad external claims without traceable sources.
+            [ ] Compare viable corrections. Select the smallest direction that removes root cause,
+                not only symptoms, while preserving supported behavior and Approved Strategy.
+                Cover contracts, state, dependencies, errors, observability, and conditional
+                containment/migration/rollback where evidence requires it.
 
-            [ ] Keep the design in-bounds while forming the design nucleus and before scaffolding:
-                - Include fix option comparison, chosen direction, rationale, corrected behavior,
-                  affected interfaces, callers, regression-sensitive paths,
-                  affected test suites, fixtures, helpers, the Approved Strategy and its constraints,
-                  failure modes, design-level validation strategy, assumptions, open questions,
-                  risks, and planning-relevant consequences.
-                - Exclude broad product redesign unless the bug reveals a stable systemic issue;
-                  if so, flag it explicitly instead of silently broadening the scope.
-                - Exclude production implementation code, file-by-file patch plans,
-                  task breakdown, TDD cycles, estimates, milestones, and commit sequencing.
-                - Exclude policy re-decisions about preserve compatibility,
-                  temporary bridge, or clean break. If new evidence makes the Approved Strategy
-                  unsound, stop and reopen the decision explicitly instead of redesigning by stealth.
-                - Exclude "we will patch file X" style commitments.
-                - Do not invent ADRs or assume an ADR process exists for this project.
+            [ ] Design regression coverage as first-class test code. Prefer adapting an existing
+                durable test; otherwise protect stable corrected behavior or an invariant through
+                public boundaries. Reject temporary reproduction scripts, implementation-detail
+                assertions, and tests whose only value is this workflow.
 
-            [ ] Before scaffolding, produce a short design nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the refined defect statement and corrected behavior
-                - the Approved Strategy and the constraints it imposes
-                - the viable fix options and trade-offs within that strategy
-                - the preferred fix direction and rationale
-                - affected interfaces, callers, flows, regression-sensitive boundaries,
-                  and affected test suites, fixtures, and helpers
-                - supported-contract versus defect-dependence constraints,
-                  failure modes, and containment concerns
-                - design-level validation strategy: what planning and implementation must prove
-                - open questions, assumptions, and planning-relevant consequences
+            [ ] If discovery or adversarial preflight is delegated, provide direct sources,
+                causal alternatives/counterexamples, bounded scope, evidence output, uncertainty,
+                and stop conditions. It returns findings-only; verify and decide yourself.
 
-            [ ] Do not scaffold the design document until the design nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Stop for human decision if root cause, corrected behavior, or Approved Strategy is
+                missing, contradicted, or made unsound by new evidence.
 
-            [ ] Create the design artifact: scaffold_artifact(artifact_type='design', name='design').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the design.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+            [ ] Scaffold the design artifact with
+                scaffold_artifact(artifact_type='design', name='design', context={...}).
+                Record chosen correction, rejected alternatives, production/test design,
+                preservation obligations, validation evidence, and planning consequences.
+                Self-check phase and document boundaries.
 
-            [ ] Self-check before the final user checkpoint:
-                - Every major design decision must connect back to the research evidence
-                  and the corrected behavior.
-                - Reject options that conflict with ARCHITECTURE_PRINCIPLES.md.
-                - Reject any direction that conflicts with the Approved Strategy.
-                - If a statement sounds like planning or implementation, move it out of design.
-                - Prefer minimal-surface fixes when they satisfy the corrected behavior,
-                  cover the affected test surface, and reduce regression risk.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
+            [ ] Commit with git_add_or_commit(workflow_phase='design',
+                message='Design for #N').
 
-            [ ] Interaction checkpoint before internal QA: present the chosen fix direction,
-                rejected alternatives, Approved Strategy alignment, regression strategy,
-                interface impacts, and unresolved questions to the user.
-                If the trade-off priorities or direction are wrong, revise before review.
-
-            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role design-reviewer
-                to review the bug design.
-                Ask QA as design-reviewer to verify:
-                - alignment with the research artifact, research hand-over, and Approved Strategy
-                - alignment with observed versus expected behavior and the likely root-cause area
-                - compliance with ARCHITECTURE_PRINCIPLES.md
-                - compliance with DOCUMENTATION_STANDARD.md
-                - the design keeps bug-fix scope disciplined and usable by the planning phase
-                - the design operationalizes the Approved Strategy without silently changing it
-                - regression-sensitive paths, affected test suites, fixtures, helpers,
-                  and validation obligations are explicit
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the design and repeat the same QA checkpoint
-                before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='design', message='Design for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below. Independent QA determines GO/NOGO.
           handover_template: |
-            ### Design → QA Hand-over
+            ### Bug / Design Hand-over
+
             #### Scope
-            - Issue: #N
-            - Bug design focus: <one sentence>
+            - Designed defect correction and exclusions: <summary>
 
-            #### Review Targets
-            - Corrected behavior: <one sentence>
-            - Chosen fix direction: <one sentence>
-            - Approved Strategy alignment: <how the design respects the chosen policy>
-            - Root-cause alignment: <how the design addresses the likely cause without overreaching>
-            - Regression / compatibility impact: <what planning, implementation, and the test suite must protect>
-            - Planning consequences: <what the next phase must preserve, prove, or split>
-            - Open questions: <what remains unresolved>
+            #### Deliverables
+            - [Design](docs/development/issueN/design.md)
+            - [Research](docs/development/issueN/research.md)
+            - Causal production/test seams: <repository-relative Markdown links>
 
-            #### Files
-            - docs/development/issueN/design.md (new)
+            #### Evidence
+            - Root-cause and corrected-behavior alignment: <mapping>
+            - Approved Strategy and preservation alignment: <mapping>
+            - Durable regression design: <summary>
+
+            #### Open Work
+            - Planning constraints, risks, and questions: <items or None>
+            - Deferred work: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: planning
         exit_requires:
           - id: planning-doc
@@ -761,148 +625,68 @@ workflows:
         instructions:
           sub_role: planner
           phase_instructions: |
-            [ ] Read the design artifact, the design hand-over, and the Approved Strategy from the previous phases.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the planning document.
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before fixing cycle boundaries,
-                dependencies, or implementation obligations.
-            [ ] Read TYPE_CHECKING_PLAYBOOK.md before defining typing or static-analysis
-                obligations for the implementation phase.
-            [ ] Use explore_subagent to gather concrete evidence about how this bug fix
-                should be sliced into implementation cycles.
-                Ask it to identify:
-                - the smallest safe bug-fix slices implied by the approved design
-                - affected production modules, test suites, fixtures, and helpers per slice
-                - sequencing constraints, regression-sensitive paths, and risky boundaries between slices
-                - corrected behavior, validation obligations, and rollback or containment concerns per slice
-                - the execution consequences of the Approved Strategy for corrected behavior,
-                  bridge use, rollback, or cutover when applicable
-                - unknowns that would make the implementation phase discover planning mistakes too late
+            Convert the approved bug correction into minimal, dependency-ordered cycles.
 
-            [ ] Interaction checkpoint: present the planning framing to the user before going deeper.
-                Include:
-                - the proposed cycle strategy and likely cycle count
-                - the Approved Strategy and the constraints it imposes on the fix
-                - the highest-risk boundaries, dependencies, and sequencing constraints
-                - expected corrected behavior and regression-sensitive surface
-                - expected production and test-suite impact
-                - expected typing and quality-gate obligations
-                - major unknowns still blocking a sound plan
-                Ask whether any release or risk trade-off priority
-                should influence the cycle breakdown.
+            [ ] Load get_work_context, Research, Design, root cause, corrected behavior,
+                Approved Strategy, and current project plan. Define the Planning boundary:
+                own slicing, dependencies, deliverables, verification, and stop/go criteria;
+                do not redesign or implement the correction.
 
-            [ ] Keep the planning in-bounds while forming the planning nucleus and before scaffolding:
-                - Include sequential cycle decomposition, scope boundaries, dependencies,
-                  per-cycle deliverables, per-cycle exit criteria, corrected behavior,
-                  regression obligations, validation obligations, test-suite impact,
-                  typing expectations, quality-gate expectations,
-                  Approved Strategy constraints, assumptions, open questions, risks,
-                  and out-of-scope notes.
-                - Treat production code, test files, fixtures, and helpers as equally relevant
-                  planning surfaces when defining blast radius and validation obligations.
-                - Translate the Approved Strategy into execution boundaries, validation,
-                  rollback or cutover steps, and bridge behavior only when that strategy requires them.
-                - Do not compare or choose preserve compatibility, temporary bridge,
-                  or clean break in planning.
-                - If the Approved Strategy is missing, ambiguous, internally contradictory,
-                  or appears technically unsound, stop and activate a human-in-the-loop checkpoint
-                  instead of re-deciding strategy inside planning.
-                - Make quality gates explicit for the implementation phase, especially during
-                  REFACTOR, and apply them to changed production and test files.
-                - Exclude redesign, new research, production implementation code,
-                  line-by-line patch plans, exact commit messages, and milestone management.
-                - Exclude "we will edit line X in file Y" style commitments.
+            [ ] Inspect affected production/test seams as needed and read only standards governing
+                planned work.
 
-            [ ] Before scaffolding, produce a short planning nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the approved fix direction that implementation must preserve
-                - the Approved Strategy constraints that implementation must respect
-                - the proposed sequential cycles and why each boundary exists
-                - expected production and test-suite changes per cycle
-                - deliverable ids and exit criteria per cycle
-                - corrected behavior, regression obligations, and validation obligations per cycle
-                - typing and quality-gate obligations per cycle
-                - dependencies, assumptions, open questions, and highest-risk slices
+            [ ] Slice root-cause correction, call-site migration when applicable, regression
+                coverage, and cleanup into the smallest coherent cycles. Record per cycle:
+                scope/exclusions, files or seams, dependencies, deliverable IDs, preservation and
+                strategy obligations, failure/stop conditions, and exact exit evidence.
 
-            [ ] Do not scaffold the planning document until the planning nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Default behavior correction to a durable failing regression or characterization
+                test before GREEN. Reuse or adapt existing coverage where it already exposes the
+                defect. Do not retain temporary diagnostic or implementation-detail tests.
+                Mechanical cleanup without behavior change needs no artificial RED.
+                Hold all test code to production architecture, typing, and quality standards.
 
-            [ ] Create the planning artifact: scaffold_artifact(artifact_type='planning', name='planning').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the plan.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
-                Keep the planning document aligned with the structured payload that will be saved
-                through save_planning_deliverables.
+            [ ] Assign focused tests and file gates per cycle. Reserve one workspace-wide test run
+                and branch-wide gates for Validation; repeat evidence only after invalidation.
 
-            [ ] Build the save_planning_deliverables payload from the finalized plan.
-                Ensure:
-                - cycles.total equals the number of cycles
-                - cycle_number values are sequential and 1-based
-                - every cycle has a non-empty deliverables list
-                - every cycle has a non-empty exit_criteria string
-                - deliverable ids are stable and specific enough for later updates or validation
-                - cycle deliverables cover both production and test artifacts where both are affected
+            [ ] Conditional delegated discovery receives direct artifacts/paths, bounded causal or
+                sequencing questions, exclusions, evidence output, uncertainty, and stops.
+                Producer verification and decisions remain mandatory; preflight is findings-only.
 
-            [ ] Save deliverables: save_planning_deliverables(issue_number=N, planning_deliverables={...})
+            [ ] Stop if Root Cause, Design, corrected behavior, or Approved Strategy conflicts.
 
-            [ ] Self-check before the final user checkpoint:
-                - If the plan exposes a contradiction, scope error, redesign need,
-                  or an unusable Approved Strategy, stop and activate a human-in-the-loop checkpoint.
-                  Do not edit design artifacts from planning.
-                - If a cycle is too large for one RED → GREEN → REFACTOR slice,
-                  split it before finalizing.
-                - Verify that corrected behavior, regression obligations,
-                  test-suite impact, typing obligations, quality-gate expectations,
-                  and Approved Strategy execution constraints are explicit where they matter.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
-                - Verify the saved payload matches the document's cycle structure and ids.
+            [ ] Scaffold Planning with
+                scaffold_artifact(artifact_type='planning', name='planning', context={...}).
+                Keep document cycles identical to save_planning_deliverables(issue_number=N,
+                cycles={...}, deliverables=[...]); verify IDs, ordering, dependencies, regression
+                value, and cleanup ownership before saving.
 
-            [ ] Interaction checkpoint before internal QA: present the cycle breakdown,
-                corrected behavior, regression strategy, typing and gate obligations,
-                Approved Strategy execution consequences, and unresolved questions to the user.
-                If the boundaries or priorities are wrong, revise before review.
+            [ ] Commit with git_add_or_commit(workflow_phase='planning',
+                message='Planning for #N').
 
-            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role plan-verifier
-                to review the plan.
-                Ask QA as plan-verifier to verify:
-                - alignment with the design artifact, design hand-over, and Approved Strategy
-                - alignment with corrected behavior and the approved bug-fix direction
-                - the cycle boundaries are sequential, implementation-sized,
-                  and do not hide redesign inside planning
-                - regression obligations, test-suite impact, typing obligations,
-                  quality-gate expectations, and Approved Strategy execution constraints are explicit
-                - the save_planning_deliverables payload matches the document's cycle structure and ids
-                - the plan stays within planning-phase scope and is usable by the implementation phase
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the plan and repeat the same QA checkpoint
-                before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='planning', message='Planning for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below. Independent QA determines GO/NOGO.
           handover_template: |
-            ### Planning → QA Hand-over
+            ### Bug / Planning Hand-over
+
             #### Scope
-            - Issue: #N
-            - Cycles planned: <N>
-            - Planning focus: <one sentence>
+            - Planned defect-correction work and exclusions: <summary>
 
-            #### Review Targets
-            - Cycle strategy: <how the bug fix was split and why>
-            - Design / root-cause alignment: <which design and root-cause constraints the plan preserves>
-            - Approved Strategy alignment: <which strategy constraints the plan operationalizes>
-            - Test / validation strategy: <what implementation must prove, including test-suite, typing, quality-gate, and strategy-driven regression or cutover obligations>
-            - Highest-risk cycles / dependencies: <where sequencing matters most>
-            - Open questions: <what remains unresolved>
+            #### Deliverables
+            - [Planning](docs/development/issueN/planning.md)
+            - [Design](docs/development/issueN/design.md)
+            - [Research](docs/development/issueN/research.md)
 
-            #### Files
-            - docs/development/issueN/planning.md (new)
+            #### Evidence
+            - Root-cause-to-cycle/deliverable mapping: <summary>
+            - Durable regression and gate strategy: <summary>
+            - Structured payload saved: <tool outcome>
 
-            #### Stop-Go Proof
-            - Planning doc committed
-            - save_planning_deliverables(...) persisted successfully
+            #### Open Work
+            - Implementation blockers, regression risks, and questions: <items or None>
+            - Deferred work: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: implementation
         cycle_based: true
         subphases: [red, green, refactor]
@@ -914,92 +698,67 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Determine the active planned bug-fix cycle from workflow state and planning deliverables.
-                Execute only planned cycles, in order, and do not widen scope beyond the active cycle.
+            Execute the active Bug cycle against root cause and corrected behavior.
 
-            [ ] Use explore_subagent to load the pre-implementation context for the active bug-fix cycle.
-                Ask it to return:
-                - a short orientation for the active cycle, corrected behavior, and prerequisites
-                - the relevant design decisions, Approved Strategy constraints,
-                  and root-cause boundaries for this cycle
-                - the RED scope: tests to add or update and the intended failure condition
-                - the GREEN checklist: production changes, imports, fixtures, helpers,
-                  call-site updates, and assertion updates
-                - the REFACTOR scope for this cycle, if any
-                - the cycle deliverables, regression obligations, exit criteria,
-                  and explicit out-of-scope items
+            [ ] Load get_work_context and get_project_plan(issue_number=N). Identify the active
+                cycle, causal target, deliverables, prerequisites, exclusions, preservation and
+                Approved Strategy constraints, and stop conditions. Stop on contradiction or
+                missing evidence; do not redesign, re-plan, or broaden the fix.
 
-            [ ] If the cycle context is missing, ambiguous, contradictory,
-                or conflicts with planning, design, observed bug behavior,
-                or the Approved Strategy, stop and raise a blocker.
-                Do not redesign, re-plan, or change strategy inside implementation.
+            [ ] Inspect direct production and test seams. Bounded execution delegation must receive
+                authoritative artifacts/paths, task scope/exclusions, expected evidence,
+                uncertainty, and stops. Verify output and retain integration/progression decisions.
 
-            [ ] Treat production code, test files, fixtures, and helpers as equally in scope
-                for architecture, typing, and quality expectations.
-                If typing or static-analysis issues appear,
-                read TYPE_CHECKING_PLAYBOOK.md and apply it to both production and test code.
+            [ ] Treat production code, regression tests, fixtures, and helpers as first-class code
+                under the same architecture, typing, public-boundary, maintainability, and quality
+                standards.
 
-            [ ] RED:
-                - write the failing test or tests for the active cycle only
-                - include collateral test updates in RED when they are part of the same planned defect correction
-                - run run_tests(path='<test file>::<class>::<method>') for the new or changed test scope
-                - confirm the failure is the intended RED condition, not an unrelated error
-                - commit: git_add_or_commit(workflow_phase='implementation', sub_phase='red',
-                  cycle_number=N, message='...')
+            [ ] Apply the planned test mode:
+                - behavior correction: add or adapt the durable failing regression or
+                  characterization, run its narrow scope, confirm the intended RED, and commit
+                  sub_phase='red'
+                - existing test already fails for root cause: use it as RED evidence; do not add a
+                  duplicate
+                - mechanical cleanup/test maintenance: no artificial RED; record plan rationale
+                - GREEN: minimally remove root cause, run focused affected tests, commit
+                  sub_phase='green'
+                - REFACTOR: only planned cleanup; rerun affected tests and file gates, commit
+                  sub_phase='refactor' only when files changed
 
-            [ ] GREEN:
-                - implement only the changes listed in the cycle context
-                - add required imports, fixtures, helper changes, and call-site updates
-                - run run_tests(path='<test file>') incrementally to keep the cycle visible
-                - finish with all tests for the active cycle passing
-                - commit: git_add_or_commit(workflow_phase='implementation', sub_phase='green',
-                  cycle_number=N, message='...')
+            [ ] Use run_tests(path='<focused scope>') and
+                run_quality_gates(scope='files', files=[...]) proportionally. Validation owns the
+                full suite and branch-wide gates.
 
-            [ ] REFACTOR:
-                - apply only cleanup or containment that belongs to the active cycle
-                - do not widen scope beyond the planned bug-fix boundary
-                - run run_tests(path='<relevant test file(s)>') again after cleanup
-                - run_quality_gates(scope='files', files=['<all files touched in this cycle>'])
-                - if refactor changes were made, commit:
-                  git_add_or_commit(workflow_phase='implementation', sub_phase='refactor',
-                  cycle_number=N, message='...')
+            [ ] Self-check the diff against root cause, corrected behavior, cycle deliverables,
+                architecture, preservation, and Approved Strategy. Optional adversarial preflight
+                seeks violations/counterexamples and returns findings-only; it cannot issue
+                PASS/GO or authorize progression.
 
-            [ ] Internal QA checkpoint for the active cycle:
-                invoke the qa agent with sub-role validation-reviewer and provide:
-                - the cycle-specific implementation context
-                - the files changed
-                - the tests written or updated
-                - the final narrow test result
-                - the cycle deliverables claimed as satisfied
-                Ask QA to verify:
-                - the implementation matches the active cycle scope
-                - the planned deliverables, corrected behavior,
-                  and regression obligations for this cycle are satisfied
-                - no unplanned files or behaviors were changed
-                - architectural, supported-contract,
-                  and Approved Strategy constraints were preserved
-                - the active-cycle tests are green
-                Return PASS or FAIL with exact gaps.
+            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1) and
+                get_work_context when cycles remain. After the final cycle, do not transition
+                phase autonomously; produce the hand-over and request independent review.
+          handover_template: |
+            ### Bug / Implementation Hand-over
 
-            [ ] If internal QA returns FAIL, fix the finding, rerun the affected step,
-                and repeat the same QA checkpoint before proceeding.
+            #### Scope
+            - Executed defect-correction cycles and exclusions: <summary>
 
-            [ ] If internal QA returns PASS and more cycles remain:
-                transition_cycle(to_cycle=N+1), then get_work_context,
-                and repeat the same cycle protocol automatically.
+            #### Deliverables
+            - Root-cause/planning deliverables satisfied: <IDs with links>
+            - Primary correction entry points: <repository-relative Markdown links>
+            - Durable regression tests: <repository-relative Markdown links>
+            - Complete inventory: <branch diff reference; group remaining files>
 
-            [ ] If internal QA returns PASS and no cycles remain:
-                report a concise implementation outcome to the user including:
-                - cycles executed
-                - key files changed
-                - corrected behavior now delivered
-                - final narrow tests and file-scoped gates
-                - deliverables now satisfied
-                - ready for transition_phase(to_phase='validation')
+            #### Evidence
+            - RED/corrected-behavior tests and file gates: <exact calls and outcomes>
+            - Preservation and Approved Strategy mapping: <summary>
 
-            [ ] Do not call transition_phase(to_phase='validation') autonomously.
-                Stop after the concise user update and wait for the next instruction.
+            #### Open Work
+            - Blockers, residual regression risks, and deferred work: <items or None>
+            - Remaining cycles: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: validation
         exit_requires:
           - id: validation-report
@@ -1010,180 +769,113 @@ workflows:
         instructions:
           sub_role: validator
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Treat validation as the first branch-wide verification phase after
-                the bug-fix implementation cycles are complete.
+            Produce branch-wide proof that the bug is corrected without regression.
 
-            [ ] Read the research artifact, design artifact, planning artifact,
-                the Approved Strategy, ARCHITECTURE_PRINCIPLES.md,
-                and DOCUMENTATION_STANDARD.md before validating the branch.
-                Use them as the authoritative baseline for what corrected behavior,
-                regression protection, and supported-contract handling implementation
-                was supposed to deliver.
+            [ ] Load get_work_context, get_project_plan(issue_number=N), Research, Design,
+                Planning, root cause, corrected behavior, Approved Strategy, and implementation
+                hand-over. Read only standards needed for affected boundaries.
+                Stop if implementation is incomplete or contradicts approved inputs;
+                Validation does not redesign or patch.
 
-            [ ] Use explore_subagent to gather concrete branch-wide validation context.
-                Ask it to identify:
-                - the planned cycle deliverables, corrected behavior,
-                  regression obligations, and exit criteria that implementation
-                  should now have satisfied
-                - the files, boundaries, helpers, fixtures, and tests most affected
-                  by the completed bug-fix cycles
-                - the highest-risk regression-sensitive surfaces that still need explicit branch-wide proof
-                - the Approved Strategy constraints and supported-contract boundaries that validation
-                  must confirm were preserved
-                - a live demonstration proposal that reproduces the old failure safely,
-                  or the closest observable proof when the old failure cannot be safely recreated
-                - residual risks, caveats, or open questions that the validation report
-                  should disclose explicitly
+            [ ] Map root cause, reproduction, corrected behavior, planned deliverables, design and
+                preservation constraints, and high-risk production/test surfaces to evidence.
 
-            [ ] If the validation context shows that implementation is incomplete,
-                contradictory to planning or design, or in conflict with the Approved Strategy,
-                stop and raise a blocker.
-                Do not redesign, re-plan, or patch implementation from validation.
+            [ ] Run the single workspace-wide suite with run_tests(scope='full') and branch-wide
+                gates with run_quality_gates(scope='branch'). Preserve exact failures and report
+                FAIL; do not weaken criteria or reinterpret the plan.
 
-            [ ] Run full test suite: run_tests(scope='full')
-            [ ] Run quality gates: run_quality_gates(scope='branch')
+            [ ] Explicitly rerun the durable regression/reproduction scope if the full suite does
+                not make the corrected behavior visible. Add a permanent test only for a newly
+                found stable coverage gap, never for diagnosis or ceremony.
+                Propose safe reproduction of corrected behavior or closest reviewable fallback.
 
-            [ ] Compare the branch-wide validation evidence against:
-                - the planned cycle deliverables, corrected behavior,
-                  regression obligations, and exit criteria
-                - the design decisions that implementation was expected to preserve
-                - the Approved Strategy constraints and supported-contract boundaries
-                  that implementation was expected to honor
-                - the architecture principles materially relevant to this issue
-                Record any mismatch explicitly; do not reinterpret the plan to make the branch pass.
+            [ ] Identify residual risks, limitations, and deferred work for Ready/@co triage.
 
-            [ ] Build a live demonstration proposal for the user.
-                It must include:
-                - the smallest safe reproduction path for the corrected behavior
-                - exact preconditions and steps
-                - what the user should observe now
-                - what the user would have observed before, when that comparison is known and safe
-                - when the old failure cannot be safely reproduced live,
-                  an explicit explanation of why not
-                - the closest observable fallback evidence the user can review instead
+            [ ] Create Validation if absent with
+                scaffold_artifact(artifact_type='validation_report', name='validation',
+                context={...}); otherwise update it. Record exact full-suite/gate/regression
+                results, root-cause and corrected-behavior proof, deliverable/design/strategy
+                mapping, demonstration/fallback, failures, caveats, and deferred work.
+                Do not claim independent QA approval.
 
-            [ ] Create or update docs/development/issueN/validation.md.
-                Document:
-                - validation scope and prerequisites
-                - summary verdict
-                - full-suite test result
-                - branch quality-gate result
-                - mapping from planning deliverables or exit criteria to observed evidence
-                - corrected behavior, regression, and Approved Strategy alignment
-                - the live demonstration proposal or explicit fallback rationale
-                - residual risks, caveats, limitations, and follow-up items
-                - exact failure evidence when validation is not green
+            [ ] Commit with git_add_or_commit(workflow_phase='validation',
+                message='Validation for #N').
 
-            [ ] Self-check before commit:
-                - If run_tests(scope='full') failed, the validation report must say FAIL
-                  and include the exact failing scope.
-                - If run_quality_gates(scope='branch') failed, the validation report must say FAIL
-                  and include the exact failing gate or file scope.
-                - If planning, design, corrected behavior, or Approved Strategy alignment cannot be established,
-                  do not declare PASS.
-                - If the bug cannot be safely demonstrated live,
-                  the validation report must explain why and propose the closest observable fallback.
-                - Do not hide caveats, soft failures, or incomplete evidence behind a green summary.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='validation', message='Validation for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below. Independent QA reads direct evidence
+                and alone determines GO/NOGO.
           handover_template: |
-            ### Validation → QA Hand-over
+            ### Bug / Validation Hand-over
+
             #### Scope
-            - Issue: #N
-            - Validation focus: <branch-wide verification after bug-fix cycles>
+            - Validated defect correction and exclusions: <summary>
 
-            #### Review Targets
-            - Full-suite result: <summary of run_tests(scope='full')>
-            - Branch gate result: <summary of run_quality_gates(scope='branch')>
-            - Corrected behavior / regression alignment: <which bug-fix goals and regression obligations are now evidenced>
-            - Design / Approved Strategy alignment: <which constraints were preserved or where mismatches remain>
-            - Live demonstration proposal: <how the user can observe the corrected behavior or the closest safe fallback>
-            - Residual risks / caveats: <what remains important for QA to examine>
+            #### Deliverables
+            - [Validation report](docs/development/issueN/validation.md)
+            - [Planning](docs/development/issueN/planning.md)
+            - Regression/reproduction evidence: <repository-relative Markdown links>
 
-            #### Files
-            - docs/development/issueN/validation.md (new or updated)
+            #### Evidence
+            - Workspace-wide tests and branch gates: <exact outcomes>
+            - Root-cause and corrected-behavior proof: <mapping>
+            - Design, preservation, and Approved Strategy mapping: <summary>
 
-            #### Stop-Go Proof
-            - Tests: run_tests(scope='full') → <result>
-            - Gates: run_quality_gates(scope='branch') → <result>
-            - Verdict: PASS | FAIL
+            #### Open Work
+            - Failures, regression risks, limitations, and deferred work: <items or None>
+            - Demonstration or fallback: <steps/link>
+
+            #### Review Request
+            - Review requested
       - name: documentation
         instructions:
           sub_role: documenter
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Treat documentation as the docs-workspace reconciliation and close-out phase after validation.
+            Reconcile current documentation with validated corrected behavior.
 
-            [ ] Read docs/development/issueN/validation.md
-                and DOCUMENTATION_STANDARD.md before editing documentation.
-                Use validation as the authoritative source for corrected-behavior claims and observed outcomes.
-                Treat docs/development/issueN/*.md, archived docs, and other historical workflow artifacts
-                as context by default, not active documentation.
-                Update them only when validation explicitly requires it,
-                they are the authoritative deliverable for the current phase,
-                or the user explicitly asks for it.
+            [ ] Load get_work_context, get_project_plan(issue_number=N), and Validation.
+                Use validated before/after behavior as the claims boundary. Read applicable
+                Documentation Standard sections; load other references only when needed.
 
-            [ ] Use explore_subagent to scan the documentation workspace for surfaces affected by this bug fix.
-                Ask it to identify:
-                - user-facing, operator-facing, and developer-facing docs that need final alignment
-                - issue-local, archived, or historical artifacts that may provide context
-                  but should normally remain unchanged
-                - stale workaround notes, repro steps, troubleshooting guides, examples, commands,
-                  diagrams, screenshots, runbooks, and cross-links
-                - docs that were reviewed and can remain unchanged
-                - the smallest safe set of documentation updates needed to leave the workspace coherent
+            [ ] Inventory active docs and instruction/template consumers affected by the defect or
+                correction: READMEs, references, standards, runbooks, examples, troubleshooting,
+                diagrams, prompts, templates, navigation, authoritative agent sources, and
+                derived consumers. Historical artifacts are context-only unless explicitly owned.
 
-            [ ] Update or create the relevant documentation files.
-                Prioritize:
-                - existing user or operator docs that now need to reflect the corrected behavior
-                - stale workaround notes, repro steps, troubleshooting guidance, examples,
-                  commands, diagrams, links, and screenshots
-                - developer docs that must stay aligned with the delivered fix
+            [ ] Update the smallest complete current surface. Explain corrected behavior and any
+                remaining limitation without preserving obsolete failure descriptions.
+                Edit authoritative sources first, synchronize consumers, verify parity, and record
+                material surfaces reviewed but unchanged.
 
-            [ ] Keep the documentation coherent across the docs workspace:
-                - every corrected-behavior claim must trace back to validation evidence
-                - stale workaround, repro, troubleshooting, and supporting guidance should be brought back in sync
-                  with the delivered fix
-                - record which docs surfaces were updated and which were reviewed and left unchanged
-                - if the docs scan reveals a gap that needs a new finding, a new scope decision,
-                  or newly deferred work, stop and raise a blocker for human review
-            [ ] Prepare the Documentation → QA hand-over.
-                It must cover:
-                - documentation scan coverage across the docs workspace
-                - which documentation files were updated and why
-                - which documentation surfaces were reviewed and left unchanged, with rationale
-                - how the updated docs reflect the corrected behavior
-                - residual caveats or limitations that remain visible in the docs
+            [ ] Do not alter runtime behavior or invent unsupported claims. Stop on newly exposed
+                implementation gaps, strategy conflicts, or scope decisions. Capture legitimate
+                deferred documentation work for Ready.
 
-            [ ] Self-check before commit:
-                - corrected-behavior claims trace back to validation evidence
-                - stale workaround notes, repro steps, troubleshooting guidance, examples,
-                  diagrams, links, or screenshots are not silently outdated
-                - reviewed-but-unchanged docs are intentional and defensible
-                - the documentation follows DOCUMENTATION_STANDARD.md
+            [ ] Run only invalidated link/template/parity or focused documentation tests; do not
+                repeat fresh implementation tests or branch gates.
 
-            [ ] Commit: git_add_or_commit(workflow_phase='documentation', message='Documentation for #N')
-            [ ] Produce hand-over for QA doc review.
+            [ ] Commit with git_add_or_commit(workflow_phase='documentation',
+                message='Documentation for #N').
+
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Documentation → QA Hand-over
+            ### Bug / Documentation Hand-over
+
             #### Scope
-            - Issue: #N
-            - Documentation focus: <what bug-fix communication was clarified, corrected, or updated>
+            - Reconciled corrected-behavior documentation and exclusions: <summary>
 
-            #### Review Targets
-            - Docs workspace coverage: <which surfaces were scanned>
-            - Validation alignment: <which validated bug-fix outcomes the documentation reflects>
-            - Updated docs: <which files changed and why>
-            - Reviewed but unchanged: <which surfaces were checked and intentionally left as-is>
-            - Residual caveats: <what remains visible and intentionally unresolved>
+            #### Deliverables
+            - Updated current docs: <repository-relative Markdown links>
+            - Authoritative sources and derived consumers: <links or None>
+            - [Validation report](docs/development/issueN/validation.md)
 
-            #### Files
-            - docs/... (updated)
+            #### Evidence
+            - Documentation/link/template/parity checks: <exact outcomes>
+            - Reviewed but unchanged surfaces: <links and rationale>
 
-            #### Stop-Go Proof
-            - Documentation committed
+            #### Open Work
+            - Residual limitations and deferred documentation work: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: ready
         instructions:
           sub_role: implementer
