@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "projects": {
+    "456": {
+      "issue_title": "Compact actionable tool summaries in presentation responses",
+      "workflow_name": "feature",
+      "execution_mode": "interactive",
+      "required_phases": [
+        "research",
+        "design",
+        "planning",
+        "implementation",
+        "validation",
+        "documentation",
+        "ready"
+      ],
+      "skip_reason": null,
+      "parent_branch": "main",
+      "created_at": "2026-08-20T15:40:10.649773+00:00"
+    }
+  }
+}
