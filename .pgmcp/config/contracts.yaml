@@ -22,128 +22,62 @@ workflows:
         instructions:
           sub_role: researcher
           phase_instructions: |
-            [ ] Read the issue: get_issue(issue_number=N).
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before drawing conclusions.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the research document.
-            [ ] Use explore_subagent to gather concrete evidence about this feature.
-                Ask it to identify:
-                - current behavior and relevant code paths
-                - likely blast radius, including affected test suites,
-                  test helpers, and fixtures
-                - existing patterns or prior art worth reusing
-                - architectural constraints and forbidden approaches
-                - any strategy-sensitive boundaries or consumers whose compatibility
-                  or migration policy may need explicit human choice
-                - unknowns that the design phase must resolve
+            Establish the evidence and strategy boundary for a new feature.
 
-            [ ] Interaction checkpoint: present a short orientation to the user before going deeper.
-                Include:
-                - current understanding of the problem
-                - likely blast radius, including affected test suites,
-                  helpers, and fixtures
-                - key architectural constraints already visible
-                - major unknowns still blocking good research
-                Ask whether external research should be included, for example:
-                - competitor behavior or product workflows
-                - prior art in the wider ecosystem
-                - external libraries, protocols, or standards
-                - domain references, regulations, or published guidance
+            [ ] Load get_work_context and get_issue(issue_number=N). Define the research
+                boundary before drafting: document current behavior, evidence, options, risks,
+                and decisions needed; do not design the solution or sequence implementation.
 
-            [ ] If external research is requested, or if repo-only evidence is insufficient,
-                define a narrow external research target before proceeding.
-                Clarify:
-                - what exact question the external research must answer
-                - which sources or competitors are relevant
-                - whether the goal is inspiration, parity analysis, feasibility insight,
-                  domain understanding, or risk discovery
-                Do not default to broad web research without a concrete reason.
+            [ ] Investigate direct sources at proportional depth. Cover the likely blast radius
+                across production code, configuration, tests and helpers, current documentation,
+                agent instructions, templates, enforcement, and downstream consumers.
+                Read only standards or references that govern an affected or uncertain boundary.
 
-            [ ] If no external browsing capability is available in the current tool context,
-                ask the user for links, names, screenshots, notes, or examples to analyze.
-                Do not make broad external claims without traceable sources.
+            [ ] If bounded discovery delegation is useful, provide direct source paths, scope,
+                exclusions, counterevidence sought, evidence format, uncertainty, and stop
+                conditions. Treat its output as unverified findings; inspect decisive evidence
+                yourself and retain every decision.
 
-            [ ] Keep the content in-bounds while forming the research nucleus and before scaffolding:
-                - Include investigation findings, context, patterns, external references,
-                  competitor observations, architectural constraints, test-suite impact,
-                  strategy-sensitive boundaries and consumers when materially relevant,
-                  assumptions, open questions, risks, and expected results as design/planning input.
-                - Follow DOCUMENTATION_STANDARD.md for presentation rules,
-                  drafting discipline, tables, Mermaid, and diagram format.
-                - Exclude chosen design, implementation details, code or pseudo-code,
-                  task breakdown, TDD cycles, estimates, milestones, and test execution plans.
-                - Exclude "we will implement X" style commitments, even when inspired by
-                  external examples.
+            [ ] Record current behavior, reusable patterns, constraints, unknowns, and expected
+                outcomes. For each compatibility, migration, or breakage-sensitive boundary,
+                present viable strategies with cost, risk, and consumer impact.
+                Use risk-specific migration or rollback analysis only where evidence requires it.
 
-            [ ] Before scaffolding, produce a short research nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the current problem framing
-                - the likely blast radius, including affected test suites,
-                  helpers, and fixtures
-                - reusable patterns or prior art
-                - architectural constraints already visible
-                - strategy-sensitive boundaries, consumers, and viable policy options
-                  when materially relevant
-                - unknowns, assumptions, and risks
-                - expected results that should inform design or planning
+            [ ] Obtain an explicit human Approved Strategy for every affected strategy boundary.
+                "No special migration policy; preserve supported contracts" is valid when explicit.
+                Stop if scope, evidence, or strategy remains ambiguous.
 
-            [ ] Do not scaffold the research document until the research nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Scaffold the research artifact with
+                scaffold_artifact(artifact_type='research', name='research', context={...}).
+                Apply the relevant DOCUMENTATION_STANDARD boundaries and add concrete source links.
+                Self-check that claims are evidenced, test blast radius is explicit, and no design
+                or planning commitment leaked into Research.
 
-            [ ] Create the research artifact: scaffold_artifact(artifact_type='research', name='research', context={..., 'approved_strategy': '...', 'expected_results': '...'}).
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the research.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+            [ ] Commit with git_add_or_commit(workflow_phase='research',
+                message='Research findings (#N)').
+                On the branch's first commit only, call git_push(set_upstream=True).
 
-            [ ] Self-check before finalizing:
-                - If a statement sounds like a design decision, implementation instruction,
-                  or plan commitment, move it out of research.
-                - Treat external findings as evidence, not as decisions.
-                - If strategy-sensitive boundaries are in scope, present options and a recommendation
-                  as decision input, not as a chosen policy.
-                - Verify the research closes with an Approved Strategy entry,
-                  even if it records that no special migration policy is needed
-                  beyond preserving supported contracts.
-                - Prefer concrete evidence over general statements: cite specific files,
-                  symbols, behaviors, and references where possible.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
-            [ ] Interaction checkpoint before commit: present key findings, unresolved questions,
-                any scope concerns, and any strategy-sensitive boundaries requiring approval to the user.
-                If strategy-sensitive boundaries are in scope, ask the user to choose the policy
-                per relevant boundary and capture the result in the research document as Approved Strategy.
-                If no special policy is needed, capture that explicitly as the Approved Strategy
-                before committing.
-                If research suggests the issue should be reframed, narrowed, or split,
-                stop and ask before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='research', message='Research findings (#N)')
-            [ ] First push: git_push(set_upstream=True)  # creates remote tracking branch; do once on this branch
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below; it is an evidence index, not approval.
           handover_template: |
-            ### Research → Design Hand-over
+            ### Feature / Research Hand-over
+
             #### Scope
-            - Issue: #N
-            - Research focus: <one sentence>
+            - Investigated feature boundary and exclusions: <summary>
 
-            #### Findings
-            - Blast radius: <production files, test files, helpers, fixtures, modules, and flows likely affected>
-            - Existing patterns / prior art: <what should be reused or considered>
-            - Architectural constraints: <principles, boundaries, or forbidden approaches>
-            - Expected results: <outcome framing for design and planning>
+            #### Deliverables
+            - [Research](docs/development/issueN/research.md)
+            - Material source evidence: <repository-relative Markdown links>
 
-            #### Approved Strategy
-            - Boundary / consumer scope: <affected boundaries and consumers, or 'no special migration policy required'>
-            - Selected strategy: <preserve compatibility | temporary bridge | clean break>
-            - Rationale: <why this policy was chosen>
-            - Constraints for later phases: <what design and planning must respect>
+            #### Evidence
+            - Blast radius: <code, config, tests, docs, agents/templates, consumers>
+            - Approved Strategy: <boundary decisions and rationale>
 
-            #### Open Questions
-            - <question that design must resolve>
+            #### Open Work
+            - Design questions, risks, and unknowns: <items or None>
+            - Deferred work: <items or None>
 
-            #### Files
-            - docs/development/issueN/research.md (new)
-            #### Stop-Go Proof
-            - Research doc committed
+            #### Review Request
+            - Review requested
       - name: design
         exit_requires:
           - id: design-doc
@@ -154,132 +88,66 @@ workflows:
         instructions:
           sub_role: designer
           phase_instructions: |
-            [ ] Read the research artifact, the research hand-over,
-                and the Approved Strategy from the previous phase.
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before making design decisions.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the design document.
-            [ ] Use explore_subagent to gather concrete evidence about this feature design.
-                Ask it to identify:
-                - existing implementation patterns, interfaces, and boundaries that should be reused
-                - candidate insertion points, affected modules, downstream call sites,
-                  and affected test suites, helpers, and fixtures
-                - architectural constraints and forbidden approaches relevant to this feature
-                - design options that appear viable versus risky in this codebase
-                - the technical consequences of the Approved Strategy for interfaces,
-                  boundaries, and validation obligations
-                - unknowns that planning or implementation would otherwise discover too late
+            Turn approved Feature research into an implementable technical design.
 
-            [ ] Interaction checkpoint: present the design framing to the user before going deeper.
-                Include:
-                - current understanding of the feature goal
-                - the Approved Strategy and the constraints it imposes on design
-                - likely design options or directions within that strategy
-                - key architectural constraints already visible
-                - highest-risk boundaries, interfaces, or flows
-                - major unknowns still blocking a sound design
-                Ask whether any product preference, business rule, or trade-off priority
-                should influence the design.
+            [ ] Load get_work_context, the Research artifact, and its Approved Strategy.
+                Define the design boundary before drafting: own architecture, interfaces,
+                data/control flow, failure behavior, test design, and alternatives; do not write
+                implementation steps, cycle sequencing, or production code.
 
-            [ ] If research left unresolved questions that require external comparison,
-                define a narrow external research target before proceeding.
-                Clarify:
-                - what exact design question the external research must answer
-                - which sources, products, libraries, protocols, or references are relevant
-                - whether the goal is parity analysis, workflow comparison, feasibility insight,
-                  domain understanding, or risk discovery
-                Do not default to broad web research without a concrete reason.
+            [ ] Inspect the affected implementation and test seams directly. Read the applicable
+                Architecture Principles and Documentation Standard sections; load other references
+                only when a material boundary is uncertain.
 
-            [ ] If no external browsing capability is available in the current tool context,
-                ask the user for links, examples, screenshots, notes, or references to analyze.
-                Do not make broad external claims without traceable sources.
+            [ ] Develop viable options and compare trade-offs. Select a direction that implements
+                the Approved Strategy without changing it. Cover contracts, dependencies, state,
+                errors, observability, and conditional migration/rollback behavior where relevant.
 
-            [ ] Keep the design in-bounds while forming the design nucleus and before scaffolding:
-                - Include option comparison, chosen direction, rationale, affected interfaces,
-                  affected test suites, helpers, fixtures, data flows,
-                  architectural constraints, the Approved Strategy and its constraints,
-                  design-level validation strategy, assumptions, open questions, risks,
-                  and planning-relevant consequences.
-                - Exclude production implementation code, file-by-file patch plans,
-                  task breakdown, TDD cycles, estimates, milestones, and commit sequencing.
-                - Exclude architecture redefinition unless the issue reveals a stable
-                  system-level concept that truly belongs in architecture.md; if so,
-                  flag it explicitly instead of silently absorbing it into the feature design.
-                - Exclude policy re-decisions about preserve compatibility,
-                  temporary bridge, or clean break. If new evidence makes the Approved Strategy
-                  unsound, stop and reopen the decision explicitly instead of redesigning by stealth.
-                - Exclude "we will implement X in file Y" style commitments.
-                - Do not invent ADRs or assume an ADR process exists for this project.
+            [ ] Design test code as first-class code under the same architecture, typing, public
+                boundary, maintainability, and review standards. Specify durable behavior or
+                invariant coverage, identify existing tests to adapt, and reject ceremony-only or
+                implementation-detail regression tests with no lasting value.
 
-            [ ] Before scaffolding, produce a short design nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the refined problem statement and design goal
-                - the Approved Strategy and the constraints it imposes
-                - the viable design options and trade-offs within that strategy
-                - the preferred design direction and rationale
-                - affected interfaces, boundaries, data flows, integration points,
-                  and affected test suites, fixtures, and helpers
-                - compatibility constraints, failure modes, and major risks
-                - design-level validation strategy: what implementation and planning must prove
-                - open questions, assumptions, and planning-relevant consequences
+            [ ] If bounded discovery is delegated, provide direct sources, alternatives and
+                counterevidence to seek, scope, evidence output, uncertainty, and stop conditions.
+                Verify its findings yourself. Optional adversarial preflight is findings-only and
+                cannot approve the design.
 
-            [ ] Do not scaffold the design document until the design nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Stop for a human decision if the Approved Strategy is missing, evidence makes it
+                unsound, or a major design choice cannot be resolved from approved constraints.
 
-            [ ] Create the design artifact: scaffold_artifact(artifact_type='design', name='design').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the design.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+            [ ] Scaffold the design artifact with
+                scaffold_artifact(artifact_type='design', name='design', context={...}).
+                Record the chosen direction, rejected alternatives, production and test design,
+                validation obligations, risks, and planning consequences with source links.
+                Self-check phase and document boundaries.
 
-            [ ] Self-check before the final user checkpoint:
-                - Every major design decision must have a rationale and at least one rejected alternative.
-                - Reject options that conflict with ARCHITECTURE_PRINCIPLES.md.
-                - Reject any direction that conflicts with the Approved Strategy.
-                - If a statement sounds like planning or implementation, move it out of design.
-                - Prefer concrete evidence over general statements: cite specific files,
-                  symbols, boundaries, and flows where possible.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
+            [ ] Commit with git_add_or_commit(workflow_phase='design',
+                message='Design for #N').
 
-            [ ] Interaction checkpoint before internal QA: present the chosen design,
-                rejected alternatives, Approved Strategy alignment, critical trade-offs,
-                interface impacts, and unresolved questions to the user.
-                If the trade-off priorities or direction are wrong, revise before review.
-
-            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role design-reviewer
-                to review the design.
-                Ask QA as design-reviewer to verify:
-                - alignment with the research artifact, research hand-over, and Approved Strategy
-                - compliance with ARCHITECTURE_PRINCIPLES.md
-                - compliance with DOCUMENTATION_STANDARD.md
-                - the design stays within design-phase scope
-                - the design operationalizes the Approved Strategy without silently changing it
-                - the chosen direction, including affected test suites and validation obligations,
-                  is justified and usable by the planning phase
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the design and repeat the same QA checkpoint
-                before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='design', message='Design for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below. Independent QA determines GO/NOGO.
           handover_template: |
-            ### Design → QA Hand-over
+            ### Feature / Design Hand-over
+
             #### Scope
-            - Issue: #N
-            - Design focus: <one sentence>
+            - Designed feature boundary and exclusions: <summary>
 
-            #### Review Targets
-            - Chosen direction: <one sentence>
-            - Approved Strategy alignment: <how the design stays within the chosen policy>
-            - Research alignment: <which findings materially shaped the design>
-            - Interface / boundary impact: <what planning and implementation, including the test suite, must account for>
-            - Planning consequences: <what the next phase must preserve, prove, or split>
-            - Open questions: <what remains unresolved>
+            #### Deliverables
+            - [Design](docs/development/issueN/design.md)
+            - [Research](docs/development/issueN/research.md)
+            - Key implementation/test seams: <repository-relative Markdown links>
 
-            #### Files
-            - docs/development/issueN/design.md (new)
+            #### Evidence
+            - Approved Strategy alignment: <mapping>
+            - Chosen direction and rejected alternatives: <summary>
+            - Durable test and validation design: <summary>
+
+            #### Open Work
+            - Planning constraints, risks, and questions: <items or None>
+            - Deferred work: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: planning
         exit_requires:
           - id: planning-doc
@@ -290,142 +158,68 @@ workflows:
         instructions:
           sub_role: planner
           phase_instructions: |
-            [ ] Read the design artifact, the design hand-over, and the Approved Strategy from the previous phases.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the planning document.
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before fixing cycle boundaries,
-                dependencies, or implementation obligations.
-            [ ] Read TYPE_CHECKING_PLAYBOOK.md before defining typing or static-analysis
-                obligations for the implementation phase.
-            [ ] Use explore_subagent to gather concrete evidence about how this feature
-                should be sliced into implementation cycles.
-                Ask it to identify:
-                - the smallest safe implementation slices implied by the approved design
-                - affected production modules, test suites, fixtures, and helpers per slice
-                - sequencing constraints, dependency edges, and risky boundaries between slices
-                - architectural, typing, and quality obligations each slice must preserve
-                - the execution consequences of the Approved Strategy for validation,
-                  sequencing, bridge use, cutover steps, or cleanup when applicable
-                - unknowns that would make the implementation phase discover planning mistakes too late
+            Convert the approved Feature design into executable, dependency-ordered cycles.
 
-            [ ] Interaction checkpoint: present the planning framing to the user before going deeper.
-                Include:
-                - the proposed cycle strategy and likely cycle count
-                - the Approved Strategy and the constraints it imposes on implementation
-                - the highest-risk boundaries, dependencies, and sequencing constraints
-                - expected production and test-suite impact
-                - expected typing and quality-gate obligations
-                - major unknowns still blocking a sound plan
-                Ask whether any delivery, sequencing, or risk trade-off priority
-                should influence the cycle breakdown.
+            [ ] Load get_work_context, Research, Design, Approved Strategy, and current project
+                plan. Define the planning boundary before drafting: own work slicing,
+                dependencies, deliverables, verification, and stop/go criteria; do not redesign
+                the solution or implement it.
 
-            [ ] Keep the planning in-bounds while forming the planning nucleus and before scaffolding:
-                - Include sequential cycle decomposition, scope boundaries, dependencies,
-                  per-cycle deliverables, per-cycle exit criteria, validation obligations,
-                  test-suite impact, typing expectations, quality-gate expectations,
-                  Approved Strategy constraints, assumptions, open questions, risks,
-                  and out-of-scope notes.
-                - Treat production code, test files, fixtures, and helpers as equally relevant
-                  planning surfaces when defining blast radius and validation obligations.
-                - Translate the Approved Strategy into execution boundaries, validation,
-                  bridge or cutover steps, and cleanup only when that strategy requires them.
-                - Do not compare or choose preserve compatibility, temporary bridge,
-                  or clean break in planning.
-                - If the Approved Strategy is missing, ambiguous, internally contradictory,
-                  or appears technically unsound, stop and activate a human-in-the-loop checkpoint
-                  instead of re-deciding strategy inside planning.
-                - Make quality gates explicit for the implementation phase, especially during
-                  REFACTOR, and apply them to changed production and test files.
-                - Exclude redesign, new research, production implementation code,
-                  line-by-line patch plans, exact commit messages, and milestone management.
-                - Exclude "we will edit line X in file Y" style commitments.
+            [ ] Inspect affected production and test seams as needed. Read only the Architecture,
+                Documentation, typing, or other standards that govern planned work.
 
-            [ ] Before scaffolding, produce a short planning nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the approved design direction that implementation must preserve
-                - the Approved Strategy constraints that implementation must respect
-                - the proposed sequential cycles and why each boundary exists
-                - expected production and test-suite changes per cycle
-                - deliverable ids and exit criteria per cycle
-                - architecture, typing, and quality obligations per cycle
-                - dependencies, assumptions, open questions, and highest-risk slices
+            [ ] Slice the feature into the smallest coherent cycles. For each cycle record scope
+                and exclusions, production and test files or seams, dependencies, deliverable IDs,
+                Approved Strategy obligations, failure/stop conditions, and exact exit evidence.
 
-            [ ] Do not scaffold the planning document until the planning nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Choose test mechanics by change type and risk. Require RED → GREEN → REFACTOR for
+                behavior changes needing durable coverage; do not manufacture RED tests for
+                mechanical, documentation-only, or test-maintenance work. Prefer adapting valuable
+                tests and remove or avoid workflow-only ballast. Hold test code to production
+                architecture, typing, and quality standards.
 
-            [ ] Create the planning artifact: scaffold_artifact(artifact_type='planning', name='planning').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the plan.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
-                Keep the planning document aligned with the structured payload that will be saved
-                through save_planning_deliverables.
+            [ ] Assign the narrowest useful tests and file-scoped gates per cycle. Reserve one
+                workspace-wide test run and branch-wide gates for Validation; do not repeat fresh
+                evidence without an invalidating change.
 
-            [ ] Build the save_planning_deliverables payload from the finalized plan.
-                Ensure:
-                - cycles.total equals the number of cycles
-                - cycle_number values are sequential and 1-based
-                - every cycle has a non-empty deliverables list
-                - every cycle has a non-empty exit_criteria string
-                - deliverable ids are stable and specific enough for later updates or validation
-                - cycle deliverables cover both production and test artifacts where both are affected
+            [ ] If planning discovery is delegated, provide direct artifacts and source paths,
+                bounded questions, exclusions, evidence output, uncertainty, and stop conditions.
+                Verify results yourself; delegated preflight returns findings-only.
 
-            [ ] Save deliverables: save_planning_deliverables(issue_number=N, planning_deliverables={...})
+            [ ] Stop if Design or Approved Strategy is ambiguous, contradicted, or requires change.
 
-            [ ] Self-check before the final user checkpoint:
-                - If the plan exposes a contradiction, scope error, redesign need,
-                  or an unusable Approved Strategy, stop and activate a human-in-the-loop checkpoint.
-                  Do not edit design artifacts from planning.
-                - If a cycle is too large for one RED → GREEN → REFACTOR slice,
-                  split it before finalizing.
-                - Verify that test-suite impact, typing obligations, quality-gate expectations,
-                  and Approved Strategy execution constraints are explicit where they matter.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
-                - Verify the saved payload matches the document's cycle structure and ids.
+            [ ] Scaffold the plan with
+                scaffold_artifact(artifact_type='planning', name='planning', context={...}).
+                Apply Documentation Standard boundaries and keep document cycles identical to the
+                structured payload. Save them with save_planning_deliverables(issue_number=N,
+                cycles={...}, deliverables=[...]) after verifying IDs, ordering, and dependencies.
 
-            [ ] Interaction checkpoint before internal QA: present the cycle breakdown,
-                validation strategy, test-suite impact, typing and gate obligations,
-                Approved Strategy execution consequences, and unresolved questions to the user.
-                If the boundaries or priorities are wrong, revise before review.
+            [ ] Commit with git_add_or_commit(workflow_phase='planning',
+                message='Planning for #N').
 
-            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role plan-verifier
-                to review the plan.
-                Ask QA as plan-verifier to verify:
-                - alignment with the design artifact, design hand-over, and Approved Strategy
-                - the cycle boundaries are sequential, implementation-sized,
-                  and do not hide redesign inside planning
-                - test-suite impact, typing obligations, quality-gate expectations,
-                  and Approved Strategy execution constraints are explicit
-                - the save_planning_deliverables payload matches the document's cycle structure and ids
-                - the plan stays within planning-phase scope and is usable by the implementation phase
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the plan and repeat the same QA checkpoint
-                before committing.
-            [ ] Commit: git_add_or_commit(workflow_phase='planning', message='Planning for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below. Independent QA determines GO/NOGO.
           handover_template: |
-            ### Planning → QA Hand-over
+            ### Feature / Planning Hand-over
+
             #### Scope
-            - Issue: #N
-            - Cycles planned: <N>
-            - Planning focus: <one sentence>
+            - Planned feature work and exclusions: <summary>
 
-            #### Review Targets
-            - Cycle strategy: <how the feature was split and why>
-            - Design alignment: <which design constraints the plan preserves>
-            - Approved Strategy alignment: <which strategy constraints the plan operationalizes>
-            - Test / validation strategy: <what implementation must prove, including test-suite, typing, quality-gate, and strategy-driven execution obligations>
-            - Highest-risk cycles / dependencies: <where sequencing matters most>
-            - Open questions: <what remains unresolved>
+            #### Deliverables
+            - [Planning](docs/development/issueN/planning.md)
+            - [Design](docs/development/issueN/design.md)
+            - [Research](docs/development/issueN/research.md)
 
-            #### Files
-            - docs/development/issueN/planning.md (new)
+            #### Evidence
+            - Cycle/deliverable mapping and dependencies: <summary>
+            - Test and gate strategy: <durable, proportional evidence>
+            - Structured payload saved: <tool outcome>
 
-            #### Stop-Go Proof
-            - Planning doc committed
-            - save_planning_deliverables(...) persisted successfully
+            #### Open Work
+            - Implementation blockers, risks, and questions: <items or None>
+            - Deferred work: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: implementation
         cycle_based: true
         subphases: [red, green, refactor]
@@ -437,59 +231,66 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            [RULES]
-            - MAX 1-2 short sentences before ANY tool call (e.g., "Adding test X. Calling run_tests.").
-            - NO long reasoning. NO explanations. NO conversational filler.
-            - USE TODOs
+            Execute the active Feature cycle exactly as approved.
 
-            [WORKFLOW]
-            1. Call get_project_plan(issue_number=N) & get_work_context. Identify active cycle. Execute ONLY active cycle. NO scope creep.
-            
-            2. Call explore_subagent for active cycle pre-implementation context. Require:
-              - Orientation & prerequisites
-              - Constraints & Approved Strategy
-              - RED scope: tests & intended failure
-              - GREEN checklist: prod/imports/fixtures/helpers/call-sites
-              - REFACTOR scope
-              - Deliverables, exit criteria, out-of-scope items
-            
-            3. If context missing/conflicting with plan/strategy: STOP. Raise blocker. NO redesign/replanning.
-            
-            4. Prod, tests, fixtures = equal quality/typing. If typing errors: read TYPE_CHECKING_PLAYBOOK.md. Fix everywhere.
-            
-            5. TDD Loop:
-              [RED]
-              - Write active-cycle tests ONLY.
-              - Call run_tests(path='<test_file>::<class>::<method>'). Confirm INTENDED failure.
-              - Call git_add_or_commit(workflow_phase='implementation', sub_phase='red', cycle_number=N, message='...')
-              
-              [GREEN]
-              - Implement context-listed changes ONLY (incl. imports/fixtures).
-              - Call run_tests incrementally. Pass ALL active-cycle tests.
-              - Call git_add_or_commit(..., sub_phase='green', ...)
-              
-              [REFACTOR]
-              - Clean active-cycle scope ONLY.
-              - Call run_tests.
-              - Call run_quality_gates(scope='files', files=['<changed_files>']).
-              - If changed: Call git_add_or_commit(..., sub_phase='refactor', ...)
-            
-            6. QA Checkpoint: Call QA sub-agent. Config: model=GPT-5.4, reasoning=medium.
-              Payload: Cycle context, changed files, tests, test-results, claimed deliverables.
-              Enforce strict Micro-CoT prompt on sub-agent:
-              "ROLE: Ruthless Auditor. Prevent scope creep. NO conversation.
-              OUTPUT FORMAT EXACTLY AS FOLLOWS:
-              Scope: OK|FAIL
-              Deliverables: OK|FAIL
-              Unplanned: OK|FAIL
-              Strategy: OK|FAIL
-              Tests: OK|FAIL
-              JSON: {\"status\": \"PASS|FAIL\", \"gaps\": [\"gap description\"]}"
-            
-            7. Resolution:
-              - If QA JSON status=FAIL: Fix gaps, rerun affected step, REPEAT QA.
-              - If QA JSON status=PASS & cycles remain: Call transition_cycle(to_cycle=N+1) -> get_work_context -> REPEAT from step 2.
-              - If QA JSON status=PASS & NO cycles remain: Output concise summary (cycles, files, tests, deliverables). STOP. Await user instruction. DO NOT call transition_phase.
+            [ ] Load get_work_context and get_project_plan(issue_number=N). Identify the active
+                cycle, its deliverables, prerequisites, exclusions, Approved Strategy constraints,
+                and stop conditions. Stop on missing or contradictory context; do not redesign,
+                re-plan, or silently change strategy.
+
+            [ ] Inspect the direct production and test seams for this cycle. If execution is
+                delegated, provide the bounded task, authoritative artifacts and paths, exclusions,
+                expected evidence, uncertainty, and stop conditions. Verify all output and retain
+                integration and progression decisions.
+
+            [ ] Treat production code, tests, fixtures, and helpers as first-class code under the
+                same architecture, typing, public-boundary, maintainability, and quality standards.
+
+            [ ] Apply the cycle's planned test mode:
+                - behavior/durable-gap cycle: add or adapt the failing durable test, run its
+                  narrow scope to confirm the intended RED, then commit with sub_phase='red'
+                - mechanical or test-maintenance cycle: do not create an artificial RED; record
+                  the plan's rationale and protect existing behavior with the narrowest useful test
+                - GREEN: implement only the cycle scope, run focused tests, and commit with
+                  sub_phase='green'
+                - REFACTOR: apply only planned cleanup, rerun affected tests and file-scoped gates,
+                  and commit with sub_phase='refactor' only when cleanup changed files
+
+            [ ] Use run_tests(path='<focused scope>') and
+                run_quality_gates(scope='files', files=[...]) proportionally. Do not run the full
+                suite here; Validation owns the workspace-wide run.
+
+            [ ] Perform a producer self-check against cycle deliverables, direct diff evidence,
+                architecture, and Approved Strategy. An optional adversarial preflight must seek
+                violations and counterexamples and return findings-only; it cannot issue PASS/GO
+                or authorize progression. Resolve material findings yourself.
+
+            [ ] When objective cycle evidence is satisfied and more cycles remain, call
+                transition_cycle(to_cycle=N+1), then get_work_context and repeat.
+                After the final cycle, do not transition phase autonomously; produce the hand-over
+                below and request independent review.
+          handover_template: |
+            ### Feature / Implementation Hand-over
+
+            #### Scope
+            - Executed cycles and exclusions: <summary>
+
+            #### Deliverables
+            - Planning deliverables satisfied: <IDs with links>
+            - Primary production review entry points: <repository-relative Markdown links>
+            - Primary tests: <repository-relative Markdown links>
+            - Complete inventory: <branch diff reference; group remaining files>
+
+            #### Evidence
+            - Focused tests and file-scoped gates: <exact calls and outcomes>
+            - Approved Strategy and architecture preservation: <mapping>
+
+            #### Open Work
+            - Blockers, residual risks, and deferred work: <items or None>
+            - Remaining cycles: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: validation
         exit_requires:
           - id: validation-report
@@ -500,175 +301,115 @@ workflows:
         instructions:
           sub_role: validator
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Treat validation as the first branch-wide verification phase after
-                the implementation cycles are complete.
+            Produce branch-wide Feature verification after all implementation cycles.
 
-            [ ] Read the research artifact, design artifact, planning artifact,
-                the Approved Strategy, ARCHITECTURE_PRINCIPLES.md,
-                and DOCUMENTATION_STANDARD.md before validating the branch.
-                Use them as the authoritative baseline for what implementation
-                was supposed to deliver and what the validation report must prove.
+            [ ] Load get_work_context, get_project_plan(issue_number=N), Research, Design,
+                Planning, Approved Strategy, and the implementation hand-over. Read only the
+                standards needed to judge affected boundaries. Stop if implementation is
+                incomplete or the approved inputs conflict; Validation does not redesign or patch.
 
-            [ ] Use explore_subagent to gather concrete branch-wide validation context.
-                Ask it to identify:
-                - the planned cycle deliverables and exit criteria that implementation
-                  should now have satisfied
-                - the files, boundaries, helpers, fixtures, and tests most affected
-                  by the completed implementation cycles
-                - the highest-risk surfaces that still need explicit branch-wide proof
-                - the design constraints and Approved Strategy constraints that validation
-                  must confirm were preserved
-                - a live demonstration proposal for the new behavior,
-                  or the closest observable fallback when no true live path exists
-                - residual risks, caveats, or open questions that the validation report
-                  should disclose explicitly
+            [ ] Map every planned deliverable, design constraint, strategy obligation, and
+                high-risk production/test surface to observable evidence.
 
-            [ ] If the validation context shows that implementation is incomplete,
-                contradictory to planning or design, or in conflict with the Approved Strategy,
-                stop and raise a blocker.
-                Do not redesign, re-plan, or patch implementation from validation.
+            [ ] Run the single workspace-wide suite with run_tests(scope='full') and branch-wide
+                gates with run_quality_gates(scope='branch'). Reuse nothing stale; if a check
+                fails, preserve exact evidence and report FAIL rather than weakening criteria.
 
-            [ ] Run full test suite: run_tests(scope='full')
-            [ ] Run quality gates: run_quality_gates(scope='branch')
+            [ ] Add targeted validation only for a material gap not covered by the full checks.
+                Do not add permanent tests for temporary diagnosis or workflow ceremony.
+                Propose a safe live demonstration when the feature has an observable runtime path;
+                otherwise provide the closest reviewable evidence and rationale.
 
-            [ ] Compare the branch-wide validation evidence against:
-                - the planned cycle deliverables and exit criteria
-                - the design decisions that implementation was expected to preserve
-                - the Approved Strategy constraints that implementation was expected to honor
-                - the architecture principles materially relevant to this issue
-                Record any mismatch explicitly; do not reinterpret the plan to make the branch pass.
+            [ ] Identify residual risk, limitations, and deferred work explicitly, including
+                findings that Ready must transfer for @co triage.
 
-            [ ] Build a live demonstration proposal for the user.
-                It must include:
-                - the smallest observable behavior change that can be demonstrated safely
-                - exact preconditions and steps
-                - what the user should observe now
-                - what the user would have observed before, when that comparison is known and useful
-                - when no true live path exists, an explicit explanation of why not
-                - the closest observable fallback evidence the user can review instead
+            [ ] Create the validation artifact if absent with
+                scaffold_artifact(artifact_type='validation_report', name='validation',
+                context={...}); otherwise update the existing phase artifact.
+                Record scope, exact outcomes, deliverable mapping, Design and Approved Strategy
+                alignment, demonstration/fallback, failures, caveats, and deferred work.
+                Do not claim independent QA approval.
 
-            [ ] Create or update docs/development/issueN/validation.md.
-                Document:
-                - validation scope and prerequisites
-                - summary verdict
-                - full-suite test result
-                - branch quality-gate result
-                - mapping from planning deliverables or exit criteria to observed evidence
-                - design and Approved Strategy alignment
-                - the live demonstration proposal or explicit fallback rationale
-                - residual risks, caveats, limitations, and follow-up items
-                - exact failure evidence when validation is not green
+            [ ] Commit with git_add_or_commit(workflow_phase='validation',
+                message='Validation for #N').
 
-            [ ] Self-check before commit:
-                - If run_tests(scope='full') failed, the validation report must say FAIL
-                  and include the exact failing scope.
-                - If run_quality_gates(scope='branch') failed, the validation report must say FAIL
-                  and include the exact failing gate or file scope.
-                - If planning, design, or Approved Strategy alignment cannot be established,
-                  do not declare PASS.
-                - If the behavior is not practically demoable live,
-                  the validation report must explain why and propose the closest observable fallback.
-                - Do not hide caveats, soft failures, or incomplete evidence behind a green summary.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='validation', message='Validation for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below. Independent QA reads direct evidence
+                and alone determines GO/NOGO.
           handover_template: |
-            ### Validation → QA Hand-over
+            ### Feature / Validation Hand-over
+
             #### Scope
-            - Issue: #N
-            - Validation focus: <branch-wide verification after implementation cycles>
+            - Validated branch behavior and exclusions: <summary>
 
-            #### Review Targets
-            - Full-suite result: <summary of run_tests(scope='full')>
-            - Branch gate result: <summary of run_quality_gates(scope='branch')>
-            - Planning alignment: <which planned deliverables and exit criteria are now evidenced>
-            - Design / Approved Strategy alignment: <which constraints were preserved or where mismatches remain>
-            - Live demonstration proposal: <how the user can observe the new behavior or the closest safe fallback>
-            - Residual risks / caveats: <what remains important for QA to examine>
+            #### Deliverables
+            - [Validation report](docs/development/issueN/validation.md)
+            - [Planning](docs/development/issueN/planning.md)
+            - Primary test/runtime evidence: <repository-relative Markdown links>
 
-            #### Files
-            - docs/development/issueN/validation.md (new or updated)
+            #### Evidence
+            - Workspace-wide tests: <exact outcome>
+            - Branch quality gates: <exact outcome>
+            - Deliverable, Design, and Approved Strategy mapping: <summary>
 
-            #### Stop-Go Proof
-            - Tests: run_tests(scope='full') → <result>
-            - Gates: run_quality_gates(scope='branch') → <result>
-            - Verdict: PASS | FAIL
+            #### Open Work
+            - Failures, risks, limitations, and deferred work: <items or None>
+            - Demonstration or fallback: <steps/link>
+
+            #### Review Request
+            - Review requested
       - name: documentation
         instructions:
           sub_role: documenter
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Treat documentation as the docs-workspace reconciliation and close-out phase after validation.
+            Reconcile current Feature documentation with validated behavior.
 
-            [ ] Read docs/development/issueN/validation.md
-                and DOCUMENTATION_STANDARD.md before editing documentation.
-                Use validation as the authoritative source for behavior claims and observed outcomes.
-                Treat docs/development/issueN/*.md, archived docs, and other historical workflow artifacts
-                as context by default, not active documentation.
-                Update them only when validation explicitly requires it,
-                they are the authoritative deliverable for the current phase,
-                or the user explicitly asks for it.
+            [ ] Load get_work_context, get_project_plan(issue_number=N), and the Validation report.
+                Treat validated behavior as the claims boundary. Read the applicable Documentation
+                Standard sections before editing; load other references only when needed.
 
-            [ ] Use explore_subagent to scan the documentation workspace for surfaces affected by this issue.
-                Ask it to identify:
-                - active repository documentation, READMEs, standards, reference pages, prompts, runbooks,
-                  and navigation surfaces affected by the delivered change
-                - issue-local, archived, or historical artifacts that may provide context
-                  but should normally remain unchanged
-                - stale examples, commands, diagrams, screenshots, and cross-links
-                - docs that were reviewed and can remain unchanged
-                - the smallest safe set of documentation updates needed to leave the workspace coherent
+            [ ] Inventory the active documentation blast radius: READMEs, references, standards,
+                runbooks, examples, diagrams, prompts, templates, navigation, and authoritative
+                agent instructions plus derived consumers. Issue-local and archived artifacts are
+                context by default, not edit targets, unless explicitly authoritative or planned.
 
-            [ ] Update or create the relevant documentation files.
-                Prioritize:
-                - existing user, operator, and developer documentation that now needs to reflect the delivered change
-                - stale examples, commands, diagrams, screenshots, prompts, links, and navigation
-                - issue-local workflow artifacts only when validation explicitly requires a correction,
-                  they are the authoritative deliverable for the current phase,
-                  or the user explicitly asks for it
+            [ ] Update the smallest complete set of current docs. For source-consumer assets,
+                edit the authoritative source first, synchronize consumers, and verify parity.
+                Keep commands, links, diagrams, terminology, examples, and limitations aligned
+                with Validation evidence. Record material surfaces reviewed but unchanged.
 
-            [ ] Keep the documentation coherent across the docs workspace:
-                - every behavioral claim must trace back to validation evidence
-                - surrounding explanatory text, links, navigation, and examples should be brought back in sync
-                  with the delivered change
-                - record which docs surfaces were updated and which were reviewed and left unchanged
-                - if the docs scan reveals a gap that needs a new finding, a new scope decision,
-                  or newly deferred work, stop and raise a blocker for human review
-            [ ] Prepare the Documentation → QA hand-over.
-                It must cover:
-                - documentation scan coverage across the docs workspace
-                - which documentation files were updated and why
-                - which documentation surfaces were reviewed and left unchanged, with rationale
-                - how the updated docs reflect the delivered change
-                - residual caveats or limitations that remain visible in the docs
+            [ ] Do not change production behavior or invent unsupported claims in Documentation.
+                If the scan exposes an implementation gap, strategy conflict, or new scope
+                decision, stop and report it. Capture genuine deferred documentation work for
+                Ready rather than hiding it.
 
-            [ ] Self-check before commit:
-                - behavioral claims trace back to validation evidence
-                - stale examples, commands, diagrams, prompts, links, or navigation are not silently outdated
-                - reviewed-but-unchanged docs are intentional and defensible
-                - the documentation follows DOCUMENTATION_STANDARD.md
+            [ ] Run only checks invalidated by documentation changes, such as link, template,
+                source-parity, or focused documentation tests. Do not repeat fresh implementation
+                tests or branch gates without an invalidating change.
 
-            [ ] Commit: git_add_or_commit(workflow_phase='documentation', message='Documentation for #N')
-            [ ] Produce hand-over for QA doc review.
+            [ ] Commit with git_add_or_commit(workflow_phase='documentation',
+                message='Documentation for #N').
+
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Documentation → QA Hand-over
+            ### Feature / Documentation Hand-over
+
             #### Scope
-            - Issue: #N
-            - Documentation focus: <what was clarified, corrected, or updated>
+            - Reconciled current documentation and exclusions: <summary>
 
-            #### Review Targets
-            - Docs workspace coverage: <which surfaces were scanned>
-            - Validation alignment: <which validated outcomes the documentation reflects>
-            - Updated docs: <which files changed and why>
-            - Reviewed but unchanged: <which surfaces were checked and intentionally left as-is>
-            - Residual caveats: <what remains visible and intentionally unresolved>
+            #### Deliverables
+            - Updated current docs: <repository-relative Markdown links>
+            - Authoritative agent/template sources and consumers: <links or None>
+            - [Validation report](docs/development/issueN/validation.md)
 
-            #### Files
-            - docs/... (updated)
+            #### Evidence
+            - Documentation, link, template, or parity checks: <exact outcomes>
+            - Reviewed but unchanged surfaces: <links and rationale>
 
-            #### Stop-Go Proof
-            - Documentation committed
+            #### Open Work
+            - Residual caveats and deferred documentation work: <items or None>
+
+            #### Review Request
+            - Review requested
       - name: ready
         instructions:
           sub_role: implementer
