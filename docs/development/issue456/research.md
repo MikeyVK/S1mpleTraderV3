@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Research
 
 **Status:** APPROVED  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-08-20
 
 ---
@@ -217,6 +217,24 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 - No tool-specific presentation branches are introduced.
 - Both obsolete documentation-test modules and all 62 collected cases are removed.
 
+## Deferred Findings
+
+### Structured quality-gate findings
+
+The current RunQualityGatesOutput exposes each gate through GateResultDTO with name, passed, status, score, and one opaque details string. This issue deliberately keeps details and complete checker output cache-only because the presentation layer cannot reliably distinguish effective diagnostics from headers, summaries, or verbose process logs.
+
+This leaves a known actionability gap: the compact run_quality_gates response can identify a failing gate, but it cannot present a bounded number of concrete errors without parsing gate-specific text.
+
+**Deferred direction:**
+
+- Investigate a structured GateFindingDTO or equivalent contract containing the gate, file, location, diagnostic code, and concise message.
+- Determine whether findings belong per GateResultDTO or at RunQualityGatesOutput level.
+- Add a configurable maximum for inline findings while keeping complete linter, type-checker, and process output cache-only.
+- Preserve generic presentation; do not introduce gate-name-specific parsing or renderer branches.
+- Treat any DTO and consumer impact as a new strategy decision in a dedicated issue.
+
+**Disposition:** Explicitly out of scope for issue #456. Validation must carry this finding into deferred work, and Ready must include it in the PR body for post-merge triage by the coordination authority.
+
 ## Open Questions
 
 None at the strategy boundary. Exact configuration models and presenter interface changes belong to Design.
@@ -248,3 +266,4 @@ None at the strategy boundary. Exact configuration models and presenter interfac
 |---|---|---|---|
 | 1.0 | 2026-08-20 | Agent | Approved research, complete tool audit, and strategy boundary |
 | 1.1 | 2026-08-20 | Agent | Add mandatory removal of brittle documentation tests to the approved scope |
+| 1.2 | 2026-08-20 | Agent | Record structured quality-gate findings as explicit deferred work |
