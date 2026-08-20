@@ -3,7 +3,7 @@
 # Issue 399 Phase Instruction Contract Audit
 
 **Status:** IMPLEMENTATION COMPLETE — INDEPENDENT QA PENDING  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-08-20
 
 ---
@@ -92,10 +92,10 @@ Parsed with the same block-scalar and lexical-unit rules as the RED baseline.
 
 | Measure | Baseline | Final | Reduction |
 |---|---:|---:|---:|
-| Instruction chars | 158665 | 68525 | 90140 (56.81%) |
+| Instruction chars | 158665 | 67776 | 90889 (57.28%) |
 | Hand-over chars | 24019 | 21283 | 2736 (11.39%) |
-| Effective chars | 182684 | 89808 | 92876 (50.84%) |
-| Lexical units | 33613 | 17592 | 16021 (47.66%) |
+| Effective chars | 182684 | 89059 | 93625 (51.25%) |
+| Lexical units | 33613 | 17521 | 16092 (47.88%) |
 | Effective contracts | 39 | 39 | 0 |
 
 The richer canonical hand-over contract reduces less than instructions by design;
@@ -106,6 +106,7 @@ the combined effective contract is approximately half the baseline size.
 - Runtime-contract loader and agent source/consumer alignment: 74 tests passed.
 - File-scoped format, lint, import, line-length, and Pyright gates: passed.
 - Runtime/audit metric reconciliation: 39 of 39 size records matched; zero mismatches.
+- Server-owned context bootstrap: zero runtime `get_work_context` occurrences; loader invariant added.
 - Full workspace validation and independent GO/NOGO remain owned by Validation/QA.
 
 ## Contract Records
@@ -125,7 +126,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4001/914/4915/995; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 4001/914/4915/995; after = 1828/520/2348/503.
 - **Residual concern:** None.
 #### `bug/ready`
 
@@ -140,7 +141,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4010/914/4924/1000; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 4010/914/4924/1000; after = 1828/520/2348/503.
 - **Residual concern:** None.
 #### `hotfix/ready`
 
@@ -155,7 +156,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4008/914/4922/996; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 4008/914/4922/996; after = 1828/520/2348/503.
 - **Residual concern:** None.
 #### `refactor/ready`
 
@@ -170,7 +171,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4012/914/4926/996; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 4012/914/4926/996; after = 1828/520/2348/503.
 - **Residual concern:** None.
 #### `docs/ready`
 
@@ -185,7 +186,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4016/918/4934/996; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 4016/918/4934/996; after = 1828/520/2348/503.
 - **Residual concern:** None.
 #### `chore/ready`
 
@@ -200,7 +201,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 1873/0/1873/348; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 1873/0/1873/348; after = 1828/520/2348/503.
 - **Residual concern:** None.
 #### `epic/ready`
 
@@ -215,7 +216,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4050/1028/5078/1036; after = 1849/520/2369/505.
+- **Size:** Before instruction/hand-over/effective/units = 4050/1028/5078/1036; after = 1828/520/2348/503.
 - **Residual concern:** None.
 ### C_FEATURE
 
@@ -224,7 +225,7 @@ the combined effective contract is approximately half the baseline size.
 - **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
 - **Owned purpose:** Establish evidence, proportional blast radius, and human-approved strategy boundaries for a new feature.
 - **Workflow distinction:** Feature research frames new supported capability and consumer impact rather than defect correction or preservation-only change.
-- **Retained activations:** `get_work_context`; `get_issue`; proportional direct-source investigation; conditional bounded discovery; human Approved Strategy; research scaffolding; research commit; first branch push; review hand-over.
+- **Retained activations:** `get_issue`; proportional direct-source investigation; conditional bounded discovery; human Approved Strategy; research scaffolding; research commit; first branch push; review hand-over.
 - **Removed or relocated content:** Unconditional full-document reads, harness-specific exploration, repeated orientation scripts, premature design/planning detail, and duplicated self-review prose.
 - **Test/evidence policy:** Identify affected tests/helpers and stable behavior boundaries; defer test architecture and permanent-test selection to Design/Planning.
 - **Document reads:** Required boundary check before drafting; Architecture, Documentation, and other references only when they govern an affected or uncertain boundary.
@@ -232,7 +233,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical structure with direct Research and source-evidence links; outcome-neutral.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (test design/retention belongs to later phases), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 5455/901/6356/1140; after = 2084/527/2611/500.
+- **Size:** Before instruction/hand-over/effective/units = 5455/901/6356/1140; after = 2063/527/2590/498.
 - **Residual concern:** None.
 #### `feature/design`
 
@@ -247,7 +248,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical structure with clickable Design, Research, and source-seam links.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research-owned blast-radius inventory), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 6440/569/7009/1219; after = 2131/593/2724/519.
+- **Size:** Before instruction/hand-over/effective/units = 6440/569/7009/1219; after = 2113/593/2706/517.
 - **Residual concern:** None.
 #### `feature/planning`
 
@@ -262,14 +263,14 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical structure linking Planning, Design, and Research plus saved payload evidence.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research-owned), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 6948/754/7702/1353; after = 2248/586/2834/567.
+- **Size:** Before instruction/hand-over/effective/units = 6948/754/7702/1353; after = 2230/586/2816/565.
 - **Residual concern:** None.
 #### `feature/implementation`
 
 - **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
 - **Owned purpose:** Execute each approved feature cycle without redesign, scope creep, or strategy drift.
 - **Workflow distinction:** Feature implementation builds new behavior through cycle-specific evidence while preserving approved new contracts and consumers.
-- **Retained activations:** `get_work_context`; `get_project_plan`; active-cycle stop checks; conditional execution delegation; planned RED/GREEN/REFACTOR or justified non-RED path; focused `run_tests`; file gates; commits; producer self-check; `transition_cycle`; final review request.
+- **Retained activations:** `get_project_plan`; active-cycle stop checks; conditional execution delegation; planned RED/GREEN/REFACTOR or justified non-RED path; focused `run_tests`; file gates; commits; producer self-check; `transition_cycle`; final review request.
 - **Removed or relocated content:** Caveman formatting rules, mandatory explore subagent, hardcoded GPT-5.4, producer-owned QA PASS/FAIL, QA-driven auto-progression, blanket TDD, and verbose tool narration.
 - **Test/evidence policy:** Strict TDD for planned behavior/durable gaps; no artificial RED for mechanical/test-maintenance work; tests/helpers held to production standards; no full suite before Validation.
 - **Document reads:** Plan and active-cycle artifacts required; other sources inspected only for the active boundary.
@@ -277,7 +278,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional implementation hand-over with primary production/test links and branch diff as complete inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research-owned), C06 (pre-draft phases), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 2372/0/2372/576; after = 2255/665/2920/566.
+- **Size:** Before instruction/hand-over/effective/units = 2372/0/2372/576; after = 2237/665/2902/565.
 - **Residual concern:** None.
 #### `feature/validation`
 
@@ -292,7 +293,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical structure linking Validation, Planning, and primary evidence; findings and failures precede review request.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06 (Research/pre-draft), C12 (no delegation), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 3837/850/4687/861; after = 1861/625/2486/492.
+- **Size:** Before instruction/hand-over/effective/units = 3837/850/4687/861; after = 1843/625/2468/490.
 - **Residual concern:** None.
 #### `feature/documentation`
 
@@ -307,7 +308,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical structure with clickable updated docs, source/consumer assets, Validation, and reviewed-unchanged surfaces.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06 (Research/pre-draft), C08-C09 (no test design/creation), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 3108/561/3669/655; after = 1650/586/2236/410.
+- **Size:** Before instruction/hand-over/effective/units = 3108/561/3669/655; after = 1632/586/2218/408.
 - **Residual concern:** None.
 ### C_BUG
 
@@ -324,7 +325,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to Research and reproduction/root-cause evidence.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (later test design), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 5793/1019/6812/1222; after = 2108/583/2691/521.
+- **Size:** Before instruction/hand-over/effective/units = 5793/1019/6812/1222; after = 2087/583/2670/519.
 - **Residual concern:** None.
 #### `bug/design`
 
@@ -339,7 +340,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to Design, Research, and causal seams.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 6539/623/7162/1256; after = 2090/598/2688/507.
+- **Size:** Before instruction/hand-over/effective/units = 6539/623/7162/1256; after = 2072/598/2670/505.
 - **Residual concern:** None.
 #### `bug/planning`
 
@@ -354,7 +355,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to Planning, Design, and Research plus payload proof.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 7292/794/8086/1413; after = 2208/591/2799/559.
+- **Size:** Before instruction/hand-over/effective/units = 7292/794/8086/1413; after = 2190/591/2781/557.
 - **Residual concern:** None.
 #### `bug/implementation`
 
@@ -369,7 +370,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional production/regression links plus branch diff inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research), C06 (pre-draft), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 4310/0/4310/829; after = 2174/708/2882/551.
+- **Size:** Before instruction/hand-over/effective/units = 4310/0/4310/829; after = 2169/708/2877/553.
 - **Residual concern:** None.
 #### `bug/validation`
 
@@ -384,7 +385,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to Validation, Planning, and regression/reproduction evidence.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06, C12 (no delegation), C20, C21.
-- **Size:** Before instruction/hand-over/effective/units = 4143/874/5017/914; after = 1832/669/2501/505.
+- **Size:** Before instruction/hand-over/effective/units = 4143/874/5017/914; after = 1814/669/2483/503.
 - **Residual concern:** None.
 #### `bug/documentation`
 
@@ -399,7 +400,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable docs/source-consumer/Validation evidence.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20,C21.
-- **Size:** Before instruction/hand-over/effective/units = 3072/591/3663/661; after = 1443/584/2027/365.
+- **Size:** Before instruction/hand-over/effective/units = 3072/591/3663/661; after = 1425/584/2009/363.
 - **Residual concern:** None.
 ### C_REFACTOR_HOTFIX
 
@@ -416,7 +417,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to Research and structural/invariant evidence.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (Design/Planning), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5784/1012/6796/1207; after = 2200/582/2782/526.
+- **Size:** Before instruction/hand-over/effective/units = 5784/1012/6796/1207; after = 2179/582/2761/524.
 - **Residual concern:** None.
 #### `refactor/design`
 
@@ -431,7 +432,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Design/Research/seam links.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3588/504/4092/757; after = 2000/607/2607/491.
+- **Size:** Before instruction/hand-over/effective/units = 3588/504/4092/757; after = 1982/607/2589/489.
 - **Residual concern:** None.
 #### `refactor/planning`
 
@@ -446,7 +447,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Planning/Design/Research links plus saved payload.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 7186/795/7981/1395; after = 2141/588/2729/547.
+- **Size:** Before instruction/hand-over/effective/units = 7186/795/7981/1395; after = 2123/588/2711/545.
 - **Residual concern:** None.
 #### `refactor/implementation`
 
@@ -461,7 +462,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional structural/test links and diff inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 4464/0/4464/840; after = 2022/704/2726/519.
+- **Size:** Before instruction/hand-over/effective/units = 4464/0/4464/840; after = 2016/704/2720/521.
 - **Residual concern:** None.
 #### `refactor/validation`
 
@@ -476,7 +477,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Validation/Planning/structural evidence links.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3900/897/4797/874; after = 1720/639/2359/467.
+- **Size:** Before instruction/hand-over/effective/units = 3900/897/4797/874; after = 1702/639/2341/465.
 - **Residual concern:** None.
 #### `refactor/documentation`
 
@@ -491,7 +492,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical architecture/docs/consumer/Validation links.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3119/600/3719/660; after = 1418/598/2016/376.
+- **Size:** Before instruction/hand-over/effective/units = 3119/600/3719/660; after = 1400/598/1998/374.
 - **Residual concern:** None.
 #### `hotfix/implementation`
 
@@ -506,7 +507,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional correction/test links plus diff inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06 (no pre-implementation phases), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 4475/0/4475/858; after = 2191/656/2847/549.
+- **Size:** Before instruction/hand-over/effective/units = 4475/0/4475/858; after = 2152/656/2808/545.
 - **Residual concern:** None.
 #### `hotfix/validation`
 
@@ -521,7 +522,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to Validation and hotfix evidence.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3804/838/4642/860; after = 1684/559/2243/438.
+- **Size:** Before instruction/hand-over/effective/units = 3804/838/4642/860; after = 1666/559/2225/436.
 - **Residual concern:** None.
 #### `hotfix/documentation`
 
@@ -536,7 +537,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical links to runbooks/guidance, consumers, and Validation.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3094/589/3683/660; after = 1333/595/1928/349.
+- **Size:** Before instruction/hand-over/effective/units = 3094/589/3683/660; after = 1312/595/1907/347.
 - **Residual concern:** None.
 ### C_CHORE_DOCS
 
@@ -553,7 +554,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical linked Research/direct-outcome and blast-radius review index.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; agent and consumer impact remains explicit in blast radius.
 - **Audit result:** PASS: C01-C07,C10-C11,C13-C19,C22-C23. N/A: C08-C09 (later-phase test decisions), C12 (no delegation), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 951/264/1215/227; after = 842/371/1213/244.
+- **Size:** Before instruction/hand-over/effective/units = 951/264/1215/227; after = 821/371/1192/242.
 - **Residual concern:** None.
 
 #### `chore/implementation`
@@ -569,7 +570,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional production/config/test links with complete-diff reference.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no new static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22-C23. N/A: C05-C06 (Research/pre-draft), C12 (no delegation), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 1225/425/1650/305; after = 1087/388/1475/297.
+- **Size:** Before instruction/hand-over/effective/units = 1225/425/1650/305; after = 1066/388/1454/295.
 - **Residual concern:** None.
 
 #### `chore/validation`
@@ -585,7 +586,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical linked Validation/evidence and explicit deferred-work tracking.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no new static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22-C23. N/A: C05-C06,C12 (no delegation), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 1710/504/2214/423; after = 1246/455/1701/347.
+- **Size:** Before instruction/hand-over/effective/units = 1710/504/2214/423; after = 1228/455/1683/345.
 - **Residual concern:** None.
 
 #### `chore/documentation`
@@ -601,7 +602,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical authoritative-source/consumer and Validation review links.
 - **Agent-instruction impact:** Source-first order and consumer synchronization align with C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 1009/254/1263/215; after = 836/423/1259/245.
+- **Size:** Before instruction/hand-over/effective/units = 1009/254/1263/215; after = 815/423/1238/243.
 - **Residual concern:** None.
 
 #### `docs/planning`
@@ -617,7 +618,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable Planning, target-doc, and authoritative-input review index.
 - **Agent-instruction impact:** Source/consumer planning aligns with C_AGENT_AUTHORITY; no additional static edit required.
 - **Audit result:** PASS: C01-C04,C06-C07,C10-C19,C22-C23. N/A: C05 (Research-only full blast radius), C08-C09 (no test code), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 4483/504/4987/896; after = 1841/463/2304/426.
+- **Size:** Before instruction/hand-over/effective/units = 4483/504/4987/896; after = 1820/463/2283/424.
 - **Residual concern:** None.
 
 #### `docs/documentation`
@@ -633,7 +634,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Planning, updated-doc, source-consumer, and focused-evidence links.
 - **Agent-instruction impact:** Authoritative-first consumer synchronization aligns with C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3015/577/3592/643; after = 1614/519/2133/387.
+- **Size:** Before instruction/hand-over/effective/units = 3015/577/3592/643; after = 1593/519/2112/385.
 - **Residual concern:** None.
 
 ### C_EPIC
@@ -651,7 +652,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable Research, shared-system/consumer/test, and strategy index.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; agent/template/enforcement consumers remain explicit in blast radius.
 - **Audit result:** PASS: C01-C07,C10-C19,C22-C23. N/A: C08-C09 (later test design), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1861/477/2338/429.
+- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1840/477/2317/427.
 - **Residual concern:** None.
 
 #### `epic/planning`
@@ -667,7 +668,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Planning/Research and clickable child-issue index with creation proof.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C07,C10-C19,C22-C23. N/A: C05 (Research), C08-C09 (Design/child planning), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1603/458/2061/397.
+- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1585/458/2043/395.
 - **Residual concern:** None.
 
 #### `epic/design`
@@ -683,7 +684,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable Design/Planning/shared-contract/test review entry points.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22-C23. N/A: C05 (Research), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1842/473/2315/429.
+- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1824/473/2297/427.
 - **Residual concern:** None.
 
 #### `epic/coordination`
@@ -699,7 +700,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable child-state index and compact dependency/gate/owner proof.
 - **Agent-instruction impact:** Aligned with Three-Agent role boundaries in C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C21-C23. N/A: C05-C06,C08-C09,C20.
-- **Size:** Before instruction/hand-over/effective/units = 268/130/398/101; after = 636/311/947/197.
+- **Size:** Before instruction/hand-over/effective/units = 268/130/398/101; after = 618/311/929/195.
 - **Residual concern:** Effective size grows because the deficient transfer gained canonical evidence/authority fields; C21 remains concise and total contracts shrink materially.
 
 #### `epic/documentation`
@@ -715,7 +716,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable epic-doc, consumer, and approved-input index.
 - **Agent-instruction impact:** Authoritative-first source-consumer synchronization aligns with C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3189/631/3820/684; after = 1381/462/1843/335.
+- **Size:** Before instruction/hand-over/effective/units = 3189/631/3820/684; after = 1363/462/1825/333.
 - **Residual concern:** None.
 
 ## Related Documentation
@@ -737,3 +738,4 @@ the combined effective contract is approximately half the baseline size.
 |---------|------|--------|---------|
 | 0.1 | 2026-08-20 | Agent | Initial draft |
 | 1.0 | 2026-08-20 | Agent | Completed 39 contract audits and final measurements |
+| 1.1 | 2026-08-20 | Agent | Removed server-owned context bootstrap duplication and refreshed metrics |

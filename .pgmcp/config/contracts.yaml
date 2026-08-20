@@ -24,7 +24,7 @@ workflows:
           phase_instructions: |
             Establish the evidence and strategy boundary for a new feature.
 
-            [ ] Load get_work_context and get_issue(issue_number=N). Define the research
+            [ ] Load get_issue(issue_number=N). Define the research
                 boundary before drafting: document current behavior, evidence, options, risks,
                 and decisions needed; do not design the solution or sequence implementation.
 
@@ -90,7 +90,7 @@ workflows:
           phase_instructions: |
             Turn approved Feature research into an implementable technical design.
 
-            [ ] Load get_work_context, the Research artifact, and its Approved Strategy.
+            [ ] Load the Research artifact, and its Approved Strategy.
                 Define the design boundary before drafting: own architecture, interfaces,
                 data/control flow, failure behavior, test design, and alternatives; do not write
                 implementation steps, cycle sequencing, or production code.
@@ -160,7 +160,7 @@ workflows:
           phase_instructions: |
             Convert the approved Feature design into executable, dependency-ordered cycles.
 
-            [ ] Load get_work_context, Research, Design, Approved Strategy, and current project
+            [ ] Load Research, Design, Approved Strategy, and current project
                 plan. Define the planning boundary before drafting: own work slicing,
                 dependencies, deliverables, verification, and stop/go criteria; do not redesign
                 the solution or implement it.
@@ -233,7 +233,7 @@ workflows:
           phase_instructions: |
             Execute the active Feature cycle exactly as approved.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N). Identify the active
+            [ ] Load get_project_plan(issue_number=N). Identify the active
                 cycle, its deliverables, prerequisites, exclusions, Approved Strategy constraints,
                 and stop conditions. Stop on missing or contradictory context; do not redesign,
                 re-plan, or silently change strategy.
@@ -266,7 +266,7 @@ workflows:
                 or authorize progression. Resolve material findings yourself.
 
             [ ] When objective cycle evidence is satisfied and more cycles remain, call
-                transition_cycle(to_cycle=N+1), then get_work_context and repeat.
+                transition_cycle(to_cycle=N+1). Continue under the next instruction.
                 After the final cycle, do not transition phase autonomously; produce the hand-over
                 below and request independent review.
           handover_template: |
@@ -303,7 +303,7 @@ workflows:
           phase_instructions: |
             Produce branch-wide Feature verification after all implementation cycles.
 
-            [ ] Load get_work_context, get_project_plan(issue_number=N), Research, Design,
+            [ ] Load get_project_plan(issue_number=N), Research, Design,
                 Planning, Approved Strategy, and the implementation hand-over. Read only the
                 standards needed to judge affected boundaries. Stop if implementation is
                 incomplete or the approved inputs conflict; Validation does not redesign or patch.
@@ -363,7 +363,7 @@ workflows:
           phase_instructions: |
             Reconcile current Feature documentation with validated behavior.
 
-            [ ] Load get_work_context, get_project_plan(issue_number=N), and the Validation report.
+            [ ] Load get_project_plan(issue_number=N), and the Validation report.
                 Treat validated behavior as the claims boundary. Read the applicable Documentation
                 Standard sections before editing; load other references only when needed.
 
@@ -416,7 +416,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
@@ -487,7 +487,7 @@ workflows:
           phase_instructions: |
             Establish reproducible defect evidence, root cause, and strategy boundaries.
 
-            [ ] Load get_work_context and get_issue(issue_number=N). Define the Research
+            [ ] Load get_issue(issue_number=N). Define the Research
                 boundary before drafting: own observed versus expected behavior, reproduction,
                 causal evidence, blast radius, and strategy choices; do not select the fix,
                 design its structure, or sequence implementation.
@@ -557,7 +557,7 @@ workflows:
           phase_instructions: |
             Design the smallest robust correction for the evidenced defect.
 
-            [ ] Load get_work_context, Bug Research, root-cause evidence, corrected behavior,
+            [ ] Load Bug Research, root-cause evidence, corrected behavior,
                 and Approved Strategy. Define the Design boundary before drafting: own correction
                 architecture, interfaces, failure behavior, regression design, and alternatives;
                 do not write cycle sequencing or implementation steps.
@@ -627,7 +627,7 @@ workflows:
           phase_instructions: |
             Convert the approved bug correction into minimal, dependency-ordered cycles.
 
-            [ ] Load get_work_context, Research, Design, root cause, corrected behavior,
+            [ ] Load Research, Design, root cause, corrected behavior,
                 Approved Strategy, and current project plan. Define the Planning boundary:
                 own slicing, dependencies, deliverables, verification, and stop/go criteria;
                 do not redesign or implement the correction.
@@ -700,7 +700,7 @@ workflows:
           phase_instructions: |
             Execute the active Bug cycle against root cause and corrected behavior.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N). Identify the active
+            [ ] Load get_project_plan(issue_number=N). Identify the active
                 cycle, causal target, deliverables, prerequisites, exclusions, preservation and
                 Approved Strategy constraints, and stop conditions. Stop on contradiction or
                 missing evidence; do not redesign, re-plan, or broaden the fix.
@@ -734,8 +734,8 @@ workflows:
                 seeks violations/counterexamples and returns findings-only; it cannot issue
                 PASS/GO or authorize progression.
 
-            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1) and
-                get_work_context when cycles remain. After the final cycle, do not transition
+            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1). Continue under the next instruction
+                when cycles remain. After the final cycle, do not transition
                 phase autonomously; produce the hand-over and request independent review.
           handover_template: |
             ### Bug / Implementation Hand-over
@@ -771,7 +771,7 @@ workflows:
           phase_instructions: |
             Produce branch-wide proof that the bug is corrected without regression.
 
-            [ ] Load get_work_context, get_project_plan(issue_number=N), Research, Design,
+            [ ] Load get_project_plan(issue_number=N), Research, Design,
                 Planning, root cause, corrected behavior, Approved Strategy, and implementation
                 hand-over. Read only standards needed for affected boundaries.
                 Stop if implementation is incomplete or contradicts approved inputs;
@@ -831,7 +831,7 @@ workflows:
           phase_instructions: |
             Reconcile current documentation with validated corrected behavior.
 
-            [ ] Load get_work_context, get_project_plan(issue_number=N), and Validation.
+            [ ] Load get_project_plan(issue_number=N), and Validation.
                 Use validated before/after behavior as the claims boundary. Read applicable
                 Documentation Standard sections; load other references only when needed.
 
@@ -882,7 +882,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
@@ -954,7 +954,7 @@ workflows:
           phase_instructions: |
             Execute the smallest safe hotfix slice within explicit containment boundaries.
 
-            [ ] Load get_work_context, get_issue(issue_number=N), and
+            [ ] Load get_issue(issue_number=N), and
                 get_project_plan(issue_number=N). Identify the active slice, current failure
                 evidence, supported-behavior boundary, explicit user constraints, exit evidence,
                 and exclusions. Stop on ambiguity or policy/migration decisions; do not broaden,
@@ -988,7 +988,7 @@ workflows:
                 preflight returns findings-only and cannot issue PASS/GO or authorize progression.
 
             [ ] When objective evidence is satisfied and slices remain, call
-                transition_cycle(to_cycle=N+1), then get_work_context and repeat.
+                transition_cycle(to_cycle=N+1), then repeat.
                 After the final slice, do not transition phase autonomously; produce the hand-over
                 and request independent review.
           handover_template: |
@@ -1024,7 +1024,7 @@ workflows:
           phase_instructions: |
             Verify hotfix correction, containment, and branch-wide safety.
 
-            [ ] Load get_work_context, the issue, explicit hotfix constraints, available project
+            [ ] Load the issue, explicit hotfix constraints, available project
                 plan, and implementation hand-over. Read only standards needed for affected
                 boundaries. Stop if the branch exceeds containment or required evidence is
                 missing; Validation does not broaden or patch the hotfix.
@@ -1079,7 +1079,7 @@ workflows:
           phase_instructions: |
             Reconcile current operational documentation with the validated hotfix.
 
-            [ ] Load get_work_context and Validation. Use validated correction/containment as the
+            [ ] Load Validation. Use validated correction/containment as the
                 claims boundary. Read applicable Documentation Standard sections and only the
                 operational/user references affected by this hotfix.
 
@@ -1130,7 +1130,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
@@ -1201,7 +1201,7 @@ workflows:
           phase_instructions: |
             Establish structural evidence and preservation strategy for the refactor.
 
-            [ ] Load get_work_context and get_issue(issue_number=N). Define Research before
+            [ ] Load get_issue(issue_number=N). Define Research before
                 drafting: own current responsibilities, coupling, duplication, invariants,
                 externally observable behavior, blast radius, candidate seams, risks, and strategy;
                 do not choose the target design or sequence changes.
@@ -1270,7 +1270,7 @@ workflows:
           phase_instructions: |
             Design the target structure while preserving approved behavior and contracts.
 
-            [ ] Load get_work_context, Refactor Research, invariants, and Approved Strategy.
+            [ ] Load Refactor Research, invariants, and Approved Strategy.
                 Define Design before drafting: own target responsibilities, boundaries, dependency
                 direction, transitions, deletion/cleanup, test architecture, and alternatives;
                 do not sequence cycles or edit code.
@@ -1339,7 +1339,7 @@ workflows:
           phase_instructions: |
             Slice the approved refactor into safe, reversible structural cycles.
 
-            [ ] Load get_work_context, Research, Design, invariants, Approved Strategy, and current
+            [ ] Load Research, Design, invariants, Approved Strategy, and current
                 plan. Define Planning before drafting: own sequencing, dependencies, deliverables,
                 preservation evidence, cleanup, and stop/go criteria; do not redesign or implement.
 
@@ -1410,7 +1410,7 @@ workflows:
           phase_instructions: |
             Execute the active Refactor cycle while preserving approved behavior.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N). Identify the active
+            [ ] Load get_project_plan(issue_number=N). Identify the active
                 structural cycle, deliverables, dependencies, invariants, exclusions, cleanup,
                 Approved Strategy, and stops. Stop on contradiction or hidden behavior change;
                 do not redesign, re-plan, or widen the seam.
@@ -1439,8 +1439,8 @@ workflows:
                 cleanup completeness, and Approved Strategy. Optional adversarial preflight seeks
                 structural contamination/counterexamples and returns findings-only; no PASS/GO.
 
-            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1) then
-                get_work_context when cycles remain. After the final cycle, do not transition phase
+            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1). Continue under the next instruction
+                when cycles remain. After the final cycle, do not transition phase
                 autonomously; produce the hand-over and request independent review.
           handover_template: |
             ### Refactor / Implementation Hand-over
@@ -1476,7 +1476,7 @@ workflows:
           phase_instructions: |
             Prove branch-wide structural completion and behavior preservation.
 
-            [ ] Load get_work_context, get_project_plan(issue_number=N), Research, Design,
+            [ ] Load get_project_plan(issue_number=N), Research, Design,
                 Planning, invariants, Approved Strategy, and implementation hand-over.
                 Read only standards needed to judge affected structure.
                 Stop if cycles/cleanup are incomplete or inputs conflict; do not redesign or patch.
@@ -1533,7 +1533,7 @@ workflows:
           phase_instructions: |
             Reconcile current architecture/developer documentation with the validated refactor.
 
-            [ ] Load get_work_context, get_project_plan(issue_number=N), and Validation.
+            [ ] Load get_project_plan(issue_number=N), and Validation.
                 Treat preserved behavior and validated target structure as the claims boundary.
                 Read applicable Documentation Standard sections and only relevant references.
 
@@ -1584,7 +1584,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
@@ -1655,7 +1655,7 @@ workflows:
           phase_instructions: |
             Plan a documentation-only change from authoritative evidence.
 
-            [ ] Load get_work_context and get_issue(issue_number=N).
+            [ ] Load get_issue(issue_number=N).
                 Establish the boundary before drafting:
                 - in scope: target audiences, current documentation, examples, links,
                   diagrams, terminology, and affected source-to-consumer pairs
@@ -1718,7 +1718,7 @@ workflows:
           phase_instructions: |
             Deliver the approved documentation-only plan.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Read the Planning artifact and the applicable DOCUMENTATION_STANDARD.md
                 sections. Treat historical and issue-local material as context unless
                 Planning identifies it as an active target.
@@ -1773,7 +1773,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
@@ -1839,7 +1839,7 @@ workflows:
           phase_instructions: |
             Define an approved maintenance boundary.
 
-            [ ] Load get_work_context and get_issue(issue_number=N).
+            [ ] Load get_issue(issue_number=N).
                 State objective, exclusions, and when the change is no longer mechanical.
             [ ] Inspect proportional code, config, tests/helpers, current docs,
                 agent instructions/templates/enforcement, and consumer blast radius;
@@ -1876,7 +1876,7 @@ workflows:
           phase_instructions: |
             Apply one coherent maintenance change within the approved boundary.
 
-            [ ] Load get_work_context and the approved Research outcome.
+            [ ] Load the approved Research outcome.
                 Stop on missing strategy, repository drift, expanded risk, or scope conflict.
             [ ] Make the smallest complete code/config/test/docs/consumer change.
                 Keep behavior configuration-driven and obey affected architecture,
@@ -1917,7 +1917,7 @@ workflows:
           phase_instructions: |
             Prove the completed chore workspace-wide before PR preparation.
 
-            [ ] Load get_work_context, issue, approved boundary, and Implementation evidence.
+            [ ] Load issue, approved boundary, and Implementation evidence.
                 Map objectives and affected code/config/test/docs/agent consumers to proof.
             [ ] Inspect full branch diff/status for expansion, unintended or missing files,
                 stale terms, missed consumers, and unsupported claims.
@@ -1962,7 +1962,7 @@ workflows:
           phase_instructions: |
             Reconcile current documentation with the validated chore.
 
-            [ ] Load get_work_context and Validation evidence; check the applicable
+            [ ] Load Validation evidence; check the applicable
                 Documentation Standard boundary.
             [ ] Identify invalidated user, developer, config, agent-instruction,
                 template, and derived-consumer docs.
@@ -1998,7 +1998,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
@@ -2069,7 +2069,7 @@ workflows:
           phase_instructions: |
             Establish evidence and approved strategy for an initiative spanning child work.
 
-            [ ] Load get_work_context and get_issue(issue_number=N).
+            [ ] Load get_issue(issue_number=N).
                 Before drafting define in-scope initiative outcomes/workstreams,
                 out-of-scope decomposition/implementation, and unresolved decisions.
 
@@ -2131,7 +2131,7 @@ workflows:
           phase_instructions: |
             Decompose approved epic research into owned, dependency-ordered child work.
 
-            [ ] Load get_work_context, Research, and Approved Strategy.
+            [ ] Load Research, and Approved Strategy.
                 Before drafting define in-scope child boundaries/dependencies and
                 out-of-scope design, child implementation, TDD cycles, and coordination.
 
@@ -2189,7 +2189,7 @@ workflows:
           phase_instructions: |
             Define the epic-wide architecture child issues must share.
 
-            [ ] Load get_work_context, Research, Planning, Approved Strategy,
+            [ ] Load Research, Planning, Approved Strategy,
                 and created child issues.
                 Before drafting define in-scope cross-workstream design and out-of-scope
                 child implementation, issue coordination, estimates, and strategy reselection.
@@ -2246,7 +2246,7 @@ workflows:
           phase_instructions: |
             Coordinate approved epic work; never implement child technical scope.
 
-            [ ] Load get_work_context, Planning, Design, and authoritative child state.
+            [ ] Load Planning, Design, and authoritative child state.
                 Verify incoming hand-overs as claims.
             [ ] Reconcile ownership, status, dependencies, shared contracts/tests,
                 Approved Strategy, integration gates, and blockers.
@@ -2276,7 +2276,7 @@ workflows:
           phase_instructions: |
             Reconcile current epic-level documentation after coordination.
 
-            [ ] Load get_work_context, Planning, Design, coordination evidence,
+            [ ] Load Planning, Design, coordination evidence,
                 and relevant child outcomes. Check the applicable Documentation Standard.
                 Treat child artifacts/history as context unless they are active sources.
 
@@ -2324,7 +2324,7 @@ workflows:
           phase_instructions: |
             Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Load get_work_context and get_project_plan(issue_number=N).
+            [ ] Load get_project_plan(issue_number=N).
                 Inspect the issue, Validation evidence, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 

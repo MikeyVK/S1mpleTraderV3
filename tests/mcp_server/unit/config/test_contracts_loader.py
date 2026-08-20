@@ -253,6 +253,7 @@ class TestLoadContractsConfig:
             contract = f"{workflow_name}/{phase.name}"
 
             assert instructions.strip(), contract
+            assert "get_work_context" not in instructions, contract
             assert handover.strip(), contract
             positions = [
                 re.search(rf"(?m)^#{{3,4}} {re.escape(heading)}$", handover) for heading in headings
