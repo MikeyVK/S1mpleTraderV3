@@ -178,6 +178,53 @@ class TestLoadContractsConfig:
         assert implementation.subphases == []
         assert implementation.commit_type_map == {}
 
+    def test_all_ready_contracts_are_exactly_equal(self) -> None:
+        """Every workflow exposes one identical Ready instruction and hand-over."""
+
+        real = Path(__file__).parents[4] / get_default_server_root() / "config" / "contracts.yaml"
+        result = ConfigLoader(real.parent).load_contracts_config()
+        ready_specs = [
+            workflow.get_phase("ready").instructions
+            for workflow in result.workflows.values()
+        ]
+
+        first = ready_specs[0]
+        assert all(spec.phase_instructions == first.phase_instructions for spec in ready_specs)
+        assert all(spec.handover_template == first.handover_template for spec in ready_specs)
+
+    def test_ready_contract_retains_terminal_invariants(self) -> None:
+        """The common Ready contract owns final evidence, transfer, and PR submission."""
+
+        real = Path(__file__).parents[4] / get_default_server_root() / "config" / "contracts.yaml"
+        result = ConfigLoader(real.parent).load_contracts_config()
+        ready = result.workflows["feature"].get_phase("ready").instructions
+        instructions = ready.phase_instructions
+        handover = ready.handover_template or ""
+
+        for marker in (
+            "evidence",
+            "deferred",
+            "git_status",
+            "git_diff_stat",
+            "scaffold_artifact",
+            "git_add_or_commit",
+            "submit_pr",
+        ):
+            assert marker in instructions
+
+        headings = (
+            "#### Scope",
+            "#### Deliverables",
+            "#### Evidence",
+            "#### Open Work",
+            "#### Review Request",
+        )
+        positions = tuple(handover.index(heading) for heading in headings)
+        assert positions == tuple(sorted(positions))
+        assert "Review requested" in handover
+        assert "human approval" not in instructions.lower()
+        assert "merge_pr" not in instructions
+
     def test_loaded_object_passes_model_validator(self, config_dir: Path) -> None:
         """Loaded object must satisfy the model_validator (last phase == pr_allowed_phase)."""
         _write_contracts(config_dir, _MINIMAL_YAML)
