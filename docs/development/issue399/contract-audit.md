@@ -618,88 +618,83 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 
 #### `epic/research`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
+- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Owned purpose:** Establish initiative-wide evidence, workstream framing, shared blast radius, and human-approved strategy.
+- **Workflow distinction:** Epic Research spans child ownership, stakeholders, and shared integration/acceptance surfaces rather than one implementation branch.
+- **Retained activations:** Context/issue; code/config/test/docs/agent/consumer blast radius; shared dependencies and proof; conditional standards/external discovery; human Approved Strategy; Research scaffold/commit; hand-over.
+- **Removed or relocated content:** Mandatory broad web/harness exploration, repeated interaction/nucleus prose, selected decomposition, design, execution plans, and duplicated self-checks.
+- **Test/evidence policy:** Identify shared durable integration/contract/acceptance obligations and existing helpers; child test design remains later.
+- **Document reads:** Applicable Architecture/Documentation sections required; other references/external sources conditional on material uncertainty.
+- **Delegation/QA:** Optional discovery is bounded, neutral, counterevidence-seeking, source-citing, uncertainly reported, and producer-verified.
+- **Hand-over:** Canonical clickable Research, shared-system/consumer/test, and strategy index.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; agent/template/enforcement consumers remain explicit in blast radius.
+- **Audit result:** PASS: C01-C07,C10-C19,C22-C23. N/A: C08-C09 (later test design), C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1800/477/2277/415.
+- **Residual concern:** None.
 
 #### `epic/planning`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
+- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Owned purpose:** Decompose approved initiative evidence into owned, dependency-ordered child issues.
+- **Workflow distinction:** Epic Planning defines child ownership and performs confirmed issue creation, not implementation cycles.
+- **Retained activations:** Research/strategy; pre-draft boundary; applicable standards; child/dependency/shared-contract/test decomposition; bounded discovery; Planning scaffold; human mutation confirmation; create_issue; commit; hand-over.
+- **Removed or relocated content:** Internal QA PASS loop, repeated checkpoints/nucleus, strategy reselection, child implementation/TDD detail, and coordination execution.
+- **Test/evidence policy:** Assign shared acceptance/test obligations and evidence owners; detailed test architecture belongs to Epic Design and child workflows.
+- **Document reads:** Research/strategy and applicable standards required; proposed seams/issues inspected directly; other references conditional.
+- **Delegation/QA:** Optional discovery is bounded, neutral, evidence-bearing, producer-verified, and cannot authorize issue creation.
+- **Hand-over:** Canonical Planning/Research and clickable child-issue index with creation proof.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C06-C07,C10-C19,C22-C23. N/A: C05 (Research), C08-C09 (Design/child planning), C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1542/458/2000/383.
+- **Residual concern:** None.
 
 #### `epic/design`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
+- **Implementation status:** REWRITTEN — producer audit complete; fresh independent design QA remains separate.
+- **Owned purpose:** Define the epic-wide architecture, shared contracts, and shared test design governing child work.
+- **Workflow distinction:** Epic Design resolves cross-workstream seams and proof ownership without prescribing child patches.
+- **Retained activations:** Approved artifacts/children; pre-draft boundary; applicable standards; option comparison; shared contracts/failures/cutover; first-class durable test architecture; bounded discovery/adversarial preflight; Design scaffold/commit; independent QA.
+- **Removed or relocated content:** Broad external/harness research, repeated interaction/nucleus, internal QA PASS, child implementation detail, coordination, and strategy reselection.
+- **Test/evidence policy:** Public contracts/invariants, reusable fixtures/helpers, integration/acceptance suites, child evidence, durable ownership, and rejection of ceremony/detail tests.
+- **Document reads:** Research/Planning/strategy/children and applicable standards required; other references conditional.
+- **Delegation/QA:** Discovery/preflight is bounded, direct-source-based, findings-only, producer-verified; fresh external QA alone owns GO/NOGO.
+- **Hand-over:** Canonical clickable Design/Planning/shared-contract/test review entry points.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C06-C19,C22-C23. N/A: C05 (Research), C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1785/473/2258/415.
+- **Residual concern:** None.
 
 #### `epic/coordination`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
+- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Owned purpose:** Reconcile authoritative child state and perform only epic-owned coordination.
+- **Workflow distinction:** Coordination is intentionally mechanical, never executes child technical work, and defers lifecycle procedure to configured contracts.
+- **Retained activations:** Context/Planning/Design/child state; claim verification; ownership/dependency/shared-gate/blocker reconciliation; epic-owned tracking mutations; routed hand-offs; stop boundary; hand-over.
+- **Removed or relocated content:** Unbounded "as needed" coordination, implicit technical takeover, undocumented verdict, and non-canonical transfer.
+- **Test/evidence policy:** Track shared test/integration gates and evidence state; create or run no tests here.
+- **Document reads:** Planning, Design, and authoritative child state only; other reads on concrete conflict.
+- **Delegation/QA:** Child technical execution/findings route to owning roles; coordinator verifies state and retains epic decisions.
+- **Hand-over:** Canonical clickable child-state index and compact dependency/gate/owner proof.
+- **Agent-instruction impact:** Aligned with Three-Agent role boundaries in C_AGENT_AUTHORITY.
+- **Audit result:** PASS: C01-C04,C07,C10-C19,C21-C23. N/A: C05-C06,C08-C09,C20.
+- **Size:** Before instruction/hand-over/effective/units = 268/130/398/101; after = 636/311/947/197.
+- **Residual concern:** Effective size grows because the deficient transfer gained canonical evidence/authority fields; C21 remains concise and total contracts shrink materially.
 
 #### `epic/documentation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
-
-
-
-
+- **Implementation status:** REWRITTEN — producer audit complete; fresh independent documentation QA remains separate.
+- **Owned purpose:** Reconcile current epic-level communication with verified planning, design, coordination, and child outcomes.
+- **Workflow distinction:** Epic Documentation aligns shared boundaries/rollout/stakeholder surfaces without rewriting child history.
+- **Retained activations:** Approved epic/child evidence; applicable doc standard; invalidated surface inventory; source-first updates/consumer sync; focused docs/child consistency proof; commit; independent doc QA.
+- **Removed or relocated content:** Harness workspace scan, blanket artifact edits, repeated review lists, broad runtime checks, and producer verdict.
+- **Test/evidence policy:** Only invalidated link/diagram/example/template/rendering/parity and child-boundary checks.
+- **Document reads:** Planning, Design, coordination, relevant child outcomes, and applicable Documentation Standard required; history conditional.
+- **Delegation/QA:** No delegation required; producer stops outcome-neutrally, fresh external doc QA owns GO/NOGO.
+- **Hand-over:** Canonical clickable epic-doc, consumer, and approved-input index.
+- **Agent-instruction impact:** Authoritative-first source-consumer synchronization aligns with C_AGENT_AUTHORITY.
+- **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 3189/631/3820/684; after = 1381/462/1843/335.
+- **Residual concern:** None.
 
 ## Related Documentation
 - **[docs/development/issue399/research.md][related-1]**

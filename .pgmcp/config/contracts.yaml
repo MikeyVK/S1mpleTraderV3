@@ -2067,133 +2067,57 @@ workflows:
         instructions:
           sub_role: epic-researcher
           phase_instructions: |
-            [ ] Read the epic issue: get_issue(issue_number=N).
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before drawing conclusions.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the research document.
-            [ ] Use explore_subagent to gather concrete evidence about this epic.
-                Ask it to identify:
-                - the initiative scope and likely workstreams
-                - affected systems, boundaries, stakeholder surfaces,
-                  and shared integration, contract, or acceptance test suites
-                - existing patterns or prior art worth reusing
-                - dependencies, sequencing constraints, and architectural constraints
-                - any shared boundaries, stakeholder-facing contracts, or cross-workstream
-                  cutover points that may require explicit human choice
-                - unknowns that planning must resolve before decomposition
+            Establish evidence and approved strategy for an initiative spanning child work.
 
-            [ ] Interaction checkpoint: present a short orientation to the user before going deeper.
-                Include:
-                - current understanding of the epic
-                - likely workstreams, affected domains,
-                  and shared integration or acceptance suites
-                - key dependencies, stakeholder surfaces, and architectural constraints
-                - major unknowns still blocking good research
-                Ask whether external research should be included, for example:
-                - competitor workflows or product behavior
-                - prior art in the wider ecosystem
-                - external standards, regulations, or published guidance
-                - domain references that shape scope or sequencing
+            [ ] Load get_work_context and get_issue(issue_number=N).
+                Before drafting define in-scope initiative outcomes/workstreams,
+                out-of-scope decomposition/implementation, and unresolved decisions.
 
-            [ ] If external research is requested, or if repo-only evidence is insufficient,
-                define a narrow external research target before proceeding.
-                Clarify:
-                - what exact scope, dependency, or domain question the external research must answer
-                - which sources or competitors are relevant
-                - whether the goal is inspiration, parity analysis, domain understanding,
-                  feasibility insight, or risk discovery
-                Do not default to broad web research without a concrete reason.
+            [ ] Inspect a proportional blast radius across systems, code/config boundaries,
+                shared tests/helpers, current docs, agent instructions/templates/enforcement,
+                stakeholder surfaces, and active consumers.
+                Identify reusable patterns, dependencies, sequencing constraints,
+                ownership edges, and shared integration/contract/acceptance suites.
 
-            [ ] If no external browsing capability is available in the current tool context,
-                ask the user for links, names, screenshots, notes, or examples to analyze.
-                Do not make broad external claims without traceable sources.
+            [ ] Check applicable Architecture and Documentation Standard sections.
+                Read other references or external sources only for a material uncertainty.
+                Bounded discovery must seek alternatives/counterevidence, cite direct
+                sources, expose uncertainty/exclusions, stop on conflict, and leave
+                all decisions with the producer.
 
-            [ ] Keep the content in-bounds while forming the research nucleus and before scaffolding:
-                - Include initiative framing, candidate workstreams, dependencies,
-                  stakeholder surfaces, shared test-suite implications,
-                  strategy-sensitive shared boundaries when materially relevant,
-                  external references, prior art, and architectural constraints,
-                  assumptions, open questions, risks, and expected results as planning input.
-                - Follow DOCUMENTATION_STANDARD.md for presentation rules,
-                  drafting discipline, tables, Mermaid, and diagram format.
-                - Exclude child issue creation, chosen decomposition decisions,
-                  implementation details, code or pseudo-code, task breakdown,
-                  TDD cycles, estimates, milestones, and execution plans.
-                - Exclude "we will create these issues" style commitments, even when inspired by
-                  external examples.
+            [ ] For each strategy-sensitive shared boundary, present viable compatibility,
+                migration, cutover, or containment options with cost/risk/impact.
+                Obtain and capture human Approved Strategy.
+                Stop if the epic must be narrowed, split, reframed, or lacks a decision.
 
-            [ ] Before scaffolding, produce a short research nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the current epic framing
-                - candidate workstreams, affected systems,
-                  and shared integration, contract, or acceptance suites
-                - key dependencies, stakeholder surfaces, and likely sequencing constraints
-                - reusable patterns or prior art
-                - architectural constraints already visible
-                - strategy-sensitive shared boundaries and viable policy options
-                  when materially relevant
-                - unknowns, assumptions, and risks
-                - expected results that should inform planning and decomposition
+            [ ] Scaffold and complete Research with initiative framing, candidate
+                workstreams, blast radius, dependencies, shared proof obligations,
+                assumptions/risks, Approved Strategy, and expected Planning inputs.
+                Keep child issue creation, selected decomposition, design, and execution out.
 
-            [ ] Do not scaffold the research document until the research nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Verify evidence traceability, boundary discipline, and applicable
+                Documentation Standard compliance. Commit with
+                git_add_or_commit(workflow_phase='research',
+                message='Research findings (#N)').
 
-            [ ] Create the research artifact: scaffold_artifact(artifact_type='research', name='research', context={..., 'approved_strategy': '...', 'expected_results': '...'}).
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the research.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
-
-            [ ] Self-check before finalizing:
-                - If a statement sounds like a committed decomposition, implementation instruction,
-                  or planning commitment, move it out of research.
-                - Treat external findings as evidence, not as decisions.
-                - If strategy-sensitive shared boundaries are in scope, present options and a recommendation
-                  as decision input, not as a chosen policy.
-                - Verify the research closes with an Approved Strategy entry,
-                  even if it records that no special migration or cutover policy is needed
-                  beyond preserving supported contracts.
-                - Prefer concrete evidence over general statements: cite specific files,
-                  systems, behaviors, and references where possible.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
-            [ ] Interaction checkpoint before commit: present the workstream framing,
-                dependency picture, scope concerns, unresolved questions,
-                and any shared boundaries requiring strategy approval to the user.
-                If strategy-sensitive boundaries are in scope, ask the user to choose the policy
-                per relevant boundary and capture the result in the research document as Approved Strategy.
-                If no special policy is needed, capture that explicitly as the Approved Strategy
-                before committing.
-                If research suggests the epic should be narrowed, split, or reframed,
-                stop and ask before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='research', message='Research findings (#N)')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Stop with the outcome-neutral hand-over below.
           handover_template: |
-            ### Research → Planning Hand-over
-            #### Scope
-            - Epic: #N
-            - Research focus: <one sentence>
+            ### Scope
+            - Epic outcome, workstream boundary, and exclusions: <summary>
+            - Approved Strategy per shared boundary: <decisions and constraints>
 
-            #### Findings
-            - Candidate workstreams: <major problem slices or initiative tracks>
-            - Affected systems / stakeholders: <components, teams, boundaries, users, and shared integration or acceptance suites involved>
-            - Dependencies / constraints: <sequencing, prerequisites, and architectural limits>
-            - Existing patterns / prior art: <what should be reused or considered>
-            - Expected results: <outcome framing for planning and decomposition>
+            ### Deliverables
+            - Research: [research](docs/development/issueN/research.md)
+            - Key systems, consumers, and shared test surfaces: <clickable links>
 
-            #### Approved Strategy
-            - Boundary / workstream scope: <affected boundaries and consumers, or 'no special migration policy required'>
-            - Selected strategy: <preserve compatibility | temporary bridge | clean break>
-            - Rationale: <why this policy was chosen>
-            - Constraints for later phases: <what planning, design, and coordination must respect>
+            ### Evidence
+            - Dependencies, constraints, prior art, and risks: <linked findings>
 
-            #### Open Questions
-            - <question that planning must resolve>
+            ### Open Work
+            - Planning questions or blockers: <items or None>
 
-            #### Files
-            - docs/development/issueN/research.md (new)
-
-            #### Stop-Go Proof
-            - Research doc committed
+            ### Review Request
+            - Review requested
       - name: planning
         exit_requires:
           - id: planning-doc
@@ -2204,113 +2128,53 @@ workflows:
         instructions:
           sub_role: epic-planner
           phase_instructions: |
-            [ ] Read the research artifact, the research hand-over, and the Approved Strategy from the previous phases.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the planning document.
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before fixing epic boundaries,
-                shared contracts, or decomposition assumptions.
-            [ ] Use explore_subagent to gather concrete evidence about how this epic
-                should be decomposed into child issues and workstreams.
-                Ask it to identify:
-                - candidate child issues or workstreams implied by the research findings
-                - sequencing dependencies, ownership edges, and risky cross-issue boundaries
-                - shared interfaces, contracts, and test obligations that multiple child issues must align on
-                - the execution consequences of the Approved Strategy for child-issue boundaries,
-                  bridge or cutover ownership, shared validation, and cleanup when applicable
-                - unknowns that would make design or coordination discover planning mistakes too late
+            Decompose approved epic research into owned, dependency-ordered child work.
 
-            [ ] Interaction checkpoint: present the planning framing to the user before going deeper.
-                Include:
-                - the proposed decomposition strategy and likely child-issue or workstream count
-                - the Approved Strategy and the constraints it imposes on decomposition
-                - the highest-risk boundaries, dependencies, and sequencing constraints
-                - expected shared contracts, shared test obligations, and coordination-sensitive edges
-                - major unknowns still blocking a sound plan
-                Ask whether any business, delivery, or organizational constraint
-                should influence the decomposition.
+            [ ] Load get_work_context, Research, and Approved Strategy.
+                Before drafting define in-scope child boundaries/dependencies and
+                out-of-scope design, child implementation, TDD cycles, and coordination.
 
-            [ ] Keep the planning in-bounds while forming the planning nucleus and before scaffolding:
-                - Include child-issue decomposition, scope boundaries, dependencies,
-                  sequencing, shared contracts, shared test obligations,
-                  Approved Strategy constraints, assumptions, open questions, risks,
-                  and out-of-scope notes.
-                - Keep the plan at epic scope: define what child issues must own,
-                  what they must align on, and what design still needs to resolve.
-                - Translate the Approved Strategy into decomposition boundaries,
-                  sequencing, bridge or cutover ownership, and cleanup only when required
-                  by that strategy.
-                - Do not compare or choose preserve compatibility, temporary bridge,
-                  or clean break in planning.
-                - If the Approved Strategy is missing, ambiguous, internally contradictory,
-                  or appears technically unsound, stop and activate a human-in-the-loop checkpoint
-                  instead of re-deciding strategy inside planning.
-                - Exclude child-issue implementation details, per-issue TDD cycles,
-                  file-by-file patch plans, milestone micromanagement,
-                  and ongoing coordination actions.
+            [ ] Check applicable Architecture and Documentation Standard sections.
+                Inspect proposed seams, shared contracts/tests, consumers, and existing
+                issues directly. Stop rather than reselect strategy or invent a boundary.
 
-            [ ] Before scaffolding, produce a short planning nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the approved epic scope and decomposition goal
-                - the Approved Strategy constraints that child issues must respect
-                - the proposed child-issue or workstream boundaries and why they exist
-                - sequencing dependencies and highest-risk cross-issue edges
-                - shared contracts, shared test obligations, and coordination-sensitive boundaries
-                - assumptions, open questions, and what the design phase must still resolve
+            [ ] Plan child issues with distinct outcomes, exclusions, ownership,
+                prerequisites, sequencing, shared contract/test obligations,
+                acceptance evidence, integration points, and cleanup/cutover ownership.
+                Expose cross-child risks, unresolved decisions, and coordination gates.
+                Bounded discovery, when useful, must be neutral, source-citing,
+                uncertainty-bearing, producer-verified, and non-authoritative.
 
-            [ ] Do not scaffold the planning document until the planning nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Scaffold and complete Planning. Verify complete Research/strategy
+                traceability, non-overlapping child ownership, executable dependencies,
+                and no hidden Design or implementation work.
 
-            [ ] Create the planning artifact: scaffold_artifact(artifact_type='planning', name='planning').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the plan.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+            [ ] Present the decomposition and external mutations to the human.
+                After explicit confirmation, create the child issues with create_issue
+                and keep their scopes/dependencies aligned with Planning.
+                Stop on rejection, ambiguity, or partial creation failure.
 
-            [ ] Interaction checkpoint before internal QA: present the decomposition strategy,
-                shared contracts, Approved Strategy execution consequences,
-                sequencing constraints, and unresolved questions to the user.
-                If the boundaries or priorities are wrong, revise before review.
+            [ ] Commit with git_add_or_commit(workflow_phase='planning',
+                message='Planning for #N').
 
-            [ ] Internal QA checkpoint before creating child issues or committing: invoke the qa agent
-                with sub-role plan-verifier to review the plan.
-                Ask QA as plan-verifier to verify:
-                - alignment with the research artifact, research hand-over, and Approved Strategy
-                - the decomposition is coherent, sequentially sane,
-                  and does not hide design or implementation work inside planning
-                - shared contracts, shared test obligations,
-                  and Approved Strategy execution constraints are explicit
-                - the plan stays within planning-phase scope and is usable by the design and coordination phases
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the plan and repeat the same QA checkpoint
-                before creating child issues or committing.
-
-            [ ] Create the child issues after the plan is stable and internally reviewed.
-                Keep the created issues aligned with the planning document's decomposition.
-            [ ] Commit: git_add_or_commit(workflow_phase='planning', message='Planning for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Stop with the outcome-neutral hand-over below.
           handover_template: |
-            ### Planning → Design Hand-over
-            #### Scope
-            - Epic: #N
-            - Child issues created: <list>
-            - Planning focus: <one sentence>
+            ### Scope
+            - Epic decomposition and exclusions: <summary>
 
-            #### Review Targets
-            - Decomposition strategy: <how the epic was split and why>
-            - Research alignment: <which research findings shaped the decomposition>
-            - Approved Strategy alignment: <which strategy constraints the decomposition operationalizes>
-            - Shared contracts / test obligations: <what child issues must align on>
-            - Sequencing / coordination strategy: <where ordering and ownership boundaries matter>
-            - Open questions: <what remains unresolved>
+            ### Deliverables
+            - Planning: [planning](docs/development/issueN/planning.md)
+            - Child issues: <clickable issue links and ownership>
+            - Research: [research](docs/development/issueN/research.md)
 
-            #### Files
-            - docs/development/issueN/planning.md (new)
+            ### Evidence
+            - Strategy, dependency, shared-contract/test, and creation proof: <summary>
 
-            #### Stop-Go Proof
-            - Planning doc committed
-            - Child issues created and aligned with the plan
+            ### Open Work
+            - Design questions, blockers, or uncreated work: <items or None>
+
+            ### Review Request
+            - Review requested
       - name: design
         exit_requires:
           - id: design-doc
@@ -2321,234 +2185,136 @@ workflows:
         instructions:
           sub_role: epic-designer
           phase_instructions: |
-            [ ] Read the research artifact, the planning artifact, the planning hand-over,
-                and the Approved Strategy from the previous phases.
-            [ ] Review the child issues created during planning to understand the decomposition boundary.
-            [ ] Read ARCHITECTURE_PRINCIPLES.md before making design decisions.
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the design document.
-            [ ] Use explore_subagent to gather concrete evidence about this epic design.
-                Ask it to identify:
-                - cross-workstream boundaries, shared interfaces, system contracts,
-                  and shared test obligations that child issues must align on
-                - sequencing dependencies, integration risks, and coordination-sensitive boundaries
-                - existing platform patterns or architectural constraints that should govern the epic
-                - architectural decisions that would create churn if left to individual child issues
-                - the technical consequences of the Approved Strategy for shared contracts,
-                  workstream boundaries, and coordination constraints
-                - unknowns that coordination or child implementations would otherwise discover too late
+            Define the epic-wide architecture child issues must share.
 
-            [ ] Interaction checkpoint: present the epic design framing to the user before going deeper.
-                Include:
-                - current understanding of the epic outcome and decomposition
-                - the Approved Strategy and the constraints it imposes on design
-                - cross-issue boundaries, shared contracts,
-                  and shared test obligations already visible
-                - likely integration risks, sequencing constraints, stakeholder surfaces,
-                  and affected integration or acceptance suites
-                - major unknowns still blocking a coherent epic design
-                Ask whether any business, delivery, or organizational constraint
-                should influence the design.
+            [ ] Load get_work_context, Research, Planning, Approved Strategy,
+                and created child issues.
+                Before drafting define in-scope cross-workstream design and out-of-scope
+                child implementation, issue coordination, estimates, and strategy reselection.
 
-            [ ] If research or planning left unresolved questions that require external comparison,
-                define a narrow external research target before proceeding.
-                Clarify:
-                - what exact system, dependency, or interface question the external research must answer
-                - which sources, products, libraries, protocols, or references are relevant
-                - whether the goal is parity analysis, feasibility insight,
-                  domain understanding, or risk discovery
-                Do not default to broad web research without a concrete reason.
+            [ ] Check applicable Architecture and Documentation Standard sections.
+                Inspect shared seams and consumers directly.
+                Stop and reopen the human strategy decision if new evidence makes it unsound.
 
-            [ ] If no external browsing capability is available in the current tool context,
-                ask the user for links, examples, screenshots, notes, or references to analyze.
-                Do not make broad external claims without traceable sources.
+            [ ] Compare viable epic-level options within the Approved Strategy.
+                Define responsibilities, dependencies, shared interfaces/contracts,
+                data/failure/cutover behavior, integration points, sequencing constraints,
+                and child ownership.
 
-            [ ] Keep the design in-bounds while forming the design nucleus and before scaffolding:
-                - Include cross-workstream option comparison, chosen epic direction, rationale,
-                  shared interfaces and contracts, shared test obligations, system boundaries,
-                  sequencing assumptions, integration points, dependency rules,
-                  the Approved Strategy and its constraints,
-                  design-level validation strategy, assumptions, open questions, risks,
-                  and coordination-relevant consequences.
-                - Include epic-wide architectural implications when they are stable and central,
-                  but flag anything that should migrate to architecture.md instead of silently
-                  mixing long-lived architecture with feature-level guidance.
-                - Exclude child-issue implementation details, file-by-file patch plans,
-                  per-issue TDD cycles, estimates, milestone management, issue triage,
-                  and ongoing coordination actions.
-                - Exclude policy re-decisions about preserve compatibility,
-                  temporary bridge, or clean break. If new evidence makes the Approved Strategy
-                  unsound, stop and reopen the decision explicitly instead of redesigning by stealth.
-                - Exclude "child issue X will implement file Y" style commitments.
-                - Do not invent ADRs or assume an ADR process exists for this project.
+            [ ] Design shared test architecture as a first-class system boundary:
+                public contracts/invariants, reusable fixtures/helpers, integration and
+                acceptance suites, child evidence, and durable ownership.
+                Reject ceremony tests, implementation-detail coupling, and duplicated suites.
 
-            [ ] Before scaffolding, produce a short design nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the refined epic design goal and target operating model
-                - the Approved Strategy and the constraints it imposes
-                - the viable cross-workstream design options and trade-offs within that strategy
-                - the preferred epic direction and rationale
-                - shared interfaces, boundaries, cross-issue contracts,
-                  and shared test obligations
-                - sequencing constraints, dependency rules, and integration points
-                - compatibility constraints, failure modes, and major risks
-                - design-level validation strategy: what child issues and coordination must prove
-                - open questions, assumptions, and coordination-relevant consequences
+            [ ] Use bounded discovery or adversarial preflight only when it improves
+                a concrete decision. Require direct sources, alternatives/counterevidence,
+                findings/uncertainty, exclusions, and stop conditions; verify output.
+                Producer-owned review cannot return a verdict or drive progression.
 
-            [ ] Do not scaffold the design document until the design nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Scaffold and complete Design. Verify Research/Planning/strategy
+                traceability, child usability, architecture/test quality, coordination
+                consequences, and applicable Documentation Standard compliance.
+                Commit with git_add_or_commit(workflow_phase='design',
+                message='Design for #N').
 
-            [ ] Create the design artifact: scaffold_artifact(artifact_type='design', name='design').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the design.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
-
-            [ ] Self-check before the final user checkpoint:
-                - Every major design decision must be usable by child issues and coordination,
-                  not only by a single implementation slice.
-                - Reject options that conflict with ARCHITECTURE_PRINCIPLES.md.
-                - Reject any direction that conflicts with the Approved Strategy.
-                - If a statement sounds like issue triage, detailed planning, or implementation,
-                  move it out of design.
-                - Prefer concrete evidence over general statements: cite specific systems,
-                  interfaces, boundaries, issues, flows, and shared test suites where possible.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
-
-            [ ] Interaction checkpoint before internal QA: present the chosen epic direction,
-                rejected alternatives, Approved Strategy alignment, child-issue impacts,
-                sequencing constraints, and unresolved architectural questions to the user.
-                If the trade-off priorities or direction are wrong, revise before review.
-
-            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role design-reviewer
-                to review the epic design.
-                Ask QA as design-reviewer to verify:
-                - alignment with the research artifact, planning artifact, planning hand-over,
-                  and Approved Strategy
-                - compliance with ARCHITECTURE_PRINCIPLES.md
-                - compliance with DOCUMENTATION_STANDARD.md
-                - the design stays at epic/system boundary instead of collapsing
-                  into child-issue implementation details
-                - the design operationalizes the Approved Strategy without silently changing it
-                - shared contracts, coordination implications, and sequencing assumptions are explicit
-                - the chosen direction is justified and coherent across child issues
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the design and repeat the same QA checkpoint
-                before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='design', message='Design for #N')
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Stop with the outcome-neutral review index below.
+                Fresh independent design QA reads workspace evidence and owns GO/NOGO.
           handover_template: |
-            ### Design → QA Hand-over
-            #### Scope
-            - Epic: #N
-            - Design focus: <one sentence>
+            ### Scope
+            - Epic design boundary, direction, and exclusions: <summary>
 
-            #### Review Targets
-            - Epic direction: <one sentence>
-            - Approved Strategy alignment: <how the design respects the chosen policy>
-            - Planning alignment: <which child-issue or workstream decisions materially shaped the design>
-            - Shared contracts / boundaries: <what child issues, coordination, and shared test suites must align on>
-            - Sequencing / coordination impact: <what ordering, dependency, or governance constraints matter next>
-            - Open questions: <what remains unresolved>
+            ### Deliverables
+            - Design: [design](docs/development/issueN/design.md)
+            - Planning: [planning](docs/development/issueN/planning.md)
+            - Shared contracts/test architecture and child seams: <clickable links>
 
-            #### Files
-            - docs/development/issueN/design.md (new)
+            ### Evidence
+            - Alternatives, strategy alignment, risks, and standards: <summary>
+
+            ### Open Work
+            - Child/coordination constraints or blockers: <items or None>
+
+            ### Review Request
+            - Review requested
       - name: coordination
         exit_requires: []
         instructions:
           sub_role: epic-coordinator
           phase_instructions: |
-            [ ] Review all child issues and their current status.
-            [ ] Update priorities, dependencies, and epic-level blockers where needed.
-            [ ] Coordinate child-work hand-offs, user checkpoints, and QA follow-up as needed.
-            [ ] Document coordination notes.
-            [ ] Produce hand-over.
+            Coordinate approved epic work; never implement child technical scope.
+
+            [ ] Load get_work_context, Planning, Design, and authoritative child state.
+                Verify incoming hand-overs as claims.
+            [ ] Reconcile ownership, status, dependencies, shared contracts/tests,
+                Approved Strategy, integration gates, and blockers.
+                Make only epic-owned tracking updates through configured lifecycle
+                contracts; route technical work and findings to their owner.
+            [ ] Record decisions, hand-offs, blockers, deferred work, and next owners.
+                Stop on scope/strategy conflict or required human decision.
+            [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Coordination Hand-over
-            #### Scope
-            - Epic: #N
-            - Sub-issues reviewed: <list>
-            #### Stop-Go Proof
-            - Sub-issues in expected states
+            ### Scope
+            - Epic and coordination window: <#N and scope>
+
+            ### Deliverables
+            - Child issues/status: <clickable issue links>
+
+            ### Evidence
+            - Dependencies, gates, hand-offs, and updates: <summary>
+
+            ### Open Work
+            - Blockers, deferred work, actions, and owners: <items or None>
+
+            ### Review Request
+            - Review requested
       - name: documentation
         instructions:
           sub_role: epic-documenter
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Treat documentation as the epic docs-workspace reconciliation and close-out phase after
-                planning, design, and coordination work are complete.
+            Reconcile current epic-level documentation after coordination.
 
-            [ ] Read the planning artifact, design artifact,
-                coordination notes or outputs, and DOCUMENTATION_STANDARD.md
-                before editing documentation.
-                Use them as the authoritative baseline for epic-level outcomes,
-                shared boundaries, and communication surfaces.
-                Treat child-issue artifacts, archived docs, and historical coordination notes
-                as context by default, not active documentation.
-                Update them only when they are current authoritative epic deliverables,
-                planning or coordination explicitly requires the correction,
-                or the user explicitly asks for it.
+            [ ] Load get_work_context, Planning, Design, coordination evidence,
+                and relevant child outcomes. Check the applicable Documentation Standard.
+                Treat child artifacts/history as context unless they are active sources.
 
-            [ ] Use explore_subagent to scan the epic-level documentation workspace for surfaces affected by this issue.
-                Ask it to identify:
-                - epic-level docs, overview docs, shared contract docs, rollout notes,
-                  stakeholder guidance, and current coordination docs that need final alignment
-                - child-issue, archived, or historical artifacts that may provide context
-                  but should normally remain unchanged
-                - stale examples, diagrams, decomposition summaries, screenshots, and cross-links
-                - docs that were reviewed and can remain unchanged
-                - the smallest safe set of documentation updates needed to leave epic-level docs coherent
+            [ ] Identify invalidated epic overviews, shared contract/boundary docs,
+                diagrams, rollout/stakeholder guidance, examples, cross-links,
+                agent instructions, and source-consumer copies.
+                Stop on new scope/strategy decisions or unsupported child claims.
 
-            [ ] Update or create the relevant epic-level documentation files.
-                Prioritize:
-                - shared overview or coordination docs that explain the epic outcome
-                - docs that describe shared contracts, boundaries, or rollout expectations
-                - diagrams, decomposition notes, links, and stakeholder guidance that would otherwise be stale
+            [ ] Update the smallest coherent current surface.
+                Trace every claim to Planning, Design, coordination, or verified child
+                evidence. Update authoritative sources first and synchronize consumers.
+                Record reviewed-but-unchanged surfaces when useful.
 
-            [ ] Keep the documentation coherent across the epic documentation workspace:
-                - every epic-level claim must trace back to planning, design, or coordination evidence
-                - epic-level docs should stay consistent with child-issue boundaries and shared contracts
-                - record which docs surfaces were updated and which were reviewed and left unchanged
-                - if the docs scan reveals a gap that needs a new finding, a new scope decision,
-                  or newly deferred work, stop and raise a blocker for human review
+            [ ] Verify only invalidated links, diagrams, examples, terminology,
+                templates, rendering, and source-consumer/child-boundary consistency.
+                Capture deferred epic documentation work explicitly.
 
-            [ ] Prepare the Documentation → QA hand-over.
-                It must cover:
-                - documentation scan coverage across the docs workspace
-                - which documentation files were updated and why
-                - which documentation surfaces were reviewed and left unchanged, with rationale
-                - how the updated docs reflect the epic-level outcome
-                - residual caveats or ownership boundaries that remain visible in the docs
+            [ ] Self-check scope, current-state accuracy, source authority,
+                Documentation Standard compliance, and absence of contradicted child
+                boundaries. Commit with git_add_or_commit(
+                workflow_phase='documentation', message='Documentation for #N').
 
-            [ ] Self-check before commit:
-                - every epic-level claim traces back to planning, design, or coordination evidence
-                - epic-level diagrams, decomposition notes, links, and contract explanations do not contradict child-issue boundaries
-                - reviewed-but-unchanged docs are intentional and defensible
-                - the documentation follows DOCUMENTATION_STANDARD.md
-
-            [ ] Commit: git_add_or_commit(workflow_phase='documentation', message='Documentation for #N')
-            [ ] Produce hand-over for QA doc review.
+            [ ] Stop with the outcome-neutral review index below.
+                Fresh independent documentation QA owns any GO/NOGO verdict.
           handover_template: |
-            ### Documentation → QA Hand-over
-            #### Scope
-            - Epic: #N
-            - Documentation focus: <what epic-level communication was clarified, corrected, or updated>
+            ### Scope
+            - Epic documentation outcome and exclusions: <summary>
 
-            #### Review Targets
-            - Docs workspace coverage: <which surfaces were scanned>
-            - Planning / design / coordination alignment: <which epic-level outcomes the documentation reflects>
-            - Updated docs: <which files changed and why>
-            - Reviewed but unchanged: <which surfaces were checked and intentionally left as-is>
-            - Residual caveats / ownership boundaries: <what remains visible and intentionally unresolved>
+            ### Deliverables
+            - Updated epic documentation and consumers: <clickable links>
+            - Planning/Design/child evidence: <clickable review inputs>
 
-            #### Files
-            - docs/... (updated)
+            ### Evidence
+            - Focused documentation and consistency checks: <tools/outcomes>
+            - Reviewed but unchanged: <surfaces and rationale or None>
 
-            #### Stop-Go Proof
-            - Documentation committed
+            ### Open Work
+            - Deferred work, ownership caveats, or blockers: <items or None>
+
+            ### Review Request
+            - Review requested
       - name: ready
         instructions:
           sub_role: epic-releaser
