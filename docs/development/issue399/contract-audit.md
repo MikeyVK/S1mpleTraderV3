@@ -92,10 +92,10 @@ Parsed with the same block-scalar and lexical-unit rules as the RED baseline.
 
 | Measure | Baseline | Final | Reduction |
 |---|---:|---:|---:|
-| Instruction chars | 158665 | 67776 | 90889 (57.28%) |
+| Instruction chars | 158665 | 67836 | 90829 (57.25%) |
 | Hand-over chars | 24019 | 21283 | 2736 (11.39%) |
-| Effective chars | 182684 | 89059 | 93625 (51.25%) |
-| Lexical units | 33613 | 17521 | 16092 (47.88%) |
+| Effective chars | 182684 | 89119 | 93565 (51.22%) |
+| Lexical units | 33613 | 17528 | 16085 (47.85%) |
 | Effective contracts | 39 | 39 | 0 |
 
 The richer canonical hand-over contract reduces less than instructions by design;
@@ -278,7 +278,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional implementation hand-over with primary production/test links and branch diff as complete inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research-owned), C06 (pre-draft phases), C20 (Ready-only), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 2372/0/2372/576; after = 2237/665/2902/565.
+- **Size:** Before instruction/hand-over/effective/units = 2372/0/2372/576; after = 2246/665/2911/566.
 - **Residual concern:** None.
 #### `feature/validation`
 
@@ -370,7 +370,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional production/regression links plus branch diff inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research), C06 (pre-draft), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 4310/0/4310/829; after = 2169/708/2877/553.
+- **Size:** Before instruction/hand-over/effective/units = 4310/0/4310/829; after = 2178/708/2886/554.
 - **Residual concern:** None.
 #### `bug/validation`
 
@@ -462,7 +462,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional structural/test links and diff inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 4464/0/4464/840; after = 2016/704/2720/521.
+- **Size:** Before instruction/hand-over/effective/units = 4464/0/4464/840; after = 2025/704/2729/522.
 - **Residual concern:** None.
 #### `refactor/validation`
 
@@ -507,7 +507,7 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical proportional correction/test links plus diff inventory.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06 (no pre-implementation phases), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 4475/0/4475/858; after = 2152/656/2808/545.
+- **Size:** Before instruction/hand-over/effective/units = 4475/0/4475/858; after = 2185/656/2841/549.
 - **Residual concern:** None.
 #### `hotfix/validation`
 

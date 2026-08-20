@@ -266,7 +266,8 @@ workflows:
                 or authorize progression. Resolve material findings yourself.
 
             [ ] When objective cycle evidence is satisfied and more cycles remain, call
-                transition_cycle(to_cycle=N+1). Continue under the next instruction.
+                transition_cycle(to_cycle=N+1).
+                Continue only under the next instruction.
                 After the final cycle, do not transition phase autonomously; produce the hand-over
                 below and request independent review.
           handover_template: |
@@ -734,7 +735,8 @@ workflows:
                 seeks violations/counterexamples and returns findings-only; it cannot issue
                 PASS/GO or authorize progression.
 
-            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1). Continue under the next instruction
+            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1).
+                Continue only under the next instruction
                 when cycles remain. After the final cycle, do not transition
                 phase autonomously; produce the hand-over and request independent review.
           handover_template: |
@@ -988,7 +990,8 @@ workflows:
                 preflight returns findings-only and cannot issue PASS/GO or authorize progression.
 
             [ ] When objective evidence is satisfied and slices remain, call
-                transition_cycle(to_cycle=N+1), then repeat.
+                transition_cycle(to_cycle=N+1).
+                Continue only under the next instruction.
                 After the final slice, do not transition phase autonomously; produce the hand-over
                 and request independent review.
           handover_template: |
@@ -1439,7 +1442,8 @@ workflows:
                 cleanup completeness, and Approved Strategy. Optional adversarial preflight seeks
                 structural contamination/counterexamples and returns findings-only; no PASS/GO.
 
-            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1). Continue under the next instruction
+            [ ] With objective cycle evidence satisfied, call transition_cycle(to_cycle=N+1).
+                Continue only under the next instruction
                 when cycles remain. After the final cycle, do not transition phase
                 autonomously; produce the hand-over and request independent review.
           handover_template: |
