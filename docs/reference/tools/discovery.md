@@ -37,7 +37,7 @@ The MCP server provides **3 discovery/admin tools**:
 
 **MCP Name:** `get_work_context`  
 **Class:** `GetWorkContextTool`  
-**File:** [mcp_server/tools/discovery_tools.py](../../../../mcp_server/tools/discovery_tools.py)
+**File:** [mcp_server/tools/discovery_tools.py](../../../mcp_server/tools/discovery_tools.py)
 
 Aggregates the active branch and workflow state into an operator-facing orientation response. The response is formatted text, not a JSON work-queue payload, and is designed to be the authoritative startup context for the current branch.
 
@@ -47,43 +47,34 @@ None. `GetWorkContextInput` is fieldless.
 
 #### Returns (via MCP Resource Cache)
 
-`get_work_context` returns a single `TextContent` block containing the formatted presentation text (including active branch details, phase instructions, and handover template) and the resource cache link pointing to the cached `GetWorkContextOutput` DTO.
+`get_work_context` returns a single `TextContent` block with a compact orientation header, the TODO-discipline reminder, and a resource link. The current text presentation does not inline the phase instructions or hand-over template; callers must read the cached DTO for those fields. Issue #456 tracks making that text response actionable without replacing the cache as the structured source of truth.
 
-The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
+The complete DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `current_branch`: `string`
 - `workflow_name`: `string`
 - `phase`: `string`
-- `issue_number`: `int`
-- `parent_branch`: `string`
-- `sub_phase`: `string`
-- `current_cycle`: `int`
+- `issue_number`: `int | null`
+- `parent_branch`: `string | null`
+- `sub_phase`: `string | null`
+- `current_cycle`: `int | null`
 - `phase_source`: `string`
 - `phase_confidence`: `string`
 - `sub_role_hint`: `string`
 - `phase_instructions`: `string`
-- `handover_template`: `string`
-#### Text Fallback
+- `handover_template`: `string | null`
+- `invalid_phase_warning`: `string | null`
+
+#### Text Presentation
 
 ```text
 Branch: `feature/123-oauth` | Workflow: feature | Issue: #123
-Phase: 🧪 implementation | Role: implementer
+Phase: implementation (confidence=high)
+Role: implementer
 Parent: main
+
 TODO discipline: create or refresh your TODO list now; keep exactly one item in progress and update it after each material step.
 
----
-
-### 🎯 Phase Instructions
-
-[ ] Call get_project_plan(issue_number=N)
-[ ] Execute the current TDD cycle
-
----
-
-### Hand-over Template
-
-### Imp → QA hand-over
-#### Scope
-- Cycles executed: <list>
+View resource: pgmcp://cache/runs/<run_id>
 ```
 
 #### Example Usage
@@ -95,11 +86,10 @@ TODO discipline: create or refresh your TODO list now; keep exactly one item in 
 #### Behavior Notes
 
 - **State Source:** Reads workflow, phase, issue number, parent branch, cycle, and sub-phase from branch-local `.pgmcp/state.json` when available.
-- **Phase Script Delivery:** Reads `sub_role_hint`, `phase_instructions`, and optional `handover_template` from `.pgmcp/config/contracts.yaml` for the active workflow and phase.
-- **Dominant Instructions Block:** Renders `### 🎯 Phase Instructions` as the first major section after the orientation header.
+- **Phase Script Delivery:** Reads `sub_role_hint`, `phase_instructions`, and optional `handover_template` from `.pgmcp/config/contracts.yaml` into the cached DTO. The current text template renders only the role hint.
 - **No Legacy Work Queue Payload:** Does not return `open_issues`, `recent_closed`, `suggestions`, `active_issue`, `recent_commits`, or `tdd_cycle_info`.
-- **Bootstrap Degradation:** If branch state is unavailable, the tool still returns a branch-oriented response with an explicit `No instructions defined` fallback instead of failing.
-- **Invalid Workflow-Phase Recovery:** If the workflow is known but the stored phase is invalid, the response stays non-error and renders a warning before `### 🎯 Phase Instructions` with the valid phases plus `force_phase_transition` / `get_work_context` recovery guidance.
+- **Bootstrap Degradation:** If branch state is unavailable, the tool still returns a branch-oriented DTO with an explicit fallback instruction instead of failing; the complete fallback remains available through the cache resource.
+- **Invalid Workflow-Phase Recovery:** If the workflow is known but the stored phase is invalid, the response stays non-error and records recovery guidance in `invalid_phase_warning`; the current text template does not inline that warning.
 - **Context-Loaded Side Effect:** Marks the current branch context as loaded in the in-memory cache when the writer is wired, which unblocks later branch-mutating tools behind `check_context_loaded`.
 - **Gate Bootstrap Tool:** Remains callable even when `check_context_loaded` is active, because it is the tool that reloads branch context after phase, cycle, checkout, or non-noop pull changes.
 
@@ -109,7 +99,7 @@ TODO discipline: create or refresh your TODO list now; keep exactly one item in 
 
 **MCP Name:** `health_check`  
 **Class:** `HealthCheckTool`  
-**File:** [mcp_server/tools/health_tools.py](../../../../mcp_server/tools/health_tools.py)
+**File:** [mcp_server/tools/health_tools.py](../../../mcp_server/tools/health_tools.py)
 
 Check server health status.
 
@@ -172,7 +162,7 @@ If the server encounters domain-level configuration errors (e.g., syntax errors 
 
 **MCP Name:** `restart_server`  
 **Class:** `RestartServerTool`  
-**File:** [mcp_server/tools/admin_tools.py](../../../../mcp_server/tools/admin_tools.py)
+**File:** [mcp_server/tools/admin_tools.py](../../../mcp_server/tools/admin_tools.py)
 
 Hot-reload MCP server to reload code changes via proxy mechanism.
 
@@ -280,7 +270,7 @@ The MCP server does not duplicate generic workspace-search capabilities.
 
 ### Restart Proxy Configuration
 
-Proxy behavior configured in [mcp_server/core/proxy.py](../../../../mcp_server/core/proxy.py):
+Proxy behavior configured in [mcp_server/core/proxy.py](../../../mcp_server/core/proxy.py):
 
 - **Startup timeout:** 10 seconds
 - **Health check interval:** 500ms
@@ -316,13 +306,14 @@ Proxy behavior configured in [mcp_server/core/proxy.py](../../../../mcp_server/c
 - [README.md](README.md) — MCP Tools navigation index
 - [docs/reference/proxy_restart.md](../proxy_restart.md) — Hot-reload proxy architecture (detailed)
 - [docs/reference/mcp_vision_reference.md](../mcp_vision_reference.md) — MCP server architecture and vision
-- [docs/development/issue268/validation.md](../../../development/issue268/validation.md) — Validation evidence for the delivered `get_work_context` contract and `context_loaded` behavior
+- [docs/development/issue268/validation.md](../../development/archive/issue268/validation.md) — Validation evidence for the delivered `get_work_context` contract and `context_loaded` behavior
 
 ---
 
 ## Version History
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.1 | 2026-08-20 | Agent | Correct current `get_work_context` text/cache behavior and repair active links |
 | 3.0 | 2026-08-18 | Agent | Align discovery/admin reference with the current three-tool public surface |
 | 2.3 | 2026-07-20 | Agent | Update degraded mode section for workspace version check failures, and fix stale links |
 | 2.2 | 2026-05-24 | Agent | Document the invalid workflow-phase recovery warning and recovery path for `get_work_context` |

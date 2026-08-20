@@ -4,10 +4,10 @@ This directory is the operational index for the PhaseGate MCP Server.
 
 ## What Is Authoritative
 
-To avoid contract drift, the authoritative public MCP tool documentation lives in:
+To avoid contract drift, the authoritative public MCP tool documentation starts at
+[docs/reference/tools/README.md](../reference/tools/README.md). Its category references own
+the current tool details:
 
-- [docs/reference/MCP_TOOLS.md](../reference/MCP_TOOLS.md) for the public tool inventory
-- [docs/reference/tools/README.md](../reference/tools/README.md) for category navigation
 - [docs/reference/tools/git.md](../reference/tools/git.md) for git workflow tools
 - [docs/reference/tools/github.md](../reference/tools/github.md) for issue, PR, label, and milestone tools
 - [docs/reference/tools/project.md](../reference/tools/project.md) for project and phase tools
@@ -15,26 +15,26 @@ To avoid contract drift, the authoritative public MCP tool documentation lives i
 - [docs/reference/tools/scaffolding.md](../reference/tools/scaffolding.md) for `scaffold_artifact`
 - [docs/reference/tools/discovery.md](../reference/tools/discovery.md) for `get_work_context`, health checks, and server restarts
 
+[docs/reference/MCP_TOOLS.md](../reference/MCP_TOOLS.md) is a legacy consolidated
+overview. Use it for broad orientation only; where it differs from the modular reference
+suite or live tool schemas, the modular references and schemas are authoritative.
+
 This directory links the MCP server architecture and operational guidance around those references.
 
 ## Core Documentation
 
-- **[Architecture](ARCHITECTURE.md)**
+- **[Architecture](architecture.md)**
   High-level design, layers, component responsibilities, and composition root.
-- **[Implementation Plan](IMPLEMENTATION_PLAN.md)**
-  Historical roadmap for the MCP server rollout.
-- **[Resources](RESOURCES.md)**
-  Specification of available MCP resources (`pgmcp://...`).
-- **[Tools](TOOLS.md)**
-  Current public tool surface summary derived from [mcp_server/server.py](../../mcp_server/server.py).
-- **[Phase Workflows](PHASE_WORKFLOWS.md)**
+- **[Phase Workflows](phase-workflows.md)**
   Development phase workflows and lifecycle guidance.
-- **[GitHub Setup](GITHUB_SETUP.md)**
+- **[GitHub Setup](github-setup.md)**
   GitHub integration and token setup.
+- **[User Guide](user-guide.md)**
+  Operational guidance for using the server.
 
 ## Standardized Development
 
-Use `scaffold_artifact` to generate code and documentation artifacts from the artifact registry in `.pgmcp/templates/config.yaml`.
+Use `scaffold_artifact` to generate code and documentation artifacts from the artifact registry in `.pgmcp/templates/config/`.
 
 | Artifact Type | Example Usage |
 | :--- | :--- |
