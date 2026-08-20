@@ -1,526 +1,232 @@
 <!-- docs/reference/copilot-agent-instructions-model.md -->
-<!-- template=generic_doc version=43c84181 created=2026-05-17 updated=2026-05-24 -->
-# Copilot Agent Instructions Model
+<!-- template=generic_doc version=43c84181 created=2026-05-17 updated=2026-08-20 -->
+# Agent Instructions Model
 
-**Status:** DEFINITIVE
-**Version:** 1.2
-**Last Updated:** 2026-05-24
+**Status:** DEFINITIVE  
+**Version:** 2.1  
+**Last Updated:** 2026-08-20
 
 ---
 
 ## Purpose
 
-This document explains in one place how the GitHub Copilot instruction files and the
-`phase-gate-mcp` server cooperate to enforce workflow discipline in VS Code. It is intended
-for developers, integrators, and any AI agent starting fresh on this project.
+Explain how host-specific agent instructions, runtime workflow contracts, role profiles,
+and review authority cooperate in pgmcp. This document describes the current model for
+developers, integrators, and agents; it does not replace the executable contracts.
 
-After reading this document you will understand:
-- which instruction files exist and what each one does
-- how VS Code decides what to inject into a chat session
-- where the `phase-gate-mcp` server fits into that flow
-- how `phase_instructions` and `sub_role_hint` from `get_work_context` override static
-  instructions at runtime
-- what the three-agent model looks like and why the tools are restricted the way they are
+## Authority Model
 
-## Scope
+| Concern | Authoritative source | Consumers |
+|---|---|---|
+| Host-specific agent instructions | `docs/agents/<host>/` | Active host locations and release assets |
+| Workflow and phase behavior | `.pgmcp/config/contracts.yaml` | `get_work_context`, phase transitions, agents |
+| Phase vocabulary | `.pgmcp/config/workphases.yaml` | Contract loading and phase metadata |
+| Role capabilities and startup | Host role profiles, such as `.github/agents/*.agent.md` | The corresponding harness |
+| Shared documentation quality | `docs/coding_standards/DOCUMENTATION_STANDARD.md` | Governed project documents |
+| Architecture rules | `docs/coding_standards/ARCHITECTURE_PRINCIPLES.md` | Applicable production and test code |
 
-**In Scope:**
-- VS Code instruction primitive hierarchy and loading mechanics
-- Project-specific file roles (`AGENTS.md`, `.agent.md` files)
-- Three-agent model (`@co`, `@imp`, `@qa`) and tool restrictions
-- `get_work_context` integration: `phase_instructions` and `sub_role_hint`
-- Context loading order per session type
-- Design decisions
+The static and dynamic layers have different jobs:
 
-**Out of Scope:**
-- MCP tool API details \u2014 see [tools/README.md][tools-ref]
-- Phase-gate enforcement internals (EnforcementRunner, contracts.yaml) \u2014 see [mcp_vision_reference.md][vision-ref]
-- Git workflow mechanics — see [AGENTS.md][agents-md]
+- Host instructions define stable workspace rules, tool policy, role boundaries, and
+  navigation.
+- Workflow contracts define the work required for one workflow-phase combination.
+- Role profiles define harness-specific capabilities and startup behavior.
+- Human requests provide the task intent but do not silently override binding workspace
+  or workflow boundaries.
 
-## Prerequisites
+No active consumer is an independent source of truth. Edit the matching
+`docs/agents/<host>/` source first, synchronize its tracked consumer, and verify parity.
+Release assets under `mcp_server/assets/` are generated from these sources during a
+package build and are not maintained as another source.
 
-Read these first:
-1. [mcp_vision_reference.md][vision-ref] \u2014 what the MCP server is and why it exists
-2. [AGENTS.md][agents-md] \u2014 single always-on instruction file
+## Host Instruction Surfaces
 
----
+| Host | Authoritative source | Active or derived consumer |
+|---|---|---|
+| VS Code / Copilot | `docs/agents/vscode/copilot/` | Root `AGENTS.md` and applicable `.github/` files |
+| Codex | `docs/agents/codex/` | `.agents/` |
+| Antigravity | `docs/agents/antigravity/` | Host-managed Antigravity rules and workflows |
 
-## 1. VS Code Instruction Primitive Hierarchy
+Host sources may differ where the harness genuinely requires different metadata,
+capability declarations, or invocation syntax. A source and its mapped direct-copy
+consumer must not differ. See [Adding a First-Class Workflow][workflow-guide] and the
+[release-assets procedure][release-assets] for the synchronization rules.
 
-GitHub Copilot in VS Code supports several instruction primitives. They differ in when they
-are loaded and what they are for.
+## Runtime Workflow Context
 
-| Primitive | File pattern | When loaded | Purpose |
-|-----------|-------------|-------------|---------|
-| **Agent instructions** | `AGENTS.md` or `copilot-instructions.md` | **Always** \u2014 every chat interaction | Workspace-wide standards |
-| **Custom agent** | `.github/agents/*.agent.md` | On demand \u2014 when that `@agent` is invoked | Role-specific persona, tools, startup |
-| **File instructions** | `.github/instructions/*.instructions.md` | When file matches `applyTo:` glob | File-type or folder-specific guidelines |
-| **Prompts** | `.github/prompts/*.prompt.md` | On demand \u2014 when invoked as `/command` | Single focused task with parameters |
+### `get_work_context`
 
-### 1.1 Agent Instructions (Always-On)
+Normal in-phase sessions call `get_work_context` as the first MCP invocation. The server
+resolves the branch-local workflow state and returns, among other fields:
 
-Microsoft documents two file choices \u2014 use exactly one:
+| Field | Purpose |
+|---|---|
+| `workflow_name` and `phase` | Select the active workflow-phase contract |
+| `issue_number` and `parent_branch` | Bind work to its project context |
+| `sub_role_hint` | Suggest the role appropriate to the active phase |
+| `phase_instructions` | Provide the executable phase contract |
+| `handover_template` | Provide the phase-specific review index |
 
-| File | Location | VS Code precedence | Generation |
-|------|----------|--------------------|-----------|
-| `AGENTS.md` | repo root | **Higher** \u2014 checked first | New (VS Code 1.99, April 2025) |
-| `copilot-instructions.md` | `.github/` | Lower \u2014 fallback | Legacy (GitHub.com origin) |
+Branch-mutating tools remain blocked until this context has been loaded. Because
+`phase_instructions` are an output of `get_work_context`, they must not instruct the
+agent to call `get_work_context` again.
 
-**This project uses `AGENTS.md` only.** See Section 2.
+The `open-issue` and `end-issue` lifecycle operations are explicit boundary
+exceptions: their bootstrap or exit sequence may run before control returns to a normal
+`get_work_context`-first session.
 
-**Microsoft's design intent:** minimal, concise, actionable. Only what is relevant to every
-interaction. Link to detailed docs rather than embedding them.
+### Phase Instructions
 
-**Core principles (from Microsoft reference docs):**
-1. Minimal by default \u2014 only what matters for *every* task
-2. Concise and actionable \u2014 every line should guide behavior
-3. Link, don't embed \u2014 reference docs instead of copying content
-4. Keep current \u2014 update when practices change
+A phase instruction is a compact, workflow-specific execution contract. It preserves the
+responsibilities that differ by workflow instead of forcing every shared phase into one
+generic script. Each contract should define only what is needed to execute that phase:
 
-### 1.2 Custom Agents (`.agent.md`)
+- phase purpose, boundaries, and stop conditions;
+- authoritative inputs and required outputs;
+- workflow-appropriate test-code responsibility;
+- proportional tests and quality gates, with fresh evidence reused until invalidated;
+- bounded delegation and review authority;
+- exact hand-over structure.
 
-An `.agent.md` file defines a named agent available in the VS Code agent picker (`@name`).
-It is loaded **only** when that agent is explicitly invoked in a chat session.
+References are conditional. Read the Documentation Standard before drafting governed
+research, design, or planning artifacts. Read applicable Architecture Principles before
+changing production or test code across an architectural boundary. Load further
+documents only when the phase, blast radius, or evidence requires them.
 
-Key frontmatter fields:
-```yaml
-description: "..."          # Discovery surface \u2014 how parent agents find this agent
-tools: [...]                # Tool allowlist \u2014 enforced by VS Code at runtime
-argument-hint: "..."        # Guidance shown to the user in the picker
-handoffs: [...]             # Transitions to other agents
+Strict RED → GREEN → REFACTOR is workflow-driven. Use it where the active contract and
+approved plan require behavioral TDD. Do not manufacture cycles or low-value tests for
+mechanical, documentation-only, or test-maintenance work. Test code is first-class code:
+it follows the same architecture and quality standards and should provide durable value.
+
+### Ready
+
+The Ready instruction is intentionally uniform and workflow-neutral. For child-issue
+workflows, `@imp` uses the `implementer` sub-role to consume the latest authoritative
+verification evidence, check documentation and deferred work, prepare the PR, and submit
+it. Ready does not assume that every workflow has a Validation phase or universally rerun
+the full workspace suite.
+
+Ready does not duplicate human merge approval: tooling and branch locks enforce PR-merge
+approval. After `@imp` submits the PR, coordination owns its further handling and merge
+lifecycle; this is an operational hand-off, not an automatically enforced role transfer.
+
+## Role and Review Model
+
+The VS Code integration defines three named roles; other harnesses may express the same
+responsibilities through their own agent or delegation primitives.
+
+| Role | Responsibility | Authority |
+|---|---|---|
+| `@co` | Coordination, post-submission handling, and epic-owned lifecycle work | Narrow mutation authority for its owned scope |
+| `@imp` | Child-issue research, design, planning, implementation, validation, documentation, Ready preparation, and PR submission | Mutation authority through pgmcp tools |
+| `@qa` | Independent evidence-backed review | Read-only; may issue GO/NOGO |
+
+Keep role sessions separate where the harness supports it. Epic-owned findings route to
+`@co`; child technical findings route to `@imp`.
+
+### Delegation and Preflight
+
+Use harness-supported delegation for bounded work when it reduces cost or context
+pressure. The producing agent remains accountable for scope, integration, and evidence.
+
+A producer-delegated reviewer is advisory and findings-only. It cannot authorize phase
+progression or issue PASS/GO. Its instruction must begin from an objective review posture:
+treat the caller's prompt, hand-over, and claimed outcomes as information rather than
+binding truth; verify independently against authoritative files, contracts, and direct
+evidence. Prompts such as “confirm that” or requests for a predetermined verdict are not
+valid QA instructions.
+
+Only a separately invoked independent QA authority may return the workflow's GO/NOGO
+verdict. The same anti-anchoring rule applies: hand-overs are navigation aids, never proof.
+
+## Hand-over Contract
+
+All phase and review hand-overs use this common structure:
+
+```text
+### <Workflow> / <Phase> Hand-over
+
+#### Scope
+- completed work and intentional exclusions
+
+#### Deliverables
+- authoritative artifacts and material inputs, with clickable repository-relative links
+
+#### Evidence
+- exact relevant checks and outcomes
+
+#### Open Work
+- blockers, questions, risks, and deferred work, or None
+
+#### Review Request
+- Review requested
 ```
 
-The `tools:` list is the primary enforcement mechanism. VS Code silently blocks any tool
-call not in the list. This is how `@qa`'s read-only constraint is enforced \u2014 not by
-text instruction, but by omitting mutation tools from the frontmatter.
-
----
-
-## 2. This Project's Instruction File Architecture
-
-This project uses **`AGENTS.md` as the single always-on instruction file**. This follows
-Microsoft's "use only one" guidance and aligns with VS Code's loading order (`AGENTS.md`
-takes precedence over `copilot-instructions.md`).
-
-| File | Role | Content |
-|------|------|---------|
-| `AGENTS.md` (root) | **Always-on** \u2014 operational reference + coordination manifest | Tool priority matrix, TDD protocol, quality gates, architecture contract, three-agent model, sub-roles, hand-over formats |
-| `.github/agents/co.agent.md` | **@co role** | Coordination and epic-lifecycle startup, `@co` sub-roles, and the narrow epic allowlist |
-| `.github/agents/imp.agent.md` | **@imp role** | Implementation startup, scope lock, architecture contract, hand-over format |
-| `.github/agents/qa.agent.md` | **@qa role** | Review startup, suppression audit, verification workflow, tool allowlist (read-only) |
-
-> **Historical note:** `.github/copilot-instructions.md` was the original always-on file.
-> Its content has been consolidated into `AGENTS.md`. The file no longer exists in the
-> project.
-
-### Why AGENTS.md over copilot-instructions.md?
-
-`AGENTS.md` is the newer standard (VS Code 1.99, April 2025), designed for agentic
-workflows. VS Code checks `AGENTS.md` before `copilot-instructions.md` in its loading
-order. It is also the format referenced by the AI agent community. Having a single
-always-on file eliminates drift risk and halves context token usage for the always-on
-layer.
-
-### What should NOT be in the always-on file
-
-Per Microsoft's "minimal by default" principle, `AGENTS.md` must not contain:
-- Detailed startup protocols for specific agent roles (belongs in `.agent.md`)
-- Phase-specific workflow instructions (served dynamically by `get_work_context`)
-- Duplicated content that lives in linked reference documents
-
----
-
-## 3. The Three-Agent Model
-
-### Agent Roles
-
-| Agent | Invocation | Mission | File |
-|-------|-----------|---------|------|
-| `@co` | `@co <sub-role>: <task>` | Coordination authority and epic workflow owner \u2014 owned-branch epic execution or background coordination around child work | [co.agent.md][co-agent] |
-| `@imp` | `@imp <sub-role>: <task>` | Implementation executor \u2014 code, tests, commits, phase and cycle transitions | [imp.agent.md][imp-agent] |
-| `@qa` | `@qa <sub-role>: <task>` | QA authority \u2014 read-only review, test runs, verdicts | [qa.agent.md][qa-agent] |
-
-### Sub-Roles
-
-Each agent has sub-roles that bind to a phase of the workflow:
-
-**`@co`:** coordination: `triager` (default), `backlog-reviewer`, `tracker`, `issue-author`; epic lifecycle: `epic-researcher`, `epic-planner`, `epic-designer`, `epic-coordinator`, `epic-documenter`, `epic-releaser`
-
-**`@imp`:** `researcher` (default), `planner`, `designer`, `implementer`, `validator`, `documenter`
-
-**`@qa`:** `design-reviewer` (default), `plan-verifier`, `verifier`, `validation-reviewer`, `doc-reviewer`
-
-### Tool Restrictions by Agent
-
-Tool restrictions are enforced by VS Code at the frontmatter level, not by text instruction.
-
-| Capability | `@co` | `@imp` | `@qa` |
-|------------|-------|--------|-------|
-| Read files, search | \u2705 | \u2705 | \u2705 |
-| Run tests | \u274c | \u2705 | \u2705 |
-| Run quality gates | \u2705 on epic-owned branches | \u2705 | \u2705 |
-| Edit files (`safe_edit_file`) | \u2705 epic docs/contracts/prompts only | \u2705 (via MCP) | \u274c |
-| Git operations | \u2705 narrow epic-owned lifecycle ops | \u2705 (via MCP) | \u274c read-only |
-| GitHub issue/label/milestone | \u2705 | \u2705 (via MCP) | \u274c read-only |
-| Phase transitions | \u2705 on epic-owned branches | \u2705 (via MCP) | \u274c |
-| PR submission / merge | \u2705 on epic-owned branches | \u2705 (via MCP) | \u274c |
-| All `phase-gate-mcp/*` tools | \u274c (explicit allowlist) | \u2705 (wildcard) | \u274c (explicit allowlist) |
-
-`@imp` uses `tools: ["phase-gate-mcp/*"]` \u2014 all MCP tools. `@co` and `@qa` use explicit
-per-tool allowlists. `@co`'s allowlist intentionally includes the narrow mutation set
-needed for epic-owned branches, while `@qa` remains hard read-only.
-
-### Two-Chat Model
-
-Use separate VS Code chat sessions for each role. This prevents role contamination:
-
-```
-User \u2192 @co triager: assess incoming issue \u2192 Co\u2192Imp hand-over
-User \u2192 @co epic-designer: refine epic contract surfaces \u2192 QA findings route back to @co
-User \u2192 @imp implementer: execute child issue cycle X \u2192 Imp\u2192QA hand-over
-User \u2192 @qa verifier: review latest hand-over \u2192 GO/NOGO verdict
-```
-
-Never mix roles in one session. Fresh context prevents authority confusion and scope drift.
-Epic-owned branch review and lifecycle continuation stay with `@co`; child technical work
-still routes `@imp` \u2192 `@qa`.
-
----
-
-## 4. Phase-Gate MCP Integration
-
-### 4.1 `get_work_context` \u2014 the runtime context bridge
-
-The `get_work_context` MCP tool is the bridge between the static instruction files and the
-dynamic workflow state. It reads the active branch, branch-local `.pgmcp/state.json`,
-and `.pgmcp/config/contracts.yaml`, then returns a formatted orientation response that
-
-**Key fields returned or rendered:**
-
-| Field | Type | Purpose |
-|-------|------|---------|
-| `current_branch` | string | Active git branch |
-| `workflow_name` | string | Active workflow type (feature/bug/docs/refactor/hotfix/chore/epic) |
-| `phase` | string | Active workflow phase from branch state |
-| `issue_number` | integer | Bound issue number when available |
-| `parent_branch` | string | Parent branch when available |
-| `current_cycle` / `sub_phase` | integer / string | Active TDD cycle or sub-phase when applicable |
-| `sub_role_hint` | string | Suggested sub-role for the active workflow-phase contract |
-| `phase_instructions` | string | **Operational script for the current workflow-phase** |
-| `handover_template` | string | Optional ready-to-use hand-over block from the active contract |
-
-When branch state points to a known workflow but an invalid phase, `get_work_context`
-remains non-error and renders a recovery warning before the `### \ud83c\udfaf Phase Instructions`
-block instead of failing hard.
-
-### 4.2 `phase_instructions` \u2014 dynamic operational script
-
-`phase_instructions` is a multi-line string that contains the operational TODO list for the
-GetWorkContextTool resolves the active workflow and
-phase from branch state, then reads the matching instruction block from
-`.pgmcp/config/contracts.yaml`.
-**Example output for `(bug, implementation)` phase:**
-
-```
-[ ] Call get_project_plan to load TDD cycle deliverables
-[ ] Identify the active TDD cycle from the planning document
-[ ] Write the failing test (RED sub-phase) ...
-[ ] Commit with sub_phase="red", cycle_number=N
-...
-[ ] Produce the Imp\u2192QA hand-over block
-```
-
-**Why this matters:** agents can execute phase-specific work without relying on stale static
-prompt text. The contract lives in configuration, is returned at invocation time, and can
-evolve without changing the `.agent.md` files.
-
-### 4.3 `sub_role_hint` \u2014 sub-role guidance
-
-`sub_role_hint` is config-driven and comes from the same workflow-phase contract entry as
-`phase_instructions`.
-
-| Workflow / phase | Example sub-role hint |
-|------------------|-----------------------|
-| `feature` / `implementation` | `implementer` |
-| `feature` / `documentation` | `documenter` |
-| `bug` / `research` | `researcher` |
-| `epic` / `research` | `epic-researcher` |
-| `epic` / `design` | `epic-designer` |
-| `epic` / `coordination` | `epic-coordinator` |
-| `epic` / `ready` | `epic-releaser` |
-
-This ensures the agent declares the correct sub-role without guessing from the phase name.
-
-### 4.4 How `@imp` uses these fields
-
-The `imp.agent.md` precedence chain is:
-
-```
-1. Runtime-injected system instructions
-2. phase_instructions from get_work_context  \u2190 overrides 3\u20135 when present
-3. AGENTS.md
-4. imp.agent.md (this file)
-5. Latest user request
-```
-
-`phase_instructions` sits at precedence #2. When present, it is the authoritative
-operational script for the session. The agent reads all lower-priority documents only
-when `phase_instructions` is absent or explicitly directs it to do so.
-
----
-
-## 5. Context Loading Order Per Session Type
-
-### Default Copilot chat (no `@agent` invoked)
-
-```
-Always loaded:
-  AGENTS.md                      \u2190 operational reference + coordination manifest
-```
-
-### `@co` session
-
-```
-Always loaded:
-  AGENTS.md
-
-On @co invocation:
-  .github/agents/co.agent.md     \u2190 role persona, tool allowlist, sub-roles
-
-Normal startup sequence (per co.agent.md):
-  1. get_work_context
-  2. Follow returned phase_instructions / sub_role_hint when present
-  3. Use list_issues, get_issue, and the narrow @co allowlist only as required by the active coordination or epic-lifecycle task
-
-Lifecycle-boundary exception:
-  - /open-issue and /close-issue may run their scripted bootstrap / exit sequence before control returns to a normal get_work_context-first session
-```
-
-### `@imp` session
-
-```
-Always loaded:
-  AGENTS.md
-
-On @imp invocation:
-  .github/agents/imp.agent.md    \u2190 role persona, full MCP tool access
-
-Startup sequence (per imp.agent.md):
-  Precondition: branch must be pre-initialized by @co
-  └─ create_branch + git_checkout + initialize_project already done
-  └─ if .pgmcp/state.json absent → stop and report; do NOT call initialize_project
-  1. get_work_context
-     └─ if phase_instructions present → follow it as operational script
-     └─ if absent → read AGENTS.md, then proceed
-  2. ARCHITECTURE_PRINCIPLES.md  ← always binding
-  3. [conditional] get_project_plan
-  4. Inspect worktree for existing changes
-  5. Inspect latest QA verdict
-```
-
-### `@qa` session
-
-```
-Always loaded:
-  AGENTS.md
-
-On @qa invocation:
-  .github/agents/qa.agent.md     ← role persona, read-only tool allowlist
-
-Startup sequence (per qa.agent.md):
-  1. AGENTS.md                        ← always read first
-  2. ARCHITECTURE_PRINCIPLES.md
-  3. get_work_context
-  4. get_project_plan for active issue
-  5. Read active planning document
-  6. Read changed files in worktree
-  7. Read latest implementation hand-over
-```
-
----
-
-## 6. Instruction File Interaction Map
-
-```
-                            \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
-                            \u2502         VS Code Chat Session         \u2502
-                            \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
-                                           \u2502 always injected
-                                 \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
-                                 \u2502     AGENTS.md       \u2502
-                                 \u2502                     \u2502
-                                 \u2502  \u2022 Tool matrix      \u2502
-                                 \u2502  \u2022 TDD protocol     \u2502
-                                 \u2502  \u2022 Quality gates    \u2502
-                                 \u2502  \u2022 Architecture     \u2502
-                                 \u2502  \u2022 3-agent model    \u2502
-                                 \u2502  \u2022 Hand-overs       \u2502
-                                 \u2502  \u2022 Sub-roles        \u2502
-                                 \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
-                                           \u2502 when @agent invoked
-                               \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
-                               \u2502   *.agent.md           \u2502
-                               \u2502  co / imp / qa         \u2502
-                               \u2502                        \u2502
-                               \u2502  \u2022 tools: [...]        \u2502
-                               \u2502  \u2022 startup proto       \u2502
-                               \u2502  \u2022 role boundary       \u2502
-                               \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
-                                          \u2502 @imp calls
-                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
-                                \u2502  get_work_context   \u2502
-                                \u2502  (MCP tool)         \u2502
-                                \u2502                     \u2502
-                                \u2502  \u2192 sub_role_hint    \u2502
-                                \u2502  \u2192 phase_instruc-   \u2502
-                                \u2502    tions  [#2 prec] \u2502
-                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
-```
-
----
-
-## 7. Operating Modes For Agent Use
-
-The repo supports two practical operating variants for agents. This is a **configuration and prompt posture** distinction, not a schema-level mode switch. `contracts.yaml` still requires `instructions` in both variants — the difference is created by enforcement configuration and agent prompt pressure.
-
-### Variant A — Orchestrated Workflow Mode
-
-Use this mode when the branch should actively steer the agent through workflow state.
-
-**Setup actions:**
-1. Keep `check_context_loaded` enabled in `.pgmcp/config/enforcement.yaml` for `branch_mutating` tools.
-2. Keep `.github/agents/*.agent.md` and lifecycle prompts explicit that `get_work_context()` is the required first in-phase read.
-3. Keep phase `instructions` present and directive enough to drive session behavior.
-4. Preserve lifecycle-boundary exceptions (issue #268 — open-issue and end-issue are explicit lifecycle boundaries that run before the normal `get_work_context`-first session).
-
-**Usage pattern:**
-1. Initialize the branch or transition through the correct lifecycle boundary.
-2. Call `get_work_context()` at session start for in-phase work.
-3. Follow the returned `sub_role_hint`, `phase_instructions`, and hand-over contract before branch-mutating actions.
-4. Rely on enforcement to block writes until context is loaded.
-
-This is the current default operating mode for this repository.
-
-### Variant B — Gated Non-Enforced Workflow Mode
-
-Use this mode when the repo should retain workflow guardrails without forcing agent orchestration.
-
-**Setup actions:**
-1. Disable `check_context_loaded` (e.g., `enabled: false` in `enforcement.yaml`) while retaining other policy gates (`check_branch_policy`, `check_pr_status`, `check_phase_readiness`) as desired.
-2. Keep `instructions` present in `contracts.yaml` (schema requires it), but make them compact, informational, and non-prescriptive rather than imperative session scripts.
-3. Rewrite `.github/agents/*.agent.md` and lifecycle prompts so `get_work_context()` is optional or situational, not a hard first step.
-4. Treat `get_work_context()` as an operator aid for context lookup, not as a mandatory bootstrap barrier.
-
-**Usage pattern:**
-1. Work may start from the local task anchor without first calling `get_work_context()`.
-2. Agents call `get_work_context()` only when workflow state, phase guidance, or hand-over context is actually needed.
-3. Branch-mutating tools remain governed by the remaining enforcement rules, but not by context-loaded bootstrap gating.
-
-> **Boundary note:** Treat this distinction as an operating method and configuration posture, not as proof that the current repo already has a first-class `without_orchestration` config switch. No such switch exists; switching modes requires manual changes to `enforcement.yaml` and agent instruction files.
-
-### How `check_context_loaded` and `contracts.yaml` interact in these modes
-
-| Component | Variant A (Orchestrated) | Variant B (Gated non-enforced) |
-|-----------|--------------------------|--------------------------------|
-| `check_context_loaded` in `enforcement.yaml` | Enabled for `branch_mutating` tools | Disabled |
-| `instructions` in `contracts.yaml` | Directive, drives session | Present (schema required), but non-prescriptive |
-| `get_work_context()` call | Mandatory first action | Optional |
-| Agent prompt posture | `*.agent.md` enforces startup protocol | `*.agent.md` makes it situational |
-| Enforcement blocks | Write-blocked until context loaded | Only `check_branch_policy`, `check_pr_status`, `check_phase_readiness` |
-
----
-
-## 8. Design Decisions and Rationale
-
-### Why AGENTS.md as the single always-on file?
-
-`AGENTS.md` is newer than `copilot-instructions.md` and was designed specifically for
-agentic VS Code workflows (introduced VS Code 1.99, April 2025). VS Code checks `AGENTS.md`
-before `copilot-instructions.md` in its loading order, making it the natural primary.
-
-Using a single always-on file:
-- Eliminates the drift risk between two files that must stay synchronized
-- Halves the context token cost for the always-on instruction layer
-- Follows Microsoft's "use only one" guidance
-- Makes the project's instruction architecture visible and understandable to a developer
-  reading the repo root
-
-The content previously in `copilot-instructions.md` (tool priority matrix, TDD protocol,
-quality gates, architecture contract) has been merged into `AGENTS.md`. That file no
-longer exists in the project.
-
-### Why `phase_instructions` via MCP and not in the `.agent.md` file?
-
-Three reasons:
-1. **Dynamic**: phase instructions change as workflow contracts evolve without requiring
-   agent-file changes. The active workflow-phase entry in `.pgmcp/config/contracts.yaml`
-   is the source of truth.
-2. **Per-workflow**: different workflows can attach different instructions and sub-role
-   hints to the same phase name. A static file cannot express this cleanly without
-   embedding contract logic.
-3. **Precedence position**: by returning `phase_instructions` at runtime, the active agent
-   can place them at precedence #2 (above all static files), making the loaded contract the
-   highest-authority script for the session.
-
-### Why is `@qa` read-only enforced at the tool level, not by text?
-
-Text instructions can be overridden by an autonomous agent under task pressure.
-Tool restrictions in `tools:` frontmatter are enforced by VS Code before the model runs.
-An `@qa` session physically cannot call `safe_edit_file` or `git_add_or_commit` because
-those tools are not in its allowlist. This is hard enforcement, not soft guidance.
-
-### Why does `@imp` use `tools: ["phase-gate-mcp/*"]` (wildcard)?
-
-`@imp` is the implementation executor. It needs the full MCP surface. Maintaining an
-explicit per-tool allowlist would require updating the agent file every time a new MCP
-tool is added. The wildcard future-proofs the agent. The `@imp` role boundary is enforced
-by the `.agent.md` body instructions and by QA review \u2014 not by tool restriction.
-
----
-
-## 9. Adding a New Workflow Phase
-
-If a workflow gains a new phase, update the contract layer that `get_work_context` reads:
-
-1. Add or adjust the workflow-phase entry in `.pgmcp/config/contracts.yaml`, including
-   `sub_role`, `phase_instructions`, and any `handover_template` text.
-2. If the change also alters global workflow metadata or role ownership semantics, align the
-   corresponding reference docs and startup instructions.
-3. Test with `get_work_context` on a branch in that workflow-phase to verify the rendered
-   orientation header, instructions, sub-role hint, and hand-over template.
-
-No `.agent.md` or `AGENTS.md` changes are required for ordinary phase-script updates unless
-the new phase changes a global role boundary, ownership model, or lifecycle exception.
-
----
+Pre-implementation hand-overs link primary artifacts and material inputs. Implementation
+hand-overs link changed files while that remains useful; for a large diff, link the main
+review entry points and tests and identify the branch diff as the complete inventory.
+Never state PASS, GO, approval, or readiness as a producer claim.
+
+Co → Imp remains a separate delegation contract for child technical work. It is not a
+replacement for the phase hand-over above.
+
+## Adding or Changing a Workflow
+
+Use [Adding a First-Class Workflow][workflow-guide] as the complete extension procedure.
+For the instruction layer specifically:
+
+1. Define ordered phases and workflow-specific semantics in
+   `.pgmcp/config/contracts.yaml`.
+2. Ensure artifact commands include the schema-required context and can run
+   first-time-right.
+3. Keep document reads conditional and verification proportional.
+4. Apply the canonical hand-over headings exactly.
+5. Preserve the workflow-neutral Ready contract across workflows.
+6. Update host instruction sources only when global workflow vocabulary, role ownership,
+   or lifecycle behavior changes; then synchronize mapped consumers.
+7. Restart the server after startup-loaded config changes and verify the rendered
+   `get_work_context` output.
+
+Do not add YAML anchors or aliases merely because instruction text looks similar.
+Semantic equality, independent evolution, and consumer behavior must justify any future
+composition mechanism.
 
 ## Related Documentation
 
-- **[tools/README.md][tools-ref]** \u2014 all 50 MCP tools with parameters and examples
-- **[mcp_vision_reference.md][vision-ref]** \u2014 MCP server architecture and vision
-- **[AGENTS.md][agents-md]** \u2014 single always-on instruction file
-- **[.github/agents/imp.agent.md][imp-agent]** \u2014 implementation agent full spec
-- **[.github/agents/qa.agent.md][qa-agent]** \u2014 QA agent full spec
-- **[.github/agents/co.agent.md][co-agent]** \u2014 coordination agent full spec
-- **[ARCHITECTURE_PRINCIPLES.md][arch-principles]** \u2014 binding architecture contract
-- **[AGENTS.md][agents-md]** — branch and commit conventions
+- [MCP Tools Reference][tools-ref]
+- [MCP Vision Reference][vision-ref]
+- [Adding a First-Class Workflow][workflow-guide]
+- [Release Assets Procedure][release-assets]
+- [Documentation Standard][documentation-standard]
+- [Architecture Principles][arch-principles]
+- [Quality Gates][quality-gates]
+- [Root Agent Instructions][agents-md]
+- [VS Code Coordination Role][co-agent]
+- [VS Code Implementation Role][imp-agent]
+- [VS Code QA Role][qa-agent]
 
 <!-- Link definitions -->
 [tools-ref]: tools/README.md
 [vision-ref]: mcp_vision_reference.md
-[agents-md]: ../../../AGENTS.md
-[imp-agent]: ../../../.github/agents/imp.agent.md
-[qa-agent]: ../../../.github/agents/qa.agent.md
-[co-agent]: ../../../.github/agents/co.agent.md
-[arch-principles]: ../../coding_standards/ARCHITECTURE_PRINCIPLES.md
+[workflow-guide]: workflow-extension-guide.md
+[release-assets]: release-assets-procedure.md
+[documentation-standard]: ../coding_standards/DOCUMENTATION_STANDARD.md
+[arch-principles]: ../coding_standards/ARCHITECTURE_PRINCIPLES.md
+[quality-gates]: ../coding_standards/QUALITY_GATES.md
+[agents-md]: ../../AGENTS.md
+[co-agent]: ../../.github/agents/co.agent.md
+[imp-agent]: ../../.github/agents/imp.agent.md
+[qa-agent]: ../../.github/agents/qa.agent.md
 
 ---
 
 ## Version History
 
 | Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.3 | 2026-07-20 | Agent | Fix stale reference/mcp/ path in header comment |
-| 1.2 | 2026-05-24 | Agent | Update the three-agent model reference for `@co` epic ownership, config-driven `get_work_context`, and lifecycle-boundary startup exceptions |
-| 1.1 | 2026-05-17 | Agent | Consolidation decision: single always-on file (AGENTS.md); remove copilot-instructions.md references; update diagram, precedence chain, loading order, rationale |
-| 1.0 | 2026-05-17 | Agent | Initial document — covers instruction hierarchy, three-agent model, MCP integration, context loading order |
+|---|---|---|---|
+| 2.1 | 2026-08-20 | Agent | Clarify that `@imp` owns child-issue Ready and PR submission, while tooling enforces merge approval and coordination owns post-submission handling |
+| 2.0 | 2026-08-20 | Agent | Align the model with host SSOT, workflow-driven contracts, conditional references, delegation authority, canonical hand-overs, and workflow-neutral Ready |
+| 1.3 | 2026-07-20 | Agent | Fix stale reference path |
+| 1.2 | 2026-05-24 | Agent | Document config-driven context and role ownership |
+| 1.1 | 2026-05-17 | Agent | Consolidate the always-on VS Code instruction file |
+| 1.0 | 2026-05-17 | Agent | Initial model |

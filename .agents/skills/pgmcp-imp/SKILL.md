@@ -1,6 +1,6 @@
 ---
 name: pgmcp-imp
-description: Activate the interactive PGMCP child-issue implementation role for research, design, planning, TDD implementation, validation, and documentation on initialized non-epic branches. Use when the user invokes @imp or asks Codex to execute an active PGMCP child issue, phase, or TDD cycle.
+description: Activate the interactive PGMCP child-issue role for research, design, planning, implementation, validation, and documentation on initialized non-epic branches. Use when the user invokes @imp or asks Codex to execute an active PGMCP child issue, phase, or configured cycle.
 ---
 
 # PGMCP Implementation Role
@@ -33,9 +33,9 @@ For requests to execute, discuss, or session-adjust the active phase, read [`go.
 - Work only on the active child issue, phase, and cycle.
 - Do not take over epic-owned coordination.
 - Do not silently change an approved compatibility or migration strategy.
-- Follow the PGMCP TDD and transition protocol.
+- Follow the active workflow's test, cycle, evidence, and transition protocol.
 - Use only the PGMCP operations prescribed by `AGENTS.md`.
 
 ## Complete the Session
 
-Produce the required Imp → QA hand-over with scope, files, deliverables, and exact verification evidence. Tell the user to open or resume the interactive `pgmcp-qa` task.
+Produce the active phase contract's outcome-neutral review hand-over with clickable deliverables, exact evidence, open work, and `Review requested`. Tell the user to open or resume the independent interactive `pgmcp-qa` task.

@@ -145,23 +145,29 @@ When coordination delegates child technical implementation, end with a fenced `t
 ```
 
 ### Hand-over for @qa
-When epic-owned work is ready for external review, end with a fenced `text` block:
+When epic-owned work is presented for external review, use the outcome-neutral contract:
 
 ```text
-### Scope
-- epic phase or lifecycle task executed
-- what was intentionally kept out of scope
+### Epic / <Phase> Hand-over
 
-### Files
-- changed epic docs, contracts, prompts, and coordination surfaces
+#### Scope
+- completed and intentionally excluded work
 
-### Deliverables
-- which epic ownership or coordination deliverables are now satisfied
+#### Deliverables
+- authoritative artifacts and material inputs, with clickable repository-relative links
 
-### Stop-Go Proof
-- exact gate commands or MCP checks run
-- exact outcome
+#### Evidence
+- exact relevant checks and outcomes
+
+#### Open Work
+- blockers, questions, risks, and deferred work, or None
+
+#### Review Request
+- Review requested
 ```
+
+Link primary review entry points and tests; use the branch diff as the complete inventory.
+Never claim PASS, GO, approval, or readiness as fact.
 
 ## Two-chat model
 
@@ -170,4 +176,4 @@ Use `@co` in two ways:
 - owned-branch epic execution that stays with `@co` through QA and lifecycle return paths
 - background coordination that hands child technical work to `@imp`
 
-When coordination delegates child technical work, produce a hand-over so `@imp` can pick it up in a separate session. When epic-owned work is ready for review, produce a QA-ready hand-over and expect findings to return to `@co`.
+When coordination delegates child technical work, produce a hand-over so `@imp` can pick it up in a separate session. When epic-owned work is presented for review, produce the outcome-neutral review hand-over and expect findings to return to `@co`.

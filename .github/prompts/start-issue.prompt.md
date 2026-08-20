@@ -35,7 +35,7 @@ Execute in this exact order. Do not skip steps.
    If no parent_issue, use `base_branch="main"`.
 
 3. **Create the branch**
-   `create_branch(branch_type=WORKFLOW_TYPE, name="<short-slug-from-title>", base_branch=<derived above>)`
+   `create_branch(issue_number=ISSUE_NUMBER, branch_type=WORKFLOW_TYPE, name="<short-slug-from-title>", base_branch=<derived above>)`
    → branch name format: `{type}/{ISSUE_NUMBER}-{slug}`
 4. **Switch to the branch**
    `git_checkout(branch="{type}/{ISSUE_NUMBER}-{slug}")`

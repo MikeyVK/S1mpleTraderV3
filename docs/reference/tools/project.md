@@ -6,8 +6,8 @@
 **Version:** 3.0  
 **Last Updated:** 2026-06-15  
 
-**Source:** [mcp_server/tools/project_tools.py](../../../../mcp_server/tools/project_tools.py), [phase_tools.py](../../../../mcp_server/tools/phase_tools.py)  
-**Tests:** [tests/mcp_server/unit/tools/test_project_tools.py](../../../../tests/mcp_server/unit/tools/test_project_tools.py), [tests/mcp_server/unit/tools/test_transition_phase_tool.py](../../../../tests/mcp_server/unit/tools/test_transition_phase_tool.py), [tests/mcp_server/unit/tools/test_force_phase_transition_tool.py](../../../../tests/mcp_server/unit/tools/test_force_phase_transition_tool.py)  
+**Source:** [mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py), [phase_tools.py](../../../mcp_server/tools/phase_tools.py)  
+**Tests:** [tests/mcp_server/unit/tools/test_project_tools.py](../../../tests/mcp_server/unit/tools/test_project_tools.py), [tests/mcp_server/unit/tools/test_transition_phase_tool.py](../../../tests/mcp_server/unit/tools/test_transition_phase_tool.py), [tests/mcp_server/unit/tools/test_force_phase_transition_tool.py](../../../tests/mcp_server/unit/tools/test_force_phase_transition_tool.py)  
 
 ---
 
@@ -15,7 +15,7 @@
 
 Complete reference documentation for project lifecycle and phase management tools. These 4 tools provide workflow initialization, phase plan inspection, sequential phase transitions, and emergency phase skipping with human approval.
 
-Phase state persists in [.pgmcp/state.json](../../../../.pgmcp/state.json) and workflow definitions / planning deliverables persist in [.pgmcp/deliverables.json](../../../../.pgmcp/deliverables.json). Both files are branch-local artifacts synchronized with git branch operations and neutralized before PR submission.
+Phase state persists in [.pgmcp/state.json](../../../.pgmcp/state.json) and workflow definitions / planning deliverables persist in [.pgmcp/deliverables.json](../../../.pgmcp/deliverables.json). Both files are branch-local artifacts synchronized with git branch operations and neutralized before PR submission.
 
 ---
 
@@ -32,9 +32,9 @@ The MCP server provides **4 project/phase tools**:
 
 All tools interact with:
 - **PhaseStateEngine:** Phase state tracking and validation
-- **[.pgmcp/config/workflows.yaml](../../../../.pgmcp/config/workflows.yaml):** Workflow definitions (feature, bug, docs, refactor, hotfix, chore, epic)
-- **[.pgmcp/state.json](../../../../.pgmcp/state.json):** Current branch state (branch-local artifact, committed with branch history; neutralized by `submit_pr`)
-- **[.pgmcp/deliverables.json](../../../../.pgmcp/deliverables.json):** Workflow definition and planning deliverables (branch-local artifact)
+- **[.pgmcp/config/workflows.yaml](../../../.pgmcp/config/workflows.yaml):** Workflow definitions (feature, bug, docs, refactor, hotfix, chore, epic)
+- **[.pgmcp/state.json](../../../.pgmcp/state.json):** Current branch state (branch-local artifact, committed with branch history; neutralized by `submit_pr`)
+- **[.pgmcp/deliverables.json](../../../.pgmcp/deliverables.json):** Workflow definition and planning deliverables (branch-local artifact)
 
 ---
 
@@ -44,7 +44,7 @@ All tools interact with:
 
 **MCP Name:** `initialize_project`  
 **Class:** `InitializeProjectTool`  
-**File:** [mcp_server/tools/project_tools.py](../../../../mcp_server/tools/project_tools.py)
+**File:** [mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py)
 
 Initialize project with phase plan selection. The configured `workflow_name` selects the project-specific phase plan.
 
@@ -66,7 +66,7 @@ Initialize project with phase plan selection. The configured `workflow_name` sel
 | `feature` | research → design → planning → implementation → validation → documentation → ready | New feature development |
 | `bug` | research → design → planning → implementation → validation → documentation → ready | Bug fixes |
 | `docs` | planning → documentation → ready | Documentation-only changes |
-| `refactor` | research → planning → implementation → validation → documentation → ready | Code refactoring |
+| `refactor` | research → design → planning → implementation → validation → documentation → ready | Code refactoring |
 | `hotfix` | implementation → validation → documentation → ready | Emergency fixes |
 | `chore` | research → implementation → validation → documentation → ready | Lightweight maintenance and housekeeping |
 | `epic` | See `contracts.yaml` for the configured phase order | Multi-issue coordination |
@@ -120,7 +120,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 **MCP Name:** `get_project_plan`  
 **Class:** `GetProjectPlanTool`  
-**File:** [mcp_server/tools/project_tools.py](../../../../mcp_server/tools/project_tools.py)
+**File:** [mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py)
 
 Get project phase plan for issue number.
 
@@ -168,7 +168,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 **MCP Name:** `transition_phase`  
 **Class:** `TransitionPhaseTool`  
-**File:** [mcp_server/tools/phase_tools.py](../../../../mcp_server/tools/phase_tools.py)
+**File:** [mcp_server/tools/phase_tools.py](../../../mcp_server/tools/phase_tools.py)
 
 Transition branch to next phase (strict sequential validation).
 
@@ -246,7 +246,7 @@ Transition branch to next phase (strict sequential validation).
 
 **MCP Name:** `force_phase_transition`  
 **Class:** `ForcePhaseTransitionTool`  
-**File:** [mcp_server/tools/phase_tools.py](../../../../mcp_server/tools/phase_tools.py)
+**File:** [mcp_server/tools/phase_tools.py](../../../mcp_server/tools/phase_tools.py)
 
 Force non-sequential phase transition (skip/jump with reason and human approval).
 
@@ -304,7 +304,7 @@ Force non-sequential phase transition (skip/jump with reason and human approval)
 
 **MCP Name:** `save_planning_deliverables`  
 **Class:** `SavePlanningDeliverablesTool`  
-**File:** [mcp_server/tools/project_tools.py](../../../../mcp_server/tools/project_tools.py)
+**File:** [mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py)
 
 Save cycle planning deliverables for an issue to deliverables.json. Validates each `validates` entry schema before persisting.
 
@@ -335,7 +335,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 **MCP Name:** `update_planning_deliverables`  
 **Class:** `UpdatePlanningDeliverablesTool`  
-**File:** [mcp_server/tools/project_tools.py](../../../../mcp_server/tools/project_tools.py)
+**File:** [mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py)
 
 Merge-update cycle planning deliverables for an issue in deliverables.json. Must be preceded by `save_planning_deliverables`. New cycles are appended; deliverables within existing cycles are merged by id.
 
@@ -476,7 +476,7 @@ workflows:
 
   refactor:
     name: refactor
-    description: "Code refactoring workflow (research → planning → implementation → validation → docs)"
+    description: "Code refactoring workflow (research → design → planning → implementation → validation → docs)"
     default_execution_mode: interactive
 
   docs:
@@ -555,10 +555,10 @@ Phase state is **synchronized** with git branch operations:
 
 - [README.md](README.md) — MCP Tools navigation index
 - [git.md](git.md) — Git workflow tools (branch, checkout, commit)
-- [.pgmcp/config/workflows.yaml](../../../../.pgmcp/config/workflows.yaml) — Workflow definitions
-- [.pgmcp/state.json](../../../../.pgmcp/state.json) — Current branch state
-- [.pgmcp/deliverables.json](../../../../.pgmcp/deliverables.json) — Workflow definition and planning deliverables
-- [docs/development/issue268/validation.md](../../../development/issue268/validation.md) — Validation evidence for the delivered phase-state and `get_work_context` contract
+- [.pgmcp/config/workflows.yaml](../../../.pgmcp/config/workflows.yaml) — Workflow definitions
+- [.pgmcp/state.json](../../../.pgmcp/state.json) — Current branch state
+- [.pgmcp/deliverables.json](../../../.pgmcp/deliverables.json) — Workflow definition and planning deliverables
+- [docs/development/issue268/validation.md](../../development/archive/issue268/validation.md) — Validation evidence for the delivered phase-state and `get_work_context` contract
 
 ---
 

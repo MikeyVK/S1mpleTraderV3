@@ -1,16 +1,21 @@
 # pgmcp — Agent Protocol
 
-**Auto-loaded by VS Code** via `chat.useAgentsMdFile: true` — single always-on instruction file.
+**Auto-loaded by Antigravity** as the repository-scoped always-on instruction file.
 **Status:** Active | **Context:** High-Frequency Trading Platform
 
 ---
 
 ## 🏛️ Architecture Contract (MANDATORY)
 
-**Before writing any implementation code, read:**
+**Before writing production or test code that can affect an architectural boundary, read the applicable sections of:**
 **[docs/coding_standards/ARCHITECTURE_PRINCIPLES.md](docs/coding_standards/ARCHITECTURE_PRINCIPLES.md)**
 
-This document is a **binding contract**. Code that violates these principles is **REJECTED**, regardless of whether tooling gates pass.
+The applicable principles are a **binding contract**. Production and test code that
+violates them is **REJECTED**, regardless of whether tooling gates pass. Before drafting
+research, design, or planning artifacts, inspect the applicable boundaries in
+[DOCUMENTATION_STANDARD.md](docs/coding_standards/DOCUMENTATION_STANDARD.md).
+Use the active phase, change blast radius, and referenced boundaries to select further
+reading; do not load unrelated documents by default.
 
 ### Most common violations (quick reference):
 
@@ -117,26 +122,21 @@ This document is a **binding contract**. Code that violates these principles is 
 
 ---
 
-## 🔴 TDD Cycle (RED → GREEN → REFACTOR)
+## 🧪 Workflow-Driven Test Strategy
 
-**Strict protocol — never skip steps:**
+The active workflow contract and approved plan determine whether strict
+RED → GREEN → REFACTOR applies. Use strict TDD for behavior changes when the contract
+requires it; do not force artificial TDD cycles onto mechanical, documentation-only, or
+test-maintenance work.
 
-1. **RED Phase:** Write failing test FIRST
-   - Commit: `git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="Add failing test for X")`
-   - Verify test fails: `run_tests(path="...")`
+Treat test code as first-class code under the same architecture, typing, and quality
+standards. Design durable regression coverage, prefer adapting valuable existing tests,
+and avoid workflow-only tests that become maintenance ballast.
 
-2. **GREEN Phase:** Implement minimal code to pass test
-   - Commit: `git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement X")`
-   - Verify test passes: `run_tests(path="...")`
-
-3. **REFACTOR Phase:** Improve code while keeping tests green
-   - Commit: `git_add_or_commit(workflow_phase="implementation", sub_phase="refactor", cycle_number=1, message="Refactor X")`
-   - Verify tests still pass: `run_tests(path="...")`
-
-4. **DOCUMENTATION Phase:** Update documentation
-   - Commit: `git_add_or_commit(workflow_phase="documentation", message="Document X")`
-
-**Quality Gates:** Run `run_quality_gates(files=[...])` before phase transitions and before PR creation.
+During implementation, run the narrowest tests and gates that prove the changed surface.
+Run branch- or workspace-wide verification only at the workflow phase that owns it.
+Reuse fresh evidence until later changes invalidate it. Follow the active plan for commit
+boundaries and required verification.
 
 ---
 
@@ -144,11 +144,11 @@ This document is a **binding contract**. Code that violates these principles is 
 
 1. **Issue-First Development:** Never work directly on `main`. Always start with `create_issue` → `create_branch` → `initialize_project`.
 2. **Workflow Enforcement:** Always `initialize_project` before work. Use `transition_phase` for progression.
-3. **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
+3. **Workflow-Driven Testing:** Follow the active workflow and plan; add or adapt tests only when they provide durable evidence.
 4. **Tools > Manual:** Never manually create a file if `scaffold_artifact` exists. Never manually parse status if `get_work_context` exists.
 5. **English Artifacts, Dutch Chat:** Write Code/Docs/Commits in **English**. Talk to the User in **Dutch** (Nederlands).
-6. **Human-in-the-Loop:** PR merge ALWAYS requires human approval. `force_phase_transition` requires approval + reason.
-7. **Quality Gates:** Run before phase transitions and before PR creation. Linting 10.00/10 + Type checking Pass.
+6. **Human-in-the-Loop:** Tooling and branch locks enforce PR-merge approval; Ready does not duplicate that check. `force_phase_transition` requires approval + reason.
+7. **Quality Gates:** Use the scope and timing required by the active phase and plan. Reuse fresh passing evidence unless subsequent changes invalidate it.
 8. **Type-Checking Consistency:** Resolve typing issues using [docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md](docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md). No global disables; targeted ignores only as last resort.
 9. **Resource Caching:** All MCP tools cache their structured Pydantic DTO outputs as MCP Resources (`pgmcp://cache/runs/{run_id}`). Tools return a presented text summary and the resource URI. When you need to inspect complete structured data or verbose process logs (e.g. from `run_quality_gates` or `run_tests`), you MUST read the cached resource URI (do not try to parse or scrape the text output).
 
@@ -175,7 +175,7 @@ Compatibility, migration, and breakage strategy is decided at the end of Researc
 | `feature` | research, design, planning, implementation, validation, documentation, ready | New feature development |
 | `bug` | research, design, planning, implementation, validation, documentation, ready | Bug fixes |
 | `docs` | planning, documentation, ready | Documentation-only changes |
-| `refactor` | research, planning, implementation, validation, documentation, ready | Code refactoring |
+| `refactor` | research, design, planning, implementation, validation, documentation, ready | Code refactoring |
 | `hotfix` | implementation, validation, documentation, ready | Emergency fixes |
 | `chore` | research, implementation, validation, documentation, ready | Lightweight maintenance and housekeeping |
 | `epic` | See `.pgmcp/config/contracts.yaml` (SSOT for epic phase order) | Large multi-issue features |
@@ -238,6 +238,18 @@ Example: `@imp implementer: start cycle C_LOADER.5 for issue 257`
 - **Review** → use `@qa`. Findings on epic-owned branches route back to `@co`; findings on child technical work route back to `@imp`.
 
 Never mix roles in one session. Fresh context prevents scope contamination and authority confusion.
+
+### Delegation and Review Authority
+
+Use harness-supported delegation when work is bounded and a lighter capable agent reduces
+cost or context pressure. Keep the mechanism harness-agnostic: the producer remains
+accountable for scope, evidence, and integration. Delegated research, implementation, or
+preflight review informs the producer but never drives workflow progression.
+
+A producer-delegated reviewer returns findings-only and cannot issue PASS, GO/NOGO, or
+authorization to progress. Only a separately invoked independent `@qa` authority may
+return the workflow's evidence-backed GO/NOGO.
+
 ### Startup Protocol
 
 Each agent has its own startup protocol defined in its `.agent.md` file. Normal chat sessions call
@@ -250,36 +262,33 @@ control returns to a normal `get_work_context`-first session. See:
 
 ### Hand-Over Contract
 
-Use Co → Imp only for child technical delegation. Epic-owned branch review and lifecycle continuation stay with `@co`; QA findings and merge follow-up on those branches route back there.
+Use phase/review hand-overs as navigation and evidence indexes, never as binding truth or producer
+approval. Keep phase- and workflow-specific content under this common structure:
 
-**Co → Imp hand-over:**
 ```text
-## Co → Imp Hand-over
+### <Workflow> / <Phase> Hand-over
 
-**Directive**: [what to do]
-**Issues in scope**: [#N, #M]
-**Priority changes applied**: [yes/no, which labels]
-**Next @imp sub-role**: [researcher | planner | implementer | ...]
-**Out of scope**: [what not to touch]
+#### Scope
+- completed and intentionally excluded work
+
+#### Deliverables
+- authoritative artifacts and material inputs, with clickable repository-relative links
+
+#### Evidence
+- exact relevant checks and outcomes
+
+#### Open Work
+- blockers, questions, risks, and deferred work, or None
+
+#### Review Request
+- Review requested
 ```
 
-**Imp → QA hand-over:**
-```text
-### Scope
-- what cycle or task was executed
-- what was intentionally kept out of scope
-
-### Files
-- changed files grouped by role
-
-### Deliverables
-- which authoritative deliverables are now satisfied
-
-### Stop-Go Proof
-- exact tests run
-- exact gate commands or MCP checks run
-- exact outcome
-```
+Pre-implementation hand-overs link primary artifacts and material inputs. Implementation
+hand-overs link changed files while useful; for large diffs, link primary review entry
+points and tests and identify the branch diff as the complete inventory. Never claim
+PASS, GO, approval, or readiness as fact. Co → Imp remains limited to child technical
+delegation; epic review and lifecycle continuation remain with `@co`.
 
 ---
 

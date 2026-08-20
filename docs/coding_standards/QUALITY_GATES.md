@@ -438,7 +438,7 @@ The `test_pytest_config.py` suite actively guards these invariants:
 
 **ACCEPT only when:**
 - ✅ All quality gates pass (exit code 0)
-- ✅ All tests green (no skips)
+- ✅ All required tests green; skips are reviewed and explicitly justified
 - ✅ Type hints complete
 - ✅ Docstrings present (module + public methods)
 - ✅ No trailing whitespace
