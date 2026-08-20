@@ -20,8 +20,7 @@ Establish the evidence, scope, and Approved Strategy for compact, actionable MCP
 - All 50 currently registered public tools and their output DTO shapes.
 - Configuration validation, presentation alignment, unit and integration tests, active tool documentation, and agent-facing cache guidance.
 - Cross-harness output constraints relevant to selecting a conservative text-response ceiling.
-- Removal of `tests/documentation/test_c4_doc_alignment.py` and `tests/documentation/test_agent_instruction_search_contract.py`, including all 62 collected cases, because they lock incidental wording, historical migrations, or invalid exact-consumer parity rather than durable behavior.
-- Correction of active agent-instruction documentation that currently overstates source/consumer synchronization as mandatory exact parity; authoritative ownership remains, while host consumers may intentionally or temporarily diverge.
+- Removal of `tests/documentation/test_c4_doc_alignment.py` and `tests/documentation/test_agent_instruction_search_contract.py`, including all 62 collected cases.
 
 **Out of Scope:**
 
@@ -133,26 +132,14 @@ These are ordinary scalar template expansions. They do not justify special rende
 
 `scaffold_schema` returns a nested JSON Schema whose semantics cannot be represented reliably by a bounded item list. Its compact text should identify the artifact type and direct the consumer to the complete cached schema. Adding a generic JSON pretty-printer solely to inline this payload would increase complexity while duplicating the resource authority.
 
-## Documentation Test Debt Added to Scope
+## Documentation Test Cleanup Added to Scope
 
-The targeted `tests/documentation` run collected 62 cases but did not validate the five changed documents generically. It consists of 13 test functions, with four parameterized functions expanding to 53 cases.
-
-| Current test group | Cases | Research conclusion |
-|---|---:|---|
-| Issue-specific documentation wording and migration assertions | 9 | Remove. They preserve literal words, section ordering, and temporary migration history rather than supported behavior. |
-| Absence of the removed `search_documentation` name | 11 | Remove. This is historical negative locking with no durable product obligation. |
-| Exact `host-native repository search` wording | 7 | Remove. The semantic guidance may evolve without a behavioral regression. |
-| Byte-exact authoritative-source/consumer equality | 28 | Remove. Authoritative sources establish ownership, but host consumers may intentionally or temporarily diverge; exact parity is not a valid universal invariant. |
-| QA headings and required literal marker fragments | 7 | Remove. Substring presence does not demonstrate independent QA behavior. |
-
-Both test files must be deleted during Implementation, not weakened or replaced with equivalent wording assertions. The related active references must also stop describing every tracked consumer as an exact synchronized copy; source authority and consumer equality are separate concerns:
+Implementation must delete these two brittle documentation-test modules and all 62 collected cases:
 
 - [C4 documentation alignment tests](../../../tests/documentation/test_c4_doc_alignment.py)
 - [Agent instruction search contract tests](../../../tests/documentation/test_agent_instruction_search_contract.py)
-- [Agent Instructions Model](../../reference/copilot-agent-instructions-model.md)
-- [Workflow Extension Guide](../../reference/workflow-extension-guide.md)
 
-Any durable obligation exposed while deleting them must be evaluated independently. Only an actual uncovered runtime, loaded-configuration, schema, or public-boundary behavior warrants replacement coverage. In particular, first-push behavior belongs in parsed workflow/configuration behavior tests if it is not already protected; it does not justify retaining the current Markdown/YAML substring tests.
+They do not provide meaningful evidence for the changed documentation and must not remain part of the routine verification load.
 
 ## Semantic Defects Found
 
@@ -192,9 +179,6 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 10. The ceiling applies to `TextPresenter` chat text. Separately embedded validation resources remain governed by the existing presentation-resource contract; no transport-wide response-size guarantee is claimed.
 11. Preserve supported consumer contracts: no DTO field, tool input, cache URI, or resource payload migration is required. Text becomes additively more informative.
 12. Delete both current `tests/documentation` test modules and all 62 collected cases during Implementation.
-13. Do not replace removed wording, migration, removed-name, exact-parity, or QA-marker assertions with equivalent textual lock-in.
-14. Add replacement coverage only when direct inspection proves an uncovered durable runtime, parsed-configuration, schema, or public-boundary behavior; test that behavior at its owning layer.
-15. Preserve `docs/agents/<host>/` as the authoritative ownership layer without requiring all active or derived consumers to remain byte-identical; document intentional or temporary divergence instead of failing a universal equality test.
 
 ## Blast Radius
 
@@ -205,7 +189,7 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 | DTOs | No authoritative DTO changes expected. Existing formatted convenience fields may remain even when no longer used by text templates. |
 | Tests | Delete both legacy `tests/documentation` modules and their 62 cases. For the feature itself, use presenter unit tests, configuration/alignment tests, multibyte and reserved-cache-suffix boundary tests, collection-order/item-limit tests, nested-plan coverage, and a small representative set of tool presentation tests. Avoid one wording/snapshot test per tool. |
 | Test quality | Tests must verify durable presentation contracts rather than snapshot every wording detail. Verbose logs remain cache assertions, not large inline snapshots. |
-| Documentation | Presentation architecture and relevant tool references for discovery/project/GitHub/quality/scaffolding must reflect the compact-text/cache boundary. The Agent Instructions Model and Workflow Extension Guide must distinguish authoritative ownership from optional or temporary consumer divergence. |
+| Documentation | Presentation architecture and relevant tool references for discovery/project/GitHub/quality/scaffolding must reflect the compact-text/cache boundary. |
 | Agent instructions | Cache guidance remains valid: agents read resources for complete structured data or verbose logs. Verify wording does not continue to require resource reads for routine summaries that are now inline. |
 | Templates / enforcement | Artifact templates are unaffected. Startup presentation alignment must validate any new declarative fields against DTO shapes. |
 | Consumers | Routine query consumers gain direct Markdown; consumers needing completeness continue using the same cache URI and DTO. |
@@ -220,7 +204,7 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 | Rich summaries accidentally inline verbose logs | Representative `run_tests` and `run_quality_gates` tests for normal and verbose DTOs. |
 | Nested plan rendering becomes tool-specific | Architecture review proving no tool-name branch exists. |
 | Text changes break structured consumers | Tests proving cached DTO publication and content are unchanged. |
-| Documentation reintroduces mandatory resource reads or exact-consumer parity | Targeted semantic review and local-link verification of the changed active documents; do not use the removed generic wording suite as evidence. |
+| Documentation reintroduces mandatory resource reads | Targeted review and local-link verification of the changed active documents. |
 
 ## Expected Results
 
@@ -231,8 +215,7 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 - Cached DTOs remain complete and unchanged.
 - Presentation configuration remains the source of truth for per-tool content choices.
 - No tool-specific presentation branches are introduced.
-- The 62 brittle documentation cases are removed without textual replacements; any retained invariant is tested only through its owning runtime or parsed-configuration boundary.
-- Active documentation preserves authoritative host sources while allowing explicit intentional or temporary consumer divergence.
+- Both obsolete documentation-test modules and all 62 collected cases are removed.
 
 ## Open Questions
 
