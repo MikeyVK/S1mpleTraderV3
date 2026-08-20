@@ -16,7 +16,228 @@
       ],
       "skip_reason": null,
       "parent_branch": "main",
-      "created_at": "2026-08-20T15:40:10.649773+00:00"
+      "created_at": "2026-08-20T15:40:10.649773+00:00",
+      "planning_deliverables": {
+        "cycles": {
+          "total": 5,
+          "cycles": [
+            {
+              "cycle_number": 1,
+              "name": "Presentation configuration and alignment",
+              "deliverables": [
+                {
+                  "id": "C_CONFIG.1",
+                  "description": "Frozen schema represents recursive collections, inline scalar sequences, max_items, omission/truncation wording, and the global text budget.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "mcp_server/config/schemas/presentation_config.py",
+                    "text": "CollectionPresentationConfig"
+                  }
+                },
+                {
+                  "id": "C_CONFIG.2",
+                  "description": "Startup alignment recursively validates collection fields, types, placeholders, duplicates, inline sequences, max_items usage, and mandatory-tail budget."
+                },
+                {
+                  "id": "C_CONFIG.3",
+                  "description": "Global presentation configuration supplies the 8,000-byte ceiling and omission/truncation wording.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": ".pgmcp/config/presentation.yaml",
+                    "text": "max_text_response_bytes"
+                  }
+                },
+                {
+                  "id": "C_CONFIG.4",
+                  "description": "Durable schema and alignment tests cover accepted and rejected contracts.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/config/test_presentation_config.py"
+                  }
+                }
+              ],
+              "exit_criteria": "Valid configuration loads; every designed invalid contract fails with actionable context; focused tests and file-scoped gates pass; no tool-name logic."
+            },
+            {
+              "cycle_number": 2,
+              "name": "Generic sequence and collection presentation",
+              "deliverables": [
+                {
+                  "id": "C_COLLECTION.1",
+                  "description": "Standalone SafeNoneFormatter renders bounded flat scalar sequences generically.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/presenters/value_formatter.py"
+                  }
+                },
+                {
+                  "id": "C_COLLECTION.2",
+                  "description": "CollectionTextRenderer renders scalar, model, sibling, and nested lists depth-first in DTO order.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/presenters/collection_text_renderer.py"
+                  }
+                },
+                {
+                  "id": "C_COLLECTION.3",
+                  "description": "Durable public-contract coverage spans empty, exact, over-limit, None, multibyte, sibling, and nested cases.",
+                  "validates": {
+                    "type": "file_glob",
+                    "file": "tests/mcp_server/unit/presenters/test_*collection*.py"
+                  }
+                },
+                {
+                  "id": "C_COLLECTION.4",
+                  "description": "Formatter and renderer contain no tool dispatch, sorting, filtering, or model-list Python representation."
+                }
+              ],
+              "exit_criteria": "Generic public behavior preserves order and bounds at every depth, avoids Python repr and tool-name logic, and focused tests plus file-scoped gates pass."
+            },
+            {
+              "cycle_number": 3,
+              "name": "UTF-8 text budget enforcement",
+              "deliverables": [
+                {
+                  "id": "C_BUDGET.1",
+                  "description": "TextBudgetLimiter enforces the configured UTF-8 byte ceiling.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "mcp_server/presenters/text_budget_limiter.py"
+                  }
+                },
+                {
+                  "id": "C_BUDGET.2",
+                  "description": "Overflow reserves the complete cache reference and correct notice before body content."
+                },
+                {
+                  "id": "C_BUDGET.3",
+                  "description": "Truncation preserves code points, prefers blocks/lines, and closes intersected fenced blocks."
+                },
+                {
+                  "id": "C_BUDGET.4",
+                  "description": "Cache-unavailable truncation stays bounded without claiming cached completeness.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/presenters/test_text_budget_limiter.py"
+                  }
+                }
+              ],
+              "exit_criteria": "Every limiter result is valid UTF-8 and within budget; available URI and notice survive; cache-failure text is truthful; focused tests and file-scoped gates pass."
+            },
+            {
+              "cycle_number": 4,
+              "name": "TextPresenter integration and tool rollout",
+              "deliverables": [
+                {
+                  "id": "C_INTEGRATION.1",
+                  "description": "TextPresenter composes scalar text, collections, instructions, notes, fallback, reserved URI, and final limiter in approved order."
+                },
+                {
+                  "id": "C_INTEGRATION.2",
+                  "description": "All thirteen audited collection tools declare valid collections and max_items.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": ".pgmcp/config/presentation.yaml",
+                    "text": "collections:"
+                  }
+                },
+                {
+                  "id": "C_INTEGRATION.3",
+                  "description": "Four scalar tools expose approved additions and get_issue labels are bounded to ten."
+                },
+                {
+                  "id": "C_INTEGRATION.4",
+                  "description": "run_quality_gates and validate_template use outcome-neutral wording."
+                },
+                {
+                  "id": "C_INTEGRATION.5",
+                  "description": "Representative verification outputs expose bounded actionable rows while excluding verbose fields."
+                },
+                {
+                  "id": "C_INTEGRATION.6",
+                  "description": "Integration evidence proves complete cached DTOs and separately embedded validation resources remain unchanged."
+                }
+              ],
+              "exit_criteria": "Bundled YAML aligns; representative output is actionable and bounded; DTO/cache/resource contracts remain unchanged; no affected tool-name dispatch; focused tests and file-scoped gates pass."
+            },
+            {
+              "cycle_number": 5,
+              "name": "Obsolete documentation-test removal",
+              "deliverables": [
+                {
+                  "id": "C_TEST_CLEANUP.1",
+                  "description": "Remove tests/documentation/test_c4_doc_alignment.py."
+                },
+                {
+                  "id": "C_TEST_CLEANUP.2",
+                  "description": "Remove tests/documentation/test_agent_instruction_search_contract.py."
+                },
+                {
+                  "id": "C_TEST_CLEANUP.3",
+                  "description": "All 62 cases disappear without replacement mutable-prose tests."
+                }
+              ],
+              "exit_criteria": "Both obsolete modules and all 62 cases are absent; no replacement prose snapshots or unrelated changes exist; no artificial RED was created."
+            }
+          ]
+        },
+        "validation": {
+          "deliverables": [
+            {
+              "id": "VAL_FOCUSED.1",
+              "description": "Reconfirm all affected focused tests after final implementation changes."
+            },
+            {
+              "id": "VAL_FULL.1",
+              "description": "Run one workspace-wide test suite and record exact totals."
+            },
+            {
+              "id": "VAL_GATES.1",
+              "description": "Run branch-wide quality gates once and inspect the cached structured result."
+            },
+            {
+              "id": "VAL_BEHAVIOR.1",
+              "description": "Record evidence for budget, URI, order, limits, nesting, labels, semantic outcomes, and cache preservation."
+            },
+            {
+              "id": "VAL_DEFERRED.1",
+              "description": "Carry structured quality-gate findings into validation.md for Ready/PR triage."
+            },
+            {
+              "id": "VAL_REPORT.1",
+              "description": "Publish the validation report with failures, residual risks, and deferred work.",
+              "validates": {
+                "type": "file_exists",
+                "file": "docs/development/issue456/validation.md"
+              }
+            }
+          ]
+        },
+        "documentation": {
+          "deliverables": [
+            {
+              "id": "DOC_PRESENTATION.1",
+              "description": "Update presentation architecture for declarative collections, inline sequences, final byte limiting, and cache authority.",
+              "validates": {
+                "type": "file_exists",
+                "file": "docs/reference/presentation_architecture.md"
+              }
+            },
+            {
+              "id": "DOC_TOOLS.1",
+              "description": "Correct affected active discovery, project, GitHub, quality, scaffolding, and overview documentation."
+            },
+            {
+              "id": "DOC_AGENT.1",
+              "description": "Review agent cache guidance and change only stale mandatory-resource-read claims."
+            },
+            {
+              "id": "DOC_DEFERRED.1",
+              "description": "Preserve structured quality-gate findings as deferred work rather than current behavior."
+            }
+          ]
+        }
+      }
     }
   }
 }

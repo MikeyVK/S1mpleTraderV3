@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "design",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -27,6 +27,14 @@
       "to_phase": "design",
       "timestamp": "2026-08-20T19:46:09.882361+00:00",
       "human_approval_message": "User approved transition to Design.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-08-20T20:24:23.094025+00:00",
+      "human_approval_message": "User approved transition to Planning and requested execution of the applicable phase instructions.",
       "forced": false,
       "skip_reason": null
     }
