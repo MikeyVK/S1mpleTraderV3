@@ -673,98 +673,65 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            The branch is ready for PR submission.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Call get_project_plan(issue_number=N), get_work_context, and get_issue(issue_number=N).
-                Read docs/development/issueN/validation.md
-                and the updated documentation files that materially support the final PR narrative.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
-            [ ] Run final quality gate: run_quality_gates(scope='branch')
-                If this fails, stop.
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
 
-            [ ] If .pgmcp/state.json contains the final phase or transition audit trail
-                for this branch, commit it before PR preparation.
-                Do not leave the last branch audit trail as dirty local state
-                just because submit_pr may later neutralize branch-local artifacts.
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
 
-            [ ] Build the definitive deferred-work transfer from authoritative issueN artifacts only.
-                For each item capture:
-                - concise title
-                - why it is explicitly out of scope for this branch
-                - source artifact that established the deferral
-                - impact if it remains open
-                - tracking state: explicit issue reference already present, or CO triage required
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
 
-            [ ] Keep the deferred-work transfer strict and audit-ready:
-                - carry forward only items already established by issueN artifacts
-                - package the transfer so @co can act without reconstructing the branch history
-                - leave issue triage and issue-body curation to @co
-                - if an item is not actually established by the issue artifacts, stop and raise a blocker
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
 
-            [ ] Scaffold the PR body with the existing PR template.
-                Call scaffold_artifact(artifact_type='pr', name='pr', context={...}).
-                Populate at minimum:
-                - title: finalized PR title
-                - summary: concise outcome summary grounded in validation and updated documentation
-                - changes: concise summary of the delivered branch changes
-                - testing: validation evidence and final gate result actually obtained
-                - checklist_items: release-ready checklist entries
-                - related_docs: validation report and updated documentation the reviewer should open
-                - closes_issues: [N] when the PR closes the issue
-                - breaking_changes: only when explicitly supported by authoritative issue artifacts
-                - deferred_work: deferred items from authoritative issue artifacts (omit when none)
-                - tracking_state: tracking state for deferred items (issue refs or triage notes)
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
 
-            [ ] Read the scaffolded PR markdown from the returned artifact path
-                and use that template output as the body for submit_pr.
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
 
-            [ ] Verify the original issue body still honestly describes the branch intent and scope:
-                - if research broadened or changed scope, update the issue body before PR creation
-                - use update_issue(issue_number=N, body="<updated>") when changes are needed
-
-            [ ] Review all issues explicitly in scope: decide which are closure-ready on this branch:
-                - for each in-scope issue, decide: close on merge via Closes #N, or explicitly defer
-                - encode only closure-ready issues in the PR body via Closes #N
-
-            [ ] Carry deferred work into the PR body as the persistent @imp → @co transfer artifact:
-                - populate the PR body with deferred_work and tracking_state scaffold fields
-                - the PR body must carry: delivered scope, Closes #N claims, deferred items, tracking state
-                - the hand-over template is a completeness check, not a replacement for PR body facts
-
-            [ ] Verify the PR body is complete using the handover template as a completeness check:
-                - does the PR body carry: delivered scope, Closes #N claims, deferred items, tracking state?
-                - use the hand-over template sections as a gate before calling submit_pr
-
-            [ ] Commit state files before PR: git_add_or_commit(workflow_phase='ready', message='chore: update pgmcp state before PR')
-                  Ensures .pgmcp/state.json and any other dirty tracked files are committed.
-                  submit_pr requires a clean working tree — this step must always precede it.
-
-            [ ] Submit PR: submit_pr(head='<branch>', title='<title>', body='<scaffolded pr markdown>')
-            [ ] Do NOT call merge_pr — human approval required.
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Ready → CO / Merge Hand-over
+            ### Ready Hand-over
+
             #### Scope
-            - Issue: #N
-            - PR focus: <what the PR packages for merge>
-            - Deferred transfer focus: <what @co must preserve for follow-up tracking>
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
 
-            #### Delivery Targets
-            - PR body alignment: <which validation and documentation artifacts the PR body reflects>
-            - Template usage: PR body scaffolded via artifact_type='pr'
-            - Final gate result: <summary of run_quality_gates(scope='branch')>
-            - Deferred work transfer: <items carried forward from authoritative issue artifacts only>
-            - Tracking state: <explicit issue refs already present vs CO triage required>
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
 
-            #### Files
-            - docs/development/issueN/validation.md
-            - docs/... (updated)
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
 
-            #### Stop-Go Proof
-            - Quality gates: run_quality_gates(scope='branch') → <result>
-            - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
-            - Deferred-work transfer prepared for @co
-            - PR submitted (merge requires human approval)
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested
   bug:
     phases:
       - name: research
@@ -1480,98 +1447,65 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            The branch is ready for PR submission.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Call get_project_plan(issue_number=N), get_work_context, and get_issue(issue_number=N).
-                Read docs/development/issueN/validation.md
-                and the updated documentation files that materially support the final PR narrative.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
-            [ ] Run final quality gate: run_quality_gates(scope='branch')
-                If this fails, stop.
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
 
-            [ ] If .pgmcp/state.json contains the final phase or transition audit trail
-                for this branch, commit it before PR preparation.
-                Do not leave the last branch audit trail as dirty local state
-                just because submit_pr may later neutralize branch-local artifacts.
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
 
-            [ ] Build the definitive deferred-work transfer from authoritative issueN artifacts only.
-                For each item capture:
-                - concise title
-                - why it is explicitly out of scope for this branch
-                - source artifact that established the deferral
-                - impact if it remains open
-                - tracking state: explicit issue reference already present, or CO triage required
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
 
-            [ ] Keep the deferred-work transfer strict and audit-ready:
-                - carry forward only items already established by issueN artifacts
-                - package the transfer so @co can act without reconstructing the branch history
-                - leave issue triage and issue-body curation to @co
-                - if an item is not actually established by the issue artifacts, stop and raise a blocker
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
 
-            [ ] Scaffold the PR body with the existing PR template.
-                Call scaffold_artifact(artifact_type='pr', name='pr', context={...}).
-                Populate at minimum:
-                - title: finalized PR title
-                - summary: concise bug-fix outcome summary grounded in validation and updated documentation
-                - changes: concise summary of the delivered bug-fix changes
-                - testing: validation evidence and final gate result actually obtained
-                - checklist_items: release-ready checklist entries
-                - related_docs: validation report and updated documentation the reviewer should open
-                - closes_issues: [N] when the PR closes the issue
-                - breaking_changes: only when explicitly supported by authoritative issue artifacts
-                - deferred_work: deferred items from authoritative issue artifacts (omit when none)
-                - tracking_state: tracking state for deferred items (issue refs or triage notes)
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
 
-            [ ] Read the scaffolded PR markdown from the returned artifact path
-                and use that template output as the body for submit_pr.
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
 
-            [ ] Verify the original issue body still honestly describes the branch intent and scope:
-                - if research broadened or changed scope, update the issue body before PR creation
-                - use update_issue(issue_number=N, body="<updated>") when changes are needed
-
-            [ ] Review all issues explicitly in scope: decide which are closure-ready on this branch:
-                - for each in-scope issue, decide: close on merge via Closes #N, or explicitly defer
-                - encode only closure-ready issues in the PR body via Closes #N
-
-            [ ] Carry deferred work into the PR body as the persistent @imp → @co transfer artifact:
-                - populate the PR body with deferred_work and tracking_state scaffold fields
-                - the PR body must carry: delivered scope, Closes #N claims, deferred items, tracking state
-                - the hand-over template is a completeness check, not a replacement for PR body facts
-
-            [ ] Verify the PR body is complete using the handover template as a completeness check:
-                - does the PR body carry: delivered scope, Closes #N claims, deferred items, tracking state?
-                - use the hand-over template sections as a gate before calling submit_pr
-
-            [ ] Commit state files before PR: git_add_or_commit(workflow_phase='ready', message='chore: update pgmcp state before PR')
-                  Ensures .pgmcp/state.json and any other dirty tracked files are committed.
-                  submit_pr requires a clean working tree — this step must always precede it.
-
-            [ ] Submit PR: submit_pr(head='<branch>', title='<title>', body='<scaffolded pr markdown>')
-            [ ] Do NOT call merge_pr — human approval required.
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Ready → CO / Merge Hand-over
+            ### Ready Hand-over
+
             #### Scope
-            - Issue: #N
-            - PR focus: <what the PR packages for merge>
-            - Deferred transfer focus: <what @co must preserve for follow-up tracking>
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
 
-            #### Delivery Targets
-            - PR body alignment: <which validation and documentation artifacts the PR body reflects>
-            - Template usage: PR body scaffolded via artifact_type='pr'
-            - Final gate result: <summary of run_quality_gates(scope='branch')>
-            - Deferred work transfer: <items carried forward from authoritative issue artifacts only>
-            - Tracking state: <explicit issue refs already present vs CO triage required>
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
 
-            #### Files
-            - docs/development/issueN/validation.md
-            - docs/... (updated)
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
 
-            #### Stop-Go Proof
-            - Quality gates: run_quality_gates(scope='branch') → <result>
-            - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
-            - Deferred-work transfer prepared for @co
-            - PR submitted (merge requires human approval)
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested
   hotfix:
     phases:
       - name: implementation
@@ -1854,98 +1788,65 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            The branch is ready for PR submission.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Call get_project_plan(issue_number=N), get_work_context, and get_issue(issue_number=N).
-                Read docs/development/issueN/validation.md
-                and the updated documentation files that materially support the final PR narrative.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
-            [ ] Run final quality gate: run_quality_gates(scope='branch')
-                If this fails, stop.
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
 
-            [ ] If .pgmcp/state.json contains the final phase or transition audit trail
-                for this branch, commit it before PR preparation.
-                Do not leave the last branch audit trail as dirty local state
-                just because submit_pr may later neutralize branch-local artifacts.
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
 
-            [ ] Build the definitive deferred-work transfer from authoritative issueN artifacts only.
-                For each item capture:
-                - concise title
-                - why it is explicitly out of scope for this branch
-                - source artifact that established the deferral
-                - impact if it remains open
-                - tracking state: explicit issue reference already present, or CO triage required
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
 
-            [ ] Keep the deferred-work transfer strict and audit-ready:
-                - carry forward only items already established by issueN artifacts
-                - package the transfer so @co can act without reconstructing the branch history
-                - leave issue triage and issue-body curation to @co
-                - if an item is not actually established by the issue artifacts, stop and raise a blocker
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
 
-            [ ] Scaffold the PR body with the existing PR template.
-                Call scaffold_artifact(artifact_type='pr', name='pr', context={...}).
-                Populate at minimum:
-                - title: finalized PR title
-                - summary: concise hotfix outcome summary grounded in validation and updated documentation
-                - changes: concise summary of the delivered hotfix changes
-                - testing: validation evidence and final gate result actually obtained
-                - checklist_items: release-ready checklist entries
-                - related_docs: validation report and updated documentation the reviewer should open
-                - closes_issues: [N] when the PR closes the issue
-                - breaking_changes: only when explicitly supported by authoritative issue artifacts
-                - deferred_work: deferred items from authoritative issue artifacts (omit when none)
-                - tracking_state: tracking state for deferred items (issue refs or triage notes)
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
 
-            [ ] Read the scaffolded PR markdown from the returned artifact path
-                and use that template output as the body for submit_pr.
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
 
-            [ ] Verify the original issue body still honestly describes the branch intent and scope:
-                - if research broadened or changed scope, update the issue body before PR creation
-                - use update_issue(issue_number=N, body="<updated>") when changes are needed
-
-            [ ] Review all issues explicitly in scope: decide which are closure-ready on this branch:
-                - for each in-scope issue, decide: close on merge via Closes #N, or explicitly defer
-                - encode only closure-ready issues in the PR body via Closes #N
-
-            [ ] Carry deferred work into the PR body as the persistent @imp → @co transfer artifact:
-                - populate the PR body with deferred_work and tracking_state scaffold fields
-                - the PR body must carry: delivered scope, Closes #N claims, deferred items, tracking state
-                - the hand-over template is a completeness check, not a replacement for PR body facts
-
-            [ ] Verify the PR body is complete using the handover template as a completeness check:
-                - does the PR body carry: delivered scope, Closes #N claims, deferred items, tracking state?
-                - use the hand-over template sections as a gate before calling submit_pr
-
-            [ ] Commit state files before PR: git_add_or_commit(workflow_phase='ready', message='chore: update pgmcp state before PR')
-                  Ensures .pgmcp/state.json and any other dirty tracked files are committed.
-                  submit_pr requires a clean working tree — this step must always precede it.
-
-            [ ] Submit PR: submit_pr(head='<branch>', title='<title>', body='<scaffolded pr markdown>')
-            [ ] Do NOT call merge_pr — human approval required.
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Ready → CO / Merge Hand-over
+            ### Ready Hand-over
+
             #### Scope
-            - Issue: #N
-            - PR focus: <what the PR packages for merge>
-            - Deferred transfer focus: <what @co must preserve for follow-up tracking>
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
 
-            #### Delivery Targets
-            - PR body alignment: <which validation and documentation artifacts the PR body reflects>
-            - Template usage: PR body scaffolded via artifact_type='pr'
-            - Final gate result: <summary of run_quality_gates(scope='branch')>
-            - Deferred work transfer: <items carried forward from authoritative issue artifacts only>
-            - Tracking state: <explicit issue refs already present vs CO triage required>
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
 
-            #### Files
-            - docs/development/issueN/validation.md
-            - docs/... (updated)
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
 
-            #### Stop-Go Proof
-            - Quality gates: run_quality_gates(scope='branch') → <result>
-            - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
-            - Deferred-work transfer prepared for @co
-            - PR submitted (merge requires human approval)
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested
   refactor:
     phases:
       - name: research
@@ -2608,98 +2509,65 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            The branch is ready for PR submission.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Call get_project_plan(issue_number=N), get_work_context, and get_issue(issue_number=N).
-                Read docs/development/issueN/validation.md
-                and the updated documentation files that materially support the final PR narrative.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
-            [ ] Run final quality gate: run_quality_gates(scope='branch')
-                If this fails, stop.
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
 
-            [ ] If .pgmcp/state.json contains the final phase or transition audit trail
-                for this branch, commit it before PR preparation.
-                Do not leave the last branch audit trail as dirty local state
-                just because submit_pr may later neutralize branch-local artifacts.
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
 
-            [ ] Build the definitive deferred-work transfer from authoritative issueN artifacts only.
-                For each item capture:
-                - concise title
-                - why it is explicitly out of scope for this branch
-                - source artifact that established the deferral
-                - impact if it remains open
-                - tracking state: explicit issue reference already present, or CO triage required
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
 
-            [ ] Keep the deferred-work transfer strict and audit-ready:
-                - carry forward only items already established by issueN artifacts
-                - package the transfer so @co can act without reconstructing the branch history
-                - leave issue triage and issue-body curation to @co
-                - if an item is not actually established by the issue artifacts, stop and raise a blocker
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
 
-            [ ] Scaffold the PR body with the existing PR template.
-                Call scaffold_artifact(artifact_type='pr', name='pr', context={...}).
-                Populate at minimum:
-                - title: finalized PR title
-                - summary: concise refactor outcome summary grounded in validation and updated documentation
-                - changes: concise summary of the delivered refactor changes
-                - testing: validation evidence and final gate result actually obtained
-                - checklist_items: release-ready checklist entries
-                - related_docs: validation report and updated documentation the reviewer should open
-                - closes_issues: [N] when the PR closes the issue
-                - breaking_changes: only when explicitly supported by authoritative issue artifacts
-                - deferred_work: deferred items from authoritative issue artifacts (omit when none)
-                - tracking_state: tracking state for deferred items (issue refs or triage notes)
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
 
-            [ ] Read the scaffolded PR markdown from the returned artifact path
-                and use that template output as the body for submit_pr.
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
 
-            [ ] Verify the original issue body still honestly describes the branch intent and scope:
-                - if research broadened or changed scope, update the issue body before PR creation
-                - use update_issue(issue_number=N, body="<updated>") when changes are needed
-
-            [ ] Review all issues explicitly in scope: decide which are closure-ready on this branch:
-                - for each in-scope issue, decide: close on merge via Closes #N, or explicitly defer
-                - encode only closure-ready issues in the PR body via Closes #N
-
-            [ ] Carry deferred work into the PR body as the persistent @imp → @co transfer artifact:
-                - populate the PR body with deferred_work and tracking_state scaffold fields
-                - the PR body must carry: delivered scope, Closes #N claims, deferred items, tracking state
-                - the hand-over template is a completeness check, not a replacement for PR body facts
-
-            [ ] Verify the PR body is complete using the handover template as a completeness check:
-                - does the PR body carry: delivered scope, Closes #N claims, deferred items, tracking state?
-                - use the hand-over template sections as a gate before calling submit_pr
-
-            [ ] Commit state files before PR: git_add_or_commit(workflow_phase='ready', message='chore: update pgmcp state before PR')
-                  Ensures .pgmcp/state.json and any other dirty tracked files are committed.
-                  submit_pr requires a clean working tree — this step must always precede it.
-
-            [ ] Submit PR: submit_pr(head='<branch>', title='<title>', body='<scaffolded pr markdown>')
-            [ ] Do NOT call merge_pr — human approval required.
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Ready → CO / Merge Hand-over
+            ### Ready Hand-over
+
             #### Scope
-            - Issue: #N
-            - PR focus: <what the PR packages for merge>
-            - Deferred transfer focus: <what @co must preserve for follow-up tracking>
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
 
-            #### Delivery Targets
-            - PR body alignment: <which validation and documentation artifacts the PR body reflects>
-            - Template usage: PR body scaffolded via artifact_type='pr'
-            - Final gate result: <summary of run_quality_gates(scope='branch')>
-            - Deferred work transfer: <items carried forward from authoritative issue artifacts only>
-            - Tracking state: <explicit issue refs already present vs CO triage required>
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
 
-            #### Files
-            - docs/development/issueN/validation.md
-            - docs/... (updated)
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
 
-            #### Stop-Go Proof
-            - Quality gates: run_quality_gates(scope='branch') → <result>
-            - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
-            - Deferred-work transfer prepared for @co
-            - PR submitted (merge requires human approval)
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested
   docs:
     phases:
       - name: planning
@@ -2888,98 +2756,65 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            The branch is ready for PR submission.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Call get_project_plan(issue_number=N), get_work_context, and get_issue(issue_number=N).
-                Read the planning artifact
-                and the updated documentation files that materially support the final PR narrative.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
-            [ ] Run final quality gate: run_quality_gates(scope='branch')
-                If this fails, stop.
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
 
-            [ ] If .pgmcp/state.json contains the final phase or transition audit trail
-                for this branch, commit it before PR preparation.
-                Do not leave the last branch audit trail as dirty local state
-                just because submit_pr may later neutralize branch-local artifacts.
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
 
-            [ ] Build the definitive deferred-work transfer from authoritative issueN artifacts only.
-                For each item capture:
-                - concise title
-                - why it is explicitly out of scope for this branch
-                - source artifact that established the deferral
-                - impact if it remains open
-                - tracking state: explicit issue reference already present, or CO triage required
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
 
-            [ ] Keep the deferred-work transfer strict and audit-ready:
-                - carry forward only items already established by issueN artifacts
-                - package the transfer so @co can act without reconstructing the branch history
-                - leave issue triage and issue-body curation to @co
-                - if an item is not actually established by the issue artifacts, stop and raise a blocker
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
 
-            [ ] Scaffold the PR body with the existing PR template.
-                Call scaffold_artifact(artifact_type='pr', name='pr', context={...}).
-                Populate at minimum:
-                - title: finalized PR title
-                - summary: concise documentation outcome summary grounded in planning and updated docs
-                - changes: concise summary of the documentation surfaces updated in this branch
-                - testing: final gate result and any documentation verification actually performed
-                - checklist_items: release-ready checklist entries
-                - related_docs: planning artifact and the updated docs the reviewer should open
-                - closes_issues: [N] when the PR closes the issue
-                - breaking_changes: only when explicitly supported by authoritative issue artifacts
-                - deferred_work: deferred items from authoritative issue artifacts (omit when none)
-                - tracking_state: tracking state for deferred items (issue refs or triage notes)
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
 
-            [ ] Read the scaffolded PR markdown from the returned artifact path
-                and use that template output as the body for submit_pr.
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
 
-            [ ] Verify the original issue body still honestly describes the branch intent and scope:
-                - if research broadened or changed scope, update the issue body before PR creation
-                - use update_issue(issue_number=N, body="<updated>") when changes are needed
-
-            [ ] Review all issues explicitly in scope: decide which are closure-ready on this branch:
-                - for each in-scope issue, decide: close on merge via Closes #N, or explicitly defer
-                - encode only closure-ready issues in the PR body via Closes #N
-
-            [ ] Carry deferred work into the PR body as the persistent @imp → @co transfer artifact:
-                - populate the PR body with deferred_work and tracking_state scaffold fields
-                - the PR body must carry: delivered scope, Closes #N claims, deferred items, tracking state
-                - the hand-over template is a completeness check, not a replacement for PR body facts
-
-            [ ] Verify the PR body is complete using the handover template as a completeness check:
-                - does the PR body carry: delivered scope, Closes #N claims, deferred items, tracking state?
-                - use the hand-over template sections as a gate before calling submit_pr
-
-            [ ] Commit state files before PR: git_add_or_commit(workflow_phase='ready', message='chore: update pgmcp state before PR')
-                  Ensures .pgmcp/state.json and any other dirty tracked files are committed.
-                  submit_pr requires a clean working tree — this step must always precede it.
-
-            [ ] Submit PR: submit_pr(head='<branch>', title='<title>', body='<scaffolded pr markdown>')
-            [ ] Do NOT call merge_pr — human approval required.
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Ready → CO / Merge Hand-over
+            ### Ready Hand-over
+
             #### Scope
-            - Issue: #N
-            - PR focus: <what the PR packages for merge>
-            - Deferred transfer focus: <what @co must preserve for follow-up tracking>
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
 
-            #### Delivery Targets
-            - PR body alignment: <which planning and updated documentation artifacts the PR body reflects>
-            - Template usage: PR body scaffolded via artifact_type='pr'
-            - Final gate result: <summary of run_quality_gates(scope='branch')>
-            - Deferred work transfer: <items carried forward from authoritative issue artifacts only>
-            - Tracking state: <explicit issue refs already present vs CO triage required>
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
 
-            #### Files
-            - docs/development/issueN/planning.md
-            - docs/... (updated)
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
 
-            #### Stop-Go Proof
-            - Quality gates: run_quality_gates(scope='branch') → <result>
-            - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
-            - Deferred-work transfer prepared for @co
-            - PR submitted (merge requires human approval)
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested
   chore:
     phases:
       - name: research
@@ -3150,43 +2985,65 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            The branch is ready for PR preparation.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Confirm that validation passed and includes a successful,
-                current workspace-wide test run.
-            [ ] Confirm that quality-gate evidence is current and that any accepted
-                pre-existing failures are explicitly explained.
-            [ ] Confirm that current documentation and authoritative or derived
-                instruction sources are aligned where applicable.
-            [ ] Inspect the final branch status and diff for generated, unrelated,
-                temporary, or missing files.
-            [ ] Review the issue, research outcome, implementation handover,
-                validation outcome, documentation result, and final diff
-                for deferred work.
-            [ ] Do not rely solely on the validation handover. Actively look for
-                unresolved findings, intentionally excluded work, follow-up opportunities,
-                compatibility concerns, and residual risks.
-            [ ] Reconcile all identified deferred work into one explicit list.
-            [ ] Include a "Deferred work for @co triage" section in the pull request body.
-            [ ] For every deferred item, include:
-                - the finding
-                - why it was not included in this pull request
-                - its impact or risk
-                - the recommended follow-up
-            [ ] When no deferred work exists, include
-                "Deferred work for @co triage: None identified" in the pull request body.
-            [ ] Confirm that commits accurately describe the chore and include
-                all intended branch state.
-            [ ] Re-run the complete workspace test suite and applicable quality gates
-                if their validation evidence became stale.
-            [ ] Run the final branch quality gate: run_quality_gates(scope='branch').
-                If it fails, stop.
-            [ ] Prepare a concise pull request title and body covering the issue,
-                resulting behavior, verification, residual risks, and deferred work.
-            [ ] Submit the pull request through submit_pr.
-            [ ] Confirm that the branch is ready for review and do not merge
-                without explicit human approval.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
+
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
+
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
+
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
+
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
+
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
+
+            [ ] Produce the outcome-neutral hand-over below.
+          handover_template: |
+            ### Ready Hand-over
+
+            #### Scope
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
+
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
+
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
+
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested
   epic:
     phases:
       - name: research
@@ -3685,97 +3542,62 @@ workflows:
         instructions:
           sub_role: epic-releaser
           phase_instructions: |
-            The branch is ready for PR submission.
+            Prepare and submit the pull request from verified branch evidence.
 
-            [ ] Call get_project_plan(issue_number=N), get_work_context, and get_issue(issue_number=N).
-                Read the planning artifact, design artifact, coordination notes or outputs,
-                and the updated epic documentation files that materially support the final PR narrative.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Inspect the issue, Validation evidence, and current documentation only as needed
+                to verify delivered scope and the final pull-request narrative.
 
-            [ ] Run final quality gate: run_quality_gates(scope='branch')
-                If this fails, stop.
+            [ ] Establish evidence freshness:
+                - reuse successful Validation tests and gates when no later change invalidated them
+                - rerun only invalidated checks at the narrowest sufficient scope
+                - repeat the workspace-wide suite only when its evidence is stale or missing
+                - stop on any unresolved failure
 
-            [ ] If .pgmcp/state.json contains the final phase or transition audit trail
-                for this branch, commit it before PR preparation.
-                Do not leave the last branch audit trail as dirty local state
-                just because submit_pr may later neutralize branch-local artifacts.
+            [ ] Inspect the final branch:
+                - git_status()
+                - git_diff_stat(target_branch='<parent>', source_branch='HEAD')
+                - confirm intended scope, complete tracked branch state, and no unrelated,
+                  temporary, generated, missing, or uncommitted files
 
-            [ ] Build the definitive deferred-work transfer from authoritative epic artifacts only.
-                For each item capture:
-                - concise title
-                - why it is explicitly out of scope for this branch
-                - source artifact that established the deferral
-                - impact if it remains open
-                - tracking state: explicit issue reference already present, or CO triage required
+            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+                For each item record the finding, why it is excluded, impact, source,
+                recommended follow-up, and existing issue reference or @co triage need.
+                Record "None identified" when the search finds none.
 
-            [ ] Keep the deferred-work transfer strict and audit-ready:
-                - carry forward only items already established by epic artifacts
-                - package the transfer so @co can act without reconstructing the epic branch history
-                - leave issue triage and issue-body curation to @co
-                - if an item is not actually established by the epic artifacts, stop and raise a blocker
+            [ ] Scaffold the PR body:
+                scaffold_artifact(artifact_type='pr', name='pr', context={...}).
+                Include delivered scope, exact verification evidence, closure claims,
+                residual risks, deferred work, tracking state, and links to primary artifacts.
+                Use only supported claims; stop if scope or closure intent is ambiguous.
 
-            [ ] Scaffold the PR body with the existing PR template.
-                Call scaffold_artifact(artifact_type='pr', name='pr', context={...}).
-                Populate at minimum:
-                - title: finalized PR title
-                - summary: concise epic outcome summary grounded in planning, design, coordination, and updated documentation
-                - changes: concise summary of the epic-level branch outcome
-                - testing: final gate result actually obtained
-                - checklist_items: release-ready checklist entries
-                - related_docs: planning, design, and updated epic documentation the reviewer should open
-                - closes_issues: [N] when the PR closes the epic issue
-                - breaking_changes: only when explicitly supported by authoritative epic artifacts
-                - deferred_work: deferred items from authoritative epic artifacts (omit when none)
-                - tracking_state: tracking state for deferred items (issue refs or triage notes)
+            [ ] If tracked workflow state or intended changes remain, commit them:
+                git_add_or_commit(workflow_phase='ready',
+                message='chore: update branch state before PR').
+                Recheck git_status() and stop unless the branch is clean.
 
-            [ ] Read the scaffolded PR markdown from the returned artifact path
-                and use that template output as the body for submit_pr.
+            [ ] Submit the PR:
+                submit_pr(head='<branch>', title='<title>', body='<scaffolded PR body>').
 
-            [ ] Verify the original issue body still honestly describes the branch intent and scope:
-                - if research broadened or changed scope, update the issue body before PR creation
-                - use update_issue(issue_number=N, body="<updated>") when changes are needed
-
-            [ ] Review all issues explicitly in scope: decide which are closure-ready on this branch:
-                - for each in-scope issue, decide: close on merge via Closes #N, or explicitly defer
-                - encode only closure-ready issues in the PR body via Closes #N
-
-            [ ] Carry deferred work into the PR body as the persistent @imp → @co transfer artifact:
-                - populate the PR body with deferred_work and tracking_state scaffold fields
-                - the PR body must carry: delivered scope, Closes #N claims, deferred items, tracking state
-                - the hand-over template is a completeness check, not a replacement for PR body facts
-
-            [ ] Verify the PR body is complete using the handover template as a completeness check:
-                - does the PR body carry: delivered scope, Closes #N claims, deferred items, tracking state?
-                - use the hand-over template sections as a gate before calling submit_pr
-
-            [ ] Commit state files before PR: git_add_or_commit(workflow_phase='ready', message='chore: update pgmcp state before PR')
-                  Ensures .pgmcp/state.json and any other dirty tracked files are committed.
-                  submit_pr requires a clean working tree — this step must always precede it.
-
-            [ ] Submit PR: submit_pr(head='<branch>', title='<title>', body='<scaffolded pr markdown>')
-            [ ] Do NOT call merge_pr — human approval required.
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Produce the outcome-neutral hand-over below.
           handover_template: |
-            ### Ready → CO / Merge Hand-over
+            ### Ready Hand-over
+
             #### Scope
-            - Epic: #N
-            - PR focus: <what the PR packages for merge at epic scope>
-            - Deferred transfer focus: <what @co must preserve for follow-up tracking>
+            - Issue and delivered scope: <#N and concise outcome>
+            - Excluded scope: <items or None>
 
-            #### Delivery Targets
-            - PR body alignment: <which planning, design, coordination, and documentation artifacts the PR body reflects>
-            - Template usage: PR body scaffolded via artifact_type='pr'
-            - Final gate result: <summary of run_quality_gates(scope='branch')>
-            - Deferred work transfer: <items carried forward from authoritative epic artifacts only>
-            - Tracking state: <explicit issue refs already present vs CO triage required>
+            #### Deliverables
+            - Pull request: [PR #N](PR_URL)
+            - Primary phase artifact: [artifact](repository/relative/path.md)
 
-            #### Files
-            - docs/development/issueN/planning.md
-            - docs/development/issueN/design.md
-            - docs/... (updated)
+            #### Evidence
+            - Validation evidence reused or rerun: <checks and outcomes>
+            - Final branch status and diff: <outcome>
 
-            #### Stop-Go Proof
-            - Quality gates: run_quality_gates(scope='branch') → <result>
-            - PR body scaffolded: scaffold_artifact(artifact_type='pr', name='pr', context={...})
-            - Deferred-work transfer prepared for @co
-            - PR submitted (merge requires human approval)
-            - PR submitted (merge requires human approval)
+            #### Open Work
+            - Deferred work and tracking state: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            #### Review Request
+            - Review requested

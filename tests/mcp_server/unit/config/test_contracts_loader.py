@@ -1,5 +1,3 @@
-from tests.mcp_server.test_support import get_default_server_root
-
 # tests\mcp_server\unit\config\test_contracts_loader.py
 # template=unit_test version=3d15d309 created=2026-05-02T18:00Z updated=
 """
@@ -33,6 +31,7 @@ from mcp_server.config.schemas.contracts_config import (
     WorkflowPhaseEntry,
 )
 from mcp_server.core.exceptions import ConfigError
+from tests.mcp_server.test_support import get_default_server_root
 
 _STUB_INSTR_DICT: dict[str, str] = {
     "sub_role": "test-role",
@@ -184,8 +183,7 @@ class TestLoadContractsConfig:
         real = Path(__file__).parents[4] / get_default_server_root() / "config" / "contracts.yaml"
         result = ConfigLoader(real.parent).load_contracts_config()
         ready_specs = [
-            workflow.get_phase("ready").instructions
-            for workflow in result.workflows.values()
+            workflow.get_phase("ready").instructions for workflow in result.workflows.values()
         ]
 
         first = ready_specs[0]
