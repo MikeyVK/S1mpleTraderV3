@@ -3,7 +3,7 @@
 # Agent Instructions Model
 
 **Status:** DEFINITIVE  
-**Version:** 2.0  
+**Version:** 2.1  
 **Last Updated:** 2026-08-20
 
 ---
@@ -100,12 +100,15 @@ it follows the same architecture and quality standards and should provide durabl
 
 ### Ready
 
-The Ready instruction is intentionally uniform and workflow-neutral. It consumes the
-latest authoritative verification evidence available for that workflow, checks
-documentation and deferred work, and prepares the PR. It does not assume that every
-workflow has a Validation phase or universally rerun the full workspace suite. It also
-does not duplicate human merge approval; tooling and branch locks enforce transfer to
-the coordination authority.
+The Ready instruction is intentionally uniform and workflow-neutral. For child-issue
+workflows, `@imp` uses the `implementer` sub-role to consume the latest authoritative
+verification evidence, check documentation and deferred work, prepare the PR, and submit
+it. Ready does not assume that every workflow has a Validation phase or universally rerun
+the full workspace suite.
+
+Ready does not duplicate human merge approval: tooling and branch locks enforce PR-merge
+approval. After `@imp` submits the PR, coordination owns its further handling and merge
+lifecycle; this is an operational hand-off, not an automatically enforced role transfer.
 
 ## Role and Review Model
 
@@ -114,8 +117,8 @@ responsibilities through their own agent or delegation primitives.
 
 | Role | Responsibility | Authority |
 |---|---|---|
-| `@co` | Coordination and epic-owned lifecycle work | Narrow mutation authority for its owned scope |
-| `@imp` | Child-issue research, design, planning, implementation, validation, and documentation | Mutation authority through pgmcp tools |
+| `@co` | Coordination, post-submission handling, and epic-owned lifecycle work | Narrow mutation authority for its owned scope |
+| `@imp` | Child-issue research, design, planning, implementation, validation, documentation, Ready preparation, and PR submission | Mutation authority through pgmcp tools |
 | `@qa` | Independent evidence-backed review | Read-only; may issue GO/NOGO |
 
 Keep role sessions separate where the harness supports it. Epic-owned findings route to
@@ -221,6 +224,7 @@ composition mechanism.
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 2.1 | 2026-08-20 | Agent | Clarify that `@imp` owns child-issue Ready and PR submission, while tooling enforces merge approval and coordination owns post-submission handling |
 | 2.0 | 2026-08-20 | Agent | Align the model with host SSOT, workflow-driven contracts, conditional references, delegation authority, canonical hand-overs, and workflow-neutral Ready |
 | 1.3 | 2026-07-20 | Agent | Fix stale reference path |
 | 1.2 | 2026-05-24 | Agent | Document config-driven context and role ownership |
