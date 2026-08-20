@@ -177,6 +177,9 @@ class TestLoadContractsConfig:
         assert implementation.cycle_based is False
         assert implementation.subphases == []
         assert implementation.commit_type_map == {}
+        assert "approved Research artifact" in implementation.instructions.phase_instructions
+        assert "direct Chore / Research hand-over" in implementation.instructions.phase_instructions
+        assert "when neither input exists" in implementation.instructions.phase_instructions
 
     def test_all_ready_contracts_are_exactly_equal(self) -> None:
         """Every workflow exposes one identical Ready instruction and hand-over."""
@@ -223,6 +226,9 @@ class TestLoadContractsConfig:
         assert "Review requested" in handover
         assert "human approval" not in instructions.lower()
         assert "merge_pr" not in instructions
+        assert "selected workflow" in instructions
+        assert "Validation evidence" not in instructions
+        assert "Validation evidence" not in handover
 
     def test_real_contracts_preserve_global_instruction_invariants(self) -> None:
         """All effective contracts keep the approved structural instruction contract."""
@@ -255,12 +261,17 @@ class TestLoadContractsConfig:
             assert instructions.strip(), contract
             assert "get_work_context" not in instructions, contract
             assert handover.strip(), contract
-            positions = [
-                re.search(rf"(?m)^#{{3,4}} {re.escape(heading)}$", handover) for heading in headings
-            ]
-            assert all(position is not None for position in positions), contract
-            starts = [position.start() for position in positions if position is not None]
-            assert starts == sorted(starts), contract
+
+            title = (
+                "### Ready Hand-over"
+                if phase.name == "ready"
+                else f"### {workflow_name.title()} / {phase.name.title()} Hand-over"
+            )
+            assert handover.startswith(f"{title}\n"), contract
+
+            canonical_headings = tuple(f"#### {heading}" for heading in headings)
+            positions = tuple(handover.index(heading) for heading in canonical_headings)
+            assert positions == tuple(sorted(positions)), contract
             assert "Review requested" in handover, contract
 
             effective_contract = f"{instructions}\n{handover}"
@@ -308,6 +319,12 @@ class TestLoadContractsConfig:
         real = Path(__file__).parents[4] / get_default_server_root() / "config" / "contracts.yaml"
         result = ConfigLoader(real.parent).load_contracts_config()
         artifact_ids = {"research-doc", "planning-doc", "design-doc"}
+        schema_discovery_contracts = {
+            ("docs", "planning"),
+            ("epic", "research"),
+            ("epic", "planning"),
+            ("epic", "design"),
+        }
 
         for workflow_name, workflow in result.workflows.items():
             for phase in workflow.phases:
@@ -318,7 +335,10 @@ class TestLoadContractsConfig:
                 instructions = phase.instructions.phase_instructions
                 contract = f"{workflow_name}/{phase.name}"
                 assert "scaffold_artifact" in instructions, contract
+                assert "context=" in instructions, contract
                 assert "git_add_or_commit" in instructions, contract
+                if (workflow_name, phase.name) in schema_discovery_contracts:
+                    assert "scaffold_schema" in instructions, contract
 
     def test_loaded_object_passes_model_validator(self, config_dir: Path) -> None:
         """Loaded object must satisfy the model_validator (last phase == pr_allowed_phase)."""

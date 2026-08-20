@@ -2,8 +2,8 @@
 <!-- template=generic_doc version=43c84181 created=2026-08-20T12:08Z updated= -->
 # Issue 399 Phase Instruction Contract Audit
 
-**Status:** IMPLEMENTATION COMPLETE — INDEPENDENT QA PENDING  
-**Version:** 1.1  
+**Status:** CORRECTED AFTER QA NOGO — INDEPENDENT RE-REVIEW PENDING  
+**Version:** 1.2  
 **Last Updated:** 2026-08-20
 
 ---
@@ -29,14 +29,15 @@ Read these first:
 
 ## Summary
 
-All 39 effective contracts are rewritten and producer-audited against C01-C23. Independent QA remains a separate authority.
+All 39 effective contracts are rewritten and producer-audited against C01-C23. Independent QA identified five semantic and executability failures in version 1.1; the producer has corrected them, reset every record to re-review pending, and makes no GO claim.
 
 ## Recording Rules
 
 Each effective contract is its `phase_instructions` plus coupled
 `handover_template`. Complete every field from direct evidence and evaluate C01-C23
-individually before accepting that rewrite. Use `N/A` only with a reason. A producer
-records evidence but does not turn this ledger into an independent QA verdict.
+individually before accepting that rewrite. Use `N/A` only with a reason. `PASS` records
+only the producer's criterion result; it never represents independent approval. An
+independent NOGO supersedes every producer result until fresh independent re-review.
 
 ## Baseline Metrics
 
@@ -92,10 +93,10 @@ Parsed with the same block-scalar and lexical-unit rules as the RED baseline.
 
 | Measure | Baseline | Final | Reduction |
 |---|---:|---:|---:|
-| Instruction chars | 158665 | 67840 | 90825 (57.24%) |
-| Hand-over chars | 24019 | 21283 | 2736 (11.39%) |
-| Effective chars | 182684 | 89123 | 93561 (51.21%) |
-| Lexical units | 33613 | 17530 | 16083 (47.85%) |
+| Instruction chars | 158665 | 69668 | 88997 (56.09%) |
+| Hand-over chars | 24019 | 21848 | 2171 (9.04%) |
+| Effective chars | 182684 | 91516 | 91168 (49.90%) |
+| Lexical units | 33613 | 17979 | 15634 (46.51%) |
 | Effective contracts | 39 | 39 | 0 |
 
 The richer canonical hand-over contract reduces less than instructions by design;
@@ -104,10 +105,27 @@ the combined effective contract is approximately half the baseline size.
 ## Implementation Verification
 
 - Runtime-contract loader and agent source/consumer alignment: 74 tests passed.
+- QA-correction invariants cover workflow-neutral Ready evidence, schema-complete scaffolds,
+  strict canonical transfers, and Chore's artifact-or-direct-hand-over intake.
 - File-scoped format, lint, import, line-length, and Pyright gates: passed.
 - Runtime/audit metric reconciliation: 39 of 39 size records matched; zero mismatches.
 - Server-owned context bootstrap: zero runtime `get_work_context` occurrences; loader invariant added.
 - Full workspace validation and independent GO/NOGO remain owned by Validation/QA.
+
+## Independent QA NOGO Corrections
+
+Version 1.1 was rejected as a baseline. The producer applied these bounded corrections:
+
+1. All seven Ready contracts now derive evidence from the selected workflow and its
+   completed phases. They assume neither a Validation phase nor a universal full suite.
+2. Docs Planning and Epic Research, Planning, and Design now discover their artifact
+   schema and provide schema-complete `context={...}` before scaffolding.
+3. The eleven non-Ready Docs, Chore, and Epic transfers now use the exact canonical
+   workflow/phase title and `####` section hierarchy. Structural tests enforce both.
+4. Chore Implementation now accepts and verifies either the persisted Research artifact
+   or the direct `Chore / Research` hand-over, and stops if neither exists.
+5. All 39 producer audit records are marked non-authoritative with independent re-review
+   pending. These corrections are evidence for re-review, not a producer GO verdict.
 
 ## Contract Records
 
@@ -115,114 +133,114 @@ the combined effective contract is approximately half the baseline size.
 
 #### `feature/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4001/914/4915/995; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4001/914/4915/995; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `bug/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4010/914/4924/1000; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4010/914/4924/1000; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `hotfix/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4008/914/4922/996; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4008/914/4922/996; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `refactor/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4012/914/4926/996; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4012/914/4926/996; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `docs/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4016/918/4934/996; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4016/918/4934/996; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `chore/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 1873/0/1873/348; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 1873/0/1873/348; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `epic/ready`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Package verified branch evidence, deferred work, and closure claims into a submitted pull request.
 - **Workflow distinction:** N/A — C20 deliberately makes terminal behavior identical; workflow-specific meaning is supplied by prior artifacts and PR content.
-- **Retained activations:** Evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
+- **Retained activations:** Workflow-required evidence-freshness decision; final `git_status` and `git_diff_stat`; deferred-work search and @co transfer; PR scaffolding; final state commit when needed; clean-state check; `submit_pr`; outcome-neutral hand-over.
 - **Removed or relocated content:** Per-workflow prose, unconditional branch gates, repeated issue curation, merge-approval checks, merge prohibitions already enforced by tooling, and producer readiness claims.
-- **Test/evidence policy:** Reuse fresh Validation evidence; rerun only invalidated checks at the narrowest sufficient scope, including the workspace-wide suite only when stale or missing.
-- **Document reads:** Conditional — inspect the issue, Validation evidence, and current documentation only when needed to support final claims.
+- **Test/evidence policy:** Reuse fresh authoritative evidence required by the selected workflow; rerun only invalidated required checks, and run/repeat the workspace suite only when that workflow requires it.
+- **Document reads:** Conditional — inspect the issue, completed phase artifacts, and current documentation only when needed to support final claims.
 - **Delegation/QA:** No delegated review. The producer supplies evidence and `Review requested`; independent QA/review authority is external to this contract.
 - **Hand-over:** Canonical Scope → Deliverables → Evidence → Open Work → Review Request; includes clickable PR and repository-relative artifact link forms.
 - **Agent-instruction impact:** Aligned in C_AGENT_AUTHORITY across host-authoritative AGENTS, implementation/coordination/QA roles, Codex skills, and tracked consumers.
 - **Audit result:** PASS: C01,C03,C04,C07,C10,C11,C13-C20,C22,C23. N/A with reason: C02 (C20 exact equality), C05 (Research-owned), C06 (pre-draft phases), C08-C09 (no test creation), C12 (no delegation), C21 (Coordination-only).
-- **Size:** Before instruction/hand-over/effective/units = 4050/1028/5078/1036; after = 1828/520/2348/503.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4050/1028/5078/1036; after = 1998/540/2538/526.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 ### C_FEATURE
 
 #### `feature/research`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Establish evidence, proportional blast radius, and human-approved strategy boundaries for a new feature.
 - **Workflow distinction:** Feature research frames new supported capability and consumer impact rather than defect correction or preservation-only change.
 - **Retained activations:** `get_issue`; proportional direct-source investigation; conditional bounded discovery; human Approved Strategy; research scaffolding; research commit; first branch push; review hand-over.
@@ -234,10 +252,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (test design/retention belongs to later phases), C20 (Ready-only), C21 (Coordination-only).
 - **Size:** Before instruction/hand-over/effective/units = 5455/901/6356/1140; after = 2063/527/2590/498.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `feature/design`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Convert approved feature evidence into architecture, interfaces, failure behavior, and durable production/test design.
 - **Workflow distinction:** Feature design introduces a new capability while protecting explicitly chosen consumer and migration strategy boundaries.
 - **Retained activations:** Research and Approved Strategy intake; applicable standards; option comparison; production and test design; conditional discovery/preflight; human stop on strategy conflict; design scaffolding; commit; independent-review request.
@@ -249,10 +267,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research-owned blast-radius inventory), C20 (Ready-only), C21 (Coordination-only).
 - **Size:** Before instruction/hand-over/effective/units = 6440/569/7009/1219; after = 2113/593/2706/517.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `feature/planning`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Translate approved feature design into dependency-ordered, executable cycles and structured deliverables.
 - **Workflow distinction:** Feature planning sequences capability construction and validation while preserving new-interface and consumer strategy obligations.
 - **Retained activations:** Approved artifacts intake; applicable standards; cycle/deliverable/test/gate design; conditional discovery; planning scaffolding; `save_planning_deliverables`; commit; review request.
@@ -264,10 +282,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research-owned), C20 (Ready-only), C21 (Coordination-only).
 - **Size:** Before instruction/hand-over/effective/units = 6948/754/7702/1353; after = 2230/586/2816/565.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `feature/implementation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Execute each approved feature cycle without redesign, scope creep, or strategy drift.
 - **Workflow distinction:** Feature implementation builds new behavior through cycle-specific evidence while preserving approved new contracts and consumers.
 - **Retained activations:** `get_project_plan`; active-cycle stop checks; conditional execution delegation; planned RED/GREEN/REFACTOR or justified non-RED path; focused `run_tests`; file gates; commits; producer self-check; `transition_cycle`; final review request.
@@ -279,10 +297,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research-owned), C06 (pre-draft phases), C20 (Ready-only), C21 (Coordination-only).
 - **Size:** Before instruction/hand-over/effective/units = 2372/0/2372/576; after = 2246/665/2911/566.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `feature/validation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Produce branch-wide evidence that the implemented feature satisfies plan, design, strategy, tests, and quality obligations.
 - **Workflow distinction:** Feature validation proves newly introduced behavior and offers a safe demonstration or reviewable fallback.
 - **Retained activations:** Approved artifacts and plan intake; deliverable mapping; one `run_tests(scope='full')`; `run_quality_gates(scope='branch')`; targeted gap validation; demo/fallback; deferred-work discovery; validation artifact creation/update; commit; independent QA request.
@@ -294,10 +312,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06 (Research/pre-draft), C12 (no delegation), C20 (Ready-only), C21 (Coordination-only).
 - **Size:** Before instruction/hand-over/effective/units = 3837/850/4687/861; after = 1843/625/2468/490.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `feature/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile active documentation and instruction consumers with validated feature behavior.
 - **Workflow distinction:** Feature documentation explains a newly supported capability, its use, limits, and authoritative operational surfaces.
 - **Retained activations:** Validation intake; active-docs/agent/template blast-radius inventory; authoritative-source-first edits; consumer parity; targeted documentation checks; deferred-work capture; documentation commit; review request.
@@ -309,12 +327,12 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required for this contract.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06 (Research/pre-draft), C08-C09 (no test design/creation), C20 (Ready-only), C21 (Coordination-only).
 - **Size:** Before instruction/hand-over/effective/units = 3108/561/3669/655; after = 1632/586/2218/408.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 ### C_BUG
 
 #### `bug/research`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Establish reproducible defect evidence, root cause, corrected behavior, proportional blast radius, and approved strategy.
 - **Workflow distinction:** Bug research distinguishes symptoms from causal evidence and frames correction/regression boundaries.
 - **Retained activations:** Reproduction/direct evidence; causal alternatives; full proportional blast radius; conditional discovery; human Approved Strategy; research scaffold/commit/first push; review request.
@@ -326,10 +344,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (later test design), C20 (Ready), C21 (Coordination).
 - **Size:** Before instruction/hand-over/effective/units = 5793/1019/6812/1222; after = 2087/583/2670/519.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `bug/design`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Design the smallest root-cause correction with preserved supported behavior and durable regression coverage.
 - **Workflow distinction:** Bug design removes an evidenced cause instead of introducing general new capability.
 - **Retained activations:** Causal input; option comparison; smallest correction; preservation/strategy; first-class regression design; conditional discovery/preflight; design scaffold/commit; independent review request.
@@ -341,10 +359,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research), C20 (Ready), C21 (Coordination).
 - **Size:** Before instruction/hand-over/effective/units = 6539/623/7162/1256; after = 2072/598/2670/505.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `bug/planning`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Slice root-cause correction, regression protection, and cleanup into executable cycles.
 - **Workflow distinction:** Bug planning maps cause and corrected behavior directly to minimal correction cycles.
 - **Retained activations:** Approved inputs; cycle/deliverable/dependency mapping; regression-value policy; focused checks; conditional discovery; Planning scaffold; saved payload; commit/review.
@@ -356,10 +374,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05 (Research), C20 (Ready), C21 (Coordination).
 - **Size:** Before instruction/hand-over/effective/units = 7292/794/8086/1413; after = 2190/591/2781/557.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `bug/implementation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Execute active correction cycles against root cause and corrected behavior without scope/strategy drift.
 - **Workflow distinction:** Bug implementation defaults behavior fixes to durable regression RED evidence and minimal root-cause GREEN.
 - **Retained activations:** Plan/context; causal stop checks; bounded execution; first-class test code; change-appropriate RED/GREEN/REFACTOR; focused tests/file gates; self-check; cycle transition; final review.
@@ -371,10 +389,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05 (Research), C06 (pre-draft), C20 (Ready), C21 (Coordination).
 - **Size:** Before instruction/hand-over/effective/units = 4310/0/4310/829; after = 2180/708/2888/555.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `bug/validation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Prove branch-wide corrected behavior, root-cause removal, preservation, and regression safety.
 - **Workflow distinction:** Bug validation makes before/after defect evidence and durable regression scope explicit.
 - **Retained activations:** Approved inputs; evidence mapping; one full suite; branch gates; visible regression proof; demo/fallback; deferred work; Validation artifact/commit; independent QA request.
@@ -386,10 +404,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06, C12 (no delegation), C20, C21.
 - **Size:** Before instruction/hand-over/effective/units = 4143/874/5017/914; after = 1814/669/2483/503.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `bug/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile current docs and instruction consumers with validated corrected behavior.
 - **Workflow distinction:** Bug documentation removes obsolete failure guidance and explains corrected behavior or residual limits.
 - **Retained activations:** Validation intake; active docs/source-consumer inventory; minimal updates; source-first synchronization/parity; focused docs checks; deferred capture; commit/review.
@@ -401,12 +419,12 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20,C21.
 - **Size:** Before instruction/hand-over/effective/units = 3072/591/3663/661; after = 1425/584/2009/363.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 ### C_REFACTOR_HOTFIX
 
 #### `refactor/research`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Evidence current structure, invariants, blast radius, candidate seams, and strategy.
 - **Workflow distinction:** Refactor research distinguishes structural debt from behavior change and makes preservation explicit.
 - **Retained activations:** Issue/context; structural/test investigation; proportional blast radius; invariant evidence; bounded/internal or targeted external discovery; human strategy; Research scaffold/commit/first push; review.
@@ -418,10 +436,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (Design/Planning), C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 5784/1012/6796/1207; after = 2179/582/2761/524.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `refactor/design`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Design target responsibilities, dependencies, transitions, cleanup, and test architecture while preserving behavior.
 - **Workflow distinction:** Refactor design changes structure only and treats obsolete-code/test removal as part of the target.
 - **Retained activations:** Research/strategy; applicable standards; target alternatives; invariant mapping; first-class test architecture; bounded preflight; Design scaffold/commit/review.
@@ -433,10 +451,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 3588/504/4092/757; after = 1982/607/2589/489.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `refactor/planning`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Plan reversible structural cycles, preservation evidence, cutover, deletion, and cleanup.
 - **Workflow distinction:** Refactor planning sequences seam introduction/migration/removal without assuming behavior RED.
 - **Retained activations:** Approved inputs; structural cycles/dependencies; invariant and cleanup obligations; non-artificial test mode; focused verification; bounded discovery; Planning scaffold/saved payload/commit/review.
@@ -448,10 +466,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 7186/795/7981/1395; after = 2123/588/2711/545.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `refactor/implementation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Execute active structural cycles with preserved behavior and complete planned cleanup.
 - **Workflow distinction:** Refactor Implementation keeps a green invariant baseline unless a real durable coverage gap justifies RED.
 - **Retained activations:** Context/plan; bounded execution; first-class test structure; characterization exception; structural GREEN; cleanup/deletion REFACTOR; focused checks; purity self-check; objective cycle transition; review.
@@ -463,10 +481,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 4464/0/4464/840; after = 2027/704/2731/523.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `refactor/validation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Prove structural completion, cleanup, invariants, and supported-behavior preservation.
 - **Workflow distinction:** Refactor validation searches for remnants/dependency purity and demonstrates unchanged behavior.
 - **Retained activations:** Approved inputs; structural/deliverable mapping; remnant checks; one full suite; branch gates; targeted structural gaps; Validation artifact/commit; independent QA.
@@ -478,10 +496,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06,C12,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 3900/897/4797/874; after = 1702/639/2341/465.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `refactor/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile architecture/developer docs with validated structure while preserving user-facing behavior claims.
 - **Workflow distinction:** Refactor docs primarily update responsibilities, seams, extension points, and obsolete paths; user docs may remain unchanged.
 - **Retained activations:** Validation intake; architecture/dev/source-consumer inventory; minimal source-first updates/parity; reviewed-unchanged user docs; focused checks; deferred debt; commit/review.
@@ -493,10 +511,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 3119/600/3719/660; after = 1400/598/1998/374.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `hotfix/implementation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Execute the smallest safe correction/containment slice without broadening scope.
 - **Workflow distinction:** Hotfix starts directly in Implementation and must derive explicit containment from issue/user evidence rather than missing Research/Design phases.
 - **Retained activations:** Context/issue/plan; first push; bounded execution; durable focused RED or existing failure; minimal GREEN; risk-only cleanup; focused checks; objective cycle transitions; independent review request.
@@ -508,10 +526,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06 (no pre-implementation phases), C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 4475/0/4475/858; after = 2185/656/2841/549.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `hotfix/validation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Verify correction, containment, rollback exposure, and branch-wide safety.
 - **Workflow distinction:** Hotfix validation emphasizes operational containment and excludes nonessential cleanup.
 - **Retained activations:** Inputs/constraint mapping; one full suite; branch gates; focused regression; risk/rollback assessment; Validation artifact/commit; independent QA request.
@@ -523,10 +541,10 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06,C12,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 3804/838/4642/860; after = 1666/559/2225/436.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 #### `hotfix/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile current operational guidance with the validated hotfix.
 - **Workflow distinction:** Hotfix documentation prioritizes safe operator/user guidance, containment, and rollback clarity over broad docs cleanup.
 - **Retained activations:** Validation intake; operational docs inventory; minimal safe updates; source-first sync/parity; focused docs checks; deferred cleanup; commit/review.
@@ -538,12 +556,12 @@ the combined effective contract is approximately half the baseline size.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20-C21.
 - **Size:** Before instruction/hand-over/effective/units = 3094/589/3683/660; after = 1312/595/1907/347.
-- **Residual concern:** None.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 ### C_CHORE_DOCS
 
 #### `chore/research`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Establish a proportionate, human-approved maintenance boundary without forcing an artifact.
 - **Workflow distinction:** Chore research is deliberately lighter than feature/bug/refactor research and stops when the work is no longer mechanical.
 - **Retained activations:** Context/issue; proportional code/config/test/docs/agent/consumer blast radius; risk and strategy stop; optional Research scaffold/commit/first push; hand-over.
@@ -554,28 +572,28 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical linked Research/direct-outcome and blast-radius review index.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; agent and consumer impact remains explicit in blast radius.
 - **Audit result:** PASS: C01-C07,C10-C11,C13-C19,C22-C23. N/A: C08-C09 (later-phase test decisions), C12 (no delegation), C20 (Ready), C21 (Coordination).
-- **Size:** Before instruction/hand-over/effective/units = 951/264/1215/227; after = 821/371/1192/242.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 951/264/1215/227; after = 821/408/1229/256.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `chore/implementation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Apply one complete, non-cycle-based maintenance change within the approved boundary.
 - **Workflow distinction:** Chore implementation avoids artificial TDD cycles while retaining durable-test and focused-proof standards.
-- **Retained activations:** Context/strategy stop; smallest coherent cross-surface edit; first-class tests; focused tests/file gates; diff review; commit; hand-over.
+- **Retained activations:** Research artifact-or-direct-hand-over verification; context/strategy stop; smallest coherent cross-surface edit; first-class tests; focused tests/file gates; diff review; commit; hand-over.
 - **Removed or relocated content:** Feature/refactor latitude, broad validation checks, ceremony-driven tests, verbose deliverable narration, and user-transition instructions.
 - **Test/evidence policy:** Permanent tests only for stable behavior/durable gaps; no diagnostic or ceremony tests; full suite and branch gates belong to Validation.
-- **Document reads:** Approved Research outcome required; other standards conditional on affected boundaries.
+- **Document reads:** Approved Research artifact or supplied direct Research hand-over required and verified; other standards conditional on affected boundaries.
 - **Delegation/QA:** No delegation required; producer verifies direct evidence and stops without a verdict.
 - **Hand-over:** Canonical proportional production/config/test links with complete-diff reference.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no new static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22-C23. N/A: C05-C06 (Research/pre-draft), C12 (no delegation), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 1225/425/1650/305; after = 1066/388/1454/295.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 1225/425/1650/305; after = 1342/431/1773/356.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `chore/validation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Prove the chore workspace-wide and expose deferred work before PR preparation.
 - **Workflow distinction:** Chore Validation always runs one final full suite and branch gates despite lightweight earlier phases.
 - **Retained activations:** Approved inputs; full diff/status; one full suite; branch gates; cached-resource inspection; defect return; active deferred-work search; persistent evidence when needed; independent QA request.
@@ -586,12 +604,12 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical linked Validation/evidence and explicit deferred-work tracking.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no new static-source change required.
 - **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22-C23. N/A: C05-C06,C12 (no delegation), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 1710/504/2214/423; after = 1228/455/1683/345.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 1710/504/2214/423; after = 1228/494/1722/359.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `chore/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile current authoritative and derived documentation invalidated by the chore.
 - **Workflow distinction:** Chore documentation stays proportional and may explicitly conclude that no documentation edit is required.
 - **Retained activations:** Validation intake; applicable doc boundary; active surface inventory; source-first sync; focused docs/parity checks; commit when changed; hand-over.
@@ -602,15 +620,15 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical authoritative-source/consumer and Validation review links.
 - **Agent-instruction impact:** Source-first order and consumer synchronization align with C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 1009/254/1263/215; after = 815/423/1238/243.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 1009/254/1263/215; after = 815/465/1280/257.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `docs/planning`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Produce an executable documentation-only plan grounded in authoritative sources.
 - **Workflow distinction:** Docs Planning maps audiences, current docs, sources, consumers, and review proof without production/test work.
-- **Retained activations:** Context/issue; explicit in/out/unknown boundary; applicable Documentation Standard; direct source mapping; bounded discovery; dependency-ordered tasks; Planning scaffold/commit/first push; hand-over.
+- **Retained activations:** Context/issue; explicit in/out/unknown boundary; applicable Documentation Standard; direct source mapping; bounded discovery; dependency-ordered tasks; `scaffold_schema`; schema-complete Planning scaffold/commit/first push; hand-over.
 - **Removed or relocated content:** Mandatory broad exploration, repeated human checkpoints, internal QA PASS loop, implementation-cycle payloads, and verbose planning nucleus.
 - **Test/evidence policy:** Plan focused documentation/parity proof only; runtime test work is out of scope.
 - **Document reads:** Applicable Documentation Standard sections and named/source docs required; other references conditional.
@@ -618,12 +636,12 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable Planning, target-doc, and authoritative-input review index.
 - **Agent-instruction impact:** Source/consumer planning aligns with C_AGENT_AUTHORITY; no additional static edit required.
 - **Audit result:** PASS: C01-C04,C06-C07,C10-C19,C22-C23. N/A: C05 (Research-only full blast radius), C08-C09 (no test code), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 4483/504/4987/896; after = 1820/463/2283/424.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 4483/504/4987/896; after = 1926/499/2425/462.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `docs/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; fresh documentation QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Deliver the approved documentation plan as a coherent, current, source-backed surface.
 - **Workflow distinction:** Docs Documentation is the workflow's delivery phase and remains documentation-only.
 - **Retained activations:** Plan/standard intake; claim-to-source recheck; minimal updates; source-first consumer sync; focused documentation proof; self-check; commit; independent doc QA request.
@@ -634,17 +652,17 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Planning, updated-doc, source-consumer, and focused-evidence links.
 - **Agent-instruction impact:** Authoritative-first consumer synchronization aligns with C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3015/577/3592/643; after = 1593/519/2112/385.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 3015/577/3592/643; after = 1593/560/2153/399.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 ### C_EPIC
 
 #### `epic/research`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Establish initiative-wide evidence, workstream framing, shared blast radius, and human-approved strategy.
 - **Workflow distinction:** Epic Research spans child ownership, stakeholders, and shared integration/acceptance surfaces rather than one implementation branch.
-- **Retained activations:** Context/issue; code/config/test/docs/agent/consumer blast radius; shared dependencies and proof; conditional standards/external discovery; human Approved Strategy; Research scaffold/commit; hand-over.
+- **Retained activations:** Context/issue; code/config/test/docs/agent/consumer blast radius; shared dependencies and proof; conditional standards/external discovery; human Approved Strategy; `scaffold_schema`; schema-complete Research scaffold/commit; hand-over.
 - **Removed or relocated content:** Mandatory broad web/harness exploration, repeated interaction/nucleus prose, selected decomposition, design, execution plans, and duplicated self-checks.
 - **Test/evidence policy:** Identify shared durable integration/contract/acceptance obligations and existing helpers; child test design remains later.
 - **Document reads:** Applicable Architecture/Documentation sections required; other references/external sources conditional on material uncertainty.
@@ -652,15 +670,15 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable Research, shared-system/consumer/test, and strategy index.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; agent/template/enforcement consumers remain explicit in blast radius.
 - **Audit result:** PASS: C01-C07,C10-C19,C22-C23. N/A: C08-C09 (later test design), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1840/477/2317/427.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1938/513/2451/464.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `epic/planning`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Decompose approved initiative evidence into owned, dependency-ordered child issues.
 - **Workflow distinction:** Epic Planning defines child ownership and performs confirmed issue creation, not implementation cycles.
-- **Retained activations:** Research/strategy; pre-draft boundary; applicable standards; child/dependency/shared-contract/test decomposition; bounded discovery; Planning scaffold; human mutation confirmation; create_issue; commit; hand-over.
+- **Retained activations:** Research/strategy; pre-draft boundary; applicable standards; child/dependency/shared-contract/test decomposition; bounded discovery; `scaffold_schema`; schema-complete Planning scaffold; human mutation confirmation; create_issue; commit; hand-over.
 - **Removed or relocated content:** Internal QA PASS loop, repeated checkpoints/nucleus, strategy reselection, child implementation/TDD detail, and coordination execution.
 - **Test/evidence policy:** Assign shared acceptance/test obligations and evidence owners; detailed test architecture belongs to Epic Design and child workflows.
 - **Document reads:** Research/strategy and applicable standards required; proposed seams/issues inspected directly; other references conditional.
@@ -668,15 +686,15 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical Planning/Research and clickable child-issue index with creation proof.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C07,C10-C19,C22-C23. N/A: C05 (Research), C08-C09 (Design/child planning), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1585/458/2043/395.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1664/494/2158/429.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `epic/design`
 
-- **Implementation status:** REWRITTEN — producer audit complete; fresh independent design QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Define the epic-wide architecture, shared contracts, and shared test design governing child work.
 - **Workflow distinction:** Epic Design resolves cross-workstream seams and proof ownership without prescribing child patches.
-- **Retained activations:** Approved artifacts/children; pre-draft boundary; applicable standards; option comparison; shared contracts/failures/cutover; first-class durable test architecture; bounded discovery/adversarial preflight; Design scaffold/commit; independent QA.
+- **Retained activations:** Approved artifacts/children; pre-draft boundary; applicable standards; option comparison; shared contracts/failures/cutover; first-class durable test architecture; bounded discovery/adversarial preflight; `scaffold_schema`; schema-complete Design scaffold/commit; independent QA.
 - **Removed or relocated content:** Broad external/harness research, repeated interaction/nucleus, internal QA PASS, child implementation detail, coordination, and strategy reselection.
 - **Test/evidence policy:** Public contracts/invariants, reusable fixtures/helpers, integration/acceptance suites, child evidence, durable ownership, and rejection of ceremony/detail tests.
 - **Document reads:** Research/Planning/strategy/children and applicable standards required; other references conditional.
@@ -684,12 +702,12 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable Design/Planning/shared-contract/test review entry points.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22-C23. N/A: C05 (Research), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1824/473/2297/427.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1903/507/2410/461.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 #### `epic/coordination`
 
-- **Implementation status:** REWRITTEN — producer audit complete; independent review remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile authoritative child state and perform only epic-owned coordination.
 - **Workflow distinction:** Coordination is intentionally mechanical, never executes child technical work, and defers lifecycle procedure to configured contracts.
 - **Retained activations:** Context/Planning/Design/child state; claim verification; ownership/dependency/shared-gate/blocker reconciliation; epic-owned tracking mutations; routed hand-offs; stop boundary; hand-over.
@@ -700,12 +718,12 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable child-state index and compact dependency/gate/owner proof.
 - **Agent-instruction impact:** Aligned with Three-Agent role boundaries in C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C19,C21-C23. N/A: C05-C06,C08-C09,C20.
-- **Size:** Before instruction/hand-over/effective/units = 268/130/398/101; after = 618/311/929/195.
-- **Residual concern:** Effective size grows because the deficient transfer gained canonical evidence/authority fields; C21 remains concise and total contracts shrink materially.
+- **Size:** Before instruction/hand-over/effective/units = 268/130/398/101; after = 618/351/969/209.
+- **Residual concern:** Effective size grows because the deficient transfer gained canonical evidence/authority fields; independent QA re-review remains pending.
 
 #### `epic/documentation`
 
-- **Implementation status:** REWRITTEN — producer audit complete; fresh independent documentation QA remains separate.
+- **Implementation status:** PRODUCER-CORRECTED AFTER INDEPENDENT QA NOGO — re-review pending.
 - **Owned purpose:** Reconcile current epic-level communication with verified planning, design, coordination, and child outcomes.
 - **Workflow distinction:** Epic Documentation aligns shared boundaries/rollout/stakeholder surfaces without rewriting child history.
 - **Retained activations:** Approved epic/child evidence; applicable doc standard; invalidated surface inventory; source-first updates/consumer sync; focused docs/child consistency proof; commit; independent doc QA.
@@ -716,8 +734,8 @@ the combined effective contract is approximately half the baseline size.
 - **Hand-over:** Canonical clickable epic-doc, consumer, and approved-input index.
 - **Agent-instruction impact:** Authoritative-first source-consumer synchronization aligns with C_AGENT_AUTHORITY.
 - **Audit result:** PASS: C01-C04,C07,C10-C11,C13-C19,C22-C23. N/A: C05-C06,C08-C09,C12,C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 3189/631/3820/684; after = 1363/462/1825/333.
-- **Residual concern:** None.
+- **Size:** Before instruction/hand-over/effective/units = 3189/631/3820/684; after = 1363/503/1866/347.
+- **Residual concern:** Independent QA re-review pending; producer PASS is non-authoritative.
 
 ## Related Documentation
 - **[docs/development/issue399/research.md][related-1]**
@@ -739,3 +757,4 @@ the combined effective contract is approximately half the baseline size.
 | 0.1 | 2026-08-20 | Agent | Initial draft |
 | 1.0 | 2026-08-20 | Agent | Completed 39 contract audits and final measurements |
 | 1.1 | 2026-08-20 | Agent | Removed server-owned context bootstrap duplication and refreshed metrics |
+| 1.2 | 2026-08-20 | Agent | Corrected independent QA NOGO findings; reset all records for re-review |

@@ -418,14 +418,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -433,7 +436,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -465,7 +468,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
@@ -885,14 +888,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -900,7 +906,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -932,7 +938,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
@@ -1134,14 +1140,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -1149,7 +1158,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -1181,7 +1190,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
@@ -1589,14 +1598,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -1604,7 +1616,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -1636,7 +1648,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
@@ -1683,8 +1695,10 @@ workflows:
                 outcome, review proof, and consistency risks.
                 Do not hide implementation or redesign work in the plan.
 
-            [ ] Scaffold and complete the Planning artifact:
-                scaffold_artifact(artifact_type='planning', name='planning').
+            [ ] Call scaffold_schema(artifact_type='planning'), then scaffold and complete
+                the Planning artifact with schema-complete evidence:
+                scaffold_artifact(artifact_type='planning', name='planning',
+                context={...}).
                 Verify boundary, source mapping, dependencies, review criteria,
                 and Documentation Standard compliance.
 
@@ -1694,21 +1708,23 @@ workflows:
 
             [ ] Stop with the outcome-neutral hand-over below.
           handover_template: |
-            ### Scope
+            ### Docs / Planning Hand-over
+
+            #### Scope
             - Issue and documentation boundary: <#N, in scope, and exclusions>
 
-            ### Deliverables
+            #### Deliverables
             - Planning: [planning](docs/development/issueN/planning.md)
             - Target documentation and authoritative inputs: <linked review index>
 
-            ### Evidence
+            #### Evidence
             - Source mapping, dependencies, and review criteria: <summary>
             - Applicable documentation standards checked: <sections>
 
-            ### Open Work
+            #### Open Work
             - Unresolved decisions or risks: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: documentation
         exit_requires:
@@ -1754,22 +1770,24 @@ workflows:
                 Fresh independent documentation QA inspects workspace evidence
                 and owns any GO/NOGO verdict.
           handover_template: |
-            ### Scope
+            ### Docs / Documentation Hand-over
+
+            #### Scope
             - Documentation outcome and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Updated documentation: <clickable repository-relative links>
             - Authoritative sources and synchronized consumers: <links or None>
 
-            ### Evidence
+            #### Evidence
             - Planning: [planning](docs/development/issueN/planning.md)
             - Focused documentation checks: <commands/tools and outcomes>
             - Reviewed but unchanged: <surfaces and rationale or None>
 
-            ### Open Work
+            #### Open Work
             - Deferred work, risks, or source conflicts: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: ready
         instructions:
@@ -1778,14 +1796,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -1793,7 +1814,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -1825,7 +1846,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
@@ -1857,19 +1878,21 @@ workflows:
                 when tracking is absent.
             [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Scope
+            ### Chore / Research Hand-over
+
+            #### Scope
             - Objective, exclusions, and approved strategy: <boundary decisions>
 
-            ### Deliverables
+            #### Deliverables
             - Research/blast radius: [research](docs/development/issueN/research.md) or <direct outcome>
 
-            ### Evidence
+            #### Evidence
             - Direct findings and planned checks: <clickable links>
 
-            ### Open Work
+            #### Open Work
             - Decisions, blockers, or deferred work: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
 
       - name: implementation
@@ -1880,8 +1903,12 @@ workflows:
           phase_instructions: |
             Apply one coherent maintenance change within the approved boundary.
 
-            [ ] Load the approved Research outcome.
-                Stop on missing strategy, repository drift, expanded risk, or scope conflict.
+            [ ] Load the approved Research artifact or, when none was persisted,
+                the direct Chore / Research hand-over supplied with the Implementation transfer.
+                Treat either as claims: verify objective, exclusions, Approved Strategy,
+                and evidence against the issue and repository.
+                Stop when neither input exists, or on missing strategy, repository drift,
+                expanded risk, or scope conflict.
             [ ] Make the smallest complete code/config/test/docs/consumer change.
                 Keep behavior configuration-driven and obey affected architecture,
                 typing, and documentation standards.
@@ -1898,20 +1925,22 @@ workflows:
                 message='Implement chore for #N').
             [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Scope
+            ### Chore / Implementation Hand-over
+
+            #### Scope
             - Implemented chore boundary and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Primary production/config/test review links: <links>
             - Remaining files: <linked groups or complete-diff reference>
 
-            ### Evidence
+            #### Evidence
             - Focused tests, file gates, and diff review: <tools and outcomes>
 
-            ### Open Work
+            #### Open Work
             - Deferred work, risks, or blockers: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
 
       - name: validation
@@ -1942,21 +1971,23 @@ workflows:
             [ ] Stop with the outcome-neutral hand-over. Fresh independent QA reads
                 workspace evidence and alone owns GO/NOGO.
           handover_template: |
-            ### Scope
+            ### Chore / Validation Hand-over
+
+            #### Scope
             - Validated chore objective and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Validation: [validation](docs/development/issueN/validation.md) or <handover evidence>
             - Delivered current state: <summary>
 
-            ### Evidence
+            #### Evidence
             - Full suite, branch gates, diff, and consumer checks: <resources/outcomes>
 
-            ### Open Work
+            #### Open Work
             - Deferred work and tracking: <items or None identified>
             - Residual risks or blockers: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
 
       - name: documentation
@@ -1980,20 +2011,22 @@ workflows:
                 message='Document chore for #N').
             [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Scope
+            ### Chore / Documentation Hand-over
+
+            #### Scope
             - Documentation reconciliation and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Authoritative docs and synchronized consumers: <links or None required>
 
-            ### Evidence
+            #### Evidence
             - Validation: [validation](docs/development/issueN/validation.md) or <evidence>
             - Focused documentation/parity checks: <tools and outcomes>
 
-            ### Open Work
+            #### Open Work
             - Deferred documentation work or risks: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
 
       - name: ready
@@ -2003,14 +2036,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -2018,7 +2054,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -2050,7 +2086,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
@@ -2094,9 +2130,11 @@ workflows:
                 Obtain and capture human Approved Strategy.
                 Stop if the epic must be narrowed, split, reframed, or lacks a decision.
 
-            [ ] Call scaffold_artifact(artifact_type='research', name='research') and complete
-                Research with initiative framing, candidate
-                workstreams, blast radius, dependencies, shared proof obligations,
+            [ ] Call scaffold_schema(artifact_type='research'), then
+                scaffold_artifact(artifact_type='research', name='research',
+                context={...}) with schema-complete evidence. Complete Research with
+                initiative framing, candidate workstreams, blast radius, dependencies,
+                shared proof obligations,
                 assumptions/risks, Approved Strategy, and expected Planning inputs.
                 Keep child issue creation, selected decomposition, design, and execution out.
 
@@ -2107,21 +2145,23 @@ workflows:
 
             [ ] Stop with the outcome-neutral hand-over below.
           handover_template: |
-            ### Scope
+            ### Epic / Research Hand-over
+
+            #### Scope
             - Epic outcome, workstream boundary, and exclusions: <summary>
             - Approved Strategy per shared boundary: <decisions and constraints>
 
-            ### Deliverables
+            #### Deliverables
             - Research: [research](docs/development/issueN/research.md)
             - Key systems, consumers, and shared test surfaces: <clickable links>
 
-            ### Evidence
+            #### Evidence
             - Dependencies, constraints, prior art, and risks: <linked findings>
 
-            ### Open Work
+            #### Open Work
             - Planning questions or blockers: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: planning
         exit_requires:
@@ -2150,9 +2190,11 @@ workflows:
                 Bounded discovery, when useful, must be neutral, source-citing,
                 uncertainty-bearing, producer-verified, and non-authoritative.
 
-            [ ] Call scaffold_artifact(artifact_type='planning', name='planning') and complete
-                Planning. Verify complete Research/strategy
-                traceability, non-overlapping child ownership, executable dependencies,
+            [ ] Call scaffold_schema(artifact_type='planning'), then
+                scaffold_artifact(artifact_type='planning', name='planning',
+                context={...}) with schema-complete evidence. Verify complete
+                Research/strategy traceability, non-overlapping child ownership,
+                executable dependencies,
                 and no hidden Design or implementation work.
 
             [ ] Present the decomposition and external mutations to the human.
@@ -2165,21 +2207,23 @@ workflows:
 
             [ ] Stop with the outcome-neutral hand-over below.
           handover_template: |
-            ### Scope
+            ### Epic / Planning Hand-over
+
+            #### Scope
             - Epic decomposition and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Planning: [planning](docs/development/issueN/planning.md)
             - Child issues: <clickable issue links and ownership>
             - Research: [research](docs/development/issueN/research.md)
 
-            ### Evidence
+            #### Evidence
             - Strategy, dependency, shared-contract/test, and creation proof: <summary>
 
-            ### Open Work
+            #### Open Work
             - Design questions, blockers, or uncreated work: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: design
         exit_requires:
@@ -2217,9 +2261,11 @@ workflows:
                 findings/uncertainty, exclusions, and stop conditions; verify output.
                 Producer-owned review cannot return a verdict or drive progression.
 
-            [ ] Call scaffold_artifact(artifact_type='design', name='design') and complete
-                Design. Verify Research/Planning/strategy
-                traceability, child usability, architecture/test quality, coordination
+            [ ] Call scaffold_schema(artifact_type='design'), then
+                scaffold_artifact(artifact_type='design', name='design',
+                context={...}) with schema-complete evidence. Verify
+                Research/Planning/strategy traceability, child usability,
+                architecture/test quality, coordination
                 consequences, and applicable Documentation Standard compliance.
                 Commit with git_add_or_commit(workflow_phase='design',
                 message='Design for #N').
@@ -2227,21 +2273,23 @@ workflows:
             [ ] Stop with the outcome-neutral review index below.
                 Fresh independent design QA reads workspace evidence and owns GO/NOGO.
           handover_template: |
-            ### Scope
+            ### Epic / Design Hand-over
+
+            #### Scope
             - Epic design boundary, direction, and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Design: [design](docs/development/issueN/design.md)
             - Planning: [planning](docs/development/issueN/planning.md)
             - Shared contracts/test architecture and child seams: <clickable links>
 
-            ### Evidence
+            #### Evidence
             - Alternatives, strategy alignment, risks, and standards: <summary>
 
-            ### Open Work
+            #### Open Work
             - Child/coordination constraints or blockers: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: coordination
         exit_requires: []
@@ -2260,19 +2308,21 @@ workflows:
                 Stop on scope/strategy conflict or required human decision.
             [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Scope
+            ### Epic / Coordination Hand-over
+
+            #### Scope
             - Epic and coordination window: <#N and scope>
 
-            ### Deliverables
+            #### Deliverables
             - Child issues/status: <clickable issue links>
 
-            ### Evidence
+            #### Evidence
             - Dependencies, gates, hand-offs, and updates: <summary>
 
-            ### Open Work
+            #### Open Work
             - Blockers, deferred work, actions, and owners: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: documentation
         instructions:
@@ -2306,21 +2356,23 @@ workflows:
             [ ] Stop with the outcome-neutral review index below.
                 Fresh independent documentation QA owns any GO/NOGO verdict.
           handover_template: |
-            ### Scope
+            ### Epic / Documentation Hand-over
+
+            #### Scope
             - Epic documentation outcome and exclusions: <summary>
 
-            ### Deliverables
+            #### Deliverables
             - Updated epic documentation and consumers: <clickable links>
             - Planning/Design/child evidence: <clickable review inputs>
 
-            ### Evidence
+            #### Evidence
             - Focused documentation and consistency checks: <tools/outcomes>
             - Reviewed but unchanged: <surfaces and rationale or None>
 
-            ### Open Work
+            #### Open Work
             - Deferred work, ownership caveats, or blockers: <items or None>
 
-            ### Review Request
+            #### Review Request
             - Review requested
       - name: ready
         instructions:
@@ -2329,14 +2381,17 @@ workflows:
             Prepare and submit the pull request from verified branch evidence.
 
             [ ] Load get_project_plan(issue_number=N).
-                Inspect the issue, Validation evidence, and current documentation only as needed
+                Inspect the issue, completed phase artifacts, and current documentation only as needed
                 to verify delivered scope and the final pull-request narrative.
 
-            [ ] Establish evidence freshness:
-                - reuse successful Validation tests and gates when no later change invalidated them
-                - rerun only invalidated checks at the narrowest sufficient scope
-                - repeat the workspace-wide suite only when its evidence is stale or missing
-                - stop on any unresolved failure
+            [ ] Establish workflow-required evidence freshness:
+                - derive required verification from the selected workflow contract
+                  and its completed phases
+                - reuse fresh authoritative evidence and rerun only invalidated required checks
+                  at the narrowest sufficient scope
+                - run or repeat the workspace-wide suite only when the selected workflow
+                  requires it and that evidence is stale or missing
+                - stop on missing required evidence or any unresolved failure
 
             [ ] Inspect the final branch:
                 - git_status()
@@ -2344,7 +2399,7 @@ workflows:
                 - confirm intended scope, complete tracked branch state, and no unrelated,
                   temporary, generated, missing, or uncommitted files
 
-            [ ] Derive deferred work from Validation, phase artifacts, and the final diff.
+            [ ] Derive deferred work from completed phase artifacts and the final diff.
                 For each item record the finding, why it is excluded, impact, source,
                 recommended follow-up, and existing issue reference or @co triage need.
                 Record "None identified" when the search finds none.
@@ -2376,7 +2431,7 @@ workflows:
             - Primary phase artifact: [artifact](repository/relative/path.md)
 
             #### Evidence
-            - Validation evidence reused or rerun: <checks and outcomes>
+            - Workflow-required verification evidence reused or rerun: <checks and outcomes>
             - Final branch status and diff: <outcome>
 
             #### Open Work
