@@ -2090,7 +2090,8 @@ workflows:
                 Obtain and capture human Approved Strategy.
                 Stop if the epic must be narrowed, split, reframed, or lacks a decision.
 
-            [ ] Scaffold and complete Research with initiative framing, candidate
+            [ ] Call scaffold_artifact(artifact_type='research', name='research') and complete
+                Research with initiative framing, candidate
                 workstreams, blast radius, dependencies, shared proof obligations,
                 assumptions/risks, Approved Strategy, and expected Planning inputs.
                 Keep child issue creation, selected decomposition, design, and execution out.
@@ -2145,7 +2146,8 @@ workflows:
                 Bounded discovery, when useful, must be neutral, source-citing,
                 uncertainty-bearing, producer-verified, and non-authoritative.
 
-            [ ] Scaffold and complete Planning. Verify complete Research/strategy
+            [ ] Call scaffold_artifact(artifact_type='planning', name='planning') and complete
+                Planning. Verify complete Research/strategy
                 traceability, non-overlapping child ownership, executable dependencies,
                 and no hidden Design or implementation work.
 
@@ -2211,7 +2213,8 @@ workflows:
                 findings/uncertainty, exclusions, and stop conditions; verify output.
                 Producer-owned review cannot return a verdict or drive progression.
 
-            [ ] Scaffold and complete Design. Verify Research/Planning/strategy
+            [ ] Call scaffold_artifact(artifact_type='design', name='design') and complete
+                Design. Verify Research/Planning/strategy
                 traceability, child usability, architecture/test quality, coordination
                 consequences, and applicable Documentation Standard compliance.
                 Commit with git_add_or_commit(workflow_phase='design',

@@ -2,8 +2,8 @@
 <!-- template=generic_doc version=43c84181 created=2026-08-20T12:08Z updated= -->
 # Issue 399 Phase Instruction Contract Audit
 
-**Status:** DRAFT  
-**Version:** 0.1  
+**Status:** IMPLEMENTATION COMPLETE — INDEPENDENT QA PENDING  
+**Version:** 1.0  
 **Last Updated:** 2026-08-20
 
 ---
@@ -29,7 +29,7 @@ Read these first:
 
 ## Summary
 
-Execution ledger for the 39 effective workflow phase contracts. Records remain unapproved until their implementation cycle supplies evidence.
+All 39 effective contracts are rewritten and producer-audited against C01-C23. Independent QA remains a separate authority.
 
 ## Recording Rules
 
@@ -85,6 +85,28 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 | `refactor/research` | 5784 | 1012 | 6796 | 1207 |
 | `refactor/validation` | 3900 | 897 | 4797 | 874 |
 | **Total** | **158665** | **24019** | **182684** | **33613** |
+
+## Final Metrics
+
+Parsed with the same block-scalar and lexical-unit rules as the RED baseline.
+
+| Measure | Baseline | Final | Reduction |
+|---|---:|---:|---:|
+| Instruction chars | 158665 | 68525 | 90140 (56.81%) |
+| Hand-over chars | 24019 | 21283 | 2736 (11.39%) |
+| Effective chars | 182684 | 89808 | 92876 (50.84%) |
+| Lexical units | 33613 | 17592 | 16021 (47.66%) |
+| Effective contracts | 39 | 39 | 0 |
+
+The richer canonical hand-over contract reduces less than instructions by design;
+the combined effective contract is approximately half the baseline size.
+
+## Implementation Verification
+
+- Runtime-contract loader and agent source/consumer alignment: 74 tests passed.
+- File-scoped format, lint, import, line-length, and Pyright gates: passed.
+- Runtime/audit metric reconciliation: 39 of 39 size records matched; zero mismatches.
+- Full workspace validation and independent GO/NOGO remain owned by Validation/QA.
 
 ## Contract Records
 
@@ -629,7 +651,7 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 - **Hand-over:** Canonical clickable Research, shared-system/consumer/test, and strategy index.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; agent/template/enforcement consumers remain explicit in blast radius.
 - **Audit result:** PASS: C01-C07,C10-C19,C22-C23. N/A: C08-C09 (later test design), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1800/477/2277/415.
+- **Size:** Before instruction/hand-over/effective/units = 5724/1029/6753/1179; after = 1861/477/2338/429.
 - **Residual concern:** None.
 
 #### `epic/planning`
@@ -645,7 +667,7 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 - **Hand-over:** Canonical Planning/Research and clickable child-issue index with creation proof.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C07,C10-C19,C22-C23. N/A: C05 (Research), C08-C09 (Design/child planning), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1542/458/2000/383.
+- **Size:** Before instruction/hand-over/effective/units = 5239/719/5958/1043; after = 1603/458/2061/397.
 - **Residual concern:** None.
 
 #### `epic/design`
@@ -661,7 +683,7 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 - **Hand-over:** Canonical clickable Design/Planning/shared-contract/test review entry points.
 - **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
 - **Audit result:** PASS: C01-C04,C06-C19,C22-C23. N/A: C05 (Research), C20-C21.
-- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1785/473/2258/415.
+- **Size:** Before instruction/hand-over/effective/units = 7159/609/7768/1320; after = 1842/473/2315/429.
 - **Residual concern:** None.
 
 #### `epic/coordination`
@@ -714,3 +736,4 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-08-20 | Agent | Initial draft |
+| 1.0 | 2026-08-20 | Agent | Completed 39 contract audits and final measurements |
