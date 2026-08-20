@@ -1,8 +1,8 @@
 # Architectural Principles
 
 **Status:** Binding contract for all implementation work
-**Read when:** Start of every implementation session — referenced from `.github/.copilot-instructions.md`
-**Last updated:** 2026-03-12
+**Read when:** Before production or test code changes that can affect an architectural boundary
+**Last updated:** 2026-08-20
 
 ---
 
@@ -10,7 +10,7 @@
 
 These principles are **laws, not suggestions**. A code change that violates these principles is **REJECTED** during code review, even if all tooling gates pass. Tooling gates (ruff, mypy, coverage) validate *form*. This document validates *architecture*.
 
-> **Agents:** read this document at the start of every implementation session. The question "may I write it this way?" is answered by this document, not by whether ruff complains.
+> **Agents:** use the active phase and change blast radius to read the applicable sections before changing production or test code across an architectural boundary. The question "may I write it this way?" is answered by these principles, not by whether tooling complains.
 
 ---
 

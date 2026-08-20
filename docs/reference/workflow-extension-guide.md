@@ -117,8 +117,29 @@ Add the workflow under `contracts.yaml`:
 3. Define `cycle_based`, subphases, commit mappings, gates, instructions, and
    handovers only where applicable.
 4. Keep `ready` terminal under the current PR policy.
-5. Write compact purpose-specific instructions instead of copying another
+5. Write compact, workflow-specific instructions instead of copying another
    workflow wholesale.
+
+For every phase instruction, verify the semantic contract independently:
+
+- purpose, workflow-specific responsibility, boundaries, and stop conditions;
+- authoritative inputs, blast radius, and required outputs;
+- first-time-right artifact commands with schema-required `context={...}`;
+- conditional document reads selected by phase and affected boundary;
+- durable test-code responsibility under the same standards as production code;
+- proportional tests and gates at the phase that owns them, with fresh evidence reused;
+- bounded, harness-agnostic delegation;
+- objective review prompts that treat caller claims and hand-overs as non-binding;
+- delegated preflight as findings-only and independent QA as the sole GO/NOGO authority;
+- exact canonical hand-over headings: `### <Workflow> / <Phase> Hand-over`,
+  then `#### Scope`, `#### Deliverables`, `#### Evidence`, `#### Open Work`,
+  and `#### Review Request`.
+
+`phase_instructions` are returned by `get_work_context`; they must not instruct the
+agent to call `get_work_context` again. Keep the Ready instruction identical and
+workflow-neutral: consume the latest authoritative verification evidence for the
+selected workflow without assuming a Validation phase, a universal full-suite rerun,
+or a duplicate human merge-approval check.
 
 Do not introduce YAML anchors, aliases, merge keys, or instruction composition
 as a routine extension step. Those mechanisms require a separate,
@@ -192,8 +213,10 @@ Use configuration-driven assertions and shared fixtures. Cover, as applicable:
 - current prompt and agent-source enumerations;
 - unchanged behavior for existing workflows.
 
-Run focused tests first. Before PR preparation, run the complete workspace test
-suite and applicable quality gates, then inspect the cached structured results.
+Run focused tests first. Run branch- or workspace-wide verification at the phase
+that owns it for the selected workflow. Ready reuses fresh authoritative evidence and
+reruns only checks invalidated by later changes. Inspect cached structured results for
+every MCP-run test or quality command.
 
 ### 9. Update Current Documentation
 
@@ -217,7 +240,7 @@ Confirm these relationships explicitly:
 | Enforcement | Contains an explicit policy for a new branch type |
 | Agent instructions | Sources and tracked consumers agree |
 | Documentation | Current tables and examples match configuration |
-| Verification | Focused, full-suite, and quality evidence is current |
+| Verification | Focused and workflow-owned broad test/gate evidence is current; Ready reuses it unless invalidated |
 | Deferred work | Listed explicitly for ready-phase PR handover |
 
 ## Related Documentation

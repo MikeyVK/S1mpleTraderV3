@@ -3,7 +3,7 @@
   "branch": "refactor/399-audit-and-streamline-phase-instruction-contracts",
   "issue_number": 399,
   "workflow_name": "refactor",
-  "current_phase": "validation",
+  "current_phase": "documentation",
   "current_cycle": 8,
   "last_cycle": 8,
   "cycle_history": [
@@ -86,6 +86,14 @@
       "to_phase": "validation",
       "timestamp": "2026-08-20T14:14:15.854435+00:00",
       "human_approval_message": "User explicitly confirmed GO for the Validation phase.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "documentation",
+      "timestamp": "2026-08-20T14:44:52.524281+00:00",
+      "human_approval_message": "User explicitly approved moving issue #399 to the next phase.",
       "forced": false,
       "skip_reason": null
     }

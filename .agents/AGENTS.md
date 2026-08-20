@@ -1,6 +1,6 @@
 # pgmcp — Agent Protocol
 
-**Auto-loaded by VS Code** via `chat.useAgentsMdFile: true` — single always-on instruction file.
+**Auto-loaded by Codex** as the repository-scoped always-on instruction file.
 **Status:** Active | **Context:** High-Frequency Trading Platform
 
 ---
