@@ -383,148 +383,139 @@ matches the YAML loader; totals reproduce the Research baseline exactly.
 
 #### `refactor/research`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Evidence current structure, invariants, blast radius, candidate seams, and strategy.
+- **Workflow distinction:** Refactor research distinguishes structural debt from behavior change and makes preservation explicit.
+- **Retained activations:** Issue/context; structural/test investigation; proportional blast radius; invariant evidence; bounded/internal or targeted external discovery; human strategy; Research scaffold/commit/first push; review.
+- **Removed or relocated content:** Unconditional docs/web exploration, repeated interactions, premature target design/cycles, and generic migration prose.
+- **Test/evidence policy:** Identify existing preservation evidence, test/helper coupling, and durable gaps without prescribing rewrites.
+- **Document reads:** Research boundary required; standards/externals conditional on an exact affected question.
+- **Delegation/QA:** Bounded direct-source/counterexample discovery, producer-verified; external sources traceable.
+- **Hand-over:** Canonical links to Research and structural/invariant evidence.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C07,C10-C19,C22,C23. N/A: C08-C09 (Design/Planning), C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 5784/1012/6796/1207; after = 2200/582/2782/526.
+- **Residual concern:** None.
 #### `refactor/design`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Design target responsibilities, dependencies, transitions, cleanup, and test architecture while preserving behavior.
+- **Workflow distinction:** Refactor design changes structure only and treats obsolete-code/test removal as part of the target.
+- **Retained activations:** Research/strategy; applicable standards; target alternatives; invariant mapping; first-class test architecture; bounded preflight; Design scaffold/commit/review.
+- **Removed or relocated content:** Internal QA PASS, harness discovery, repeated checkpoints, planning/implementation leakage.
+- **Test/evidence policy:** Prefer existing invariant coverage; characterization only for durable gap; clean fixture/helper coupling and implementation-detail tests.
+- **Document reads:** Research/strategy required; standards conditional.
+- **Delegation/QA:** Discovery/preflight bounded, findings-only, producer-verified.
+- **Hand-over:** Canonical Design/Research/seam links.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 3588/504/4092/757; after = 2000/607/2607/491.
+- **Residual concern:** None.
 #### `refactor/planning`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Plan reversible structural cycles, preservation evidence, cutover, deletion, and cleanup.
+- **Workflow distinction:** Refactor planning sequences seam introduction/migration/removal without assuming behavior RED.
+- **Retained activations:** Approved inputs; structural cycles/dependencies; invariant and cleanup obligations; non-artificial test mode; focused verification; bounded discovery; Planning scaffold/saved payload/commit/review.
+- **Removed or relocated content:** Mandatory full reads, harness/internal QA PASS, blanket TDD, repeated broad gates.
+- **Test/evidence policy:** Green preservation baseline by default; failing characterization only for durable uncovered invariant; obsolete-coupled tests adapted/removed.
+- **Document reads:** Approved artifacts required; standards conditional on seams.
+- **Delegation/QA:** Bounded structural/sequencing discovery, producer-verified, findings-only.
+- **Hand-over:** Canonical Planning/Design/Research links plus saved payload.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C06-C19,C22,C23. N/A: C05,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 7186/795/7981/1395; after = 2141/588/2729/547.
+- **Residual concern:** None.
 #### `refactor/implementation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Execute active structural cycles with preserved behavior and complete planned cleanup.
+- **Workflow distinction:** Refactor Implementation keeps a green invariant baseline unless a real durable coverage gap justifies RED.
+- **Retained activations:** Context/plan; bounded execution; first-class test structure; characterization exception; structural GREEN; cleanup/deletion REFACTOR; focused checks; purity self-check; objective cycle transition; review.
+- **Removed or relocated content:** Mandatory explore/internal QA PASS, artificial TDD, QA-driven progression, repeated gates, and missing hand-over.
+- **Test/evidence policy:** Existing focused green baseline normally; RED only for uncovered durable invariant; cleanup obsolete tests/helpers; full suite in Validation.
+- **Document reads:** Active cycle/strategy required; other reads only for seam.
+- **Delegation/QA:** Execution bounded and verified; adversarial structural preflight findings-only; producer decides.
+- **Hand-over:** Canonical proportional structural/test links and diff inventory.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 4464/0/4464/840; after = 2022/704/2726/519.
+- **Residual concern:** None.
 #### `refactor/validation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Prove structural completion, cleanup, invariants, and supported-behavior preservation.
+- **Workflow distinction:** Refactor validation searches for remnants/dependency purity and demonstrates unchanged behavior.
+- **Retained activations:** Approved inputs; structural/deliverable mapping; remnant checks; one full suite; branch gates; targeted structural gaps; Validation artifact/commit; independent QA.
+- **Removed or relocated content:** Harness exploration, unconditional reads, duplicated self-check, redesign/patching, producer PASS.
+- **Test/evidence policy:** Full suite/branch gates once; targeted invariant checks only; no diagnostic/detail tests.
+- **Document reads:** Approved artifacts required; standards conditional.
+- **Delegation/QA:** No delegated review; independent QA owns verdict.
+- **Hand-over:** Canonical Validation/Planning/structural evidence links.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06,C12,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 3900/897/4797/874; after = 1720/639/2359/467.
+- **Residual concern:** None.
 #### `refactor/documentation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Reconcile architecture/developer docs with validated structure while preserving user-facing behavior claims.
+- **Workflow distinction:** Refactor docs primarily update responsibilities, seams, extension points, and obsolete paths; user docs may remain unchanged.
+- **Retained activations:** Validation intake; architecture/dev/source-consumer inventory; minimal source-first updates/parity; reviewed-unchanged user docs; focused checks; deferred debt; commit/review.
+- **Removed or relocated content:** Harness scan, historical churn, repeated runtime verification, and invented behavior changes.
+- **Test/evidence policy:** Only invalidated docs/link/template/parity checks; reuse Validation.
+- **Document reads:** Validation/applicable doc boundary required; other references conditional.
+- **Delegation/QA:** No delegation required; producer retains scan/decision.
+- **Hand-over:** Canonical architecture/docs/consumer/Validation links.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 3119/600/3719/660; after = 1418/598/2016/376.
+- **Residual concern:** None.
 #### `hotfix/implementation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Execute the smallest safe correction/containment slice without broadening scope.
+- **Workflow distinction:** Hotfix starts directly in Implementation and must derive explicit containment from issue/user evidence rather than missing Research/Design phases.
+- **Retained activations:** Context/issue/plan; first push; bounded execution; durable focused RED or existing failure; minimal GREEN; risk-only cleanup; focused checks; objective cycle transitions; independent review request.
+- **Removed or relocated content:** Mandatory explore/internal QA PASS, blanket TDD duplication, broad refactor latitude, and missing hand-over.
+- **Test/evidence policy:** Durable regression or existing failure; no diagnostic ballast; focused file evidence; broad proof deferred to Validation.
+- **Document reads:** Issue, constraints, and active slice required; other reads only for affected boundary.
+- **Delegation/QA:** Bounded execution and adversarial findings-only preflight; producer decides/progresses.
+- **Hand-over:** Canonical proportional correction/test links plus diff inventory.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07-C19,C22,C23. N/A: C05-C06 (no pre-implementation phases), C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 4475/0/4475/858; after = 2191/656/2847/549.
+- **Residual concern:** None.
 #### `hotfix/validation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Verify correction, containment, rollback exposure, and branch-wide safety.
+- **Workflow distinction:** Hotfix validation emphasizes operational containment and excludes nonessential cleanup.
+- **Retained activations:** Inputs/constraint mapping; one full suite; branch gates; focused regression; risk/rollback assessment; Validation artifact/commit; independent QA request.
+- **Removed or relocated content:** Harness exploration, unconditional reads, duplicated self-checks, patching/broadening from Validation, and producer verdict.
+- **Test/evidence policy:** Full suite/branch gates once plus visible hotfix regression; no diagnostic permanent tests.
+- **Document reads:** Hotfix constraints required; standards conditional on boundary.
+- **Delegation/QA:** No delegated review; separate independent QA owns GO/NOGO.
+- **Hand-over:** Canonical links to Validation and hotfix evidence.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07-C11,C13-C19,C22,C23. N/A: C05-C06,C12,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 3804/838/4642/860; after = 1684/559/2243/438.
+- **Residual concern:** None.
 #### `hotfix/documentation`
 
-- **Implementation status:** PENDING
-- **Owned purpose:** Pending implementation evidence.
-- **Workflow distinction:** Pending implementation evidence.
-- **Retained activations:** Pending implementation evidence.
-- **Removed or relocated content:** Pending implementation evidence.
-- **Test/evidence policy:** Pending implementation evidence.
-- **Document reads:** Pending implementation evidence.
-- **Delegation/QA:** Pending implementation evidence.
-- **Hand-over:** Pending implementation evidence.
-- **Agent-instruction impact:** Pending implementation evidence.
-- **Audit result:** C01-C23 PENDING — no criterion is pre-marked PASS or N/A.
-- **Size:** Instruction and hand-over characters and lexical proxy units: pending before/after measurement.
-- **Residual concern:** Pending implementation evidence.
-
+- **Implementation status:** REWRITTEN — producer audit complete; independent QA remains separate.
+- **Owned purpose:** Reconcile current operational guidance with the validated hotfix.
+- **Workflow distinction:** Hotfix documentation prioritizes safe operator/user guidance, containment, and rollback clarity over broad docs cleanup.
+- **Retained activations:** Validation intake; operational docs inventory; minimal safe updates; source-first sync/parity; focused docs checks; deferred cleanup; commit/review.
+- **Removed or relocated content:** Broad workspace scan, historical churn, repeated gates, and claims beyond validated containment.
+- **Test/evidence policy:** Only invalidated docs/link/template/parity checks; reuse Validation.
+- **Document reads:** Validation and applicable Documentation boundary required; operational reads conditional.
+- **Delegation/QA:** No delegation required; producer scan is non-authoritative.
+- **Hand-over:** Canonical links to runbooks/guidance, consumers, and Validation.
+- **Agent-instruction impact:** Covered by C_AGENT_AUTHORITY; no additional static-source change required.
+- **Audit result:** PASS: C01-C04,C07,C10-C19,C22,C23. N/A: C05-C06,C08-C09,C20-C21.
+- **Size:** Before instruction/hand-over/effective/units = 3094/589/3683/660; after = 1333/595/1928/349.
+- **Residual concern:** None.
 ### C_CHORE_DOCS
 
 #### `chore/research`

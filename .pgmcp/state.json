@@ -4,8 +4,8 @@
   "issue_number": 399,
   "workflow_name": "refactor",
   "current_phase": "implementation",
-  "current_cycle": 4,
-  "last_cycle": 3,
+  "current_cycle": 5,
+  "last_cycle": 4,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -24,6 +24,12 @@
       "name": "C_BUG",
       "forced": false,
       "entered": "2026-08-20T12:38:41.642804+00:00"
+    },
+    {
+      "cycle_number": 5,
+      "name": "C_REFACTOR_HOTFIX",
+      "forced": false,
+      "entered": "2026-08-20T12:43:07.202658+00:00"
     }
   ],
   "required_phases": [
