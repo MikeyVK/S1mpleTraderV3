@@ -1653,100 +1653,59 @@ workflows:
         instructions:
           sub_role: planner
           phase_instructions: |
-            [ ] Read the issue: get_issue(issue_number=N).
-            [ ] Read DOCUMENTATION_STANDARD.md before drafting or scaffolding the planning document.
-            [ ] Use explore_subagent to gather concrete evidence about this documentation planning task.
-                Ask it to identify:
-                - the documentation files, sections, examples, diagrams, and references likely affected
-                - the authoritative source files or documents each planned update must rely on
-                - dependencies or ordering constraints between documentation tasks
-                - terminology, link, diagram, or example consistency risks
-                - unknowns that would make the documentation phase discover planning mistakes too late
+            Plan a documentation-only change from authoritative evidence.
 
-            [ ] Interaction checkpoint: present the planning framing to the user before going deeper.
-                Include:
-                - the proposed documentation scope and target files
-                - the authoritative source documents or code surfaces expected to inform the updates
-                - the highest-risk dependencies, consistency risks, or review-sensitive areas
-                - major unknowns still blocking a sound plan
-                Ask whether any audience, release, or communication constraint
-                should influence the documentation task breakdown.
+            [ ] Load get_work_context and get_issue(issue_number=N).
+                Establish the boundary before drafting:
+                - in scope: target audiences, current documentation, examples, links,
+                  diagrams, terminology, and affected source-to-consumer pairs
+                - out of scope: production/test implementation, behavior invention,
+                  redesign, and historical trace unless the issue explicitly requires it
+                - unresolved source-of-truth or behavior decisions: stop for human direction
 
-            [ ] Keep the planning in-bounds while forming the planning nucleus and before scaffolding:
-                - Include documentation task breakdown, target files, authoritative sources,
-                  dependencies, ordering, review criteria, examples or diagrams to update,
-                  terminology alignment, assumptions, open questions, risks,
-                  and out-of-scope notes.
-                - Exclude implementation TDD cycles, save_planning_deliverables payloads,
-                  production code plans, redesign decisions, and undocumented claims
-                  about system behavior.
-                - If the plan exposes a missing source of truth, a product contradiction,
-                  or a design or research gap, stop and activate a human-in-the-loop checkpoint
-                  instead of inventing the missing decision in planning.
+            [ ] Check the applicable DOCUMENTATION_STANDARD.md sections before drafting.
+                Read only references needed for an affected or uncertain boundary.
 
-            [ ] Before scaffolding, produce a short planning nucleus that is stable enough
-                for first-time-right drafting.
-                It must contain:
-                - the target documentation scope and intended outcomes
-                - the planned target files and why they are in scope
-                - the authoritative source docs or code surfaces for each update cluster
-                - dependencies, review criteria, and consistency-sensitive areas
-                - assumptions, open questions, and highest-risk documentation tasks
+            [ ] Inspect named documentation and its authoritative sources directly.
+                Map target files, source evidence, consumers, dependencies, ordering,
+                review criteria, and reviewed-but-unaffected surfaces.
+                Use bounded discovery only when direct inspection leaves a material gap.
+                Any delegated discovery must seek alternatives and counterevidence,
+                cite direct sources, report uncertainty and exclusions, stop on conflict,
+                and leave decisions with the producer.
 
-            [ ] Do not scaffold the planning document until the planning nucleus is stable enough
-                for first-time-right drafting.
+            [ ] Draft dependency-ordered documentation tasks.
+                Each task names its file, authoritative input, intended current-state
+                outcome, review proof, and consistency risks.
+                Do not hide implementation or redesign work in the plan.
 
-            [ ] Create the planning artifact: scaffold_artifact(artifact_type='planning', name='planning').
-            [ ] Fill the scaffolded document with evidence-backed content.
-                Use the template's optional sections where they materially improve the plan.
-                Follow DOCUMENTATION_STANDARD.md while drafting the document.
+            [ ] Scaffold and complete the Planning artifact:
+                scaffold_artifact(artifact_type='planning', name='planning').
+                Verify boundary, source mapping, dependencies, review criteria,
+                and Documentation Standard compliance.
 
-            [ ] Self-check before the final user checkpoint:
-                - If a task depends on an unsourced behavior claim, stop and ask instead of guessing.
-                - If a task hides implementation work or redesign decisions,
-                  move it out of documentation planning.
-                - Verify that target files, authoritative sources, dependencies,
-                  and review criteria are explicit.
-                - Verify the draft follows DOCUMENTATION_STANDARD.md.
+            [ ] Commit with git_add_or_commit(workflow_phase='planning',
+                message='Planning for #N').
+                Push once with git_push(set_upstream=True) when tracking is absent.
 
-            [ ] Interaction checkpoint before internal QA: present the documentation task breakdown,
-                source alignment, dependencies, review criteria, and unresolved questions to the user.
-                If the scope or priorities are wrong, revise before review.
-
-            [ ] Internal QA checkpoint before commit: invoke the qa agent with sub-role plan-verifier
-                to review the plan.
-                Ask QA as plan-verifier to verify:
-                - alignment with the issue and the authoritative source docs or code surfaces
-                - the plan stays documentation-only and does not hide implementation or redesign work
-                - target files, dependencies, review criteria, and consistency risks are explicit
-                - the plan is usable by the documentation phase
-                Return PASS or FAIL with exact gaps.
-                If model selection is supported in the current environment,
-                prefer a model different from the active implementation agent.
-
-            [ ] If internal QA returns FAIL, revise the plan and repeat the same QA checkpoint
-                before committing.
-
-            [ ] Commit: git_add_or_commit(workflow_phase='planning', message='Planning for #N')
-            [ ] First push: git_push(set_upstream=True)  # creates remote tracking branch; do once on this branch
-            [ ] Produce the hand-over required by the handover_template before ending the session.
+            [ ] Stop with the outcome-neutral hand-over below.
           handover_template: |
-            ### Planning → Documentation Hand-over
-            #### Scope
-            - Issue: #N
-            - Planning focus: <one sentence>
+            ### Scope
+            - Issue and documentation boundary: <#N, in scope, and exclusions>
 
-            #### Review Targets
-            - Documentation scope: <which docs or updates are planned and why>
-            - Source alignment: <which authoritative docs or code surfaces the plan relies on>
-            - Dependencies / review strategy: <what order, review criteria, or consistency risks matter>
-            - Open questions: <what remains unresolved>
+            ### Deliverables
+            - Planning: [planning](docs/development/issueN/planning.md)
+            - Target documentation and authoritative inputs: <linked review index>
 
-            #### Files
-            - docs/development/issueN/planning.md (new)
+            ### Evidence
+            - Source mapping, dependencies, and review criteria: <summary>
+            - Applicable documentation standards checked: <sections>
 
-            #### Stop-Go Proof
-            - Planning doc committed
+            ### Open Work
+            - Unresolved decisions or risks: <items or None>
+
+            ### Review Request
+            - Review requested
       - name: documentation
         exit_requires:
           - id: docs-readme
@@ -1757,74 +1716,57 @@ workflows:
         instructions:
           sub_role: documenter
           phase_instructions: |
-            [ ] Call get_project_plan(issue_number=N) and get_work_context.
-                Treat documentation as the docs-workspace delivery phase for this docs-only workflow.
+            Deliver the approved documentation-only plan.
 
-            [ ] Read the planning artifact and DOCUMENTATION_STANDARD.md before editing documentation.
-                Use the planning document and the authoritative sources it cites
-                as the basis for what the documentation should claim.
-                Treat issue-local workflow artifacts, archived docs, and historical notes
-                as context by default, not default edit targets.
-                Update them only when planning explicitly names them,
-                they are authoritative for the current phase,
-                or the user explicitly asks for it.
+            [ ] Load get_work_context and get_project_plan(issue_number=N).
+                Read the Planning artifact and the applicable DOCUMENTATION_STANDARD.md
+                sections. Treat historical and issue-local material as context unless
+                Planning identifies it as an active target.
 
-            [ ] Use explore_subagent to scan the documentation workspace for surfaces affected by this docs issue.
-                Ask it to identify:
-                - target documentation files, sections, examples, diagrams, references, and links to update
-                - the authoritative source files or documents each update must rely on
-                - historical or issue-local artifacts that may provide context
-                  but should normally remain unchanged
-                - stale examples, commands, diagrams, screenshots, links, or terminology that should now be corrected
-                - docs that were reviewed and can remain unchanged
-                - the smallest safe set of documentation updates needed to leave the workspace coherent
+            [ ] Recheck each planned claim against its authoritative source.
+                Stop for human direction when sources conflict, required behavior is
+                undecided, or implementation work is needed.
 
-            [ ] Update or create the documentation files required by the plan.
-                Prioritize:
-                - user or developer docs directly named in planning
-                - examples, commands, diagrams, screenshots, links, and references that would otherwise be stale
-                - consistency fixes required so the updated docs read as one coherent surface
+            [ ] Update the smallest coherent current-documentation surface:
+                target docs, examples, commands, diagrams, screenshots, links,
+                references, terminology, and required source-to-consumer copies.
+                Update authoritative instruction/document sources first and synchronize
+                derived consumers through their documented process.
+                Record reviewed-but-unchanged surfaces when that decision aids review.
 
-            [ ] Keep the documentation coherent across the docs workspace:
-                - every substantive claim must trace back to planning and an authoritative source
-                - examples, commands, diagrams, links, screenshots, and terminology should stay internally consistent
-                - record which docs surfaces were updated and which were reviewed and left unchanged
-                - if the docs scan reveals a source-of-truth gap or scope contradiction that planning did not settle,
-                  stop and raise a blocker for human review
-            [ ] Prepare the Documentation → QA hand-over.
-                It must cover:
-                - documentation scan coverage across the docs workspace
-                - which documentation files were updated and why
-                - which documentation surfaces were reviewed and left unchanged, with rationale
-                - how the updated docs reflect the planned documentation outcome
-                - residual caveats or open questions that remain visible in the docs
+            [ ] Verify only evidence invalidated by the documentation edits:
+                affected links, examples, templates, terminology, rendering,
+                and source-consumer parity. Do not rerun runtime tests or broad gates
+                without a concrete invalidation reason.
 
-            [ ] Self-check before commit:
-                - every substantive claim traces back to planning and an authoritative source
-                - stale examples, commands, diagrams, links, screenshots, or terminology are not silently outdated
-                - reviewed-but-unchanged docs are intentional and defensible
-                - the documentation follows DOCUMENTATION_STANDARD.md
+            [ ] Self-check issue/Planning coverage, current-state accuracy,
+                Documentation Standard compliance, and absence of unsupported claims.
+                Capture relevant out-of-scope findings as deferred work.
 
-            [ ] Commit: git_add_or_commit(workflow_phase='documentation', message='Documentation for #N')
-            [ ] Produce hand-over for QA doc review.
+            [ ] Commit with git_add_or_commit(workflow_phase='documentation',
+                message='Documentation for #N').
+
+            [ ] Stop with the outcome-neutral review index below.
+                Fresh independent documentation QA inspects workspace evidence
+                and owns any GO/NOGO verdict.
           handover_template: |
-            ### Documentation → QA Hand-over
-            #### Scope
-            - Issue: #N
-            - Documentation focus: <what was clarified, corrected, or updated>
+            ### Scope
+            - Documentation outcome and exclusions: <summary>
 
-            #### Review Targets
-            - Docs workspace coverage: <which surfaces were scanned>
-            - Planning / source alignment: <which authoritative sources the documentation now reflects>
-            - Updated docs: <which files changed and why>
-            - Reviewed but unchanged: <which surfaces were checked and intentionally left as-is>
-            - Residual caveats / open questions: <what remains intentionally visible>
+            ### Deliverables
+            - Updated documentation: <clickable repository-relative links>
+            - Authoritative sources and synchronized consumers: <links or None>
 
-            #### Files
-            - docs/... (updated)
+            ### Evidence
+            - Planning: [planning](docs/development/issueN/planning.md)
+            - Focused documentation checks: <commands/tools and outcomes>
+            - Reviewed but unchanged: <surfaces and rationale or None>
 
-            #### Stop-Go Proof
-            - Documentation committed
+            ### Open Work
+            - Deferred work, risks, or source conflicts: <items or None>
+
+            ### Review Request
+            - Review requested
       - name: ready
         instructions:
           sub_role: implementer
@@ -1895,33 +1837,36 @@ workflows:
         instructions:
           sub_role: researcher
           phase_instructions: |
-            [ ] Read the issue and confirm the chore objective, affected surfaces,
-                and explicit exclusions.
-            [ ] Inspect only the configuration, code, tests, and documentation needed
-                to determine whether the change is safe and mechanical.
-            [ ] Identify dependencies, compatibility concerns, hidden consumers,
-                or architectural implications that could make the chore non-trivial.
-            [ ] Share a concise research outcome with the user:
-                - current behavior
-                - intended change and scope boundaries
-                - likely files and verification
-                - blockers or decisions, if any
-            [ ] Create a compact research document only when durable evidence,
-                alternatives, or risk analysis will be useful in later phases.
-                A research artifact is optional for a routine chore.
-            [ ] Do not require external research, a sub-agent, or a scaffolded artifact
-                when repository evidence is sufficient.
-            [ ] Obtain agreement on the implementation boundary before transitioning.
+            Define an approved maintenance boundary.
+
+            [ ] Load get_work_context and get_issue(issue_number=N).
+                State objective, exclusions, and when the change is no longer mechanical.
+            [ ] Inspect proportional code, config, tests/helpers, current docs,
+                agent instructions/templates/enforcement, and consumer blast radius;
+                note unaffected surfaces briefly.
+            [ ] Identify dependency, compatibility, architecture, verification,
+                and deferred-work risks. Read sources only for a material uncertainty.
+            [ ] Capture human-approved strategy for each affected boundary.
+                Stop if scope/risk grows or another workflow is required.
+            [ ] Research is optional. If evidence or decisions must persist, check
+                the Documentation Standard, scaffold/commit Research, and push once
+                when tracking is absent.
+            [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Chore Research Outcome
-            #### Current behavior
-            - <concise finding>
-            #### Intended change and boundaries
-            - <approved scope and exclusions>
-            #### Expected files and verification
-            - <likely changes and checks>
-            #### Decisions or blockers
-            - None | <decision or blocker>
+            ### Scope
+            - Objective, exclusions, and approved strategy: <boundary decisions>
+
+            ### Deliverables
+            - Research/blast radius: [research](docs/development/issueN/research.md) or <direct outcome>
+
+            ### Evidence
+            - Direct findings and planned checks: <clickable links>
+
+            ### Open Work
+            - Decisions, blockers, or deferred work: <items or None>
+
+            ### Review Request
+            - Review requested
 
       - name: implementation
         cycle_based: false
@@ -1929,130 +1874,123 @@ workflows:
         instructions:
           sub_role: implementer
           phase_instructions: |
-            [ ] Load the approved chore boundary and confirm that it still matches
-                the current repository state.
-            [ ] Apply the smallest coherent maintenance change that satisfies the issue.
-            [ ] Do not broaden the chore into feature development, architectural redesign,
-                or unrelated refactoring.
-            [ ] Preserve the architecture contracts and keep workflow-dependent behavior
-                configuration-driven.
-            [ ] Add or update only the tests needed to prove changed behavior.
-                This phase is not cycle-based and does not require RED, GREEN,
-                and REFACTOR commits.
-            [ ] Update directly coupled configuration, fixtures, generated copies,
-                or current documentation when required for repository consistency.
-            [ ] Run focused tests after each coherent change and inspect the resulting diff
-                for accidental or unrelated modifications.
-            [ ] Stop and return the decision to the user when new evidence changes
-                the approved scope, compatibility strategy, or risk profile.
-            [ ] Commit the coherent implementation through git_add_or_commit.
-            [ ] Finish with an implementation handover containing scope, changed files,
-                satisfied deliverables, and exact verification results.
-                Stop and await the user's instruction before transitioning.
+            Apply one coherent maintenance change within the approved boundary.
+
+            [ ] Load get_work_context and the approved Research outcome.
+                Stop on missing strategy, repository drift, expanded risk, or scope conflict.
+            [ ] Make the smallest complete code/config/test/docs/consumer change.
+                Keep behavior configuration-driven and obey affected architecture,
+                typing, and documentation standards.
+            [ ] Hold tests/helpers to production-code standards.
+                Retain a test only for stable behavior or a durable gap; avoid ceremony,
+                diagnostic, duplicate, and implementation-detail tests.
+                This phase is non-cycle-based; do not manufacture RED/GREEN/REFACTOR.
+            [ ] Run the narrowest focused tests and file gates that prove the change.
+                Repeat only invalidated checks; reserve full-suite and branch gates
+                for Validation.
+            [ ] Inspect the complete diff for scope, omissions, accidental files,
+                stale consumers, and maintainability. Commit with
+                git_add_or_commit(workflow_phase='implementation',
+                message='Implement chore for #N').
+            [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
             ### Scope
-            - Chore objective completed: <summary>
-            - Intentionally out of scope: <summary>
-
-            ### Files
-            - Configuration: <files or none>
-            - Code and tests: <files or none>
-            - Documentation and derived artifacts: <files or none>
+            - Implemented chore boundary and exclusions: <summary>
 
             ### Deliverables
-            - <satisfied deliverable>
+            - Primary production/config/test review links: <links>
+            - Remaining files: <linked groups or complete-diff reference>
 
-            ### Stop-Go Proof
-            - Focused tests: <tool call and outcome>
-            - Quality checks performed during implementation: <tool call and outcome>
-            - Diff review: <outcome>
+            ### Evidence
+            - Focused tests, file gates, and diff review: <tools and outcomes>
+
+            ### Open Work
+            - Deferred work, risks, or blockers: <items or None>
+
+            ### Review Request
+            - Review requested
 
       - name: validation
         exit_requires: []
         instructions:
           sub_role: validator
           phase_instructions: |
-            [ ] Re-read the issue objective and approved chore boundary before
-                assessing the result.
-            [ ] Validate the delivered behavior and repository consistency,
-                not merely whether focused tests pass.
-            [ ] Inspect the complete branch diff and status for unintended files,
-                stale terminology, missed consumers, and scope expansion.
-            [ ] Run focused tests for the changed behavior.
-            [ ] Run the complete workspace test suite after all implementation changes
-                have been completed: run_tests(scope='full').
-            [ ] Run the applicable workspace quality gates.
-            [ ] Inspect the detailed cached results and distinguish change-caused failures
-                from verified pre-existing failures.
-            [ ] Do not approve validation when the workspace-wide test result is missing,
-                stale, or contains an unexplained failure.
-            [ ] Verify the relevant alignment between configuration, schemas,
-                runtime behavior, tests, and current documentation.
-            [ ] Identify work discovered during validation that is relevant but outside
-                the approved chore boundary.
-            [ ] Record deferred work explicitly, including:
-                - finding
-                - reason for deferral
-                - likely impact or risk
-                - recommended follow-up
-            [ ] State explicitly when no deferred work was identified.
-            [ ] Record the exact verification performed, outcomes, residual risks,
-                and accepted pre-existing failures.
-            [ ] Do not repair implementation defects during validation;
-                return actionable findings to the implementation phase.
-            [ ] Treat the full workspace test result as stale when the branch changes
-                afterwards. Require a new full run before approving validation.
-            [ ] Finish with the validation handover and stop.
-                Await the user's instruction before transitioning.
+            Prove the completed chore workspace-wide before PR preparation.
+
+            [ ] Load get_work_context, issue, approved boundary, and Implementation evidence.
+                Map objectives and affected code/config/test/docs/agent consumers to proof.
+            [ ] Inspect full branch diff/status for expansion, unintended or missing files,
+                stale terms, missed consumers, and unsupported claims.
+            [ ] After final implementation changes run once:
+                - run_tests(scope='full')
+                - run_quality_gates(scope='branch', verbose=True)
+                Read both cached resources. Add narrow checks only for a material gap;
+                do not duplicate fresh evidence.
+            [ ] Explain failures directly. Do not accept stale/unexplained broad results
+                or repair defects here: return findings to Implementation and rerun
+                invalidated evidence after correction.
+            [ ] Actively find deferred work. Record finding, deferral reason, impact,
+                source, follow-up, and issue/@co triage state; otherwise say
+                "None identified".
+            [ ] Record checks, coverage, freshness, risks, and deferred work.
+                Persist/commit compact Validation evidence when Ready or cross-session
+                review needs it.
+            [ ] Stop with the outcome-neutral hand-over. Fresh independent QA reads
+                workspace evidence and alone owns GO/NOGO.
           handover_template: |
-            ### Workspace Verification
-            - Focused tests: <tool call and outcome>
-            - Full workspace test suite: <run_tests(scope='full') outcome>
-            - Quality gates: <tool call and outcome>
-            - Accepted pre-existing failures: None | <explained failures>
+            ### Scope
+            - Validated chore objective and exclusions: <summary>
 
-            ### Delivered Behavior
-            - <validated result>
+            ### Deliverables
+            - Validation: [validation](docs/development/issueN/validation.md) or <handover evidence>
+            - Delivered current state: <summary>
 
-            ### Residual Risks
-            - None | <risk>
+            ### Evidence
+            - Full suite, branch gates, diff, and consumer checks: <resources/outcomes>
 
-            ### Deferred Work
-            - None identified.
-            - Or, for each item:
-              - Finding: <finding>
-              - Reason for deferral: <reason>
-              - Impact or risk: <impact>
-              - Recommended follow-up: <recommendation>
+            ### Open Work
+            - Deferred work and tracking: <items or None identified>
+            - Residual risks or blockers: <items or None>
+
+            ### Review Request
+            - Review requested
 
       - name: documentation
         exit_requires: []
         instructions:
           sub_role: documenter
           phase_instructions: |
-            [ ] Use the validated behavior and approved chore boundary
-                as the documentation baseline.
-            [ ] Identify current user, developer, configuration, and agent documentation
-                made inaccurate by the chore.
-            [ ] Update authoritative sources first and synchronize derived copies
-                through the documented generation process.
-            [ ] Describe the resulting current state without adding a historical
-                implementation trace or rewriting archived documentation.
-            [ ] Keep documentation changes proportional to the chore.
-            [ ] When no current documentation is affected, explicitly record
-                that no documentation change is required.
-            [ ] Verify links, examples, workflow tables, terminology,
-                and authoritative-to-derived consistency affected by the change.
-            [ ] Run the relevant documentation checks and summarize the outcome.
-            [ ] Commit documentation changes through git_add_or_commit when files changed.
-            [ ] Finish with a concise documentation result and stop.
-                Await the user's instruction before transitioning.
+            Reconcile current documentation with the validated chore.
+
+            [ ] Load get_work_context and Validation evidence; check the applicable
+                Documentation Standard boundary.
+            [ ] Identify invalidated user, developer, config, agent-instruction,
+                template, and derived-consumer docs.
+            [ ] Update authoritative sources first and synchronize active consumers.
+                Describe current state, not history or archives.
+                Record explicitly when no update is needed.
+            [ ] Verify only invalidated links, examples, tables, terms, templates,
+                rendering, and source-consumer parity. Reuse fresh Validation evidence.
+            [ ] Check scope, authority, reviewed-but-unchanged surfaces, and deferred work.
+                Commit changes with git_add_or_commit(workflow_phase='documentation',
+                message='Document chore for #N').
+            [ ] Stop with the outcome-neutral hand-over.
           handover_template: |
-            ### Documentation Result
-            - Authoritative sources updated: <files or none required>
-            - Derived artifacts synchronized: <files or none required>
-            - Checks performed: <tool call and outcome>
-            - Deferred documentation work: None | <item for ready-phase triage>
+            ### Scope
+            - Documentation reconciliation and exclusions: <summary>
+
+            ### Deliverables
+            - Authoritative docs and synchronized consumers: <links or None required>
+
+            ### Evidence
+            - Validation: [validation](docs/development/issueN/validation.md) or <evidence>
+            - Focused documentation/parity checks: <tools and outcomes>
+
+            ### Open Work
+            - Deferred documentation work or risks: <items or None>
+
+            ### Review Request
+            - Review requested
 
       - name: ready
         instructions:
