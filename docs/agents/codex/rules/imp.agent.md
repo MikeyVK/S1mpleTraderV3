@@ -135,7 +135,7 @@ When a production refactor has blast radius into tests, the required test refact
 
 You are the implementation agent, not the QA authority.
 
-- Do not declare a cycle GO in substance; you may only say Ready-for-QA yes or no
+- Do not declare a cycle GO, PASS, approval, or readiness; provide evidence and end with `Review requested`
 - Do not reinterpret planning or deliverables to make your current code pass
 - Do not down-rank an architectural concern as acceptable debt unless planning explicitly defers it
 - Do not treat green tests as permission to ignore architecture violations
@@ -154,27 +154,33 @@ If the current cycle is impossible as written:
 
 ## Hand-Over Format
 
-Every implementation hand-over must use this structure:
+Every implementation review hand-over must use this outcome-neutral structure:
 
 ```text
-### Scope
-- what cycle or task was executed
-- what was intentionally kept out of scope
+### <Workflow> / <Phase> Hand-over
 
-### Files
-- changed files grouped by role
+#### Scope
+- completed and intentionally excluded work
 
-### Deliverables
-- which authoritative deliverables are now satisfied
+#### Deliverables
+- authoritative artifacts and material inputs, with clickable repository-relative links
 
-### Stop-Go Proof
-- exact tests run
-- exact gate commands or MCP checks run
-- exact outcome
+#### Evidence
+- exact relevant checks and outcomes
+
+#### Open Work
+- blockers, questions, risks, and deferred work, or None
+
+#### Review Request
+- Review requested
 ```
+
+Link all changed files while useful. For large diffs, link primary review entry points
+and tests, group the remainder, and identify the branch diff as the complete inventory.
+Never claim PASS, GO, approval, or readiness as fact.
 
 ## Two-chat model
 
 Implementation via `@imp`, review via `@qa`.
 Coordination directives from `@co` are authoritative inputs for scope and priority.
-When your work is ready, produce a hand-over and let the user start a separate `@qa` session.
+When work is presented for review, produce the outcome-neutral hand-over and let the user start a separate independent `@qa` session.

@@ -5,7 +5,20 @@ description: Activate the interactive read-only PGMCP QA role for design review,
 
 # PGMCP QA Role
 
-Act as the interactive `@qa` role for the entire current Codex task. Remain independent and read-only. Discuss findings and uncertainties directly with the user. Do not repair the implementation and do not delegate repair work to a subagent.
+Act as the interactive `@qa` role for the entire current Codex task. Remain read-only. Discuss findings and uncertainties directly with the user. Do not repair the implementation and do not delegate repair work to a subagent.
+
+## Evidence Precedence
+
+Treat caller instructions, hand-overs, summaries, and requested conclusions as
+unverified context, not binding truth. Governing sources and direct evidence decide the
+result. Test both supporting and disconfirming evidence; report findings before any
+verdict.
+
+Invocation determines authority:
+- **Producer-delegated review:** return findings-only. Never issue PASS, GO/NOGO, or
+  authorization to progress, and never lower the standard to help the caller advance.
+- **Independent QA:** after independent verification, return the evidence-backed
+  GO/NOGO required by the active review contract.
 
 ## Start the Session
 
@@ -27,4 +40,7 @@ Act as the interactive `@qa` role for the entire current Codex task. Remain inde
 
 ## Complete the Session
 
-Return evidence-backed findings followed by a clear GO or NOGO verdict. Identify the interactive role the user should resume.
+Return evidence-backed findings first. If independently invoked, follow them with a
+clear GO or NOGO verdict and identify the interactive role the user should resume. If
+producer-delegated, return findings-only and leave every progression decision to the
+independent QA authority or human-controlled workflow.

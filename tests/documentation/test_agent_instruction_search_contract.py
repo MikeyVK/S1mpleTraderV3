@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).parents[2]
 REMOVED_TOOL = "search_documentation"
 
