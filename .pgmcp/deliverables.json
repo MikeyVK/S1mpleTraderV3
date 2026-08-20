@@ -89,9 +89,13 @@
                 {
                   "id": "C_COLLECTION.4",
                   "description": "Formatter and renderer contain no tool dispatch, sorting, filtering, or model-list Python representation."
+                },
+                {
+                  "id": "C_COLLECTION.5",
+                  "description": "Missing fields, non-list runtime values, and wrongly typed collection items fail with ConfigError containing usable field/path context."
                 }
               ],
-              "exit_criteria": "Generic public behavior preserves order and bounds at every depth, avoids Python repr and tool-name logic, and focused tests plus file-scoped gates pass."
+              "exit_criteria": "Generic public behavior preserves order and bounds at every depth, avoids Python repr and tool-name logic, and raises ConfigError with usable field/path context for missing, non-list, or wrongly typed runtime collection data; focused tests and file-scoped gates pass."
             },
             {
               "cycle_number": 3,
@@ -156,9 +160,13 @@
                 {
                   "id": "C_INTEGRATION.6",
                   "description": "Integration evidence proves complete cached DTOs and separately embedded validation resources remain unchanged."
+                },
+                {
+                  "id": "C_INTEGRATION.7",
+                  "description": "A representative tool without new declarations remains byte-for-byte unchanged while under budget and changes only through the universal limiter when over budget."
                 }
               ],
-              "exit_criteria": "Bundled YAML aligns; representative output is actionable and bounded; DTO/cache/resource contracts remain unchanged; no affected tool-name dispatch; focused tests and file-scoped gates pass."
+              "exit_criteria": "Bundled YAML aligns; representative output is actionable and bounded; DTO/cache/resource contracts remain unchanged; a representative non-adapted tool is byte-for-byte stable below the ceiling and limiter-only different above it; no affected tool-name dispatch; focused tests and file-scoped gates pass."
             },
             {
               "cycle_number": 5,
@@ -197,7 +205,7 @@
             },
             {
               "id": "VAL_BEHAVIOR.1",
-              "description": "Record evidence for budget, URI, order, limits, nesting, labels, semantic outcomes, and cache preservation."
+              "description": "Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, unchanged-tool compatibility, and unchanged cached DTOs."
             },
             {
               "id": "VAL_DEFERRED.1",

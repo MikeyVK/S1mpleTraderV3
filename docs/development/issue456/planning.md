@@ -2,8 +2,8 @@
 <!-- template=planning version=130ac5ea created=2026-08-20T20:26Z updated=2026-08-20 -->
 # Compact Actionable Tool Summaries — Planning
 
-**Status:** APPROVED  
-**Version:** 1.0  
+**Status:** PRELIMINARY  
+**Version:** 1.1  
 **Last Updated:** 2026-08-20
 
 ---
@@ -107,17 +107,18 @@ TextPresenter orchestration and the thirteen production tool declarations remain
 | C_COLLECTION.2 | CollectionTextRenderer renders scalar lists, model lists, sibling lists, and nested lists depth-first in DTO order. |
 | C_COLLECTION.3 | Empty, exact-limit, over-limit, None, multibyte, and nested data have durable public-contract coverage. |
 | C_COLLECTION.4 | Neither formatter nor renderer inspects tool names, sorts, filters, or formats model-valued lists as Python repr. |
+| C_COLLECTION.5 | Missing fields, non-list runtime values, and wrongly typed collection items fail with ConfigError containing usable field/path context. |
 
 ### Test and Gate Evidence
 
-- RED: focused public-contract tests fail for missing inline-sequence and recursive collection behavior.
-- GREEN: run only the focused collection-presentation test module(s).
+- RED: focused public-contract tests fail for missing inline-sequence and recursive collection behavior, including missing fields, non-list runtime values, and wrongly typed collection items.
+- GREEN: run only the focused collection-presentation test module(s), proving valid rendering and ConfigError with field/path context for all three malformed runtime-shape classes.
 - REFACTOR: rerun focused tests and file-scoped gates for formatter, renderer, and their tests.
 - Tests call public formatting/rendering methods only.
 
 ### Exit and Stop Conditions
 
-Exit only when order, limits, omission counts, nested association, and label formatting are deterministic. Stop if implementation requires dotted paths, tool-specific branches, DTO changes, or a generic query language.
+Exit only when order, limits, omission counts, nested association, and label formatting are deterministic, and every unexpected runtime collection shape raises ConfigError with usable field/path context. Stop if implementation silently skips malformed data or requires dotted paths, tool-specific branches, DTO changes, or a generic query language.
 
 ---
 
@@ -183,17 +184,18 @@ The hard stop-go invariant is len(result.encode("utf-8")) <= configured budget f
 | C_INTEGRATION.4 | run_quality_gates and validate_template use outcome-neutral wording. |
 | C_INTEGRATION.5 | Representative run_tests and run_quality_gates output excludes traceback, stderr, and verbose gate details while exposing bounded actionable rows. |
 | C_INTEGRATION.6 | Server/presenter evidence proves the cached DTO stays complete and separately embedded validation resources remain outside the text budget. |
+| C_INTEGRATION.7 | A representative tool without new declarations remains byte-for-byte unchanged while under budget and changes only through the universal limiter when over budget. |
 
 ### Test and Gate Evidence
 
-- RED: adapt durable presenter/integration tests for block order, labels, nested plan, collection matrix, scalar expansions, semantic outcomes, verbose-field exclusion, byte cap, and cache preservation.
-- GREEN: run [test_presenter.py](../../../tests/mcp_server/unit/test_presenter.py), the affected server test scope, and [test_pipeline_e2e.py](../../../tests/mcp_server/integration/test_pipeline_e2e.py).
+- RED: adapt durable presenter/integration tests for block order, labels, nested plan, collection matrix, scalar expansions, semantic outcomes, verbose-field exclusion, byte cap, cache preservation, and under/over-budget behavior of a representative unchanged tool.
+- GREEN: run [test_presenter.py](../../../tests/mcp_server/unit/test_presenter.py), the affected server test scope, and [test_pipeline_e2e.py](../../../tests/mcp_server/integration/test_pipeline_e2e.py), including the unchanged-tool under/over-budget compatibility case.
 - REFACTOR: rerun affected tests and file-scoped gates for every changed Python source and test file.
 - Use one structural matrix test for the thirteen collection tools; do not create thirteen wording snapshots.
 
 ### Exit and Stop Conditions
 
-Exit only when startup alignment accepts the bundled YAML, representative output is actionable and bounded, cache publication is unchanged, and source inspection finds no affected tool-name dispatch. Stop if integration requires DTO, cache, transport, or Approved Strategy changes.
+Exit only when startup alignment accepts the bundled YAML, representative output is actionable and bounded, cache publication is unchanged, one non-adapted tool is byte-for-byte stable below the ceiling and limiter-only different above it, and source inspection finds no affected tool-name dispatch. Stop if integration requires DTO, cache, transport, or Approved Strategy changes.
 
 ---
 
@@ -249,7 +251,7 @@ Documentation work must remain a current-state description and must not create h
 | VAL_FOCUSED.1 | Reconfirm focused presenter, server, pipeline, config, formatter, renderer, and limiter tests after final implementation changes. |
 | VAL_FULL.1 | Run one workspace-wide test suite and record exact totals. |
 | VAL_GATES.1 | Run branch-wide quality gates once and inspect the cached structured result. |
-| VAL_BEHAVIOR.1 | Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, and unchanged cached DTOs. |
+| VAL_BEHAVIOR.1 | Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, unchanged-tool compatibility, and unchanged cached DTOs. |
 | VAL_DEFERRED.1 | Carry the structured quality-gate findings gap into validation.md for Ready/PR triage. |
 | VAL_REPORT.1 | Publish the validation report with failures, residual risks, and deferred work. |
 
@@ -291,4 +293,5 @@ Structured GateFindingDTO research remains explicitly outside issue #456. Implem
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
-| 1.0 | 2026-08-20 | Agent | Approved five-cycle implementation, documentation, and validation plan |
+| 1.0 | 2026-08-20 | Agent | Initial five-cycle implementation, documentation, and validation plan |
+| 1.1 | 2026-08-20 | Agent | Add runtime-shape and unchanged-tool compatibility obligations; restore preliminary review status |
