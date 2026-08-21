@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -77,6 +77,14 @@
       "human_approval_message": "User explicitly approved making missing workflow state explicit through a boolean or enum interpreted by presentation.yaml and rejected human-facing error text inside the tool.",
       "forced": true,
       "skip_reason": "Reopen Research because direct runtime evidence showed missing workflow state produces empty human-facing output, and the approved no-DTO-change strategy conflicts with the Architecture Principles requirement that tools emit structured state rather than human-facing warning text."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-21T14:57:25.914617+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,

@@ -51,7 +51,8 @@ Every listed output model inherits these fields; they are not repeated in each r
 | Complete `passing_gates[]` remains cache-only; `passing_gates_count` stays inline. | APPROVED | Successful gate identities are diagnostic/audit detail, not routine next-action data. |
 | Bounded `skipped_gates[]` is inline when non-empty. | APPROVED | Skipped gates identify deliberately bypassed blockers and require attention; configured collection rendering already omits empty collections. |
 | `phase_source` remains cache-only. | APPROVED | Normal initialized state always reports `state.json`; the value is diagnostic provenance rather than action data. |
-| `phase_confidence` inline versus cache-only. | OPEN | Since issue #298, initialized status is always `high`; `unknown` occurs only when work context cannot load branch state. Human decision pending. |
+| `phase_confidence` remains cache-only after explicit state status is implemented. | APPROVED | `workflow_state_status` becomes the actionable inline contract; confidence is redundant diagnostic metadata on both normal and abnormal paths. |
+| `get_work_context` emits `WorkflowStateStatus` plus structured supporting data; presentation.yaml owns all warning and recovery text. | APPROVED | Explicit human decision aligned with the Presentation Boundary; OperationNotes and tool-owned human text are excluded. |
 
 The batch remains open until every server/workflow row and the optional-block design question have an explicit disposition.
 
@@ -63,7 +64,7 @@ The batch remains open until every server/workflow row and the optional-block de
 | restart_server | reason | Scalar template, unchanged | pid, timestamp, iso_time |
 | transition_cycle | to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count | Scalar template, unchanged | from_cycle, passing_gates[], skipped_gates[] |
 | force_cycle_transition | to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count | Scalar template, unchanged | from_cycle, passing_gates[], skipped_gates[], skip_reason, human_approval_message |
-| get_work_context | current_branch, workflow_name, issue_number, phase, phase_confidence, sub_role_hint, parent_branch, phase_instructions, handover_template | Expanded scalar template | current_cycle, sub_phase, phase_source, invalid_phase_warning |
+| get_work_context | current_branch, workflow_name, issue_number, phase, sub_role_hint, parent_branch, current_cycle, sub_phase, phase_instructions, handover_template, workflow_state_status; valid_phases for invalid_phase | Scalar orientation plus enum-selected warning/recovery block; valid_phases use bounded inline scalar-sequence formatting | phase_source, phase_confidence |
 | initialize_project | issue_number, branch, initial_phase | Scalar template, unchanged | workflow_name, parent_branch, required_phases[], execution_mode, files_created[] |
 | get_project_plan | issue_number, workflow_name, phases[].name, phases[].status, phases[].tasks[].id, phases[].tasks[].title, phases[].tasks[].status | Scalar header plus configured nested model collections | — |
 | save_planning_deliverables | issue_number, total_cycles, total_deliverables | Scalar template, unchanged | cycles[].cycle_number, cycles[].deliverables_count |

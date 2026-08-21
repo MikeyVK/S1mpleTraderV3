@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Design
 
 **Status:** IN REVIEW  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-08-21
 
 ---
@@ -16,7 +16,7 @@ Define the configuration and presentation-layer contracts for bounded, actionabl
 
 **In Scope:** TextPresenter orchestration, recursive collection projection, UTF-8 byte limiting, presentation configuration validation, scalar template enrichment, and durable behavioral tests.
 
-**Out of Scope:** Tool execution semantics, DTO changes, cache payload changes, transport-wide resource limits, sorting/filtering, tool-name-specific renderer code, and unrelated documentation modernization.
+**Out of Scope:** Tool execution semantics, DTO changes outside the explicitly approved `GetWorkContextOutput` workflow-state contract, cache payload changes beyond that DTO serialization, transport-wide resource limits, sorting/filtering, tool-name-specific renderer code, and unrelated documentation modernization.
 
 ## Prerequisites
 
@@ -45,6 +45,8 @@ Current scalar-only presentation templates make routine tool results under-infor
 - Enforce exact bidirectional parity between registered public tool names and `presentation.yaml` tool keys at startup.
 - Jointly review all 50 registered tool templates with the human owner and obtain explicit approval for every field-level inline/cache-only target before Planning resumes.
 - Keep deep logs, tracebacks, schemas, diffs, and full result sets in the cache.
+- Represent `get_work_context` state availability with structured enum data and no human-facing warning/recovery text in the tool.
+- Select status-specific warning blocks declaratively from `presentation.yaml` without arbitrary expressions or tool-name dispatch.
 - Enrich scalar templates and correct contradictory outcome templates only according to the jointly approved field audit; preliminary proposals are not implementation authority.
 
 **Non-Functional:**
@@ -62,6 +64,7 @@ Current scalar-only presentation templates make routine tool results under-infor
 - PresentationConfig remains a frozen pure Pydantic value object loaded only by ConfigLoader.
 - Tests use public APIs only.
 - The existing ResponsePresenter and ITextPresenter external contracts remain unchanged.
+- `GetWorkContextOutput.invalid_phase_warning` is replaced by structured workflow-state status and supporting fields as the explicitly approved clean-break exception.
 - Both obsolete documentation-test modules and their 62 cases are deleted during Implementation, without replacement by textual snapshot tests.
 
 ---
@@ -137,7 +140,34 @@ Create specialized renderer logic for each long-output tool.
 
 No new Protocol is introduced for either helper. Each has one concrete implementation, and its narrow public method is directly testable.
 
-### 3.2. Configuration Contracts
+### 3.2. Structured Workflow-State Contract
+
+The tool reports domain state only; presentation configuration owns all human-facing labels, warnings, and recovery instructions.
+
+    class WorkflowStateStatus(StrEnum):
+        AVAILABLE = "available"
+        MISSING = "missing"
+        UNREADABLE = "unreadable"
+        INVALID_PHASE = "invalid_phase"
+
+    class GetWorkContextOutput(BaseToolOutput):
+        # Existing orientation and instruction fields remain unless stated below.
+        workflow_state_status: WorkflowStateStatus
+        valid_phases: tuple[str, ...] = ()
+        # invalid_phase_warning is removed in this approved clean break.
+
+Status semantics:
+
+| Status | Producer condition | Structured supporting data |
+|---|---|---|
+| `available` | Branch state loads and its workflow/phase resolves in the active contract. | Existing workflow, issue, phase, role, instructions, and hand-over fields. |
+| `missing` | `StateNotFoundError` or `FileNotFoundError`. | Branch remains available; unresolved orientation fields retain their existing empty/None representation. |
+| `unreadable` | State access or decoding fails through the currently handled `OSError`/`KeyError` path. | Branch remains available; no raw exception text is exposed as presentation content. |
+| `invalid_phase` | State loads, workflow exists, but the stored phase is absent from that workflow contract. | Existing workflow and phase plus ordered `valid_phases`. |
+
+A successful query retains `success=true` for all four statuses. The enum describes the discovered workflow-state condition; it is not an execution failure. `phase_source` and `phase_confidence` remain in the complete DTO for compatibility and diagnostics but are cache-only once the enum is inline.
+
+### 3.3. Configuration Contracts
 
 The existing configuration version remains 1.0.0 because schema and bundled YAML move atomically and no external migration contract exists.
 
@@ -164,15 +194,25 @@ The following design-level Pydantic contracts are authoritative; method bodies a
         max_text_response_bytes: int = Field(default=8000, gt=0)
         # Existing fields remain unchanged.
 
+    class EnumCasePresentationConfig(BaseModel):
+        model_config = ConfigDict(frozen=True, extra="forbid")
+        field: str
+        cases: dict[str, str]
+
     class ToolPresentationConfig(BaseModel):
         model_config = ConfigDict(frozen=True, extra="forbid")
         max_items: int | None = Field(default=None, gt=0)
         collections: tuple[CollectionPresentationConfig, ...] = ()
+        enum_cases: tuple[EnumCasePresentationConfig, ...] = ()
         # Existing fields remain unchanged.
 
 Contract rules:
 
 - A tool with configured collections or an inline scalar-sequence placeholder must define max_items.
+- `enum_cases.field` names a direct enum-valued DTO field; configured case keys must be valid serialized enum values and unique.
+- The active enum value selects at most one configured template. An enum value with no configured case renders no block; `available` therefore adds no normal-path noise.
+- Enum-case templates may reference validated top-level DTO scalar fields and bounded flat scalar sequences. They contain all human-facing status labels and recovery text.
+- Arbitrary predicates, boolean expressions, fall-through defaults, and tool-name checks are unsupported.
 - max_items applies independently to every sibling collection, recursively at every child depth, and to every inline scalar sequence rendered for that tool.
 - A max_items value unused by either mechanism is rejected by startup alignment as orphaned configuration.
 - field names a direct list field on the current model; dotted paths are deliberately unsupported.
@@ -192,7 +232,7 @@ The recursive shape is intentionally minimal. It supports phases → tasks, but 
 
 SafeNoneFormatter remains the generic value-formatting boundary for both scalar templates and collection item templates. In addition to its existing None behavior, it formats only flat scalar sequences (for example list[str]) according to inline_sequence_separator, inline_sequence_omission_template, and the active tool's max_items. This yields labels such as bug, priority:high, … 2 more rather than Python repr output. It does not inspect field or tool names.
 
-### 3.3. Presentation Service Contracts
+### 3.4. Presentation Service Contracts
 
     class CollectionTextRenderer:
         def render(
@@ -242,7 +282,7 @@ TextPresenter retains its current public signature. Internally it produces seman
 
 The emoji remains part of the scalar body. Cache publication still happens before this flow in the server, so limiting text cannot mutate or reduce the cached DTO.
 
-### 3.4. Data and Control Flow
+### 3.5. Data and Control Flow
 
 ```mermaid
 flowchart LR
@@ -262,7 +302,7 @@ flowchart LR
 
 The embedded validation schema produced by ValidationResourcePresenter remains a separate PresentationResource and is not counted toward the TextPresenter ceiling.
 
-### 3.5. Interactive Projection Review Gate
+### 3.6. Interactive Projection Review Gate
 
 The DTO-to-chat projection is a human-facing product contract, not an implementation detail. Before this Design can return to APPROVED, the human owner and designer must review all 50 tools using [Tool Presentation Field Audit](tool-presentation-field-audit.md) as the worksheet.
 
@@ -276,7 +316,7 @@ For each tool, the review records:
 
 Review proceeds in bounded functional batches so decisions remain inspectable: server/workflow, Git, GitHub, scaffolding, and quality/testing/editing. A batch is closed only after explicit human confirmation. Design remains `IN REVIEW` while any tool lacks a disposition. Cycle 4 may not reinterpret, extend, or silently override the resulting matrix; new evidence must reopen Design.
 
-### 3.6. Complete Tool Configuration Matrix
+### 3.7. Complete Tool Configuration Matrix
 
 The proposed 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). It becomes authoritative only after all functional batches receive explicit human approval. Every row then becomes an implementation deliverable, including templates intentionally retained after confirming their compact output is optimal.
 
@@ -314,7 +354,7 @@ The semantic templates become outcome-neutral:
 
 scaffold_schema remains deliberately resource-oriented.
 
-### 3.6. Alignment and Failure Behavior
+### 3.8. Alignment and Failure Behavior
 
 `validate_presentation_alignment` remains the startup authority. It first compares the complete authoritative registered public-tool-name set with the configured tool-key set, then recursively validates every matched template and collection against that tool's `output_model`. Registration stays owned by `ServerBootstrapper`; the validator receives the assembled tool list and does not discover or construct tools itself.
 
@@ -324,6 +364,10 @@ scaffold_schema remains deliberately resource-oriented.
 | Presentation key has no registered public tool | Startup ConfigError listing unknown/obsolete keys in deterministic order. |
 | Duplicate registered public tool name | Startup ConfigError; registration ambiguity must not be hidden by set comparison. |
 | Exact registration/config parity | Continue with output-model and template validation for every tool. |
+| Enum-case field is absent or not enum-valued | Startup ConfigError naming tool and field. |
+| Enum-case key is not a member of the DTO enum | Startup ConfigError naming tool, field, and invalid key. |
+| Enum-case template has an invalid placeholder | Startup ConfigError using the existing output-model alignment rules. |
+| Enum value has no configured case | Render no conditional block; this is intentional for normal states such as `available`. |
 | Unknown root or child field | Startup ConfigError naming tool and path. |
 | Field is not a list | Startup ConfigError naming the incompatible field. |
 | Invalid model-item placeholder | Startup ConfigError naming template, DTO, and placeholder. |
@@ -342,7 +386,7 @@ scaffold_schema remains deliberately resource-oriented.
 
 No new persisted state, metrics store, migration task, or cache format is introduced. The visible truncation and omission notices are sufficient user-facing observability; complete evidence remains at the existing resource URI.
 
-### 3.7. Compatibility and Migration
+### 3.9. Compatibility and Migration
 
 This is an atomic configuration-and-presenter change:
 
@@ -361,7 +405,9 @@ Tests are organized around lasting public behavior, not around the wording of al
 
 | Test seam | Durable behavior |
 |---|---|
-| PresentationConfig validation | Frozen recursive config and inline-sequence formatting settings load; invalid max_items combinations, duplicates, and insufficient budget fail. |
+| PresentationConfig validation | Frozen recursive config, inline-sequence settings, and enum-case mappings load; invalid fields, enum keys, placeholders, max_items combinations, duplicates, and insufficient budget fail. |
+| GetWorkContextOutput workflow state | Available, missing, unreadable, and invalid-phase paths produce only structured enum/supporting data; no human-facing warning text originates in the tool. |
+| Enum-case presentation | Available state adds no warning block; each abnormal state selects exactly its configured warning/recovery block; invalid phase renders bounded valid phases. |
 | SafeNoneFormatter public formatting contract | Ordered scalar-sequence joining, empty sequence, exact limit, omission count, multibyte values, and rejection through alignment for nested/model sequences. |
 | CollectionTextRenderer.render | Flat model lists, scalar lists, empty lists, order, per-list limit, omission count, and nested phases/tasks. |
 | TextBudgetLimiter.limit | Under-budget identity, exact boundary, multibyte safety, block/line preference, fenced-block closure, hard byte ceiling, notice, URI retention, and cache-unavailable behavior. |
@@ -395,6 +441,7 @@ No replacement test asserts mutable prose across agent or documentation files. D
 | Config drifts from DTO shapes | Recursive startup alignment. | Configuration declarations and validator evolve together. |
 | Config keys drift from runtime registrations | Exact bidirectional startup parity and duplicate-name rejection. | Add parity behavior and tests to the configuration/alignment slice. |
 | Partial rollout misses previously compact tools | Approved 50-tool field matrix with explicit cache-only rationales. | Plan full-matrix implementation and structural evidence, not only the thirteen collection tools. |
+| Workflow-state recovery text leaks into the tool | Enum-only DTO contract and validated enum-case templates. | Plan DTO producer tests separately from presenter wording/selection tests. |
 | Test explosion returns | Capability matrix, not per-tool prose snapshots. | Delete 62 obsolete tests and keep new coverage seam-oriented. |
 
 Planning must keep configuration/schema, generic services, integration, tool declarations, and documentation traceable as separate concerns, but must not reinterpret the Approved Strategy.
@@ -422,3 +469,4 @@ Planning must keep configuration/schema, generic services, integration, tool dec
 | 1.1 | 2026-08-20 | Agent | Define generic bounded inline scalar-sequence formatting for issue labels |
 | 1.2 | 2026-08-21 | Agent | Add exact registration/config parity and make the approved 50-tool field audit the complete rollout contract |
 | 1.3 | 2026-08-21 | Agent | Reopen Design and require interactive human approval of every DTO-to-chat projection before Planning |
+| 1.4 | 2026-08-21 | Agent | Define structured workflow-state enum and declarative enum-case presentation with no tool-owned human text |
