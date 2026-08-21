@@ -1,5 +1,6 @@
 version: "1.0.0"
 global:
+  max_text_response_bytes: 8000
   emojis:
     success: "✅"
     failure: "❌"
@@ -14,6 +15,11 @@ global:
   default_failure_template: "Failed: {error_message}"
   formatting:
     none_value: "-"
+    inline_sequence_separator: ", "
+    inline_sequence_omission_template: "… {omitted_count} more"
+    collection_omission_template: "- … {omitted_count} more {field}"
+    truncation_notice: "Output truncated; complete details are available in the cached resource."
+    cache_unavailable_truncation_notice: "Output truncated; complete details are unavailable because cache publication failed."
   next_instruction_texts:
     uri_reference: "*(Full details available in the structured JSON payload. View resource: pgmcp://cache/runs/{run_id})*"
     context_reset: "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call to load the current phase context for this branch."
@@ -102,6 +108,7 @@ global:
 tools:
   auto_fix:
     category: mutation
+    max_items: 20
     template_success: |
       **Auto-Fix Run Completed Successfully**
       - Gates executed: {gates_executed_count} ({gates_executed})

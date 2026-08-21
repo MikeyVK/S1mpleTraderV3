@@ -157,6 +157,14 @@ class TestTextPresenter:
                     "bootstrap": "🚀",
                 },
                 "default_failure_template": "Failed: {error_message}",
+                "formatting": {
+                    "none_value": "-",
+                    "inline_sequence_separator": ", ",
+                    "inline_sequence_omission_template": "… {omitted_count} more",
+                    "collection_omission_template": "- … {omitted_count} more {field}",
+                    "truncation_notice": "Output truncated.",
+                    "cache_unavailable_truncation_notice": "Output unavailable.",
+                },
                 "next_instruction_texts": {
                     "test_advisory": "🚀 TEST ADVISORY WARNING",
                     "uri_reference": (
@@ -298,11 +306,17 @@ class TestTextPresenter:
         """
         config_data = {
             "global": {
+                "formatting": {
+                    "inline_sequence_omission_template": "… {omitted_count} more",
+                    "collection_omission_template": "- … {omitted_count} more {field}",
+                    "truncation_notice": "Output truncated.",
+                    "cache_unavailable_truncation_notice": "Output unavailable.",
+                },
                 "notes": {
                     "templates": {
                         "suggestions": {"allowed_branch_types": "Allowed: {invalid_field}"}
                     }
-                }
+                },
             },
             "tools": {},
         }
@@ -333,6 +347,12 @@ class TestTextPresenter:
                     "success": "✅",
                     "failure": "❌",
                     "custom_cat": "🦄",
+                },
+                "formatting": {
+                    "inline_sequence_omission_template": "… {omitted_count} more",
+                    "collection_omission_template": "- … {omitted_count} more {field}",
+                    "truncation_notice": "Output truncated.",
+                    "cache_unavailable_truncation_notice": "Output unavailable.",
                 },
             },
             "tools": {

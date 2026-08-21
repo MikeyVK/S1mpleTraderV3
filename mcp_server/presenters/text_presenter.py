@@ -5,13 +5,19 @@
 @layer: Presenters
 """
 
+from __future__ import annotations
+
 import json
 import string
-from typing import Any
+from collections.abc import Sequence
+from enum import Enum
+from typing import TYPE_CHECKING, Any, TypeGuard, get_args, get_origin
 
 from pydantic import BaseModel
 
 from mcp_server.config.schemas.presentation_config import (
+    CollectionPresentationConfig,
+    EnumCasePresentationConfig,
     GlobalPresentationConfig,
     PresentationConfig,
     ToolPresentationConfig,
@@ -20,6 +26,9 @@ from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.interfaces.ipresenter import ITextPresenter
 from mcp_server.core.operation_notes import NoteEntry
 from mcp_server.schemas.cache_publication import CachePublication
+
+if TYPE_CHECKING:
+    from mcp_server.bootstrap import SupportedToolContract
 
 
 class SafeNoneFormatter(string.Formatter):
@@ -363,16 +372,13 @@ class TextPresenter(ITextPresenter):
         return "\n".join(lines).strip()
 
 
-def validate_presentation_alignment(presenter: TextPresenter, tools: list[Any]) -> None:
-    """Verifies that templates align with DTO models, note classes, and errors to prevent drift."""
-    import string  # noqa: PLC0415
-
-    # ConfigError imported on module level
-    pass
-    blacklist = {"message", "msg", "text", "txt", "error_message", "error", "err"}
+def validate_presentation_alignment(
+    presenter: TextPresenter,
+    contracts: Sequence[SupportedToolContract],
+) -> None:
+    """Fail fast when presentation policy and the supported tool catalog drift."""
     blacklist = {"message", "msg", "text", "txt", "error_message", "error", "err"}
 
-    # Mapping for system-level errors
     error_class_fields = {
         "ERR_CONFIG": {"message", "file_path", "code"},
         "config": {"message", "file_path", "code"},
@@ -401,8 +407,6 @@ def validate_presentation_alignment(presenter: TextPresenter, tools: list[Any]) 
         "ERR_CACHE": {"message", "params", "success", "error_type", "traceback"},
         "cache": {"message", "params", "success", "error_type", "traceback"},
     }
-
-    # Mapping for generic notes keys to their allowed parameters
     generic_note_fields = {
         "allowed_bases_suggestion": {"bases"},
         "initialize_project_suggestion": {"issue_number"},
@@ -442,137 +446,346 @@ def validate_presentation_alignment(presenter: TextPresenter, tools: list[Any]) 
         "scaffold_validation_failed": {"error_details"},
     }
 
-    def get_placeholders(tmpl: str) -> list[str]:
-        p_list = []
+    def get_placeholders(template: str) -> list[str]:
         try:
-            for _, field_name, _, _ in string.Formatter().parse(tmpl):
-                if field_name is not None:
-                    base_field = field_name.split(".")[0].split("[")[0]
-                    p_list.append(base_field)
-        except Exception as exc:
+            return [
+                field_name.split(".")[0].split("[")[0]
+                for _, field_name, _, _ in string.Formatter().parse(template)
+                if field_name is not None
+            ]
+        except ValueError as exc:
             raise ConfigError(f"Invalid template format: {exc}") from exc
-        return p_list
 
-    def check_blacklist(tmpl: str, template_key: str, is_default_fail: bool = False) -> None:
-        placeholders = get_placeholders(tmpl)
-        for p in placeholders:
-            if p in blacklist:
-                # Exceptions
-                if is_default_fail and p == "error_message":
-                    continue
-                if template_key == "template_failure" and p == "error_message":
-                    continue
-                if template_key in generic_note_fields and p == "message":
-                    continue
+    def check_blacklist(
+        template: str,
+        template_key: str,
+        *,
+        is_default_fail: bool = False,
+    ) -> None:
+        for placeholder in get_placeholders(template):
+            if placeholder not in blacklist:
+                continue
+            if is_default_fail and placeholder == "error_message":
+                continue
+            if template_key == "template_failure" and placeholder == "error_message":
+                continue
+            if template_key in generic_note_fields and placeholder == "message":
+                continue
+            raise ConfigError(
+                f"Template for '{template_key}' uses blacklisted generic parameter '{placeholder}'"
+            )
+
+    def is_model_type(
+        annotation: object,
+    ) -> TypeGuard[type[BaseModel]]:
+        return isinstance(annotation, type) and issubclass(annotation, BaseModel)
+
+    def is_scalar_type(annotation: object) -> bool:
+        if not isinstance(annotation, type):
+            return False
+        return annotation in {str, int, float, bool} or issubclass(annotation, Enum)
+
+    def get_sequence_item(annotation: object, path: str) -> object:
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+        if origin is list and len(args) == 1:
+            return args[0]
+        if origin is tuple and len(args) == 2 and args[1] is Ellipsis:
+            return args[0]
+        raise ConfigError(
+            f"Presentation field '{path}' must be annotated as list[T] or tuple[T, ...]"
+        )
+
+    def template_uses_sequence(
+        template: str,
+        *,
+        template_key: str,
+        model: type[BaseModel],
+        tool_name: str,
+    ) -> bool:
+        check_blacklist(template, template_key)
+        uses_sequence = False
+        allowed_fields = set(model.model_fields)
+        allowed_fields.update({"success", "error_message", "post_tool_instruction"})
+
+        for placeholder in get_placeholders(template):
+            if placeholder.startswith("emoji_"):
+                continue
+            if placeholder not in allowed_fields:
                 raise ConfigError(
-                    f"Template for '{template_key}' uses blacklisted generic parameter '{p}'"
+                    f"Template placeholder '{placeholder}' not found in DTO "
+                    f"'{model.__name__}' for tool '{tool_name}'"
+                )
+            model_field = model.model_fields.get(placeholder)
+            if model_field is None:
+                continue
+
+            annotation = model_field.annotation
+            origin = get_origin(annotation)
+            if origin in {list, tuple}:
+                item_type = get_sequence_item(
+                    annotation,
+                    f"{tool_name}.{placeholder}",
+                )
+                if not is_scalar_type(item_type):
+                    raise ConfigError(
+                        f"Template '{template_key}' for tool '{tool_name}' "
+                        "cannot inline model-valued or nested sequence "
+                        f"field '{placeholder}'"
+                    )
+                uses_sequence = True
+            elif is_model_type(annotation) or origin in {dict, set}:
+                raise ConfigError(
+                    f"Template '{template_key}' for tool '{tool_name}' "
+                    f"cannot inline structured field '{placeholder}'"
+                )
+        return uses_sequence
+
+    def validate_collection(
+        declaration: CollectionPresentationConfig,
+        *,
+        model: type[BaseModel],
+        path: str,
+    ) -> bool:
+        if "." in declaration.field:
+            raise ConfigError(
+                f"Collection field '{path}.{declaration.field}' must be a direct field"
+            )
+        model_field = model.model_fields.get(declaration.field)
+        if model_field is None:
+            raise ConfigError(
+                f"Collection field '{path}.{declaration.field}' is not present "
+                f"on DTO '{model.__name__}'"
+            )
+        if declaration.heading and get_placeholders(declaration.heading):
+            raise ConfigError(
+                f"Collection heading for '{path}.{declaration.field}' must be literal Markdown"
+            )
+
+        item_type = get_sequence_item(
+            model_field.annotation,
+            f"{path}.{declaration.field}",
+        )
+        placeholders = get_placeholders(declaration.item_template)
+
+        if is_scalar_type(item_type):
+            if set(placeholders) - {"item"}:
+                raise ConfigError(
+                    f"Scalar collection '{path}.{declaration.field}' item_template "
+                    "may reference only 'item'"
+                )
+            if declaration.children:
+                raise ConfigError(
+                    f"Scalar collection '{path}.{declaration.field}' cannot "
+                    "declare child collections"
+                )
+            return True
+
+        if not is_model_type(item_type):
+            raise ConfigError(f"Collection '{path}.{declaration.field}' has unsupported item type")
+
+        item_model = item_type
+        for placeholder in placeholders:
+            item_field = item_model.model_fields.get(placeholder)
+            if item_field is None:
+                raise ConfigError(
+                    f"Collection item placeholder '{placeholder}' is not present "
+                    f"on DTO '{item_model.__name__}' at "
+                    f"'{path}.{declaration.field}'"
+                )
+            annotation = item_field.annotation
+            origin = get_origin(annotation)
+            if origin in {list, tuple}:
+                nested_item = get_sequence_item(
+                    annotation,
+                    f"{path}.{declaration.field}.{placeholder}",
+                )
+                if not is_scalar_type(nested_item):
+                    raise ConfigError(
+                        f"Collection item template at '{path}.{declaration.field}' "
+                        f"cannot inline nested model sequence '{placeholder}'"
+                    )
+            elif is_model_type(annotation) or origin in {dict, set}:
+                raise ConfigError(
+                    f"Collection item template at '{path}.{declaration.field}' "
+                    f"cannot inline structured field '{placeholder}'"
                 )
 
-    # 1. Global settings validation
+        for child in declaration.children:
+            validate_collection(
+                child,
+                model=item_model,
+                path=f"{path}.{declaration.field}",
+            )
+        return True
+
+    def validate_enum_case(
+        declaration: EnumCasePresentationConfig,
+        *,
+        model: type[BaseModel],
+        tool_name: str,
+    ) -> bool:
+        if "." in declaration.field:
+            raise ConfigError(
+                f"Enum-case field '{tool_name}.{declaration.field}' must be a direct field"
+            )
+        model_field = model.model_fields.get(declaration.field)
+        if model_field is None:
+            raise ConfigError(
+                f"Enum-case field '{declaration.field}' is not present "
+                f"on DTO '{model.__name__}' for tool '{tool_name}'"
+            )
+        enum_type = model_field.annotation
+        if not (isinstance(enum_type, type) and issubclass(enum_type, Enum)):
+            raise ConfigError(
+                f"Enum-case field '{tool_name}.{declaration.field}' must be enum-valued"
+            )
+        allowed_values = {str(member.value) for member in enum_type}
+        invalid_values = set(declaration.cases) - allowed_values
+        if invalid_values:
+            values = ", ".join(sorted(invalid_values))
+            raise ConfigError(
+                f"Enum-case field '{tool_name}.{declaration.field}' "
+                f"contains invalid case value(s): {values}"
+            )
+
+        uses_sequence = False
+        for case_value, template in declaration.cases.items():
+            uses_sequence = (
+                template_uses_sequence(
+                    template,
+                    template_key=f"enum_case_{declaration.field}_{case_value}",
+                    model=model,
+                    tool_name=tool_name,
+                )
+                or uses_sequence
+            )
+        return uses_sequence
+
     global_cfg = presenter.global_config
     default_fail = global_cfg.default_failure_template
-    failures = global_cfg.failures
-    global_note_templates = global_cfg.notes.templates
-    # Validate default failure template
     if default_fail:
-        check_blacklist(default_fail, "default_failure_template", is_default_fail=True)
+        check_blacklist(
+            default_fail,
+            "default_failure_template",
+            is_default_fail=True,
+        )
 
-    # Validate global failures
-    for err_code, template in failures.items():
-        check_blacklist(template, err_code)
-        placeholders = get_placeholders(template)
-        # Verify placeholders against system error fields if it is a known code
-        if err_code in error_class_fields:
-            allowed = error_class_fields[err_code]
-            for p in placeholders:
-                if p not in allowed:
-                    raise ConfigError(
-                        f"Failure placeholder '{p}' not found in DTO fields for '{err_code}'"
-                    )
-
-    # Validate global note templates
-    for _, group_templates in global_note_templates.items():
-        if not isinstance(group_templates, dict):
+    for error_code, template in global_cfg.failures.items():
+        check_blacklist(template, error_code)
+        allowed = error_class_fields.get(error_code)
+        if allowed is None:
             continue
+        for placeholder in get_placeholders(template):
+            if placeholder not in allowed:
+                raise ConfigError(
+                    f"Failure placeholder '{placeholder}' not found in DTO "
+                    f"fields for '{error_code}'"
+                )
+
+    for group_templates in global_cfg.notes.templates.values():
         for key, template in group_templates.items():
             check_blacklist(template, key)
-            placeholders = get_placeholders(template)
-            if key in generic_note_fields:
-                allowed = generic_note_fields[key]
-                for p in placeholders:
-                    if p not in allowed:
-                        raise ConfigError(
-                            f"Note template placeholder '{p}' not found in fields for note '{key}'"
-                        )
+            allowed = generic_note_fields.get(key)
+            if allowed is None:
+                continue
+            for placeholder in get_placeholders(template):
+                if placeholder not in allowed:
+                    raise ConfigError(
+                        f"Note template placeholder '{placeholder}' not found "
+                        f"in fields for note '{key}'"
+                    )
 
-    # 2. Tool-specific validation
-    for tool in tools:
-        tool_name = getattr(tool, "name", None)
-        if not tool_name:
-            continue
+    contract_names = [contract.name for contract in contracts]
+    if len(contract_names) != len(set(contract_names)):
+        raise ConfigError("Duplicate supported tool identity in runtime catalog")
 
-        output_model = getattr(tool, "output_model", None)
-        tool_cfg = presenter.tools_config.get(tool_name)
-        if not tool_cfg:
-            continue
+    configured_names = set(presenter.tools_config)
+    supported_names = set(contract_names)
+    missing = supported_names - configured_names
+    unknown = configured_names - supported_names
+    if missing or unknown:
+        details = []
+        if missing:
+            details.append(f"missing: {', '.join(sorted(missing))}")
+        if unknown:
+            details.append(f"unknown: {', '.join(sorted(unknown))}")
+        raise ConfigError(
+            "presentation.yaml must exactly match the supported tool catalog ("
+            + "; ".join(details)
+            + ")"
+        )
 
-        # Get templates for this tool
-        templates_to_check = []
-        next_inst_keys = []
+    instruction_texts = presenter.get_next_instruction_texts()
+    for contract in contracts:
+        tool_name = contract.name
+        output_model = contract.output_model
+        if not (isinstance(output_model, type) and issubclass(output_model, BaseModel)):
+            raise ConfigError(f"Supported tool '{tool_name}' has no concrete Pydantic output model")
 
+        tool_cfg = presenter.tools_config[tool_name]
+        uses_bounded_sequence = bool(tool_cfg.collections)
+
+        templates_to_check: list[tuple[str, str]] = []
         if tool_cfg.template_success is not None:
             templates_to_check.append(("template_success", tool_cfg.template_success))
         if tool_cfg.template_failure is not None:
             templates_to_check.append(("template_failure", tool_cfg.template_failure))
-        next_inst_keys = tool_cfg.next_instructions
-
-        # Local notes
-        local_notes = {
-            "exclusions": tool_cfg.exclusions,
-            "suggestions": tool_cfg.suggestions,
-            "recoveries": tool_cfg.recoveries,
-            "info": tool_cfg.info,
-        }
-        instruction_texts = presenter.get_next_instruction_texts()
-        for key in next_inst_keys:
+        for key in tool_cfg.next_instructions:
             raw_text = instruction_texts.get(key)
-            if isinstance(raw_text, str):
+            if raw_text is not None:
                 templates_to_check.append((f"instruction_{key}", raw_text))
 
-        # Check local notes
-        for _, notes_dict in local_notes.items():
-            if not isinstance(notes_dict, dict):
-                continue
+        local_notes = (
+            tool_cfg.exclusions,
+            tool_cfg.suggestions,
+            tool_cfg.recoveries,
+            tool_cfg.info,
+        )
+        for notes_dict in local_notes:
             for key, template in notes_dict.items():
                 check_blacklist(template, key)
-                placeholders = get_placeholders(template)
-                if key in generic_note_fields:
-                    allowed = generic_note_fields[key]
-                    for p in placeholders:
-                        if p not in allowed:
-                            raise ConfigError(
-                                f"Note placeholder '{p}' not found in fields for '{key}'"
-                            )
-
-        # Skip output model validation if model is not defined (or None during migration)
-        if (
-            output_model is None
-            or not isinstance(output_model, type)
-            or not issubclass(output_model, BaseModel)
-        ):
-            continue
-
-        allowed_fields = set(output_model.model_fields.keys())
-        allowed_fields.update({"success", "error_message", "post_tool_instruction"})
+                allowed = generic_note_fields.get(key)
+                if allowed is None:
+                    continue
+                for placeholder in get_placeholders(template):
+                    if placeholder not in allowed:
+                        raise ConfigError(
+                            f"Note placeholder '{placeholder}' not found in fields for '{key}'"
+                        )
 
         for key, template in templates_to_check:
-            check_blacklist(template, key)
-            placeholders = get_placeholders(template)
-            for base_field in placeholders:
-                if base_field.startswith("emoji_"):
-                    continue
-                if base_field not in allowed_fields:
-                    raise ConfigError(
-                        f"Template placeholder '{base_field}' not found in DTO "
-                        f"'{output_model.__name__}' for tool '{tool_name}'"
-                    )
+            uses_bounded_sequence = (
+                template_uses_sequence(
+                    template,
+                    template_key=key,
+                    model=output_model,
+                    tool_name=tool_name,
+                )
+                or uses_bounded_sequence
+            )
+
+        for collection in tool_cfg.collections:
+            uses_bounded_sequence = (
+                validate_collection(
+                    collection,
+                    model=output_model,
+                    path=tool_name,
+                )
+                or uses_bounded_sequence
+            )
+
+        for enum_case in tool_cfg.enum_cases:
+            uses_bounded_sequence = (
+                validate_enum_case(
+                    enum_case,
+                    model=output_model,
+                    tool_name=tool_name,
+                )
+                or uses_bounded_sequence
+            )
+
+        if uses_bounded_sequence and tool_cfg.max_items is None:
+            raise ConfigError(f"Tool '{tool_name}' uses bounded sequences but has no max_items")
+        if not uses_bounded_sequence and tool_cfg.max_items is not None:
+            raise ConfigError(f"Tool '{tool_name}' defines orphaned max_items configuration")

@@ -263,7 +263,19 @@ def _setup_mock_config_loader(mock_config_loader_cls: MagicMock) -> MagicMock:
     mock_contracts.merge_policy = MagicMock()
     mock_contracts.merge_policy.branch_local_artifacts = []
     mock_loader.load_contracts_config.return_value = mock_contracts
-    mock_pres = PresentationConfig.model_validate({"global": {}, "tools": {}})
+    mock_pres = PresentationConfig.model_validate(
+        {
+            "global": {
+                "formatting": {
+                    "inline_sequence_omission_template": "… {omitted_count} more",
+                    "collection_omission_template": "- … {omitted_count} more {field}",
+                    "truncation_notice": "Output truncated.",
+                    "cache_unavailable_truncation_notice": "Output unavailable.",
+                }
+            },
+            "tools": {},
+        }
+    )
     mock_loader.load_presentation_config.return_value = mock_pres
     return mock_loader
 
@@ -287,6 +299,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -313,6 +326,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry") as mock_template_registry_cls,
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator") as mock_config_validator_cls,
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -392,6 +406,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -412,6 +427,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -439,6 +455,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -465,6 +482,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.managers.github_manager.GitHubAdapter") as adapter_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -489,6 +507,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -514,6 +533,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -539,6 +559,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 

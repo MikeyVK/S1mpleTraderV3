@@ -368,7 +368,7 @@ class ServerBootstrapper:
         text_presenter = TextPresenter(config=configs.presentation_config)
         validate_presentation_alignment(
             text_presenter,
-            list(tool_assembly.supported_tools),
+            tool_assembly.supported_contracts,
         )
         resource_presenter = ValidationResourcePresenter()
         presenter = ResponsePresenter(

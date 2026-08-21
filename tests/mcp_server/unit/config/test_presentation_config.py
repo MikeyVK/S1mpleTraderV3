@@ -10,7 +10,7 @@
     - Verify generic ordered-sequence, collection, enum, and budget contracts
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import pytest
@@ -25,7 +25,7 @@ from mcp_server.presenters.text_presenter import (
 )
 
 
-class _Status(str, Enum):
+class _Status(StrEnum):
     AVAILABLE = "available"
     MISSING = "missing"
 
@@ -66,11 +66,7 @@ def _global_config(max_bytes: int = 8_000) -> dict[str, Any]:
                 "Output truncated; complete details are unavailable."
             ),
         },
-        "next_instruction_texts": {
-            "uri_reference": (
-                "View resource: pgmcp://cache/runs/{run_id}"
-            )
-        },
+        "next_instruction_texts": {"uri_reference": ("View resource: pgmcp://cache/runs/{run_id}")},
     }
 
 
@@ -159,15 +155,11 @@ class TestPresentationConfig:
         global_config["formatting"].update(formatting_update)
 
         with pytest.raises(ValidationError, match="placeholder"):
-            PresentationConfig.model_validate(
-                {"global": global_config, "tools": {}}
-            )
+            PresentationConfig.model_validate({"global": global_config, "tools": {}})
 
     def test_rejects_budget_that_cannot_hold_notice_and_cache_reference(self) -> None:
         with pytest.raises(ValidationError, match="budget"):
-            PresentationConfig.model_validate(
-                {"global": _global_config(max_bytes=20), "tools": {}}
-            )
+            PresentationConfig.model_validate({"global": _global_config(max_bytes=20), "tools": {}})
 
 
 class TestPresentationAlignment:
@@ -288,9 +280,7 @@ class TestPresentationAlignment:
                     {
                         "field": "labels",
                         "item_template": "{item}",
-                        "children": [
-                            {"field": "anything", "item_template": "{item}"}
-                        ],
+                        "children": [{"field": "anything", "item_template": "{item}"}],
                     }
                 ],
             ),
