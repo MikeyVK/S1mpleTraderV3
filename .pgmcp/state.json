@@ -4,8 +4,8 @@
   "issue_number": 456,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 8,
-  "last_cycle": 7,
+  "current_cycle": 5,
+  "last_cycle": 8,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -101,6 +101,18 @@
       "name": "Obsolete documentation-test removal",
       "forced": false,
       "entered": "2026-08-21T23:28:04.765225+00:00"
+    },
+    {
+      "cycle_number": 5,
+      "name": "TextPresenter composition",
+      "entered": "2026-08-21T23:33:51.626185+00:00",
+      "forced": true,
+      "skip_reason": "Replace the validation-driven DTO-type branch with generic failure-output collection handling required by C_COMPOSE.5.",
+      "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
+      "skipped_cycles": [
+        6,
+        7
+      ]
     }
   ],
   "required_phases": [
@@ -113,7 +125,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Validation exposed branch-caused presenter error-path regressions and stale tests; return to Implementation for focused repair before rerunning Validation.",
+  "skip_reason": "Validation deliverable mapping exposed prohibited output-DTO-type dispatch in TextPresenter; return to Cycle 5 for a generic success/failure-contract correction.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -253,8 +265,24 @@
       "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
       "forced": true,
       "skip_reason": "Validation exposed branch-caused presenter error-path regressions and stale tests; return to Implementation for focused repair before rerunning Validation."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-21T23:30:15.729201+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "implementation",
+      "timestamp": "2026-08-21T23:33:36.709698+00:00",
+      "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
+      "forced": true,
+      "skip_reason": "Validation deliverable mapping exposed prohibited output-DTO-type dispatch in TextPresenter; return to Cycle 5 for a generic success/failure-contract correction."
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "green"
+  "current_sub_phase": "red"
 }

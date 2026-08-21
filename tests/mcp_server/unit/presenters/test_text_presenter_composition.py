@@ -22,7 +22,7 @@ from mcp_server.presenters.validation_resource_presenter import (
     ValidationResourcePresenter,
 )
 from mcp_server.schemas.cache_publication import CachePublication
-from mcp_server.schemas.error_outputs import EnforcementErrorOutput, ValidationErrorOutput
+from mcp_server.schemas.error_outputs import ValidationErrorOutput
 
 
 class _Status(StrEnum):
@@ -189,15 +189,12 @@ class TestTextPresenterComposition:
         assert "[TRUNCATED]" not in text
         assert "pgmcp://cache/runs/" not in text
 
-    def test_generic_error_output_bypasses_tool_specific_collections(self) -> None:
-        """Generic execution errors use failure text without success-output collections."""
+    def test_failure_output_bypasses_absent_tool_specific_collections(self) -> None:
+        """Failure envelopes use failure text without absent success-output collections."""
         presenter = TextPresenter(config_data=_config())
-        error = EnforcementErrorOutput(
-            error_code="post_hook_failed",
-            error_message="post hook failed",
-        )
+        error = {"success": False, "error_message": "post hook failed"}
 
-        text = presenter.present_text("synthetic_tool", error)
+        text = presenter.present_text("synthetic_tool", error, success=False)
 
         assert "ERROR post hook failed" in text
         assert "COLLECTION" not in text
