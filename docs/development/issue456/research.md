@@ -2,8 +2,8 @@
 <!-- template=research version=8b7bb3ab created=2026-08-20T19:16Z updated=2026-08-20 -->
 # Compact Actionable Tool Summaries — Research
 
-**Status:** IN REVIEW  
-**Version:** 1.5  
+**Status:** APPROVED  
+**Version:** 1.6  
 **Last Updated:** 2026-08-21
 
 ---
@@ -217,10 +217,10 @@ These fields can be removed in one clean break after presentation templates swit
 
 | Field | Why direct removal is unsafe | Structured direction |
 |---|---|---|
-| `summary_line` | It contains parsed pytest outcome wording and duration; counts and exit code cover outcome but not duration. It has broad test-contract usage. | Add a numeric duration field if duration remains required; rely on exit code, counts, coverage, and failures for presentation. |
-| `SafeEditOutput.issues` | `ValidationService` currently collapses `ValidationIssue` records into one formatted string consumed by SafeEditTool and ArtifactManager. | Preserve structured validation issues through the service boundary and expose a frozen issue DTO collection. |
+| `summary_line` | It contains parsed pytest outcome wording and duration; counts and exit code already cover outcome. | APPROVED: remove it and add `duration_seconds: float | None`; present duration with counts, exit code, coverage, and failures. |
+| `SafeEditOutput.issues` | `ValidationService` currently collapses `ValidationIssue` records into one formatted string consumed by SafeEditTool and ArtifactManager. | APPROVED: preserve structured validation issues through the service boundary and expose a frozen issue DTO collection. |
 
-Removing either Category B field without its structured replacement would reduce cached evidence and violate the actionability objective. Their refactors affect manager/service contracts beyond presentation.yaml and require separate planning slices.
+Both Category B refactors are explicitly approved for issue #456. `summary_line` is removed only after numeric duration is preserved; SafeEdit string issues are removed only after structured issue records reach the tool DTO and affected manager consumers. They require separate planning slices before the final template rollout.
 
 ### Category C — retained diagnostic text
 
@@ -231,11 +231,11 @@ Removing either Category B field without its structured replacement would reduce
 | Option | Cost | Architecture result | Risk | Status |
 |---|---|---|---|---|
 | Stop consuming fields but retain every DTO field | Small | Presentation improves, production DTO debt remains. | Dead compatibility fields persist indefinitely. | Viable but not preferred |
-| Remove Category A only | Moderate | Eliminates all proven duplicate presentation fields with existing structured equivalents. | Clean-break consumer/test updates required. | Recommended minimum |
-| Remove Category A and refactor Category B in issue #456 | Larger | Extends structured-data ownership through pytest and validation service boundaries. | Increases implementation and validation blast radius substantially. | Recommended only with explicit scope approval |
+| Remove Category A only | Moderate | Eliminates all proven duplicate presentation fields with existing structured equivalents. | Leaves pytest and SafeEdit presentation debt. | Rejected as incomplete |
+| Remove Category A and refactor Category B in issue #456 | Larger | Extends structured-data ownership through pytest and validation service boundaries. | Increases implementation and validation blast radius substantially. | Approved |
 | Delete all text-like fields | Very large | Superficially strict but conflates diagnostics with presentation. | Loses evidence and breaks exception/error contracts. | Rejected |
 
-The decision must specify Category A and Category B independently before Research can close.
+Human approval was recorded on 2026-08-21: remove all Category A fields, replace SafeEdit string issues with structured validation issue DTOs, remove `summary_line`, add numeric duration to the test result DTO, and project that duration inline.
 
 ## Approved Strategy
 
@@ -260,6 +260,10 @@ Human approval for the original strategy was recorded on 2026-08-20. On 2026-08-
 17. For `get_work_context`, make workflow-state availability explicit through a frozen enum rather than a boolean because presentation must distinguish at least `available`, `missing`, `unreadable`, and `invalid_phase`. The tool emits no human-facing warning or recovery text.
 18. Apply a clean break at this DTO boundary: replace the human-facing `invalid_phase_warning` string with the enum plus structured supporting data such as `valid_phases`. `presentation.yaml` owns status-specific warning and recovery text.
 19. Preserve `success=true` for a successfully executed context query even when workflow state is unavailable; the enum represents the discovered domain condition. Keep `phase_source` and `phase_confidence` cache-only once the explicit state status is guaranteed inline.
+20. Remove the seven Category A presentation-debt fields in one clean break: `formatted_modified_files`, `formatted_labels`, `formatted_files_created`, `skipped_gates_warning`, `passing_gates_info`, `schema_info`, and `invalid_phase_warning`. Their existing structured fields/configuration become the only presentation authority.
+21. Replace `SafeEditOutput.issues: str | None` with a frozen structured validation-issue collection carrying message, severity, line, column, and code as available. Preserve structured issues through ValidationService and affected ArtifactManager/SafeEdit consumers; presentation.yaml owns their labels and layout.
+22. Remove `RunTestsOutput.summary_line`. Add `duration_seconds: float | None`, parsed without user-facing wording, and present it inline alongside exit code, counts, coverage, and bounded failures. Exceptional outcomes remain represented by structured exit code/count/error data.
+23. Do not delete diagnostic evidence fields merely because they contain text. `error_message`, `short_reason`, raw output, tracebacks, stderr, and opaque gate details retain their diagnostic/cache roles unless separately redesigned.
 
 ## Blast Radius
 
@@ -355,3 +359,4 @@ None at the strategy boundary. Exact configuration models and presenter interfac
 | 1.3 | 2026-08-21 | Agent | Reopen Research for exact registration/config parity and full optimization of all 50 presentation templates |
 | 1.4 | 2026-08-21 | Agent | Approve structured get_work_context state enum and move all warning/recovery text into presentation configuration |
 | 1.5 | 2026-08-21 | Agent | Inventory removable DTO presentation debt and separate structured duplicates from fields requiring upstream replacement |
+| 1.6 | 2026-08-21 | Agent | Approve removal of all duplicate fields plus structured SafeEdit issues and numeric pytest duration replacement |
