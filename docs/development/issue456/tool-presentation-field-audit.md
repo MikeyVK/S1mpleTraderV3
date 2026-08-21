@@ -3,7 +3,7 @@
 # Tool Presentation Field Audit
 
 **Status:** APPROVED  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-08-21
 
 ---
@@ -14,13 +14,13 @@ Provide a complete field-level target audit for every registered MCP tool before
 
 ## Scope
 
-**In Scope:** All 50 tool names in presentation.yaml, their registered output models, inherited tool-specific DTO fields, current templates, and the proposed issue #456 target presentation to be reviewed jointly with the human owner.
+**In Scope:** All 50 tool names in presentation.yaml, their registered output models, inherited tool-specific DTO fields, current templates, and the human-approved issue #456 target presentation.
 
-**Out of Scope:** Redesign of DTOs or cache payloads, failure DTO internals outside the common output envelope, and the deferred design of structured quality-gate findings.
+**Out of Scope:** DTO or cache-payload changes outside the approved workflow-state, SafeEdit-validation, pytest-duration, and duplicate-field clean breaks; failure DTO internals outside the common output envelope; and the deferred design of structured quality-gate findings.
 
 ## Interpretation
 
-This is the proposed normal-success presentation target after issue #456, not a claim about code already implemented. A row becomes an implementation deliverable only after its functional review batch receives explicit human approval.
+This is the approved normal-success presentation target for issue #456, not a claim about code already implemented. Every row is an implementation deliverable because all five functional review batches have explicit human approval.
 
 - **Inline fields** names every tool-specific DTO field intended to appear in chat. Nested paths use collection[].field notation.
 - **Mechanism** identifies ordinary scalar interpolation, inline bounded scalar sequences, configured collections, or the resource-only exception.
@@ -41,21 +41,6 @@ Every listed output model inherits these fields; they are not repeated in each r
 
 ---
 
-## Interactive Review Decisions
-
-### Batch 1 — Server and Workflow Tools
-
-| Decision | Disposition | Rationale |
-|---|---|---|
-| `health_check.reason` remains absent from the normal healthy-server template. | APPROVED | The normal presenter path produces `None`. In degraded mode the server has `presenter=None` and no cache publisher, so `str(HealthCheckOutput)` already exposes `status=unhealthy` and the populated reason directly; adding `Reason: -` to the healthy template provides no failure-path value. |
-| Complete `passing_gates[]` remains cache-only; `passing_gates_count` stays inline. | APPROVED | Successful gate identities are diagnostic/audit detail, not routine next-action data. |
-| Bounded `skipped_gates[]` is inline when non-empty. | APPROVED | Skipped gates identify deliberately bypassed blockers and require attention; configured collection rendering already omits empty collections. |
-| `phase_source` remains cache-only. | APPROVED | Normal initialized state always reports `state.json`; the value is diagnostic provenance rather than action data. |
-| `phase_confidence` remains cache-only after explicit state status is implemented. | APPROVED | `workflow_state_status` becomes the actionable inline contract; confidence is redundant diagnostic metadata on both normal and abnormal paths. |
-| `get_work_context` emits `WorkflowStateStatus` plus structured supporting data; presentation.yaml owns all warning and recovery text. | APPROVED | Explicit human decision aligned with the Presentation Boundary; OperationNotes and tool-owned human text are excluded. |
-
-Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatus` contract (`available`, `missing`, `unreadable`, `invalid_phase`) is confirmed; remaining server/workflow row decisions follow the approved matrix and are no longer delegated to Implementation.
-
 ## Server and Workflow Tools
 
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
@@ -71,6 +56,19 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 | update_planning_deliverables | issue_number, total_cycles, total_deliverables, cycles[].cycle_number, cycles[].deliverables_count | Scalar summary plus bounded cycle collection | — |
 | transition_phase | from_phase, to_phase, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
 | force_phase_transition | from_phase, to_phase, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty, skip_reason, human_approval_message | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+
+### Batch 1 — Server and Workflow Tools
+
+| Decision | Disposition | Rationale |
+|---|---|---|
+| `health_check.reason` remains absent from the normal healthy-server template. | APPROVED | The normal presenter path produces `None`. In degraded mode the server has `presenter=None` and no cache publisher, so `str(HealthCheckOutput)` already exposes `status=unhealthy` and the populated reason directly; adding `Reason: -` to the healthy template provides no failure-path value. |
+| Complete `passing_gates[]` remains cache-only; `passing_gates_count` stays inline. | APPROVED | Successful gate identities are diagnostic/audit detail, not routine next-action data. |
+| Bounded `skipped_gates[]` is inline when non-empty. | APPROVED | Skipped gates identify deliberately bypassed blockers and require attention; configured collection rendering already omits empty collections. |
+| `phase_source` remains cache-only. | APPROVED | Normal initialized state always reports `state.json`; the value is diagnostic provenance rather than action data. |
+| `phase_confidence` remains cache-only after explicit state status is implemented. | APPROVED | `workflow_state_status` becomes the actionable inline contract; confidence is redundant diagnostic metadata on both normal and abnormal paths. |
+| `get_work_context` emits `WorkflowStateStatus` plus structured supporting data; presentation.yaml owns all warning and recovery text. | APPROVED | Explicit human decision aligned with the Presentation Boundary; OperationNotes and tool-owned human text are excluded. |
+
+Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatus` contract (`available`, `missing`, `unreadable`, `invalid_phase`) is confirmed; remaining server/workflow row decisions follow the approved matrix and are no longer delegated to Implementation.
 
 ## Git Tools
 
@@ -96,7 +94,7 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 
 **Disposition:** CLOSED by explicit human approval.
 
-- All fifteen Git rows below are approved as the implementation target.
+- All fifteen Git rows above are approved as the implementation target.
 - `git_add_or_commit.files[]`, commit sub-phase/cycle, `git_restore.files[]`, and `git_checkout.parent_branch` are promoted inline for direct mutation verification and orientation.
 - `git_diff_stat.stats`, fetch/pull raw output, and redundant caller-input flags remain cache-only because they are unstructured diagnostics or repeat requested inputs.
 - Collection projections remain bounded and preserve Git/DTO order.
@@ -127,7 +125,7 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 
 **Disposition:** CLOSED by explicit human approval.
 
-- All seventeen GitHub rows below are approved as the implementation target.
+- All seventeen GitHub rows above are approved as the implementation target.
 - `get_issue` includes created, updated, and closed timestamps; author remains cache-only.
 - `list_issues` includes `created_at` in a compact metadata line alongside state and assignee.
 - Mutation responses expose realized state and metadata while caller-supplied bodies and low-value audit metadata remain cache-only.
@@ -159,8 +157,6 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 | safe_edit_file | path, mode, passed, written, has_diff, issues[].message, issues[].severity, issues[].line, issues[].column, issues[].code | Expanded scalar template plus bounded structured validation-issue collection | diff |
 | validate_template | passed, errors_count, errors[].severity, errors[].message | Outcome-neutral scalar header plus bounded model collection | — |
 
----
-
 ### Batch 5 — Quality, Testing, and Editing Tools
 
 **Disposition:** CLOSED by explicit human approval.
@@ -179,7 +175,7 @@ A cache-only classification is intentional only under one of these actionability
 
 | Rationale | Representative fields |
 |---|---|
-| Redundant confirmation or caller-supplied input | create/update issue body and labels, commit/restore file lists, transition gate lists after a successful transition |
+| Redundant confirmation or caller-supplied input | create/update issue bodies, fetch/pull request flags, and complete passing-gate lists after a successful transition |
 | Internal or low-value operational metadata | timestamps, process identifiers, author metadata, prior phase/cycle values |
 | Raw or deep inspection evidence | raw Git output, diffs, tracebacks, stderr, validation schemas, opaque gate details |
 | Duplicate convenience representation | formatted file or label strings when the underlying bounded collection is inline |
@@ -200,16 +196,20 @@ The inventory was derived from:
 - current scalar placeholders parsed from [presentation.yaml](../../../.pgmcp/config/presentation.yaml);
 - the approved target behavior in [Research](research.md) and [Design](design.md).
 
-## Validation Checklist
+## Audit Completion
 
-- [ ] Exactly 50 unique tools are present.
-- [ ] Every tool maps to a registered output model.
-- [ ] Every tool-specific DTO field is classified as inline or cache-only.
-- [ ] Nested DTO fields use explicit path notation.
-- [ ] Every functional batch has an explicit human disposition.
-- [ ] Every row is approved or changed against its proposed inline/cache-only target before implementation.
-- [ ] Registered public tool names and presentation keys have exact bidirectional parity.
-- [ ] Any change to the approved inline/cache-only split is reflected in Research, Design, Planning, and structured deliverables.
+- [x] Exactly 50 unique tools are present.
+- [x] Every tool maps to a registered output model.
+- [x] Every tool-specific DTO field is classified as inline or cache-only.
+- [x] Nested DTO fields use explicit path notation.
+- [x] Every functional batch has an explicit human disposition.
+- [x] Every row has an approved inline/cache-only target before Implementation.
+
+## Implementation Validation Checklist
+
+- [ ] Startup enforcement proves exact bidirectional parity between registered public tool names and presentation keys.
+- [ ] Runtime output matches every approved inline/cache-only row.
+- [ ] Any implementation-driven change to the approved split is reflected in Research, Design, Planning, and structured deliverables before work continues.
 
 ## Related Documentation
 
@@ -230,3 +230,4 @@ The inventory was derived from:
 | 1.1 | 2026-08-21 | Agent | Approve the 50-tool implementation target and explicit cache-only rationale categories |
 | 1.2 | 2026-08-21 | Agent | Reopen the matrix for mandatory interactive human review before Planning |
 | 1.3 | 2026-08-21 | Agent | Close all five human review batches and approve structured DTO cleanup plus the complete 50-tool target |
+| 1.4 | 2026-08-21 | Agent | Normalize functional-batch structure and align cache-only rationale with the approved field matrix |

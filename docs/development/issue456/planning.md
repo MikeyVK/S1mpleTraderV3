@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Planning
 
 **Status:** PRELIMINARY  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-08-21
 
 ---
@@ -14,15 +14,15 @@ Convert the approved presentation design into dependency-ordered implementation 
 
 ## Scope
 
-**In Scope:** Presentation configuration and exact registered-tool/config-key alignment, generic inline-sequence and collection rendering, final UTF-8 byte limiting, TextPresenter integration, field-level optimization of all 50 registered tool templates, structural matrix evidence, representative behavioral tests, and deletion of the two obsolete documentation-test modules.
+**In Scope:** The approved workflow-state, SafeEdit-validation, pytest-duration, and duplicate-field clean breaks; presentation configuration and exact registered-tool/config-key alignment; generic inline-sequence and collection rendering; final UTF-8 byte limiting; TextPresenter integration; field-level optimization of all 50 registered tool templates; structural matrix evidence; representative behavioral tests; and deletion of the two obsolete documentation-test modules.
 
-**Out of Scope:** Structured quality-gate findings, DTO or cache-payload changes, tool-specific renderers, sorting/filtering, production documentation edits before the Documentation phase, and workspace-wide verification before Validation.
+**Out of Scope:** Structured quality-gate findings; DTO or cache-payload changes beyond the Approved Strategy; tool-specific renderers; sorting/filtering; production documentation edits before the Documentation phase; and workspace-wide verification before Validation.
 
 ## Prerequisites
 
-1. [Approved Research v1.6](research.md)
-2. [Approved Design v1.5](design.md)
-3. [Approved 50-tool field audit v1.3](tool-presentation-field-audit.md)
+1. [Approved Research v1.7](research.md)
+2. [Approved Design v1.6](design.md)
+3. [Approved 50-tool field audit v1.4](tool-presentation-field-audit.md)
 4. [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)
 5. [Documentation Standard](../../coding_standards/DOCUMENTATION_STANDARD.md)
 
@@ -32,7 +32,7 @@ Convert the approved presentation design into dependency-ordered implementation 
 
 Six coherent cycles establish validated configuration with exact key parity, generic collection presentation, UTF-8-safe limiting, structured DTO/service boundaries, end-to-end rollout of the approved targets for all 50 tool templates, and mechanical removal of obsolete documentation tests. Cycles 1–5 change durable behavior and use RED → GREEN → REFACTOR. Cycle 6 is test maintenance and deliberately creates no artificial RED test.
 
-The cycles preserve the Approved Strategy: complete DTOs and resources remain unchanged, presentation stays configuration-driven, registered tools and presentation keys match exactly, every field is intentionally inline or cache-only, DTO order is retained, and the only universal text limit is 8,000 UTF-8 bytes.
+The cycles preserve the Approved Strategy: complete structured results remain available through the resource cache; DTO contracts change only at the approved clean-break boundaries; presentation stays configuration-driven; registered tools and presentation keys match exactly; every field is intentionally inline or cache-only; DTO order is retained; and the only universal text limit is 8,000 UTF-8 bytes.
 
 ## Dependency Order
 
@@ -68,11 +68,11 @@ No rendering or TextPresenter orchestration changes belong in this cycle.
 
 | ID | Deliverable |
 |---|---|
-| C_CONFIG.1 | Frozen schema represents the Design 3.2 configuration contracts and their local invariants. |
+| C_CONFIG.1 | Frozen schema represents the Design 3.4 configuration contracts and their local invariants. |
 | C_CONFIG.2 | Startup alignment recursively validates collection fields, element types, placeholders, duplicate siblings, inline sequences, max_items usage, and mandatory-tail budget. |
-| C_CONFIG.5 | Startup alignment enforces deterministic exact parity between registered public tool names and `presentation.yaml` keys and rejects duplicate registered names. |
 | C_CONFIG.3 | Global presentation.yaml values supply the 8,000-byte ceiling and all omission/truncation wording without per-tool rollout yet. |
 | C_CONFIG.4 | Durable schema/alignment tests cover accepted flat, scalar-sequence, and nested declarations plus every designed rejection category. |
+| C_CONFIG.5 | Startup alignment enforces deterministic exact parity between registered public tool names and `presentation.yaml` keys and rejects duplicate registered names. |
 
 ### Test and Gate Evidence
 
@@ -83,7 +83,7 @@ No rendering or TextPresenter orchestration changes belong in this cycle.
 
 ### Exit and Stop Conditions
 
-Exit only when valid configuration loads, registered public tools and presentation keys match exactly, each invalid contract fails with actionable tool/path context, and no tool-name dispatch was introduced. Stop if the solution moves registry ownership into configuration or cannot express the approved invariants without changing the Design or DTO boundary.
+Exit only when valid configuration loads, registered public tools and presentation keys match exactly, each invalid contract fails with actionable tool/path context, and no tool-name dispatch was introduced. Stop if the solution moves registry ownership into configuration or cannot express the approved invariants without reopening Design or the Approved Strategy.
 
 ---
 
@@ -310,7 +310,7 @@ Do not repeat the workspace-wide suite or branch-wide gates unless a later chang
 
 ## Deferred Work
 
-Structured GateFindingDTO research remains explicitly outside issue #456. Implementation must not parse gate-specific details or change output DTOs. Validation records the finding; Ready includes it in the PR body for post-merge coordination triage.
+Structured GateFindingDTO research remains explicitly outside issue #456. Implementation must not parse gate-specific details or change quality-gate output DTOs. Validation records the finding; Ready includes it in the PR body for post-merge coordination triage.
 
 ## Risks and Mitigations
 
@@ -350,3 +350,4 @@ Structured GateFindingDTO research remains explicitly outside issue #456. Implem
 | 1.1 | 2026-08-20 | Agent | Add runtime-shape and unchanged-tool compatibility obligations; restore preliminary review status |
 | 1.2 | 2026-08-21 | Agent | Add exact registration/config parity and full 50-tool template optimization to Cycles 1 and 4 |
 | 1.3 | 2026-08-21 | Agent | Add structured DTO/service refactor Cycle 4 and shift complete rollout/cleanup to Cycles 5–6 |
+| 1.4 | 2026-08-21 | Agent | Align scope, prerequisites, compatibility claims, configuration references, and deferred boundaries with the final approved design |

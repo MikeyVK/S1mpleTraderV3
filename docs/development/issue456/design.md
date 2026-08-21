@@ -3,18 +3,18 @@
 # Compact Actionable Tool Summaries — Design
 
 **Status:** APPROVED  
-**Version:** 1.5  
+**Version:** 1.6  
 **Last Updated:** 2026-08-21
 
 ---
 
 ## Purpose
 
-Define the configuration and presentation-layer contracts for bounded, actionable MCP tool text while preserving the complete resource cache.
+Define the structured DTO, configuration, and presentation-layer contracts for bounded, actionable MCP tool text while preserving complete resource-cache evidence.
 
 ## Scope
 
-**In Scope:** TextPresenter orchestration, recursive collection projection, UTF-8 byte limiting, presentation configuration validation, scalar template enrichment, and durable behavioral tests.
+**In Scope:** The approved workflow-state, SafeEdit-validation, pytest-duration, and duplicate-field clean breaks; TextPresenter orchestration; recursive collection projection; UTF-8 byte limiting; presentation configuration validation; all 50 approved tool projections; and durable behavioral tests.
 
 **Out of Scope:** Tool execution semantics, DTO changes outside the explicitly approved workflow-state, SafeEdit-validation, pytest-duration, and presentation-debt clean breaks; cache payload changes beyond those DTO serializations, transport-wide resource limits, sorting/filtering, tool-name-specific renderer code, and unrelated documentation modernization.
 
@@ -30,7 +30,7 @@ Define the configuration and presentation-layer contracts for bounded, actionabl
 
 ### 1.1. Problem Statement
 
-Current scalar-only presentation templates make routine tool results under-informative, while inlining complete DTOs would recreate context growth. The design must add bounded declarative projections and a hard text budget without changing structured outputs or cache authority.
+Current scalar-only presentation templates make routine tool results under-informative, while inlining complete DTOs would recreate context growth. The design must add bounded declarative projections and a hard text budget, replace the approved presentation-only DTO debt with structured data, and preserve cache authority.
 
 ### 1.2. Requirements
 
@@ -43,16 +43,16 @@ Current scalar-only presentation templates make routine tool results under-infor
 - Handle cache-publication failure explicitly when no resource URI can be retained.
 - Validate collection paths and placeholders against tool output models at startup.
 - Enforce exact bidirectional parity between registered public tool names and `presentation.yaml` tool keys at startup.
-- Jointly review all 50 registered tool templates with the human owner and obtain explicit approval for every field-level inline/cache-only target before Planning resumes.
+- Implement the human-approved inline/cache-only target for all 50 registered tool templates exactly as recorded in the field audit.
 - Keep deep logs, tracebacks, schemas, diffs, and full result sets in the cache.
 - Represent `get_work_context` state availability with structured enum data and no human-facing warning/recovery text in the tool.
 - Select status-specific warning blocks declaratively from `presentation.yaml` without arbitrary expressions or tool-name dispatch.
-- Enrich scalar templates and correct contradictory outcome templates only according to the jointly approved field audit; preliminary proposals are not implementation authority.
+- Enrich scalar templates and correct contradictory outcome templates only according to the approved field audit; changing that matrix requires reopening Design.
 
 **Non-Functional:**
 
 - Introduce no tool-name branches; presentation configuration remains the content source of truth.
-- Keep DTOs, tool inputs, cache URIs, and resource payloads compatible.
+- Preserve tool inputs, cache URI shape, resource publication, and unaffected DTO contracts; limit DTO breakage to the explicitly approved clean breaks.
 - Fail fast on invalid or internally inconsistent presentation configuration.
 - Use cohesive, testable presentation services without speculative interfaces.
 - Test durable observable behavior rather than exact prose snapshots.
@@ -342,23 +342,15 @@ flowchart LR
 
 The embedded validation schema produced by ValidationResourcePresenter remains a separate PresentationResource and is not counted toward the TextPresenter ceiling.
 
-### 3.7. Interactive Projection Review Gate
+### 3.7. Projection Review Authority
 
-The DTO-to-chat projection is a human-facing product contract, not an implementation detail. Before this Design can return to APPROVED, the human owner and designer must review all 50 tools using [Tool Presentation Field Audit](tool-presentation-field-audit.md) as the worksheet.
+The DTO-to-chat projection is a human-facing product contract, not an implementation detail. The human owner and designer reviewed all 50 tools in five functional batches using [Tool Presentation Field Audit](tool-presentation-field-audit.md). The resulting matrix records the immediate decision supported by each response, every inline field and mechanism, every cache-only field and rationale, item limits, and the explicit approval disposition.
 
-For each tool, the review records:
-
-1. the immediate decision or follow-up action the chat response must support;
-2. every DTO field proposed inline and its presentation mechanism;
-3. every cache-only field and its concrete omission rationale;
-4. item limits and exceptional length behavior;
-5. explicit human disposition: `APPROVED`, `CHANGES REQUESTED`, or `DEFERRED`.
-
-Review proceeds in bounded functional batches so decisions remain inspectable: server/workflow, Git, GitHub, scaffolding, and quality/testing/editing. A batch is closed only after explicit human confirmation. Design remains `IN REVIEW` while any tool lacks a disposition. Cycle 4 may not reinterpret, extend, or silently override the resulting matrix; new evidence must reopen Design.
+All five batches are closed. The audit is therefore the binding projection authority for Implementation. Implementation may not reinterpret, extend, or silently override a row; new evidence that changes an inline/cache-only split must reopen Design.
 
 ### 3.8. Complete Tool Configuration Matrix
 
-The proposed 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). It becomes authoritative only after all functional batches receive explicit human approval. Every row then becomes an implementation deliverable, including templates intentionally retained after confirming their compact output is optimal.
+The approved 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). Every row is an implementation deliverable, including templates intentionally retained after confirming that their compact output is optimal.
 
 The table below identifies tools that require the new collection or inline-sequence mechanics. Limits reflect item density: five diagnostic failures, ten normal records, and twenty short identifiers or paths. The final byte ceiling remains authoritative.
 
@@ -432,11 +424,11 @@ This is an atomic configuration-and-presenter change:
 
 - Tool inputs, output_model declarations, cache publication, cache URI shape, and PresentationResource payloads do not change.
 - The approved DTO clean breaks remove the enumerated presentation-debt fields, replace SafeEdit string issues with structured records, replace pytest `summary_line` with numeric duration, and add structured workflow-state status.
-- Tools without collection declarations retain their existing presentation behavior except for the global safety ceiling.
+- Each tool follows the approved field-audit target; a template explicitly retained as unchanged remains byte-for-byte stable below the global safety ceiling.
 - Existing success/failure scalar placeholders continue to work.
 - The two helper services are wired only in the presentation composition path.
 - No compatibility bridge, dual schema, deprecation period, or data migration is needed.
-- Existing formatted convenience fields may remain in DTOs even when a template no longer consumes them; removing them is outside this issue.
+- No presentation-debt field outside the explicitly enumerated clean-break set is removed in this issue.
 
 ---
 
@@ -514,3 +506,4 @@ None. All five functional batches and all 50 tool projections have explicit huma
 | 1.3 | 2026-08-21 | Agent | Reopen Design and require interactive human approval of every DTO-to-chat projection before Planning |
 | 1.4 | 2026-08-21 | Agent | Define structured workflow-state enum and declarative enum-case presentation with no tool-owned human text |
 | 1.5 | 2026-08-21 | Agent | Approve structured SafeEdit issues, numeric pytest duration, removal of duplicate DTO presentation fields, and all five review batches |
+| 1.6 | 2026-08-21 | Agent | Normalize the approved projection authority, DTO compatibility boundary, and implementation-facing narrative |
