@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Research
 
 **Status:** APPROVED  
-**Version:** 1.8  
+**Version:** 1.9  
 **Last Updated:** 2026-08-21
 
 ---
@@ -19,7 +19,7 @@ Establish the evidence, scope, and Approved Strategy for compact, actionable MCP
 - Text produced by `TextPresenter` and configured through `.pgmcp/config/presentation.yaml`.
 - All 50 supported public tools, every corresponding `presentation.yaml` template, their output DTO shapes, and the settings-dependent active subset.
 - A field-level optimization decision for every supported tool template; no template is accepted as unchanged without an explicit actionability rationale.
-- The approved structured clean breaks for workflow-state status, SafeEdit validation issues, pytest duration, and duplicate presentation-only DTO fields.
+- The approved structured clean breaks for workflow-state status, canonical SafeEdit validation records, pytest duration, and duplicate presentation-only DTO fields.
 - Bidirectional startup validation between the complete runtime-derived tool catalog and `presentation.yaml` tool keys, while preserving supported token-dependent activation.
 - Configuration validation, presentation alignment, unit and integration tests, active tool documentation, and agent-facing cache guidance.
 - Cross-harness output constraints relevant to selecting a conservative text-response ceiling.
@@ -118,6 +118,7 @@ The approved [Tool Presentation Field Audit](tool-presentation-field-audit.md) i
 | `run_quality_gates` | Scope, overall result, and bounded gate status/score list. | Verbose stdout/stderr and full gate details. |
 | `run_tests` | Counts plus bounded failure identifiers, locations, and short reasons. | Tracebacks, stderr, and complete verbose evidence. |
 | `validate_template` | Result/count plus bounded severity/message findings. | Complete finding set. |
+| `safe_edit_file` | Result plus bounded canonical validation records when findings are present. | Complete validation-record collection. |
 
 `get_project_plan` is the only currently audited response that requires nested collection data to remain actionable. Research requires a generic declarative capability for that shape; Design owns the exact configuration contract.
 
@@ -128,9 +129,8 @@ The approved [Tool Presentation Field Audit](tool-presentation-field-audit.md) i
 | `get_work_context` | Phase instructions and hand-over template. | These are core outputs of the context call. The largest current phase-instruction plus hand-over combination is 2,911 UTF-8 bytes and fits comfortably within the selected ceiling. |
 | `get_issue` | URL, labels, and body. | Routine issue inspection should not require a second call when the body fits. |
 | `get_pr` | State and body. | Routine PR inspection should expose its actionable content directly when it fits. |
-| `safe_edit_file` | Validation findings when present. | Interactive writes can succeed while retaining warnings that must remain visible. |
 
-These are ordinary scalar template expansions. They do not justify special rendering code. The final text limiter handles exceptional length.
+These three are ordinary scalar template expansions. They do not justify special rendering code. The final text limiter handles exceptional length.
 
 ### Deliberate resource-oriented exception
 
@@ -152,7 +152,7 @@ Synthetic DTO presentation through the current `TextPresenter` reproduced two co
 - `run_quality_gates` can say “Quality gates passed successfully” while `overall_pass=False`, because execution success and gate success are different concepts.
 - `validate_template` can say “Template validation passed: False”.
 
-Both templates must use outcome-neutral completion wording and expose the actual result as data. This is distinct from the four scalar template expansions above.
+Both templates must use outcome-neutral completion wording and expose the actual result as data. This is distinct from the three scalar template expansions above.
 
 ## Additional Scope Findings
 
@@ -173,9 +173,19 @@ The complete catalog is an in-memory projection of the authoritative composition
 
 ### Field audit requires complete rollout
 
-The [Tool Presentation Field Audit](tool-presentation-field-audit.md) classifies every tool-specific output field for all 50 tools. It exposes potentially actionable omissions in compact templates, including workflow gate and warning context, initialization results, commit file effects, and issue metadata. A partial rollout limited to thirteen collection tools, four scalar expansions, and two semantic corrections is therefore insufficient.
+The [Tool Presentation Field Audit](tool-presentation-field-audit.md) classifies every tool-specific output field for all 50 tools. It exposes potentially actionable omissions in compact templates, including workflow gate and warning context, initialization results, commit file effects, and issue metadata. A partial rollout limited to the original thirteen collection rows, a small scalar-expansion set, and two semantic corrections is therefore insufficient.
 
-Every registered tool template is an implementation deliverable. The approved matrix either places each tool-specific field inline through generic presentation mechanisms or records a concrete cache-only rationale. Planning provides implementation and structural evidence for the full matrix without introducing brittle prose snapshots per tool.
+Twenty-nine audited tools require at least one bounded inline scalar sequence or configured collection. Design must provide one complete mechanics matrix for those 29 tools that identifies the tool, affected field or collection, generic mechanism, and item limit. It may not replace that obligation with a partial collection list plus ad hoc scalar additions. In particular, the structured `safe_edit_file.issues` result is a bounded model collection, not a scalar-template expansion.
+
+Every supported tool template remains an implementation deliverable. The approved audit either places each tool-specific field inline through generic presentation mechanisms or records a concrete cache-only rationale. Planning provides implementation and structural evidence for the full matrix without introducing brittle prose snapshots per tool. Exact ordered-sequence container and renderer contracts remain Design decisions.
+
+### Structured validation records stay canonical
+
+Concrete file validators already produce structured `ValidationIssue` records inside `ValidationResult`. The defect is confined to [ValidationService](../../../mcp_server/validation/validation_service.py), which currently aggregates those records into presentation text before [ArtifactManager](../../../mcp_server/managers/artifact_manager.py) and [SafeEditTool](../../../mcp_server/tools/safe_edit_tool.py) forward that text to logging/error feedback and `SafeEditOutput`.
+
+The approved clean break removes that string collapse. One canonical frozen, serializable `ValidationIssue` record remains unchanged from validator output through ValidationService and `SafeEditOutput`; no duplicate tool-specific issue DTO, field-by-field mapping, or text parsing is introduced. ArtifactManager may forward the same records through its logging/error boundary, while `presentation.yaml` renders `safe_edit_file.issues` through the same generic bounded model-collection mechanism used for other tool outputs. Neither `TextPresenter` nor its helpers may inspect the SafeEdit tool name or the validation-record type.
+
+Startup configuration validation, the generic tool-input validation decorator, and the explicit template-validation tool retain their separate responsibilities and output contracts. This change does not merge or redesign those validation systems.
 
 ## Workflow-State Presentation Evidence and Options
 
@@ -212,9 +222,9 @@ These fields can be removed in one clean break after presentation templates swit
 | Field | Why direct removal is unsafe | Structured direction |
 |---|---|---|
 | `summary_line` | It contains parsed pytest outcome wording and duration; counts and exit code already cover outcome. | APPROVED: remove it and add `duration_seconds: float | None`; present duration with counts, exit code, coverage, and failures. |
-| `SafeEditOutput.issues` | `ValidationService` currently collapses `ValidationIssue` records into one formatted string consumed by SafeEditTool and ArtifactManager. | APPROVED: preserve structured validation issues through the service boundary and expose a frozen issue DTO collection. |
+| `SafeEditOutput.issues` | `ValidationService` currently collapses canonical `ValidationIssue` records into one formatted string that SafeEditTool and ArtifactManager merely forward. | APPROVED: remove the formatting step and reuse the same canonical frozen records directly in the structured SafeEdit collection. |
 
-Both Category B refactors are explicitly approved for issue #456. `summary_line` is removed only after numeric duration is preserved; SafeEdit string issues are removed only after structured issue records reach the tool DTO and affected manager consumers. They require separate planning slices before the final template rollout.
+Both Category B refactors are explicitly approved for issue #456. `summary_line` is removed only after numeric duration is preserved; SafeEdit string issues are removed only after the canonical records remain structured through ValidationService and `SafeEditOutput`. No consumer reparses presentation text, and no duplicate validation-issue DTO or mapping layer is introduced. They require separate planning slices before the final template rollout.
 
 ### Category C — retained diagnostic text
 
@@ -229,7 +239,7 @@ Both Category B refactors are explicitly approved for issue #456. `summary_line`
 | Remove Category A and refactor Category B in issue #456 | Larger | Extends structured-data ownership through pytest and validation service boundaries. | Increases implementation and validation blast radius substantially. | Approved |
 | Delete all text-like fields | Very large | Superficially strict but conflates diagnostics with presentation. | Loses evidence and breaks exception/error contracts. | Rejected |
 
-Human approval was recorded on 2026-08-21: remove all Category A fields, replace SafeEdit string issues with structured validation issue DTOs, remove `summary_line`, add numeric duration to the test result DTO, and project that duration inline.
+Human approval was recorded on 2026-08-21: remove all Category A fields, replace SafeEdit string issues by reusing the canonical structured validation records directly in `SafeEditOutput`, remove `summary_line`, add numeric duration to the test result DTO, and project that duration inline.
 
 ## Options Considered
 
@@ -255,7 +265,7 @@ Human approval covers the complete strategy below, including exact complete-cata
 3. Use one generic, configuration-driven presentation pipeline. Tools may declare bounded collections and a per-tool item limit in `presentation.yaml`; production code must not branch on tool names.
 4. Preserve DTO order. Do not introduce presentation sorting or filtering.
 5. Support actionable nested plan data generically; Design will define the minimal configuration interface.
-6. Use ordinary templates for `get_work_context`, `get_issue`, `get_pr`, and `safe_edit_file` scalar expansions.
+6. Use ordinary templates for the approved `get_work_context`, `get_issue`, and `get_pr` scalar expansions. Treat structured `safe_edit_file.issues` as a generic bounded model collection.
 7. Correct the outcome wording for `run_quality_gates` and `validate_template`.
 8. Keep tracebacks, stderr, verbose gate logs, full JSON Schemas, diffs, and other deep payloads cache-only.
 9. When text exceeds the budget, retain a clear truncation notice and the cache URI within the same budget.
@@ -263,14 +273,14 @@ Human approval covers the complete strategy below, including exact complete-cata
 11. Preserve tool inputs, cache URI shape, resource publication, and unaffected output contracts. Apply only the explicit clean-break DTO changes in items 17–22, without compatibility aliases, dual writes, or a migration period.
 12. Delete both current `tests/documentation` test modules and all 62 collected cases during Implementation.
 13. Enforce exact bidirectional startup parity between the complete runtime-derived supported-tool catalog and `presentation.yaml` keys. Derive both that catalog and the settings-dependent active subset from one authoritative composition-root registration source; do not introduce a static catalog file or duplicated tool-name list. Known but inactive templates are valid, while missing supported templates, unknown/obsolete keys, and duplicate registrations are startup errors. Keep the registration/catalog representation limited to information required by presentation validation and runtime construction/activation; broader catalog metadata or capabilities are out of scope.
-14. Treat all 50 supported tool templates as implementation scope. Use the field audit as traceability input and produce a complete design target matrix; every tool-specific DTO field must be either intentionally inline or explicitly cache-only with a concrete rationale.
+14. Treat all 50 supported tool templates as implementation scope. Use the field audit as traceability input and produce a complete design target matrix; every tool-specific DTO field must be either intentionally inline or explicitly cache-only with a concrete rationale. For the 29 tools requiring bounded inline sequences or configured collections, Design must additionally identify every affected field, generic mechanism, and item limit.
 15. Optimize for the immediate next decision within the shared byte and item limits. Full optimization does not override the cache-only policy for verbose logs, tracebacks, schemas, diffs, raw process output, or redundant caller-supplied data.
 16. Preserve the generic configuration-driven pipeline and capability-oriented tests. Full-template coverage must not introduce tool-name branches or one exact-wording snapshot per tool.
 17. For `get_work_context`, make workflow-state availability explicit through a frozen enum rather than a boolean because presentation must distinguish at least `available`, `missing`, `unreadable`, and `invalid_phase`. The tool emits no human-facing warning or recovery text.
 18. Apply a clean break at this DTO boundary: replace the human-facing `invalid_phase_warning` string with the enum plus structured supporting data such as `valid_phases`. `presentation.yaml` owns status-specific warning and recovery text.
 19. Preserve `success=true` for a successfully executed context query even when workflow state is unavailable; the enum represents the discovered domain condition. Keep `phase_source` and `phase_confidence` cache-only once the explicit state status is guaranteed inline.
 20. Remove the seven Category A presentation-debt fields in one clean break: `formatted_modified_files`, `formatted_labels`, `formatted_files_created`, `skipped_gates_warning`, `passing_gates_info`, `schema_info`, and `invalid_phase_warning`. Their existing structured fields/configuration become the only presentation authority.
-21. Replace `SafeEditOutput.issues: str | None` with a frozen structured validation-issue collection carrying message, severity, line, column, and code as available. Preserve structured issues through ValidationService and affected ArtifactManager/SafeEdit consumers; presentation.yaml owns their labels and layout.
+21. Replace `SafeEditOutput.issues: str | None` with a collection of the same canonical frozen, serializable `ValidationIssue` records already produced by the file validators, carrying message, severity, line, column, and code as available. ValidationService aggregates without formatting; ArtifactManager and SafeEditTool forward the records without parsing, copying, or mapping; `presentation.yaml` owns their labels and layout through the generic model-collection mechanism.
 22. Remove `RunTestsOutput.summary_line`. Add `duration_seconds: float | None`, parsed without user-facing wording, and present it inline alongside exit code, counts, coverage, and bounded failures. Exceptional outcomes remain represented by structured exit code/count/error data.
 23. Do not delete diagnostic evidence fields merely because they contain text. `error_message`, `short_reason`, raw output, tracebacks, stderr, and opaque gate details retain their diagnostic/cache roles unless separately redesigned.
 
@@ -278,10 +288,10 @@ Human approval covers the complete strategy below, including exact complete-cata
 
 | Area | Expected impact |
 |---|---|
-| Production code | Generic text projection, collection formatting, final UTF-8-safe limiting, and a minimal composition-root registration representation from which complete catalog validation and the active tool subset are derived; plus narrow producer/service changes for structured workflow state, validation issues, and pytest duration. No unrelated execution semantics change. |
+| Production code | Generic text projection, collection formatting, final UTF-8-safe limiting, and a minimal composition-root registration representation from which complete catalog validation and the active tool subset are derived; plus narrow producer/service changes for structured workflow state, canonical validation-record preservation, and pytest duration. ValidationService loses its presentation responsibility, while ArtifactManager and SafeEdit forward the same records. No unrelated execution semantics change. |
 | Configuration | Additive presentation schema plus reviewed and optimized `presentation.yaml` declarations for all 50 supported tools. Keys exactly match the complete runtime-derived catalog; settings select an active subset without requiring a second presentation file. |
-| DTOs | Approved clean breaks add structured workflow-state status, structured SafeEdit validation issues, and numeric pytest duration; remove `RunTestsOutput.summary_line` and the seven enumerated duplicate presentation fields. All other DTO contracts remain unchanged. |
-| Tests | Delete both legacy `tests/documentation` modules and their 62 cases. For the feature itself, use presenter unit tests, complete-catalog/configuration alignment tests for both token and tokenless bootstrap, multibyte and reserved-cache-suffix boundary tests, collection-order/item-limit tests, nested-plan coverage, and a small representative set of tool presentation tests. Avoid one wording/snapshot test per tool. |
+| DTOs | Approved clean breaks add structured workflow-state status and numeric pytest duration, make the canonical validation record frozen and serializable for direct reuse in `SafeEditOutput`, and remove `RunTestsOutput.summary_line` plus the seven enumerated duplicate presentation fields. No second SafeEdit-specific validation-issue DTO is introduced; all other DTO contracts remain unchanged. |
+| Tests | Delete both legacy `tests/documentation` modules and their 62 cases. For the feature itself, use presenter unit tests, complete-catalog/configuration alignment tests for both token and tokenless bootstrap, multibyte and reserved-cache-suffix boundary tests, collection-order/item-limit tests, nested-plan coverage, structural evidence for all 29 bounded sequence/collection tools, canonical validation-record propagation, and a small representative set of tool presentation tests. Avoid one wording/snapshot test per tool. |
 | Test quality | Tests must verify durable presentation contracts rather than snapshot every wording detail. Verbose logs remain cache assertions, not large inline snapshots. |
 | Documentation | Presentation architecture and relevant tool references for discovery/project/GitHub/quality/scaffolding must reflect the compact-text/cache boundary. |
 | Agent instructions | Cache guidance remains valid: agents read resources for complete structured data or verbose logs. Verify wording does not continue to require resource reads for routine summaries that are now inline. |
@@ -294,19 +304,19 @@ Human approval covers the complete strategy below, including exact complete-cata
 |---|---|
 | Byte limiting corrupts UTF-8 or Markdown | Multibyte boundary tests and block-aware truncation tests. |
 | Cache link disappears during truncation | Tests proving the cache URI and truncation notice remain inside the configured budget. |
-| Collection templates drift from DTO fields | Startup/config alignment validation for collection and nested item placeholders. |
+| Collection templates drift from DTO fields or omit audited mechanics | Startup/config alignment validation for collection and nested item placeholders plus structural traceability for every field and limit in the complete 29-tool mechanics matrix. |
 | Catalog, active tools, and presentation keys drift | Startup evidence for missing-template, unknown-key, and duplicate-registration failures; acceptance of the complete 50-tool catalog; and successful token and tokenless activation from the same presentation file. |
 | A previously “unchanged” template remains under-informative | Field-level traceability showing an inline or justified cache-only decision for every tool-specific DTO field. |
 | Rich summaries accidentally inline verbose logs | Representative `run_tests` and `run_quality_gates` tests for normal and verbose DTOs. |
 | Nested plan rendering becomes tool-specific | Architecture review proving no tool-name branch exists. |
-| Approved DTO clean breaks disrupt consumers | Public-contract tests cover every affected producer, service, manager, tool, presenter, and cached serialization; unaffected DTO contracts and cache publication remain stable. |
+| Approved DTO clean breaks disrupt consumers | Public-contract tests cover every affected producer, service, manager, tool, presenter, and cached serialization; SafeEdit evidence proves the canonical validation records remain structured without formatting, parsing, copying, mapping, or presenter type checks; unaffected DTO contracts and cache publication remain stable. |
 | Documentation reintroduces mandatory resource reads | Targeted review and local-link verification of the changed active documents. |
 
 ## Expected Results
 
 - Routine discovery for work context, project plans, issue/PR lists, and detail views is actionable from one compact text response when the selected content fits.
 - Verification tools expose concise evidence without inline tracebacks or verbose logs.
-- Configured collections respect their item limit and preserve DTO order.
+- Every bounded inline sequence or configured collection in the complete 29-tool mechanics set respects its item limit and preserves DTO order.
 - Every `TextPresenter` result remains within 8,000 UTF-8 bytes while preserving a truncation notice and cache URI when content is omitted.
 - Cached resources remain complete; their DTO schemas change only at the explicitly approved clean-break boundaries.
 - Presentation configuration remains the source of truth for per-tool content choices and exactly covers the complete runtime-derived supported-tool catalog; known inactive tools do not block startup.
@@ -334,7 +344,7 @@ This leaves a known actionability gap: the compact run_quality_gates response ca
 
 ## Open Questions
 
-None at the strategy boundary. The concrete minimal registration/catalog representation and activation interface belong to Design and remain constrained by the approved YAGNI boundary.
+None at the strategy boundary. The concrete minimal registration/catalog representation, ordered-sequence container contract, generic collection-renderer interface, and activation interface belong to Design and remain constrained by the approved YAGNI boundary.
 
 ## Related Documentation
 
@@ -370,3 +380,4 @@ None at the strategy boundary. The concrete minimal registration/catalog represe
 | 1.6 | 2026-08-21 | Agent | Approve removal of all duplicate fields plus structured SafeEdit issues and numeric pytest duration replacement |
 | 1.7 | 2026-08-21 | Agent | Normalize the final clean-break strategy, blast radius, evidence order, and expected results |
 | 1.8 | 2026-08-21 | Agent | Approve runtime-derived complete-catalog parity with conditional activation and a strict YAGNI boundary |
+| 1.9 | 2026-08-21 | Agent | Require the complete 29-tool mechanics matrix and approve canonical validation-record reuse without formatting, mapping, or presenter exceptions |
