@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "design",
+  "current_phase": "research",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Reopen Design from Planning because the 50-tool DTO-to-chat projection choices require an explicit interactive human design review; Cycle 4 must implement approved decisions rather than invent them.",
+  "skip_reason": "Reopen Research because direct runtime evidence showed missing workflow state produces empty human-facing output, and the approved no-DTO-change strategy conflicts with the Architecture Principles requirement that tools emit structured state rather than human-facing warning text.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -69,6 +69,14 @@
       "human_approval_message": "User explicitly requested that the tool-by-tool projection decisions be performed together as part of Design, or interactively in Cycle 4. We select Design because these are product/interface decisions that must precede implementation planning.",
       "forced": true,
       "skip_reason": "Reopen Design from Planning because the 50-tool DTO-to-chat projection choices require an explicit interactive human design review; Cycle 4 must implement approved decisions rather than invent them."
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "research",
+      "timestamp": "2026-08-21T14:56:07.258927+00:00",
+      "human_approval_message": "User explicitly approved making missing workflow state explicit through a boolean or enum interpreted by presentation.yaml and rejected human-facing error text inside the tool.",
+      "forced": true,
+      "skip_reason": "Reopen Research because direct runtime evidence showed missing workflow state produces empty human-facing output, and the approved no-DTO-change strategy conflicts with the Architecture Principles requirement that tools emit structured state rather than human-facing warning text."
     }
   ],
   "reconstructed": false,

@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Research
 
 **Status:** APPROVED  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-08-21
 
 ---
@@ -26,7 +26,7 @@ Establish the evidence, scope, and Approved Strategy for compact, actionable MCP
 
 **Out of Scope:**
 
-- Tool execution semantics, DTO contents, resource-cache publication, or cache retention.
+- Tool execution semantics outside the narrowly approved `get_work_context` workflow-state status contract, resource-cache publication, or cache retention.
 - Tool-specific Python rendering branches, tool-specific sorting, or changing authoritative DTO order.
 - Inline publication of complete verbose logs, tracebacks, JSON Schemas, diffs, or other deep structured payloads.
 - A transport-wide byte guarantee for separately embedded MCP resources.
@@ -166,6 +166,18 @@ The [Tool Presentation Field Audit](tool-presentation-field-audit.md) was produc
 
 Every registered tool template is now an implementation deliverable. Design must define a complete target matrix that either places each tool-specific field inline through the generic presentation mechanisms or records a concrete cache-only rationale. Planning must provide implementation and evidence for the full matrix without introducing one brittle prose snapshot per tool.
 
+## Workflow-State Presentation Evidence and Options
+
+The controlled missing-state probe temporarily removed `.pgmcp/state.json` and called `get_work_context`. The visible response contained empty workflow, issue, phase, role, and parent values with only `confidence=unknown`; the cached success DTO contained `phase_source="unknown"`, `phase_confidence="unknown"`, and generic non-recovery instructions. The state file was restored and normal context returned immediately.
+
+| Option | Benefit | Cost / risk | Decision |
+|---|---|---|---|
+| Keep empty fields plus confidence | No contract change. | Looks like formatting failure and gives no safe recovery distinction. | Rejected |
+| Produce an OperationNote | Conditional text already exists. | Reintroduces a retired presentation path and bypasses the tool/exception DTO authority. | Rejected |
+| Put warning text in the tool DTO | Easy to project. | Violates the Presentation Boundary by coupling the tool to human-facing text. | Rejected |
+| Add a boolean state-available field | Structured and small. | Cannot distinguish missing, unreadable, and invalid-phase recovery. | Rejected |
+| Add a workflow-state enum and structured supporting fields | Keeps the tool presentation-agnostic and enables exact configured messages per condition. | Requires a narrow clean-break DTO contract change and generic enum-driven presentation selection. | Approved |
+
 ## Options Considered
 
 | Option | Benefit | Cost / risk | Decision |
@@ -203,6 +215,9 @@ Human approval for the original strategy was recorded on 2026-08-20. On 2026-08-
 14. Treat all 50 registered tool templates as implementation scope. Use the field audit as traceability input and produce a complete design target matrix; every tool-specific DTO field must be either intentionally inline or explicitly cache-only with a concrete rationale.
 15. Optimize for the immediate next decision within the shared byte and item limits. Full optimization does not override the cache-only policy for verbose logs, tracebacks, schemas, diffs, raw process output, or redundant caller-supplied data.
 16. Preserve the generic configuration-driven pipeline and capability-oriented tests. Full-template coverage must not introduce tool-name branches or one exact-wording snapshot per tool.
+17. For `get_work_context`, make workflow-state availability explicit through a frozen enum rather than a boolean because presentation must distinguish at least `available`, `missing`, `unreadable`, and `invalid_phase`. The tool emits no human-facing warning or recovery text.
+18. Apply a clean break at this DTO boundary: replace the human-facing `invalid_phase_warning` string with the enum plus structured supporting data such as `valid_phases`. `presentation.yaml` owns status-specific warning and recovery text.
+19. Preserve `success=true` for a successfully executed context query even when workflow state is unavailable; the enum represents the discovered domain condition. Keep `phase_source` and `phase_confidence` cache-only once the explicit state status is guaranteed inline.
 
 ## Blast Radius
 
@@ -210,7 +225,7 @@ Human approval for the original strategy was recorded on 2026-08-20. On 2026-08-
 |---|---|
 | Production code | Generic text projection, collection formatting, and final UTF-8-safe limiting in the presentation layer. No tool execution changes. |
 | Configuration | Additive presentation schema plus reviewed and optimized `presentation.yaml` declarations for all 50 registered tools. Configuration keys must exactly match the runtime public-tool registry. |
-| DTOs | No authoritative DTO changes expected. Existing formatted convenience fields may remain even when no longer used by text templates. |
+| DTOs | One narrow clean-break change is approved for `GetWorkContextOutput`: replace the human-facing `invalid_phase_warning` string with structured workflow-state status and supporting data. Other authoritative DTOs remain unchanged; existing formatted convenience fields may remain when unrelated. |
 | Tests | Delete both legacy `tests/documentation` modules and their 62 cases. For the feature itself, use presenter unit tests, configuration/alignment tests, multibyte and reserved-cache-suffix boundary tests, collection-order/item-limit tests, nested-plan coverage, and a small representative set of tool presentation tests. Avoid one wording/snapshot test per tool. |
 | Test quality | Tests must verify durable presentation contracts rather than snapshot every wording detail. Verbose logs remain cache assertions, not large inline snapshots. |
 | Documentation | Presentation architecture and relevant tool references for discovery/project/GitHub/quality/scaffolding must reflect the compact-text/cache boundary. |
@@ -229,7 +244,7 @@ Human approval for the original strategy was recorded on 2026-08-20. On 2026-08-
 | A previously “unchanged” template remains under-informative | Field-level traceability showing an inline or justified cache-only decision for every tool-specific DTO field. |
 | Rich summaries accidentally inline verbose logs | Representative `run_tests` and `run_quality_gates` tests for normal and verbose DTOs. |
 | Nested plan rendering becomes tool-specific | Architecture review proving no tool-name branch exists. |
-| Text changes break structured consumers | Tests proving cached DTO publication and content are unchanged. |
+| Text changes break structured consumers | Tests proving cached DTO publication and content are unchanged except for the explicitly approved `GetWorkContextOutput` workflow-state contract. |
 | Documentation reintroduces mandatory resource reads | Targeted review and local-link verification of the changed active documents. |
 
 ## Expected Results
@@ -296,3 +311,4 @@ None at the strategy boundary. Exact configuration models and presenter interfac
 | 1.2 | 2026-08-20 | Agent | Record structured quality-gate findings as explicit deferred work |
 
 | 1.3 | 2026-08-21 | Agent | Reopen Research for exact registration/config parity and full optimization of all 50 presentation templates |
+| 1.4 | 2026-08-21 | Agent | Approve structured get_work_context state enum and move all warning/recovery text into presentation configuration |
