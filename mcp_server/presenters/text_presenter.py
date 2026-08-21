@@ -34,6 +34,7 @@ from mcp_server.presenters.collection_text_renderer import (
 )
 from mcp_server.presenters.text_budget_limiter import TextBudgetLimiter
 from mcp_server.schemas.cache_publication import CachePublication
+from mcp_server.schemas.error_outputs import ToolErrorOutput
 
 if TYPE_CHECKING:
     from mcp_server.bootstrap import SupportedToolContract
@@ -258,7 +259,7 @@ class TextPresenter(ITextPresenter):
         if emoji:
             text = f"{emoji} {text}"
 
-        if tool_cfg is not None:
+        if tool_cfg is not None and not isinstance(data, ToolErrorOutput):
             for enum_case in tool_cfg.enum_cases:
                 raw_value = data_dict.get(enum_case.field)
                 serialized_value = (
