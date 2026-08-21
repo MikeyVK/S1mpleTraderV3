@@ -82,15 +82,24 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 | check_merge | merge_sha | Scalar success/failure template, unchanged | is_ancestor |
 | git_status | branch, is_clean, modified_count, untracked_count, modified_files[], untracked_files[] | Scalar header plus two bounded scalar collections | — |
 | create_branch | branch_name, branch_type, base_branch | Scalar template, unchanged | — |
-| git_add_or_commit | branch, commit_hash, workflow_phase, commit_type | Scalar template, unchanged | sub_phase, cycle_number, files[] |
-| git_restore | files_count, source | Scalar template, unchanged | files[] |
-| git_checkout | previous_branch, branch, current_phase | Scalar template, unchanged | parent_branch |
+| git_add_or_commit | branch, commit_hash, workflow_phase, sub_phase, cycle_number, commit_type, files[] | Expanded scalar template plus bounded scalar file collection | — |
+| git_restore | files_count, source, files[] | Scalar confirmation plus bounded scalar file collection | — |
+| git_checkout | previous_branch, branch, current_phase, parent_branch | Expanded scalar orientation template | — |
 | git_push | branch, new_upstream_created | Scalar template, unchanged | set_upstream |
 | git_merge | source_branch, target_branch | Scalar template, unchanged | — |
 | git_delete_branch | branch, local_status, remote_status | Scalar template, unchanged | — |
 | git_stash | action, stashes[] | Scalar header plus bounded scalar collection | message |
 | git_fetch | remote | Scalar template, unchanged | raw_output, prune |
 | git_pull | remote | Scalar template, unchanged | raw_output, rebase |
+
+### Batch 2 — Git Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- All fifteen Git rows below are approved as the implementation target.
+- `git_add_or_commit.files[]`, commit sub-phase/cycle, `git_restore.files[]`, and `git_checkout.parent_branch` are promoted inline for direct mutation verification and orientation.
+- `git_diff_stat.stats`, fetch/pull raw output, and redundant caller-input flags remain cache-only because they are unstructured diagnostics or repeat requested inputs.
+- Collection projections remain bounded and preserve Git/DTO order.
 
 ## GitHub Tools
 
