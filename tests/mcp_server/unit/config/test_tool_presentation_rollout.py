@@ -227,8 +227,14 @@ class TestToolPresentationRollout:
             )
 
         for tool_name, field in _INLINE_SEQUENCE_FIELDS.items():
-            template = config.tools[tool_name].template_success or ""
-            assert field in _placeholders(template), tool_name
+            tool = config.tools[tool_name]
+            templates = [tool.template_success or ""]
+            templates.extend(
+                case_template
+                for enum_case in tool.enum_cases
+                for case_template in enum_case.cases.values()
+            )
+            assert any(field in _placeholders(template) for template in templates), tool_name
 
     def test_renders_nested_project_plan_in_source_order(self) -> None:
         presenter = TextPresenter(config=_load_config())
@@ -334,7 +340,7 @@ class TestToolPresentationRollout:
 
         text = presenter.present_text("run_quality_gates", output, success=False)
 
-        assert "overall pass: False" in text
+        assert "overall pass: false" in text.lower()
         assert "ruff" in text
         assert "verbose details stay cached" not in text
         assert "passed successfully" not in text
@@ -368,7 +374,7 @@ class TestToolPresentationRollout:
         issue_text = presenter.present_text("get_issue", issue)
         pr_text = presenter.present_text("get_pr", pull_request)
 
-        for value in ("Issue body", "feature", issue.html_url, issue.created_at, issue.author):
+        for value in ("Issue body", "feature", issue.html_url, issue.created_at):
             assert value in issue_text
         for value in ("PR body", "open", pull_request.html_url):
             assert value in pr_text

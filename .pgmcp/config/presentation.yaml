@@ -1,110 +1,110 @@
-version: "1.0.0"
-global:
-  max_text_response_bytes: 8000
-  emojis:
-    success: "✅"
-    failure: "❌"
-    warning: "⚠️"
-    query: "📋"
-    bootstrap: "🚀"
-    mutation: "✅"
-    planning: "📋"
-    testing: "🧪"
-    quality: "🔍"
-    scaffold: "🏗️"
-  default_failure_template: "Failed: {error_message}"
-  formatting:
-    none_value: "-"
-    inline_sequence_separator: ", "
-    inline_sequence_omission_template: "… {omitted_count} more"
-    collection_omission_template: "- … {omitted_count} more {field}"
-    truncation_notice: "Output truncated; complete details are available in the cached resource."
-    cache_unavailable_truncation_notice: "Output truncated; complete details are unavailable because cache publication failed."
-  next_instruction_texts:
-    uri_reference: "*(Full details available in the structured JSON payload. View resource: pgmcp://cache/runs/{run_id})*"
-    context_reset: "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call to load the current phase context for this branch."
-    server_restart: "⏳ WAIT 3 SECONDS before continuing - server needs time to reload. Service will be unavailable briefly during restart."
-    branch_lockdown: "⚠️ Warning: Branch is now locked down. Branch-mutating tools are blocked until the PR is merged."
-    todo_discipline: "📋 TODO discipline: create or refresh your TODO list now; keep exactly one item in progress and update it after each material step."
-    recheck_quality: "📋 REQUIRED NEXT STEP: Run run_quality_gates(scope='files', files={modified_files}) to verify that the auto-fixed files now pass all quality checks."
-    cache_publication_failed: "*(Cache publication failed. Full details dumped inline)*"
-  failures:
-    dirty_workdir: "Branch '{branch}' is not in a clean state -- commit or stash changes."
-    no_upstream: "No upstream tracking branch configured for branch '{branch}'."
-    invalid_base_branch: "Branch type '{branch_type}' cannot be created from base '{base_branch}'"
-    open_pr_blocker: "Branch '{branch}' has an open PR. Branch-mutating tools are blocked until the PR is merged."
-    phase_readiness_mismatch: "Tool requires phase '{required_phase}'. Current phase: '{current_phase}'."
-    context_not_loaded: "get_work_context has not been called for branch '{branch}'. Call get_work_context before using this tool."
-    invalid_context_class: "Invalid Context class name: {class_name} (must end with 'Context')"
-    render_context_not_found: "RenderContext class not found: {class_name}"
-    generic_output_path_required: "Generic artifacts require explicit output_path in context"
-    artifact_validation_failed: "Generated {artifact_type} artifact failed validation."
-    missing_output_path: "Missing output_path for file artifact '{artifact_type}'"
-    context_validation_failed: "Failed to validate {artifact_type} context: {error_details}"
-    invalid_branch_type: "Invalid branch type: {branch_type}"
-    invalid_branch_name: "Invalid branch name: {name}"
-    empty_files_list: "Files list cannot be empty"
-    cannot_delete_protected_branch: "Cannot delete protected branch: {branch_name}"
-  notes:
-    groups:
-      exclusions:
-        emoji: "🩹"
-        header: "Exclusions"
-      suggestions:
-        emoji: "💡"
-        header: "Suggestions"
-      recoveries:
-        emoji: "🩹"
-        header: "Recoveries"
-      info:
-        emoji: "📋"
-        header: "Information"
-    templates:
-      suggestions:
-        allowed_bases_suggestion: "Allowed bases: {bases}"
-        close_open_pr_suggestion: "Call merge_pr to close the open PR before continuing branch work."
-        transition_phase_suggestion: 'transition_phase(to_phase="{required_phase}")'
-        load_context_suggestion: "Call get_work_context before using this tool."
-        initialize_project_suggestion: "Run initialize_project first to create a project plan for issue #{issue_number}."
-        allowed_branch_types: "Allowed types: {types}"
-        branch_name_pattern_mismatch: "Must match pattern: {pattern}"
-        commit_empty_files_suggestion: "Omit 'files' to commit everything, or provide at least one path"
-        restore_empty_files_suggestion: "Provide at least one path to restore"
-        delete_protected_branch_suggestion: "Protected branches: {protected_branches}"
-        pytest_no_tests_collected_suggestion: "No tests matched the filter. Check markers and path."
-        scaffold_missing_fields_suggestion: "Provide the missing fields: {missing_fields} (Artifact type: {artifact_type})"
-        pytest_failed_verbose_suggestion: "Some tests failed. To see detailed tracebacks and stdout/stderr, rerun with verbose=True. Suggested command: run_tests(path='{failing_files}', verbose=True)"
-        quality_gates_failed_verbose_suggestion: "Some quality gates failed. Rerun the tool with verbose=True to retrieve complete linter/checker tracebacks. Suggested command: run_quality_gates({scope_part}, verbose=True)"
-      recoveries:
-        submit_pr_commit_failed_recovery: "Commit failed: {error_details}. Local neutralization commit rolled back. Working tree is clean. Retry submit_pr after resolving the commit issue."
-        submit_pr_push_failed_with_rollback_recovery: "Push failed: {error_details}. Local neutralization commit rolled back. Working tree is clean. Retry submit_pr after resolving the remote issue."
-        submit_pr_push_failed_no_rollback_recovery: "Push failed: {error_details}. No local commit to roll back. Working tree is clean. Retry submit_pr after resolving the remote issue."
-        rollback_local_reset_failed_recovery: "CRITICAL: Local reset failed: {error_details}. Remote is still at pushed commit. Manual recovery: git reset --hard HEAD~1, then git push --force-with-lease. Do not commit until resolved."
-        rollback_remote_push_failed_recovery: "CRITICAL: Remote rollback failed: {error_details}. Local branch is in pre-submit state. Manual recovery for remote: git push --force-with-lease. Do not commit until resolved."
-        submit_pr_api_failed_with_rollback_recovery: "GitHub PR creation failed: {error_details}. Remote branch has been rolled back to pre-submit state. Working tree is clean. Retry submit_pr once the API issue is resolved."
-        scaffold_fields_recovery: "Provide all required fields for artifact type '{artifact_type}'"
-        pytest_interrupted_recovery: "Pytest was interrupted; check for hung tests or external SIGINT."
-        pytest_internal_error_recovery: "Pytest reported an internal error; inspect stderr and pytest plugins."
-        pytest_usage_error_recovery: "Pytest could not start. Verify the path exists and the CLI options are valid."
-        pytest_unexpected_code_recovery: "Pytest exited with unexpected code {exit_code}; inspect stderr."
-        transition_conflict_recovery: "{recovery_steps}"
-        docs_dir_not_found_expected: "Expected directory: {expected_dir}"
-        docs_dir_not_found_create: "Create docs/ directory in workspace root"
-        docs_dir_not_found_add_files: "Add markdown files to document project"
-        quality_state_write_failed_recovery: "Quality state write failed — retry the quality gates run: {error_details}"
-        pytest_timeout_recovery: "Tests timed out after {timeout}s. Run a smaller subset or raise the timeout."
-        pytest_interpreter_recovery: "Verify the Python interpreter and venv are reachable."
-      info:
-        dirty_workspace_branch_blocker: "Commit or stash changes before creating a new branch"
-        pytest_lf_cache_empty_info: "Last-failed cache was empty; ran full selection instead."
-        pull_dirty_workspace_blocker: "Commit or stash changes before pulling"
-        pull_detached_head_blocker: "Checkout a branch before pulling"
-        pull_no_upstream_blocker: "Set upstream tracking (e.g. 'git branch --set-upstream-to=origin/<branch>')"
-        pull_refspec_not_supported_blocker: "Or pull with an explicit refspec (not supported yet)"
-        merge_dirty_workspace_blocker: "Commit or stash changes before merging"
-        submit_pr_dirty_workspace_blocker: "Working tree is not clean. Commit or stash all changes before submit_pr."
-        submit_pr_no_upstream_blocker: "No upstream tracking branch configured. Run git_push(set_upstream=True) before submit_pr."
-        scaffold_validation_failed: "Validation failed: {error_details}"
+version: "1.0.0"
+global:
+  max_text_response_bytes: 8000
+  emojis:
+    success: "✅"
+    failure: "❌"
+    warning: "⚠️"
+    query: "📋"
+    bootstrap: "🚀"
+    mutation: "✅"
+    planning: "📋"
+    testing: "🧪"
+    quality: "🔍"
+    scaffold: "🏗️"
+  default_failure_template: "Failed: {error_message}"
+  formatting:
+    none_value: "-"
+    inline_sequence_separator: ", "
+    inline_sequence_omission_template: "… {omitted_count} more"
+    collection_omission_template: "- … {omitted_count} more {field}"
+    truncation_notice: "Output truncated; complete details are available in the cached resource."
+    cache_unavailable_truncation_notice: "Output truncated; complete details are unavailable because cache publication failed."
+  next_instruction_texts:
+    uri_reference: "*(Full details available in the structured JSON payload. View resource: pgmcp://cache/runs/{run_id})*"
+    context_reset: "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call to load the current phase context for this branch."
+    server_restart: "⏳ WAIT 3 SECONDS before continuing - server needs time to reload. Service will be unavailable briefly during restart."
+    branch_lockdown: "⚠️ Warning: Branch is now locked down. Branch-mutating tools are blocked until the PR is merged."
+    todo_discipline: "📋 TODO discipline: create or refresh your TODO list now; keep exactly one item in progress and update it after each material step."
+    recheck_quality: "📋 REQUIRED NEXT STEP: Run run_quality_gates(scope='files', files={modified_files}) to verify that the auto-fixed files now pass all quality checks."
+    cache_publication_failed: "*(Cache publication failed. Full details dumped inline)*"
+  failures:
+    dirty_workdir: "Branch '{branch}' is not in a clean state -- commit or stash changes."
+    no_upstream: "No upstream tracking branch configured for branch '{branch}'."
+    invalid_base_branch: "Branch type '{branch_type}' cannot be created from base '{base_branch}'"
+    open_pr_blocker: "Branch '{branch}' has an open PR. Branch-mutating tools are blocked until the PR is merged."
+    phase_readiness_mismatch: "Tool requires phase '{required_phase}'. Current phase: '{current_phase}'."
+    context_not_loaded: "get_work_context has not been called for branch '{branch}'. Call get_work_context before using this tool."
+    invalid_context_class: "Invalid Context class name: {class_name} (must end with 'Context')"
+    render_context_not_found: "RenderContext class not found: {class_name}"
+    generic_output_path_required: "Generic artifacts require explicit output_path in context"
+    artifact_validation_failed: "Generated {artifact_type} artifact failed validation."
+    missing_output_path: "Missing output_path for file artifact '{artifact_type}'"
+    context_validation_failed: "Failed to validate {artifact_type} context: {error_details}"
+    invalid_branch_type: "Invalid branch type: {branch_type}"
+    invalid_branch_name: "Invalid branch name: {name}"
+    empty_files_list: "Files list cannot be empty"
+    cannot_delete_protected_branch: "Cannot delete protected branch: {branch_name}"
+  notes:
+    groups:
+      exclusions:
+        emoji: "🩹"
+        header: "Exclusions"
+      suggestions:
+        emoji: "💡"
+        header: "Suggestions"
+      recoveries:
+        emoji: "🩹"
+        header: "Recoveries"
+      info:
+        emoji: "📋"
+        header: "Information"
+    templates:
+      suggestions:
+        allowed_bases_suggestion: "Allowed bases: {bases}"
+        close_open_pr_suggestion: "Call merge_pr to close the open PR before continuing branch work."
+        transition_phase_suggestion: 'transition_phase(to_phase="{required_phase}")'
+        load_context_suggestion: "Call get_work_context before using this tool."
+        initialize_project_suggestion: "Run initialize_project first to create a project plan for issue #{issue_number}."
+        allowed_branch_types: "Allowed types: {types}"
+        branch_name_pattern_mismatch: "Must match pattern: {pattern}"
+        commit_empty_files_suggestion: "Omit 'files' to commit everything, or provide at least one path"
+        restore_empty_files_suggestion: "Provide at least one path to restore"
+        delete_protected_branch_suggestion: "Protected branches: {protected_branches}"
+        pytest_no_tests_collected_suggestion: "No tests matched the filter. Check markers and path."
+        scaffold_missing_fields_suggestion: "Provide the missing fields: {missing_fields} (Artifact type: {artifact_type})"
+        pytest_failed_verbose_suggestion: "Some tests failed. To see detailed tracebacks and stdout/stderr, rerun with verbose=True. Suggested command: run_tests(path='{failing_files}', verbose=True)"
+        quality_gates_failed_verbose_suggestion: "Some quality gates failed. Rerun the tool with verbose=True to retrieve complete linter/checker tracebacks. Suggested command: run_quality_gates({scope_part}, verbose=True)"
+      recoveries:
+        submit_pr_commit_failed_recovery: "Commit failed: {error_details}. Local neutralization commit rolled back. Working tree is clean. Retry submit_pr after resolving the commit issue."
+        submit_pr_push_failed_with_rollback_recovery: "Push failed: {error_details}. Local neutralization commit rolled back. Working tree is clean. Retry submit_pr after resolving the remote issue."
+        submit_pr_push_failed_no_rollback_recovery: "Push failed: {error_details}. No local commit to roll back. Working tree is clean. Retry submit_pr after resolving the remote issue."
+        rollback_local_reset_failed_recovery: "CRITICAL: Local reset failed: {error_details}. Remote is still at pushed commit. Manual recovery: git reset --hard HEAD~1, then git push --force-with-lease. Do not commit until resolved."
+        rollback_remote_push_failed_recovery: "CRITICAL: Remote rollback failed: {error_details}. Local branch is in pre-submit state. Manual recovery for remote: git push --force-with-lease. Do not commit until resolved."
+        submit_pr_api_failed_with_rollback_recovery: "GitHub PR creation failed: {error_details}. Remote branch has been rolled back to pre-submit state. Working tree is clean. Retry submit_pr once the API issue is resolved."
+        scaffold_fields_recovery: "Provide all required fields for artifact type '{artifact_type}'"
+        pytest_interrupted_recovery: "Pytest was interrupted; check for hung tests or external SIGINT."
+        pytest_internal_error_recovery: "Pytest reported an internal error; inspect stderr and pytest plugins."
+        pytest_usage_error_recovery: "Pytest could not start. Verify the path exists and the CLI options are valid."
+        pytest_unexpected_code_recovery: "Pytest exited with unexpected code {exit_code}; inspect stderr."
+        transition_conflict_recovery: "{recovery_steps}"
+        docs_dir_not_found_expected: "Expected directory: {expected_dir}"
+        docs_dir_not_found_create: "Create docs/ directory in workspace root"
+        docs_dir_not_found_add_files: "Add markdown files to document project"
+        quality_state_write_failed_recovery: "Quality state write failed — retry the quality gates run: {error_details}"
+        pytest_timeout_recovery: "Tests timed out after {timeout}s. Run a smaller subset or raise the timeout."
+        pytest_interpreter_recovery: "Verify the Python interpreter and venv are reachable."
+      info:
+        dirty_workspace_branch_blocker: "Commit or stash changes before creating a new branch"
+        pytest_lf_cache_empty_info: "Last-failed cache was empty; ran full selection instead."
+        pull_dirty_workspace_blocker: "Commit or stash changes before pulling"
+        pull_detached_head_blocker: "Checkout a branch before pulling"
+        pull_no_upstream_blocker: "Set upstream tracking (e.g. 'git branch --set-upstream-to=origin/<branch>')"
+        pull_refspec_not_supported_blocker: "Or pull with an explicit refspec (not supported yet)"
+        merge_dirty_workspace_blocker: "Commit or stash changes before merging"
+        submit_pr_dirty_workspace_blocker: "Working tree is not clean. Commit or stash all changes before submit_pr."
+        submit_pr_no_upstream_blocker: "No upstream tracking branch configured. Run git_push(set_upstream=True) before submit_pr."
+        scaffold_validation_failed: "Validation failed: {error_details}"
 tools:
   auto_fix:
     category: mutation
@@ -136,17 +136,38 @@ tools:
       - Uptime: {uptime_seconds} seconds
   restart_server:
     category: mutation
-    template_success: "Server restart initiated successfully (Reason: {reason})."
+    template_success: |
+      Server restart initiated successfully.
+      - Reason: {reason}
+      - Process ID: {pid}
     next_instructions:
       - "server_restart"
   transition_cycle:
     category: mutation
-    template_success: "Transitioned to Cycle {to_cycle}/{total_cycles} ({cycle_name}) on branch '{branch}' (Passed gates: {passing_gates_count}, Skipped gates: {skipped_gates_count})."
+    max_items: 20
+    template_success: |
+      Transitioned from Cycle {from_cycle} to Cycle {to_cycle}/{total_cycles} ({cycle_name}) on branch '{branch}'.
+      - Passed gates: {passing_gates_count}
+      - Skipped gates: {skipped_gates_count}
+    collections:
+      - field: skipped_gates
+        heading: "Skipped gates:"
+        item_template: "- {item}"
     next_instructions:
       - "context_reset"
   force_cycle_transition:
     category: mutation
-    template_success: "Transitioned to Cycle {to_cycle}/{total_cycles} ({cycle_name}) on branch '{branch}' (Passed gates: {passing_gates_count}, Skipped gates: {skipped_gates_count})."
+    max_items: 20
+    template_success: |
+      Force-transitioned from Cycle {from_cycle} to Cycle {to_cycle}/{total_cycles} ({cycle_name}) on branch '{branch}'.
+      - Passed gates: {passing_gates_count}
+      - Skipped gates: {skipped_gates_count}
+      - Reason: {skip_reason}
+      - Approval: {human_approval_message}
+    collections:
+      - field: skipped_gates
+        heading: "Skipped gates:"
+        item_template: "- {item}"
     next_instructions:
       - "context_reset"
   get_work_context:
@@ -168,21 +189,56 @@ tools:
       - "todo_discipline"
   initialize_project:
     category: bootstrap
-    template_success: "Initialized project for issue #{issue_number} on branch '{branch}' (Initial Phase: '{initial_phase}')."
+    max_items: 20
+    template_success: |
+      Initialized issue #{issue_number} with workflow '{workflow_name}' on branch '{branch}'.
+      - Initial phase: {initial_phase}
+      - Parent branch: {parent_branch}
+      - Execution mode: {execution_mode}
+    collections:
+      - field: required_phases
+        heading: "Required phases:"
+        item_template: "- {item}"
+      - field: files_created
+        heading: "Files created:"
+        item_template: "- {item}"
     next_instructions:
       - "context_reset"
   get_project_plan:
     category: query
+    max_items: 10
     template_success: "**Project Plan for Issue #{issue_number}** (Workflow: {workflow_name})."
+    collections:
+      - field: phases
+        heading: "Phases:"
+        item_template: "- {name} [{status}]"
+        children:
+          - field: tasks
+            item_template: "  - {id}: {title} [{status}]"
   save_planning_deliverables:
     category: planning
+    max_items: 10
     template_success: "Planning deliverables for issue #{issue_number} ({total_cycles} cycles, {total_deliverables} deliverables)."
+    collections:
+      - field: cycles
+        heading: "Cycles:"
+        item_template: "- Cycle {cycle_number}: {deliverables_count} deliverables"
   update_planning_deliverables:
     category: planning
+    max_items: 10
     template_success: "Planning deliverables for issue #{issue_number} ({total_cycles} cycles, {total_deliverables} deliverables)."
+    collections:
+      - field: cycles
+        heading: "Cycles:"
+        item_template: "- Cycle {cycle_number}: {deliverables_count} deliverables"
   git_list_branches:
     category: query
+    max_items: 20
     template_success: "Found {branches_count} branches. Current branch is '{current_branch}'."
+    collections:
+      - field: branches
+        heading: "Branches:"
+        item_template: "- {name} | current: {is_current} | upstream: {upstream}"
   git_diff_stat:
     category: query
     template_success: |
@@ -199,12 +255,20 @@ tools:
     template_failure: "Merge verification failed: SHA {merge_sha} is NOT reachable from HEAD."
   git_status:
     category: query
+    max_items: 20
     template_success: |
       **Git Status Summary**
       - Branch: {branch}
       - Clean: {is_clean}
       - Modified: {modified_count} files
       - Untracked: {untracked_count} files
+    collections:
+      - field: modified_files
+        heading: "Modified files:"
+        item_template: "- {item}"
+      - field: untracked_files
+        heading: "Untracked files:"
+        item_template: "- {item}"
   create_branch:
     category: mutation
     template_success: "Created branch '{branch_name}' of type '{branch_type}' from '{base_branch}'."
@@ -212,13 +276,31 @@ tools:
       - "context_reset"
   git_add_or_commit:
     category: mutation
-    template_success: "Committed changes to '{branch}' with hash {commit_hash} (Phase: {workflow_phase}, Type: {commit_type})."
+    max_items: 20
+    template_success: |
+      Committed changes to '{branch}' with hash {commit_hash}.
+      - Phase: {workflow_phase}
+      - Sub-phase: {sub_phase}
+      - Cycle: {cycle_number}
+      - Type: {commit_type}
+    collections:
+      - field: files
+        heading: "Committed files:"
+        item_template: "- {item}"
   git_restore:
     category: mutation
+    max_items: 20
     template_success: "Restored {files_count} file(s) from {source}."
+    collections:
+      - field: files
+        heading: "Restored files:"
+        item_template: "- {item}"
   git_checkout:
     category: mutation
-    template_success: "Switched branch '{previous_branch}' -> '{branch}' (Current Phase: '{current_phase}')."
+    template_success: |
+      Switched branch '{previous_branch}' -> '{branch}'.
+      - Current phase: {current_phase}
+      - Parent branch: {parent_branch}
     next_instructions:
       - "context_reset"
   git_push:
@@ -232,7 +314,12 @@ tools:
     template_success: "Deleted branch '{branch}' (Local: {local_status}, Remote: {remote_status})."
   git_stash:
     category: mutation
+    max_items: 10
     template_success: "Stash action '{action}' executed successfully."
+    collections:
+      - field: stashes
+        heading: "Stashes:"
+        item_template: "- {item}"
   git_fetch:
     category: mutation
     template_success: "Fetched updates from remote '{remote}'."
@@ -243,33 +330,68 @@ tools:
       - "context_reset"
   create_issue:
     category: mutation
-    template_success: &issue_success_template "Issue #{number}: {title}.\nURL: {html_url}"
+    max_items: 10
+    template_success: |
+      Issue #{number}: {title}
+      - State: {state}
+      - URL: {html_url}
+      - Milestone: {milestone_title}
+      - Assignees: {assignees_summary}
+      - Labels: {labels}
   update_issue:
     category: mutation
-    template_success: *issue_success_template
+    max_items: 10
+    template_success: |
+      Issue #{number}: {title}
+      - State: {state}
+      - URL: {html_url}
+      - Milestone: {milestone_title}
+      - Assignees: {assignees_summary}
+      - Labels: {labels}
   get_issue:
     category: query
+    max_items: 10
     template_success: |
       **Issue #{number}: {title}**
       - State: {state}
       - Milestone: {milestone_title}
       - Assignees: {assignees_summary}
+      - URL: {html_url}
+      - Labels: {labels}
+      - Created: {created_at}
+      - Updated: {updated_at}
+      - Closed: {closed_at}
+      {body}
   close_issue:
     category: mutation
     template_success: "Closed issue #{issue_number} successfully."
   list_issues:
     category: query
+    max_items: 10
     template_success: "Found {issues_count} issues matching criteria."
+    collections:
+      - field: issues
+        heading: "Issues:"
+        item_template: "- #{number} [{state}] {title} — {html_url} | labels: {labels} | assignees: {assignees_summary} | created: {created_at}"
   get_pr:
     category: query
-    template_success: &pr_detail_template |
+    template_success: |
       PR #{number}: {title}
-      URL: {html_url}
+      - State: {state}
+      - URL: {html_url}
       - Target: {base_ref}
       - Source: {head_ref}
+      - Merged at: {merged_at}
+      - Merge SHA: {merge_sha}
+      {body}
   submit_pr:
     category: mutation
-    template_success: *pr_detail_template
+    template_success: |
+      PR #{number}: {title}
+      - State: {state}
+      - URL: {html_url}
+      - Target: {base_ref}
+      - Source: {head_ref}
     next_instructions:
       - "branch_lockdown"
   merge_pr:
@@ -277,10 +399,20 @@ tools:
     template_success: "Merged PR #{pr_number} using strategy '{merge_method}' (SHA: {merge_sha})."
   list_prs:
     category: query
+    max_items: 10
     template_success: "Found {prs_count} pull requests matching criteria."
+    collections:
+      - field: pull_requests
+        heading: "Pull requests:"
+        item_template: "- #{number} [{state}] {title} — {html_url} | {head_ref} -> {base_ref}"
   list_labels:
     category: query
+    max_items: 10
     template_success: "Found {total_labels} labels."
+    collections:
+      - field: labels
+        heading: "Labels:"
+        item_template: "- {name} (#{color}): {description}"
   create_label:
     category: mutation
     template_success: "Created label '{label_name}' (Color: #{color})."
@@ -289,21 +421,26 @@ tools:
     template_success: "Deleted label '{label_name}' successfully."
   add_labels:
     category: mutation
-    max_items: 20
+    max_items: 10
     template_success: "Added labels {labels} to issue #{issue_number}."
   remove_labels:
     category: mutation
-    max_items: 20
+    max_items: 10
     template_success: "Removed labels {labels} from issue #{issue_number}."
   list_milestones:
     category: query
+    max_items: 10
     template_success: "Found {total_milestones} milestones."
+    collections:
+      - field: milestones
+        heading: "Milestones:"
+        item_template: "- #{number} [{state}] {title}"
   create_milestone:
     category: mutation
-    template_success: &milestone_success_template "Milestone '{title}' (Number: #{number})."
+    template_success: "Milestone #{number}: {title} [{state}]."
   close_milestone:
     category: mutation
-    template_success: *milestone_success_template
+    template_success: "Milestone #{number}: {title} [{state}]."
   transition_phase:
     category: mutation
     max_items: 20
@@ -349,11 +486,24 @@ tools:
     template_success: "Retrieved schema for artifact type '{artifact_type}' successfully."
   run_quality_gates:
     category: quality
-    template_success: "Quality gates passed successfully (file count: {file_count}, overall pass: {overall_pass})."
-    template_failure: "Quality gates failed (file count: {file_count}, overall pass: {overall_pass})."
+    max_items: 10
+    template_success: |
+      Quality gate execution completed.
+      - Scope: {scope}
+      - File count: {file_count}
+      - Overall pass: {overall_pass}
+    template_failure: |
+      Quality gate execution completed.
+      - Scope: {scope}
+      - File count: {file_count}
+      - Overall pass: {overall_pass}
+    collections:
+      - field: gates
+        heading: "Gate results:"
+        item_template: "- {name}: status={status}, passed={passed}, score={score}"
   run_tests:
     category: testing
-    max_items: 20
+    max_items: 5
     template_success: |
       Tests completed (exit {exit_code}).
       - Passed: {passed_count}
@@ -362,14 +512,21 @@ tools:
       - Errors: {errors_count}
       - Duration: {duration_seconds}s
       - Coverage: {coverage_pct}%
-    template_failure: "Test execution failed (exit {exit_code}): {error_message}."
+    template_failure: |
+      Tests completed (exit {exit_code}): {error_message}
+      - Passed: {passed_count}
+      - Failed: {failed_count}
+      - Skipped: {skipped_count}
+      - Errors: {errors_count}
+      - Duration: {duration_seconds}s
+      - Coverage: {coverage_pct}%
     collections:
       - field: failures
         heading: "Failures:"
         item_template: "- {test_id} ({location}): {short_reason} [collection error: {is_collection_error}]"
   safe_edit_file:
     category: mutation
-    max_items: 20
+    max_items: 10
     template_success: "File '{path}' processed in '{mode}' mode (validation passed: {passed}, written: {written}, diff available: {has_diff})."
     template_failure: "File '{path}' was rejected in '{mode}' mode (validation passed: {passed}, written: {written}): {error_message}"
     collections:
@@ -378,4 +535,16 @@ tools:
         item_template: "- [{severity}] {message} (line {line}, column {column}, code {code})"
   validate_template:
     category: query
-    template_success: "Template validation passed: {passed}."
+    max_items: 10
+    template_success: |
+      Template validation completed.
+      - Passed: {passed}
+      - Errors: {errors_count}
+    template_failure: |
+      Template validation completed.
+      - Passed: {passed}
+      - Errors: {errors_count}
+    collections:
+      - field: errors
+        heading: "Validation errors:"
+        item_template: "- [{severity}] {message}"
