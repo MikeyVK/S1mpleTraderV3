@@ -4,8 +4,8 @@
   "issue_number": 456,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 7,
-  "last_cycle": 6,
+  "current_cycle": 8,
+  "last_cycle": 7,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -42,6 +42,12 @@
       "name": "Complete 50-tool projection rollout",
       "forced": false,
       "entered": "2026-08-21T22:56:27.976815+00:00"
+    },
+    {
+      "cycle_number": 8,
+      "name": "Obsolete documentation-test removal",
+      "forced": false,
+      "entered": "2026-08-21T23:05:53.571352+00:00"
     }
   ],
   "required_phases": [
