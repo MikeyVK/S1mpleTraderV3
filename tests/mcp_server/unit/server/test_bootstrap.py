@@ -15,8 +15,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import BaseModel
 
-from mcp_server.bootstrap import ConfigLayer, ManagerGraph, ServerBootstrapper
+from mcp_server.bootstrap import (
+    ConfigLayer,
+    ManagerGraph,
+    ServerBootstrapper,
+    SupportedToolContract,
+    ToolAssembly,
+)
 from mcp_server.config.schemas import (
     ArtifactRegistryConfig,
     ContractsConfig,
@@ -35,7 +42,8 @@ from mcp_server.config.schemas import (
     WorkphasesConfig,
 )
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.core.interfaces import IToolResponsePublisher
+from mcp_server.core.interfaces import ICoreTool, IToolResponsePublisher
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.managers.enforcement_runner import EnforcementRunner
 from mcp_server.managers.git_manager import GitManager
@@ -55,6 +63,111 @@ from mcp_server.state.context_loaded_cache import ContextLoadedCache
 from mcp_server.state.pr_status_cache import PRStatusCache
 from tests.mcp_server.test_support import get_default_server_root
 
+
+
+class _AssemblyInput(BaseModel):
+    """Synthetic core-tool input for assembly contract tests."""
+
+
+class _AssemblyOutput(BaseModel):
+    """Synthetic core-tool output for assembly contract tests."""
+
+
+class _AlternativeAssemblyOutput(BaseModel):
+    """Conflicting synthetic output model."""
+
+
+class _GenericAssemblyTool(ICoreTool[_AssemblyInput, _AssemblyOutput]):
+    """Concrete generic specialization without explicit output_model metadata."""
+
+    def __init__(self, name: str = "generic_tool") -> None:
+        self._name = name
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return "Synthetic assembly tool"
+
+    @property
+    def args_model(self) -> type[BaseModel]:
+        return _AssemblyInput
+
+    async def execute(
+        self, params: _AssemblyInput, context: NoteContext
+    ) -> _AssemblyOutput:
+        del params, context
+        return _AssemblyOutput()
+
+
+class _ConflictingAssemblyTool(_GenericAssemblyTool):
+    """Tool whose explicit output metadata conflicts with its generic contract."""
+
+    output_model = _AlternativeAssemblyOutput
+
+
+class _UnresolvedAssemblyTool:
+    """Tool-shaped object without output-model metadata."""
+
+    name = "unresolved_tool"
+
+
+class TestToolAssembly:
+    """Durable public-contract tests for supported and active tool assembly."""
+
+    def test_derives_frozen_supported_contracts_from_generic_specialization(self) -> None:
+        tool = _GenericAssemblyTool()
+
+        assembly = ToolAssembly.create(
+            supported_tools=(tool,),
+            active_tools=(tool,),
+        )
+
+        assert assembly.supported_contracts == (
+            SupportedToolContract(name="generic_tool", output_model=_AssemblyOutput),
+        )
+        assert assembly.supported_tools == (tool,)
+        assert assembly.active_tools == (tool,)
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            assembly.active_tools = ()  # type: ignore[misc]
+
+    @pytest.mark.parametrize(
+        ("supported_tools", "expected_message"),
+        [
+            ((_GenericAssemblyTool(""),), "non-empty"),
+            (
+                (
+                    _GenericAssemblyTool("duplicate"),
+                    _GenericAssemblyTool("duplicate"),
+                ),
+                "duplicate",
+            ),
+            ((_UnresolvedAssemblyTool(),), "output model"),
+            ((_ConflictingAssemblyTool(),), "conflicting"),
+        ],
+    )
+    def test_rejects_invalid_supported_contracts(
+        self,
+        supported_tools: tuple[object, ...],
+        expected_message: str,
+    ) -> None:
+        with pytest.raises(ConfigError, match=expected_message):
+            ToolAssembly.create(
+                supported_tools=supported_tools,
+                active_tools=(),
+            )
+
+    def test_rejects_active_tool_outside_supported_object_set(self) -> None:
+        supported = _GenericAssemblyTool("supported")
+        unrelated = _GenericAssemblyTool("unrelated")
+
+        with pytest.raises(ConfigError, match="active"):
+            ToolAssembly.create(
+                supported_tools=(supported,),
+                active_tools=(unrelated,),
+            )
 
 class TestBootstrap:
     """Test suite for bootstrap containers."""
