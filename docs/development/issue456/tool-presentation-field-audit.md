@@ -54,7 +54,7 @@ Every listed output model inherits these fields; they are not repeated in each r
 | `phase_confidence` remains cache-only after explicit state status is implemented. | APPROVED | `workflow_state_status` becomes the actionable inline contract; confidence is redundant diagnostic metadata on both normal and abnormal paths. |
 | `get_work_context` emits `WorkflowStateStatus` plus structured supporting data; presentation.yaml owns all warning and recovery text. | APPROVED | Explicit human decision aligned with the Presentation Boundary; OperationNotes and tool-owned human text are excluded. |
 
-The batch remains open until every server/workflow row and the optional-block design question have an explicit disposition.
+Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatus` contract (`available`, `missing`, `unreadable`, `invalid_phase`) is confirmed; remaining server/workflow row decisions follow the approved matrix and are no longer delegated to Implementation.
 
 ## Server and Workflow Tools
 
