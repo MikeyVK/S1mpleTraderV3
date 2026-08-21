@@ -2,8 +2,8 @@
 <!-- template=design version=5827e841 created=2026-08-20T19:53Z updated=2026-08-20 -->
 # Compact Actionable Tool Summaries — Design
 
-**Status:** APPROVED  
-**Version:** 1.2  
+**Status:** IN REVIEW  
+**Version:** 1.3  
 **Last Updated:** 2026-08-21
 
 ---
@@ -43,9 +43,9 @@ Current scalar-only presentation templates make routine tool results under-infor
 - Handle cache-publication failure explicitly when no resource URI can be retained.
 - Validate collection paths and placeholders against tool output models at startup.
 - Enforce exact bidirectional parity between registered public tool names and `presentation.yaml` tool keys at startup.
-- Implement and verify the approved field-level target for every one of the 50 registered tool templates.
+- Jointly review all 50 registered tool templates with the human owner and obtain explicit approval for every field-level inline/cache-only target before Planning resumes.
 - Keep deep logs, tracebacks, schemas, diffs, and full result sets in the cache.
-- Enrich the approved scalar templates, correct the two contradictory outcome templates, and review every compact scalar template against the approved field audit.
+- Enrich scalar templates and correct contradictory outcome templates only according to the jointly approved field audit; preliminary proposals are not implementation authority.
 
 **Non-Functional:**
 
@@ -262,9 +262,23 @@ flowchart LR
 
 The embedded validation schema produced by ValidationResourcePresenter remains a separate PresentationResource and is not counted toward the TextPresenter ceiling.
 
-### 3.5. Complete Tool Configuration Matrix
+### 3.5. Interactive Projection Review Gate
 
-The authoritative 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). Every row is an implementation and review deliverable, including templates intentionally retained after confirming their compact output is optimal. Every cache-only field must match one of the approved rationale categories in that audit.
+The DTO-to-chat projection is a human-facing product contract, not an implementation detail. Before this Design can return to APPROVED, the human owner and designer must review all 50 tools using [Tool Presentation Field Audit](tool-presentation-field-audit.md) as the worksheet.
+
+For each tool, the review records:
+
+1. the immediate decision or follow-up action the chat response must support;
+2. every DTO field proposed inline and its presentation mechanism;
+3. every cache-only field and its concrete omission rationale;
+4. item limits and exceptional length behavior;
+5. explicit human disposition: `APPROVED`, `CHANGES REQUESTED`, or `DEFERRED`.
+
+Review proceeds in bounded functional batches so decisions remain inspectable: server/workflow, Git, GitHub, scaffolding, and quality/testing/editing. A batch is closed only after explicit human confirmation. Design remains `IN REVIEW` while any tool lacks a disposition. Cycle 4 may not reinterpret, extend, or silently override the resulting matrix; new evidence must reopen Design.
+
+### 3.6. Complete Tool Configuration Matrix
+
+The proposed 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). It becomes authoritative only after all functional batches receive explicit human approval. Every row then becomes an implementation deliverable, including templates intentionally retained after confirming their compact output is optimal.
 
 The table below identifies tools that require the new collection or inline-sequence mechanics. Limits reflect item density: five diagnostic failures, ten normal records, and twenty short identifiers or paths. The final byte ceiling remains authoritative.
 
@@ -387,7 +401,8 @@ Planning must keep configuration/schema, generic services, integration, tool dec
 
 ## Open Questions
 
-None. The design is ready for independent review and Planning after approval.
+- The interactive projection review is open for all five functional batches and all 50 tools.
+- Planning may resume only after every audit row has an explicit human disposition and the resulting complete matrix is approved.
 
 ## Related Documentation
 
@@ -406,3 +421,4 @@ None. The design is ready for independent review and Planning after approval.
 | 1.0 | 2026-08-20 | Agent | Approved configuration, presentation-service, failure, compatibility, and test design |
 | 1.1 | 2026-08-20 | Agent | Define generic bounded inline scalar-sequence formatting for issue labels |
 | 1.2 | 2026-08-21 | Agent | Add exact registration/config parity and make the approved 50-tool field audit the complete rollout contract |
+| 1.3 | 2026-08-21 | Agent | Reopen Design and require interactive human approval of every DTO-to-chat projection before Planning |

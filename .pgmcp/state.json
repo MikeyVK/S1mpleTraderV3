@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "planning",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Reopen Research from Planning because two material scope gaps were identified before Implementation: presentation.yaml is not actively validated against the registered tool set, and the post-planning 50-tool field audit requires full optimization of every tool presentation template within issue #456.",
+  "skip_reason": "Reopen Design from Planning because the 50-tool DTO-to-chat projection choices require an explicit interactive human design review; Cycle 4 must implement approved decisions rather than invent them.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -61,6 +61,14 @@
       "human_approval_message": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "design",
+      "timestamp": "2026-08-21T14:04:40.585576+00:00",
+      "human_approval_message": "User explicitly requested that the tool-by-tool projection decisions be performed together as part of Design, or interactively in Cycle 4. We select Design because these are product/interface decisions that must precede implementation planning.",
+      "forced": true,
+      "skip_reason": "Reopen Design from Planning because the 50-tool DTO-to-chat projection choices require an explicit interactive human design review; Cycle 4 must implement approved decisions rather than invent them."
     }
   ],
   "reconstructed": false,

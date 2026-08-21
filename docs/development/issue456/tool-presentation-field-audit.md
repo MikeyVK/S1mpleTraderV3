@@ -2,8 +2,8 @@
 <!-- template=generic_doc version=ad8498ef created=2026-08-21 updated=2026-08-21 -->
 # Tool Presentation Field Audit
 
-**Status:** APPROVED  
-**Version:** 1.1  
+**Status:** REVIEW REQUIRED  
+**Version:** 1.2  
 **Last Updated:** 2026-08-21
 
 ---
@@ -14,13 +14,13 @@ Provide a complete field-level target audit for every registered MCP tool before
 
 ## Scope
 
-**In Scope:** All 50 tool names in presentation.yaml, their registered output models, inherited tool-specific DTO fields, current templates, and the approved issue #456 target presentation.
+**In Scope:** All 50 tool names in presentation.yaml, their registered output models, inherited tool-specific DTO fields, current templates, and the proposed issue #456 target presentation to be reviewed jointly with the human owner.
 
 **Out of Scope:** Redesign of DTOs or cache payloads, failure DTO internals outside the common output envelope, and the deferred design of structured quality-gate findings.
 
 ## Interpretation
 
-This is the approved normal-success presentation target after issue #456, not a claim about code already implemented. Every row is an implementation deliverable, including rows whose current compact scalar template remains appropriate after review.
+This is the proposed normal-success presentation target after issue #456, not a claim about code already implemented. A row becomes an implementation deliverable only after its functional review batch receives explicit human approval.
 
 - **Inline fields** names every tool-specific DTO field intended to appear in chat. Nested paths use collection[].field notation.
 - **Mechanism** identifies ordinary scalar interpolation, inline bounded scalar sequences, configured collections, or the resource-only exception.
@@ -120,7 +120,7 @@ Every listed output model inherits these fields; they are not repeated in each r
 
 ## Full-Optimization Decision
 
-The field audit disproves the earlier shorthand that the 32 compact templates have no additional cached data. They often do. All 50 rows are now explicitly in implementation scope, and the inline/cache-only split in each row is the approved target.
+The field audit disproves the earlier shorthand that the 32 compact templates have no additional cached data. They often do. All 50 rows are proposed implementation scope, but their inline/cache-only splits remain proposals until the interactive Design review closes.
 
 A cache-only classification is intentional only under one of these actionability rules:
 
@@ -153,7 +153,8 @@ The inventory was derived from:
 - [ ] Every tool maps to a registered output model.
 - [ ] Every tool-specific DTO field is classified as inline or cache-only.
 - [ ] Nested DTO fields use explicit path notation.
-- [ ] Every row is implemented or explicitly confirmed unchanged against its approved inline/cache-only target.
+- [ ] Every functional batch has an explicit human disposition.
+- [ ] Every row is approved or changed against its proposed inline/cache-only target before implementation.
 - [ ] Registered public tool names and presentation keys have exact bidirectional parity.
 - [ ] Any change to the approved inline/cache-only split is reflected in Research, Design, Planning, and structured deliverables.
 
@@ -174,3 +175,4 @@ The inventory was derived from:
 |---|---|---|---|
 | 1.0 | 2026-08-21 | Agent | Complete 50-tool target presentation and cache-field audit |
 | 1.1 | 2026-08-21 | Agent | Approve the 50-tool implementation target and explicit cache-only rationale categories |
+| 1.2 | 2026-08-21 | Agent | Reopen the matrix for mandatory interactive human review before Planning |
