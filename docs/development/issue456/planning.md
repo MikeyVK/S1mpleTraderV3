@@ -3,7 +3,7 @@
 # Compact Actionable Tool Summaries — Planning
 
 **Status:** PRELIMINARY  
-**Version:** 1.2  
+**Version:** 1.3  
 **Last Updated:** 2026-08-21
 
 ---
@@ -20,9 +20,9 @@ Convert the approved presentation design into dependency-ordered implementation 
 
 ## Prerequisites
 
-1. [Approved Research v1.3](research.md)
-2. [Approved Design v1.2](design.md)
-3. [Approved 50-tool field audit v1.1](tool-presentation-field-audit.md)
+1. [Approved Research v1.6](research.md)
+2. [Approved Design v1.5](design.md)
+3. [Approved 50-tool field audit v1.3](tool-presentation-field-audit.md)
 4. [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)
 5. [Documentation Standard](../../coding_standards/DOCUMENTATION_STANDARD.md)
 
@@ -30,7 +30,7 @@ Convert the approved presentation design into dependency-ordered implementation 
 
 ## Summary
 
-Five coherent cycles establish validated configuration with exact key parity, generic collection presentation, UTF-8-safe limiting, end-to-end rollout of the approved targets for all 50 tool templates, and mechanical removal of obsolete documentation tests. Cycles 1–4 change durable behavior and use RED → GREEN → REFACTOR. Cycle 5 is test maintenance and deliberately creates no artificial RED test.
+Six coherent cycles establish validated configuration with exact key parity, generic collection presentation, UTF-8-safe limiting, structured DTO/service boundaries, end-to-end rollout of the approved targets for all 50 tool templates, and mechanical removal of obsolete documentation tests. Cycles 1–5 change durable behavior and use RED → GREEN → REFACTOR. Cycle 6 is test maintenance and deliberately creates no artificial RED test.
 
 The cycles preserve the Approved Strategy: complete DTOs and resources remain unchanged, presentation stays configuration-driven, registered tools and presentation keys match exactly, every field is intentionally inline or cache-only, DTO order is retained, and the only universal text limit is 8,000 UTF-8 bytes.
 
@@ -41,8 +41,9 @@ The cycles preserve the Approved Strategy: complete DTOs and resources remain un
 | 1. Presentation configuration and alignment | Approved Design | Typed policy consumed by all later cycles |
 | 2. Generic sequence and collection presentation | Cycle 1 | Reusable bounded projection |
 | 3. UTF-8 text budget enforcement | Cycles 1–2 | Safe final-response boundary |
-| 4. TextPresenter integration and tool rollout | Cycles 1–3 | Complete feature behavior |
-| 5. Obsolete documentation-test removal | Cycle 4 | Stable branch baseline for Validation |
+| 4. Structured DTO presentation refactor | Cycles 1–3 | Presentation-agnostic workflow state, SafeEdit issues, and pytest duration |
+| 5. TextPresenter integration and complete tool rollout | Cycle 4 | Complete feature behavior and clean-break field removal |
+| 6. Obsolete documentation-test removal | Cycle 5 | Stable branch baseline for Validation |
 
 Do not begin a cycle while a dependency has unresolved focused tests, file-scoped gates, or stop conditions.
 
@@ -99,7 +100,7 @@ Exit only when valid configuration loads, registered public tools and presentati
 - Focused public-contract tests under tests/mcp_server/unit/presenters
 - Configuration models from Cycle 1
 
-TextPresenter orchestration and the thirteen production tool declarations remain excluded until Cycle 4.
+TextPresenter orchestration and production tool declarations remain excluded until Cycle 5.
 
 ### Deliverables
 
@@ -136,7 +137,7 @@ Exit only when order, limits, omission counts, nested association, and label for
 - Focused public-contract tests under tests/mcp_server/unit/presenters
 - Global budget and notice configuration from Cycle 1
 
-TextPresenter wiring remains excluded until Cycle 4.
+TextPresenter wiring remains excluded until Cycle 5.
 
 ### Deliverables
 
@@ -160,11 +161,53 @@ The hard stop-go invariant is len(result.encode("utf-8")) <= configured budget f
 
 ---
 
-## Cycle 4 — TextPresenter Integration and Tool Rollout
+## Cycle 4 — Structured DTO Presentation Refactor
+
+**Mode:** Durable behavior and architecture change; RED → GREEN → REFACTOR required.
+
+**Goal:** Establish structured workflow-state, SafeEdit-validation, and pytest-duration contracts before presentation templates consume them.
+
+### Scope and Seams
+
+- [Tool output DTOs](../../../mcp_server/schemas/tool_outputs.py)
+- [GetWorkContextTool](../../../mcp_server/tools/discovery_tools.py)
+- [ValidationService](../../../mcp_server/validation/validation_service.py)
+- [ArtifactManager](../../../mcp_server/managers/artifact_manager.py)
+- [SafeEditTool](../../../mcp_server/tools/safe_edit_tool.py)
+- [PytestRunner](../../../mcp_server/managers/pytest_runner.py)
+- [RunTestsTool](../../../mcp_server/tools/test_tools.py)
+- focused public-contract tests for each boundary
+
+Presentation wording and the complete YAML rollout remain in Cycle 5. Legacy duplicate fields may exist only as an unshipped intermediate while their structured replacements are established; Cycle 5 removes them atomically with template migration.
+
+### Deliverables
+
+| ID | Deliverable |
+|---|---|
+| C_DTO.1 | `WorkflowStateStatus` represents available, missing, unreadable, and invalid-phase states; GetWorkContextTool emits enum/supporting data and no warning/recovery prose. |
+| C_DTO.2 | Frozen `ValidationIssueDTO` records preserve message, severity, line, column, and code through ValidationService, ArtifactManager, and SafeEditOutput. |
+| C_DTO.3 | RunTestsOutput exposes numeric `duration_seconds`; PytestRunner parses duration without producing presentation wording. |
+| C_DTO.4 | Public-contract tests cover every enum path, structured validation propagation, absent locations/codes, parsed/missing duration, and immutable DTO behavior. |
+| C_DTO.5 | No new tool/manager/service branch produces user-facing labels, layout, warnings, or recovery prose. |
+
+### Test and Gate Evidence
+
+- RED: add focused public-behavior tests for workflow-state enum outcomes, structured validation issues across both consumers, and numeric pytest duration.
+- GREEN: run discovery-tool, workflow-status, ValidationService, ArtifactManager, SafeEdit, PytestRunner, and RunTests focused scopes.
+- REFACTOR: rerun affected focused tests and file-scoped gates for every changed production and test file.
+- Do not change presentation wording or run the workspace-wide suite in this cycle.
+
+### Exit and Stop Conditions
+
+Exit only when structured data reaches each tool DTO without human-facing composition and every affected public contract has durable tests. Stop if the refactor requires deleting diagnostic evidence, changing tool inputs, or altering success/error semantics beyond the Approved Strategy.
+
+---
+
+## Cycle 5 — TextPresenter Integration and Complete Tool Rollout
 
 **Mode:** Durable behavior change; RED → GREEN → REFACTOR required.
 
-**Goal:** Compose the generic services in TextPresenter and atomically implement the approved field-level presentation target for all 50 registered tools without changing DTO or resource contracts.
+**Goal:** Compose the generic services in TextPresenter, atomically remove legacy presentation fields, and implement the approved field-level target for all 50 registered tools using Cycle 4's structured DTO contracts without changing resource contracts.
 
 ### Scope and Seams
 
@@ -191,21 +234,23 @@ The hard stop-go invariant is len(result.encode("utf-8")) <= configured budget f
 | C_INTEGRATION.8 | Every one of the 50 registered tool templates is implemented or explicitly confirmed against the approved field-audit inline/cache-only target. |
 | C_INTEGRATION.9 | Structural evidence proves every tool-specific DTO field is classified inline or cache-only and every cache-only choice matches an approved rationale category. |
 | C_INTEGRATION.10 | Bundled `presentation.yaml` has exact bidirectional parity with the runtime public-tool registry; missing, obsolete, or duplicate identities fail startup. |
+| C_INTEGRATION.11 | All seven duplicate presentation fields and `RunTestsOutput.summary_line` are absent from DTOs, producers, templates, and tests with no compatibility aliases or dual writes. |
+| C_INTEGRATION.12 | get_work_context enum warnings, SafeEdit structured issues, and run_tests numeric duration are rendered exclusively through declarative configuration and remain complete in cache. |
 
 ### Test and Gate Evidence
 
-- RED: adapt durable presenter/integration tests for block order, labels, nested plan, collection matrix, scalar expansions, semantic outcomes, verbose-field exclusion, byte cap, cache preservation, registered/config parity, and under/over-budget behavior of a template intentionally retained by the approved audit.
+- RED: adapt durable presenter/integration tests for block order, labels, nested plan, enum-case warnings, structured SafeEdit findings, numeric test duration, collection matrix, scalar expansions, semantic outcomes, removed-field absence, verbose-field exclusion, byte cap, cache preservation, registered/config parity, and under/over-budget behavior of a template intentionally retained by the approved audit.
 - GREEN: run [test_presenter.py](../../../tests/mcp_server/unit/test_presenter.py), the affected server test scope, and [test_pipeline_e2e.py](../../../tests/mcp_server/integration/test_pipeline_e2e.py), including the unchanged-tool under/over-budget compatibility case.
 - REFACTOR: rerun affected tests and file-scoped gates for every changed Python source and test file.
 - Use structural matrices for all 50 field targets and for the thirteen collection declarations; do not create 50 wording snapshots.
 
 ### Exit and Stop Conditions
 
-Exit only when startup alignment accepts exact 50-tool parity, every field-audit row is closed, representative output is actionable and bounded, cache publication is unchanged, one intentionally retained compact template is byte-for-byte stable below the ceiling and limiter-only different above it, and source inspection finds no tool-name dispatch. Stop if any field target lacks an inline/cache-only decision or integration requires DTO, cache, transport, or Approved Strategy changes.
+Exit only when startup alignment accepts exact 50-tool parity, every field-audit row is closed, all approved legacy fields are absent, structured warnings/issues/duration are actionable and bounded, cache publication reflects the approved DTO clean breaks, one intentionally retained compact template is byte-for-byte stable below the ceiling and limiter-only different above it, and source inspection finds no tool-name dispatch. Stop if any field target lacks an inline/cache-only decision or integration requires DTO, cache, transport, or Approved Strategy changes.
 
 ---
 
-## Cycle 5 — Obsolete Documentation-Test Removal
+## Cycle 6 — Obsolete Documentation-Test Removal
 
 **Mode:** Mechanical test maintenance; no artificial RED.
 
@@ -257,7 +302,7 @@ Documentation work must remain a current-state description and must not create h
 | VAL_FOCUSED.1 | Reconfirm focused presenter, server, pipeline, config, formatter, renderer, and limiter tests after final implementation changes. |
 | VAL_FULL.1 | Run one workspace-wide test suite and record exact totals. |
 | VAL_GATES.1 | Run branch-wide quality gates once and inspect the cached structured result. |
-| VAL_BEHAVIOR.1 | Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, exact 50-tool parity, full field-audit closure, retained-template compatibility, and unchanged cached DTOs. |
+| VAL_BEHAVIOR.1 | Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, enum warnings, structured SafeEdit issues, numeric test duration, removed-field absence, semantic outcomes, exact 50-tool parity, full field-audit closure, retained-template compatibility, and approved cached DTO contracts. |
 | VAL_DEFERRED.1 | Carry the structured quality-gate findings gap into validation.md for Ready/PR triage. |
 | VAL_REPORT.1 | Publish the validation report with failures, residual risks, and deferred work. |
 
@@ -271,11 +316,12 @@ Structured GateFindingDTO research remains explicitly outside issue #456. Implem
 
 | Risk | Mitigation |
 |---|---|
-| Configuration and renderer evolve out of step | Cycle 1 establishes fail-fast field and exact key alignment; Cycle 4 validates the complete 50-tool matrix. |
+| Configuration and renderer evolve out of step | Cycle 1 establishes fail-fast field and exact key alignment; Cycle 5 validates the complete 50-tool matrix. |
+| DTO cleanup and template migration create an invalid intermediate | Cycle 4 establishes structured replacements; Cycle 5 removes legacy fields atomically with all template changes before any shippable boundary. |
 | Full optimization turns into indiscriminate DTO dumping | The approved audit requires an explicit actionability decision and cache-only rationale for every field under the shared budget. |
 | Text limiting corrupts Markdown or loses the cache reference | Cycle 3 isolates the limiter and treats URI retention as blocking. |
-| Implementation recreates per-tool branches | Cycle 4 requires configuration matrix evidence and source inspection. |
-| Test scope expands into prose snapshots | Capability-oriented tests plus the explicit Cycle 5 deletion boundary. |
+| Implementation recreates per-tool branches | Cycle 5 requires configuration matrix evidence and source inspection. |
+| Test scope expands into prose snapshots | Capability-oriented tests plus the explicit Cycle 6 deletion boundary. |
 | Quality-gate output remains less actionable than test failures | Preserve it as deferred work rather than widening the current DTO boundary. |
 
 ## Milestones
@@ -303,3 +349,4 @@ Structured GateFindingDTO research remains explicitly outside issue #456. Implem
 | 1.0 | 2026-08-20 | Agent | Initial five-cycle implementation, documentation, and validation plan |
 | 1.1 | 2026-08-20 | Agent | Add runtime-shape and unchanged-tool compatibility obligations; restore preliminary review status |
 | 1.2 | 2026-08-21 | Agent | Add exact registration/config parity and full 50-tool template optimization to Cycles 1 and 4 |
+| 1.3 | 2026-08-21 | Agent | Add structured DTO/service refactor Cycle 4 and shift complete rollout/cleanup to Cycles 5–6 |

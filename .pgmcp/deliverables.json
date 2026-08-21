@@ -19,7 +19,7 @@
       "created_at": "2026-08-20T15:40:10.649773+00:00",
       "planning_deliverables": {
         "cycles": {
-          "total": 5,
+          "total": 6,
           "cycles": [
             {
               "cycle_number": 1,
@@ -134,7 +134,34 @@
             },
             {
               "cycle_number": 4,
-              "name": "TextPresenter integration and tool rollout",
+              "name": "Structured DTO presentation refactor",
+              "deliverables": [
+                {
+                  "id": "C_DTO.1",
+                  "description": "WorkflowStateStatus represents available, missing, unreadable, and invalid-phase states; GetWorkContextTool emits enum/supporting data and no warning/recovery prose."
+                },
+                {
+                  "id": "C_DTO.2",
+                  "description": "Frozen ValidationIssueDTO records preserve message, severity, line, column, and code through ValidationService, ArtifactManager, and SafeEditOutput."
+                },
+                {
+                  "id": "C_DTO.3",
+                  "description": "RunTestsOutput exposes numeric duration_seconds; PytestRunner parses duration without producing presentation wording."
+                },
+                {
+                  "id": "C_DTO.4",
+                  "description": "Public-contract tests cover every enum path, structured validation propagation, absent locations/codes, parsed/missing duration, and immutable DTO behavior."
+                },
+                {
+                  "id": "C_DTO.5",
+                  "description": "No new tool, manager, or service branch produces user-facing labels, layout, warnings, or recovery prose."
+                }
+              ],
+              "exit_criteria": "Structured data reaches each tool DTO without human-facing composition and every affected public contract has durable tests; no diagnostic evidence, tool input, or success/error semantic is changed beyond the Approved Strategy."
+            },
+            {
+              "cycle_number": 5,
+              "name": "TextPresenter integration and complete tool rollout",
               "deliverables": [
                 {
                   "id": "C_INTEGRATION.1",
@@ -180,12 +207,20 @@
                 {
                   "id": "C_INTEGRATION.10",
                   "description": "Bundled presentation.yaml has exact bidirectional parity with the runtime public-tool registry; missing, obsolete, or duplicate identities fail startup."
+                },
+                {
+                  "id": "C_INTEGRATION.11",
+                  "description": "All seven duplicate presentation fields and RunTestsOutput.summary_line are absent from DTOs, producers, templates, and tests with no compatibility aliases or dual writes."
+                },
+                {
+                  "id": "C_INTEGRATION.12",
+                  "description": "get_work_context enum warnings, SafeEdit structured issues, and run_tests numeric duration are rendered exclusively through declarative configuration and remain complete in cache."
                 }
               ],
-              "exit_criteria": "Startup accepts exact 50-tool parity; every approved field-audit row is closed; output is actionable and bounded; cache contracts remain unchanged; retained compact templates are compatible below budget; no tool-name dispatch."
+              "exit_criteria": "Startup accepts exact 50-tool parity; every approved field-audit row is closed; all approved legacy fields are absent; structured warnings, issues, and duration are actionable and bounded; cache publication reflects the approved DTO clean breaks; retained compact templates are compatible below budget; no tool-name dispatch."
             },
             {
-              "cycle_number": 5,
+              "cycle_number": 6,
               "name": "Obsolete documentation-test removal",
               "deliverables": [
                 {
@@ -221,7 +256,7 @@
             },
             {
               "id": "VAL_BEHAVIOR.1",
-              "description": "Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, exact 50-tool parity, full field-audit closure, retained-template compatibility, and unchanged cached DTOs."
+              "description": "Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, enum warnings, structured SafeEdit issues, numeric test duration, removed-field absence, semantic outcomes, exact 50-tool parity, full field-audit closure, retained-template compatibility, and approved cached DTO contracts."
             },
             {
               "id": "VAL_DEFERRED.1",
