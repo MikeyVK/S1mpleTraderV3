@@ -4,8 +4,8 @@
   "issue_number": 456,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 8,
-  "last_cycle": 7,
+  "current_cycle": 5,
+  "last_cycle": 8,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -71,6 +71,18 @@
       "name": "Obsolete documentation-test removal",
       "forced": false,
       "entered": "2026-08-21T23:13:40.992477+00:00"
+    },
+    {
+      "cycle_number": 5,
+      "name": "TextPresenter composition",
+      "entered": "2026-08-21T23:18:56.519313+00:00",
+      "forced": true,
+      "skip_reason": "Validation exposed a TextPresenter composition regression on generic error DTOs; reopen the owning composition cycle before updating dependent tests.",
+      "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
+      "skipped_cycles": [
+        6,
+        7
+      ]
     }
   ],
   "required_phases": [
@@ -83,7 +95,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Independent QA exposed a design-blocking ambiguity in exact tool/presentation parity for supported tokenless deployments. Reopen Research to record the human-approved catalog-parity strategy before Design is corrected.",
+  "skip_reason": "Validation exposed branch-caused presenter error-path regressions and stale tests; return to Implementation for focused repair before rerunning Validation.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -207,8 +219,24 @@
       "human_approval_message": "User approved independent execution through Implementation and Validation, stopping before Documentation unless blocked.",
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-21T23:14:26.668343+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "validation",
+      "to_phase": "implementation",
+      "timestamp": "2026-08-21T23:18:35.994833+00:00",
+      "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
+      "forced": true,
+      "skip_reason": "Validation exposed branch-caused presenter error-path regressions and stale tests; return to Implementation for focused repair before rerunning Validation."
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "green"
+  "current_sub_phase": "red"
 }
