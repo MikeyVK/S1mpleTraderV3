@@ -206,10 +206,7 @@ class TestTextPresenterComposition:
         )
         schema = {
             "type": "object",
-            "properties": {
-                f"field_{index}": {"type": "string"}
-                for index in range(100)
-            },
+            "properties": {f"field_{index}": {"type": "string"} for index in range(100)},
         }
         data = ValidationErrorOutput(
             error_message="x" * 1_000,

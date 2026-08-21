@@ -50,6 +50,15 @@ class DummyOutput(BaseModel):
     result: str
 
 
+def _presentation_formatting() -> dict[str, str]:
+    return {
+        "inline_sequence_omission_template": "… {omitted_count} more",
+        "collection_omission_template": "- … {omitted_count} more {field}",
+        "truncation_notice": "Output truncated.",
+        "cache_unavailable_truncation_notice": "Output unavailable.",
+    }
+
+
 class DummyCoreTool(ICoreTool[DummyInput, DummyOutput]):
     @property
     def name(self) -> str:
@@ -96,12 +105,13 @@ class TestPipelineE2E:
         server.response_cache_manager = cache_manager
         config_data = {
             "global": {
+                "formatting": _presentation_formatting(),
                 "next_instruction_texts": {
                     "uri_reference": (
                         "*(Full details available in the structured JSON payload. "
                         "View resource: pgmcp://cache/runs/{run_id})*"
                     )
-                }
+                },
             },
             "tools": {
                 "dummy_core_tool": {
@@ -157,12 +167,13 @@ class TestPipelineE2E:
         server.response_cache_manager = cache_manager
         config_data = {
             "global": {
+                "formatting": _presentation_formatting(),
                 "next_instruction_texts": {
                     "uri_reference": (
                         "*(Full details available in the structured JSON payload. "
                         "View resource: pgmcp://cache/runs/{run_id})*"
                     )
-                }
+                },
             },
             "tools": {
                 "dummy_core_tool": {
@@ -214,6 +225,7 @@ class TestPipelineE2E:
         server.response_cache_manager = cache_manager
         config_data = {
             "global": {
+                "formatting": _presentation_formatting(),
                 "default_failure_template": "Failure: {error_message}",
                 "emojis": {"failure": "❌"},
                 "failures": {"dirty_workdir": "Branch {branch} is dirty!"},

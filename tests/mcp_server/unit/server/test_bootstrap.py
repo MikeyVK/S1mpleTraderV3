@@ -455,7 +455,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
-            patch("mcp_server.bootstrap.validate_presentation_alignment"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment") as mock_alignment,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -465,6 +465,11 @@ class TestServerBootstrapperToolsAndResources:
             assert "create_issue" in tool_names
             assert "get_pr" not in tool_names
             assert "git_status" in tool_names
+
+            supported_contracts = mock_alignment.call_args.args[1]
+            supported_names = {contract.name for contract in supported_contracts}
+            assert "get_pr" in supported_names
+            assert tool_names < supported_names
 
     def test_supported_inactive_tools_keep_github_adapter_lazy(self) -> None:
         """Constructing the complete tokenless catalog must not create an adapter."""

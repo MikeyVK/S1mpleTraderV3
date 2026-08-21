@@ -26,28 +26,21 @@ from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.interfaces.ipresenter import ITextPresenter
 from mcp_server.core.operation_notes import NoteEntry
 from mcp_server.presenters.collection_text_renderer import (
+    CollectionTextRenderer,
     classify_sequence_annotation,
 )
+from mcp_server.presenters.collection_text_renderer import (
+    SafeNoneFormatter as SequenceSafeNoneFormatter,
+)
+from mcp_server.presenters.text_budget_limiter import TextBudgetLimiter
 from mcp_server.schemas.cache_publication import CachePublication
 
 if TYPE_CHECKING:
     from mcp_server.bootstrap import SupportedToolContract
 
 
-class SafeNoneFormatter(string.Formatter):
-    """Subclass of string.Formatter that formats None values without errors."""
-
-    def __init__(self, none_value: str = "-") -> None:
-        super().__init__()
-        self.none_value = none_value
-
-    def format_field(self, value: object, format_spec: str) -> str:
-        if value is None:
-            return self.none_value
-        try:
-            return str(super().format_field(value, format_spec))
-        except (ValueError, TypeError):
-            return str(value)
+class SafeNoneFormatter(SequenceSafeNoneFormatter):
+    """Compatibility name for the shared generic value formatter."""
 
 
 # Legacy note mapping removed
@@ -66,6 +59,8 @@ class TextPresenter(ITextPresenter):
         self,
         config_data: dict[str, Any] | None = None,
         config: PresentationConfig | None = None,
+        collection_renderer: CollectionTextRenderer | None = None,
+        budget_limiter: TextBudgetLimiter | None = None,
     ) -> None:
         """Initialize presenter with config data or PresentationConfig object."""
         if config is not None:
@@ -77,6 +72,13 @@ class TextPresenter(ITextPresenter):
 
         self.global_config = resolved.global_settings
         self.tools_config = resolved.tools
+        self._collection_renderer = collection_renderer or CollectionTextRenderer(
+            self.global_config.formatting
+        )
+        self._budget_limiter = budget_limiter or TextBudgetLimiter(
+            max_text_response_bytes=self.global_config.max_text_response_bytes,
+            formatting=self.global_config.formatting,
+        )
 
     def get_next_instruction_texts(self) -> dict[str, str]:
         """Get the next instruction texts lookup dictionary."""
@@ -99,6 +101,41 @@ class TextPresenter(ITextPresenter):
     def get_none_value(self) -> str:
         """Get the placeholder string for None values."""
         return self.global_config.formatting.none_value
+
+    def _format_data_template(
+        self,
+        template: str,
+        data: dict[str, Any],
+        *,
+        max_items: int | None,
+        run_id: str | None = None,
+    ) -> str:
+        formatter = SafeNoneFormatter(
+            self.get_none_value(),
+            formatting=self.global_config.formatting,
+            max_items=max_items,
+        )
+        placeholders = [
+            field_name.split(".")[0].split("[")[0]
+            for _, field_name, _, _ in formatter.parse(template)
+            if field_name is not None
+        ]
+        params = data.get("params", {}) or {}
+        values: dict[str, object] = {}
+        for placeholder in placeholders:
+            if placeholder == "run_id" and run_id is not None:
+                values[placeholder] = run_id
+            elif placeholder in data:
+                values[placeholder] = data[placeholder]
+            elif isinstance(params, dict) and placeholder in params:
+                values[placeholder] = params[placeholder]
+            elif placeholder == "error_message" and "message" in data:
+                values[placeholder] = data["message"]
+            elif placeholder == "message" and "error_message" in data:
+                values[placeholder] = data["error_message"]
+            else:
+                values[placeholder] = None
+        return formatter.format(template, **values)
 
     def present_text(
         self,
@@ -182,7 +219,11 @@ class TextPresenter(ITextPresenter):
                 # Parse all placeholders in the template
                 placeholders = []
                 none_val = self.get_none_value()
-                formatter = SafeNoneFormatter(none_val)
+                formatter = SafeNoneFormatter(
+                    none_val,
+                    formatting=self.global_config.formatting,
+                    max_items=tool_cfg.max_items if tool_cfg else None,
+                )
                 for _, field_name, _, _ in formatter.parse(template):
                     if field_name is not None:
                         placeholders.append(field_name.split(".")[0].split("[")[0])
@@ -217,6 +258,32 @@ class TextPresenter(ITextPresenter):
         if emoji:
             text = f"{emoji} {text}"
 
+        if tool_cfg is not None:
+            for enum_case in tool_cfg.enum_cases:
+                raw_value = data_dict.get(enum_case.field)
+                serialized_value = (
+                    str(raw_value.value) if isinstance(raw_value, Enum) else str(raw_value)
+                )
+                enum_template = enum_case.cases.get(serialized_value)
+                if enum_template is not None:
+                    enum_text = self._format_data_template(
+                        enum_template,
+                        data_dict,
+                        max_items=tool_cfg.max_items,
+                    )
+                    text = f"{text}\n\n{enum_text}"
+
+            if tool_cfg.collections:
+                if tool_cfg.max_items is None:
+                    raise ConfigError("Configured collections require max_items")
+                collection_text = self._collection_renderer.render(
+                    data_dict,
+                    tool_cfg.collections,
+                    tool_cfg.max_items,
+                )
+                if collection_text:
+                    text = f"{text}\n\n{collection_text}"
+
         # 6. Resolve and append next instructions
         if resolved_success and next_instructions:
             instruction_texts = self.get_next_instruction_texts()
@@ -227,7 +294,11 @@ class TextPresenter(ITextPresenter):
                     try:
                         placeholders = []
                         none_val = self.get_none_value()
-                        formatter = SafeNoneFormatter(none_val)
+                        formatter = SafeNoneFormatter(
+                            none_val,
+                            formatting=self.global_config.formatting,
+                            max_items=tool_cfg.max_items if tool_cfg else None,
+                        )
                         for _, field_name, _, _ in formatter.parse(raw_text):
                             if field_name is not None:
                                 placeholders.append(field_name.split(".")[0].split("[")[0])
@@ -250,37 +321,36 @@ class TextPresenter(ITextPresenter):
             if notes_text:
                 text = f"{text}\n\n{notes_text}"
 
-        # Check if cache URI needs to be appended (moved from server.py)
-        if placeholder_run_id and "pgmcp://cache/runs/" not in text:
-            uri_ref_tmpl = self.get_next_instruction_texts().get("uri_reference")
-            if uri_ref_tmpl:
-                try:
-                    none_val = self.get_none_value()
-                    formatter = SafeNoneFormatter(none_val)
-                    uri_text = formatter.format(uri_ref_tmpl, run_id=placeholder_run_id)
-                except Exception:
-                    uri_text = uri_ref_tmpl.format(run_id=placeholder_run_id)
-            else:
-                uri_text = (
-                    "*(Full details available in the structured JSON payload. "
-                    f"View resource: pgmcp://cache/runs/{placeholder_run_id})*"
-                )
-            text = f"{text}\n\n{uri_text}"
-
         # 8. Fallback when cache publication failed
         if should_trigger_fallback:
             warning_note = self.get_next_instruction_texts().get(
                 "cache_publication_failed",
                 "*(Cache publication failed. Full details dumped inline)*",
             )
-            # Strip traceback from ExecutionErrorOutput DTO to avoid leaking secrets
             json_dict = dict(data_dict)
-            if "traceback" in json_dict:
-                json_dict.pop("traceback", None)
+            json_dict.pop("traceback", None)
             json_str = json.dumps(json_dict, indent=2)
             text = f"{text}\n\n{warning_note}\n```json\n{json_str}\n```"
 
-        return text
+        cache_reference = None
+        if placeholder_run_id:
+            uri_template = self.get_next_instruction_texts().get("uri_reference")
+            if uri_template:
+                cache_reference = self._format_data_template(
+                    uri_template,
+                    data_dict,
+                    max_items=tool_cfg.max_items if tool_cfg else None,
+                    run_id=placeholder_run_id,
+                )
+            else:
+                cache_reference = (
+                    "*(Full details available in the structured JSON payload. "
+                    f"View resource: pgmcp://cache/runs/{placeholder_run_id})*"
+                )
+            if cache_reference not in text:
+                text = f"{text}\n\n{cache_reference}"
+
+        return self._budget_limiter.limit(text, cache_reference)
 
     present = present_text
 

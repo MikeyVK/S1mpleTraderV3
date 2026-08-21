@@ -80,7 +80,9 @@ from mcp_server.managers.workflow_gate_runner import WorkflowGateRunner
 from mcp_server.managers.workflow_state_mutator import WorkflowStateMutator
 from mcp_server.managers.workflow_status_resolver import WorkflowStatusResolver
 from mcp_server.managers.workspace_version_validator import WorkspaceVersionValidator
+from mcp_server.presenters.collection_text_renderer import CollectionTextRenderer
 from mcp_server.presenters.response_presenter import ResponsePresenter
+from mcp_server.presenters.text_budget_limiter import TextBudgetLimiter
 from mcp_server.presenters.text_presenter import (
     TextPresenter,
     validate_presentation_alignment,
@@ -365,7 +367,19 @@ class ServerBootstrapper:
         tool_assembly = self._build_tool_assembly(configs, managers)
         resources = self._build_resources(configs, managers)
 
-        text_presenter = TextPresenter(config=configs.presentation_config)
+        presentation_config = configs.presentation_config
+        text_presenter = TextPresenter(
+            config=presentation_config,
+            collection_renderer=CollectionTextRenderer(
+                presentation_config.global_settings.formatting
+            ),
+            budget_limiter=TextBudgetLimiter(
+                max_text_response_bytes=(
+                    presentation_config.global_settings.max_text_response_bytes
+                ),
+                formatting=presentation_config.global_settings.formatting,
+            ),
+        )
         validate_presentation_alignment(
             text_presenter,
             tool_assembly.supported_contracts,

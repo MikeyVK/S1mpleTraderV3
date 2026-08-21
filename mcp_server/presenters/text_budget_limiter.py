@@ -41,6 +41,10 @@ class TextBudgetLimiter:
         if self._byte_length(body) <= self._max_bytes:
             return body
 
+        source_body = body
+        if cache_reference is not None:
+            source_body = source_body.replace(cache_reference, "").rstrip()
+
         tail = self._mandatory_tail(cache_reference)
         tail_bytes = self._byte_length(tail)
         if tail_bytes > self._max_bytes:
@@ -51,9 +55,9 @@ class TextBudgetLimiter:
             self._max_bytes - tail_bytes - separator_bytes,
             0,
         )
-        prefix = self._select_readable_prefix(body, available_body_bytes)
+        prefix = self._select_readable_prefix(source_body, available_body_bytes)
         prefix = self._close_intersected_fence(
-            body,
+            source_body,
             prefix,
             available_body_bytes,
         )
