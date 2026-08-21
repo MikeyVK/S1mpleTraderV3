@@ -4,8 +4,8 @@
   "issue_number": 456,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 8,
-  "last_cycle": 7,
+  "current_cycle": 6,
+  "last_cycle": 8,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -48,6 +48,17 @@
       "name": "Obsolete documentation-test removal",
       "forced": false,
       "entered": "2026-08-21T23:05:53.571352+00:00"
+    },
+    {
+      "cycle_number": 6,
+      "name": "Atomic structured DTO and dependent-template migration",
+      "entered": "2026-08-21T23:10:12.612880+00:00",
+      "forced": true,
+      "skip_reason": "Independent implementation preflight found two legacy ValidationService methods that still collapse issues to presentation strings; reopen the structured-boundary cycle for a focused correction.",
+      "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
+      "skipped_cycles": [
+        7
+      ]
     }
   ],
   "required_phases": [
@@ -187,5 +198,5 @@
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "green"
+  "current_sub_phase": "red"
 }
