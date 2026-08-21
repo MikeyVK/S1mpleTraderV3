@@ -4,8 +4,8 @@
   "issue_number": 456,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 5,
-  "last_cycle": 8,
+  "current_cycle": 8,
+  "last_cycle": 7,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -113,6 +113,24 @@
         6,
         7
       ]
+    },
+    {
+      "cycle_number": 6,
+      "name": "Atomic structured DTO and dependent-template migration",
+      "forced": false,
+      "entered": "2026-08-21T23:37:58.958658+00:00"
+    },
+    {
+      "cycle_number": 7,
+      "name": "Complete 50-tool projection rollout",
+      "forced": false,
+      "entered": "2026-08-21T23:38:11.218257+00:00"
+    },
+    {
+      "cycle_number": 8,
+      "name": "Obsolete documentation-test removal",
+      "forced": false,
+      "entered": "2026-08-21T23:38:25.465777+00:00"
     }
   ],
   "required_phases": [
