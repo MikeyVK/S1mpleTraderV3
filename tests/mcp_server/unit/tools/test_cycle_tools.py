@@ -1,5 +1,3 @@
-from tests.mcp_server.test_support import get_default_server_root
-
 # pyright: reportMissingImports=false
 # tests\mcp_server\unit\tools\test_cycle_tools.py
 # template=unit_test version=3d15d309 created=2026-03-13T11:30Z updated=
@@ -22,23 +20,24 @@ from pydantic import BaseModel
 from mcp_server.bootstrap import ServerBootstrapper, TemplateRegistry
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.operation_notes import NoteContext
+from mcp_server.core.tool_factory import ToolFactory
 from mcp_server.tools.cycle_tools import (
     ForceCycleTransitionInput,
     ForceCycleTransitionTool,
     TransitionCycleInput,
     TransitionCycleTool,
 )
-
-TRANSITION_ADVISORY_NOTE = (
-    "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call "
-    "to load the current phase context for this branch."
-)
-from mcp_server.core.tool_factory import ToolFactory
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     make_git_manager,
     make_phase_state_engine,
     make_project_manager,
     make_test_server,
+)
+
+TRANSITION_ADVISORY_NOTE = (
+    "🚀 REQUIRED NEXT STEP: Call get_work_context now before any other tool call "
+    "to load the current phase context for this branch."
 )
 
 
@@ -360,7 +359,9 @@ class TestCycleTools:
                 )
                 response = await handler(req)
 
-        assert "Transitioned to Cycle 2/2 (One)" in response.root.content[0].text
+        assert "Force-transitioned from Cycle - to Cycle 2/2 (One)" in (
+            response.root.content[0].text
+        )
         assert len(response.root.content) == 1
         assert TRANSITION_ADVISORY_NOTE in response.root.content[0].text
         assert any(

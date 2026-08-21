@@ -472,7 +472,7 @@ class TestServerToolRegistration:
                 )
                 response = await handler(req)
 
-        assert "Transitioned phase to" in response.root.content[0].text
+        assert "Transitioned 'research' → 'planning'" in response.root.content[0].text
         assert len(response.root.content) == 1
         assert TRANSITION_ADVISORY_NOTE in response.root.content[0].text
         assert any(
@@ -530,7 +530,7 @@ class TestServerToolRegistration:
                 )
                 response = await handler(req)
 
-        assert "Transitioned phase to" in response.root.content[0].text
+        assert "Force-transitioned 'research' → 'planning'" in response.root.content[0].text
         assert len(response.root.content) == 1
         assert TRANSITION_ADVISORY_NOTE in response.root.content[0].text
         assert any(
@@ -739,6 +739,14 @@ async def test_handle_call_tool_cache_error_intercept() -> None:
             "global": {
                 "default_failure_template": "Failure: {error_message}",
                 "emojis": {"failure": "❌"},
+                "formatting": {
+                    "none_value": "-",
+                    "inline_sequence_separator": ", ",
+                    "inline_sequence_omission_template": "… {omitted_count} more",
+                    "collection_omission_template": "- … {omitted_count} more {field}",
+                    "truncation_notice": "Output truncated.",
+                    "cache_unavailable_truncation_notice": "Output unavailable.",
+                },
             },
             "tools": {},
         }
