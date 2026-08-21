@@ -2,8 +2,8 @@
 <!-- template=generic_doc version=ad8498ef created=2026-08-21 updated=2026-08-21 -->
 # Tool Presentation Field Audit
 
-**Status:** REVIEW REQUIRED  
-**Version:** 1.2  
+**Status:** APPROVED  
+**Version:** 1.3  
 **Last Updated:** 2026-08-21
 
 ---
@@ -61,16 +61,16 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
 |---|---|---|---|
 | health_check | status, version, pid, platform, uptime_seconds | Scalar template, unchanged | reason |
-| restart_server | reason | Scalar template, unchanged | pid, timestamp, iso_time |
-| transition_cycle | to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count | Scalar template, unchanged | from_cycle, passing_gates[], skipped_gates[] |
-| force_cycle_transition | to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count | Scalar template, unchanged | from_cycle, passing_gates[], skipped_gates[], skip_reason, human_approval_message |
+| restart_server | reason, pid | Expanded scalar mutation confirmation | timestamp, iso_time |
+| transition_cycle | from_cycle, to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+| force_cycle_transition | from_cycle, to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty, skip_reason, human_approval_message | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
 | get_work_context | current_branch, workflow_name, issue_number, phase, sub_role_hint, parent_branch, current_cycle, sub_phase, phase_instructions, handover_template, workflow_state_status; valid_phases for invalid_phase | Scalar orientation plus enum-selected warning/recovery block; valid_phases use bounded inline scalar-sequence formatting | phase_source, phase_confidence |
-| initialize_project | issue_number, branch, initial_phase | Scalar template, unchanged | workflow_name, parent_branch, required_phases[], execution_mode, files_created[] |
+| initialize_project | issue_number, workflow_name, branch, initial_phase, parent_branch, required_phases[], execution_mode, files_created[] | Expanded scalar template plus bounded phase/file collections | — |
 | get_project_plan | issue_number, workflow_name, phases[].name, phases[].status, phases[].tasks[].id, phases[].tasks[].title, phases[].tasks[].status | Scalar header plus configured nested model collections | — |
-| save_planning_deliverables | issue_number, total_cycles, total_deliverables | Scalar template, unchanged | cycles[].cycle_number, cycles[].deliverables_count |
-| update_planning_deliverables | issue_number, total_cycles, total_deliverables | Scalar template, unchanged | cycles[].cycle_number, cycles[].deliverables_count |
-| transition_phase | to_phase, branch, passing_gates_count, skipped_gates_count | Scalar template, unchanged | from_phase, passing_gates[], skipped_gates[], skipped_gates_warning, passing_gates_info |
-| force_phase_transition | to_phase, branch, passing_gates_count, skipped_gates_count | Scalar template, unchanged | from_phase, passing_gates[], skipped_gates[], skipped_gates_warning, passing_gates_info, skip_reason, human_approval_message |
+| save_planning_deliverables | issue_number, total_cycles, total_deliverables, cycles[].cycle_number, cycles[].deliverables_count | Scalar summary plus bounded cycle collection | — |
+| update_planning_deliverables | issue_number, total_cycles, total_deliverables, cycles[].cycle_number, cycles[].deliverables_count | Scalar summary plus bounded cycle collection | — |
+| transition_phase | from_phase, to_phase, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+| force_phase_transition | from_phase, to_phase, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty, skip_reason, human_approval_message | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
 
 ## Git Tools
 
@@ -117,8 +117,8 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 | list_labels | total_labels, labels[].name, labels[].color, labels[].description | Scalar header plus bounded model collection | — |
 | create_label | label_name, color | Scalar template, unchanged | — |
 | delete_label | label_name | Scalar template, unchanged | — |
-| add_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | formatted_labels |
-| remove_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | formatted_labels |
+| add_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | — (`formatted_labels` removed) |
+| remove_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | — (`formatted_labels` removed) |
 | list_milestones | total_milestones, milestones[].number, milestones[].title, milestones[].state | Scalar header plus bounded model collection | — |
 | create_milestone | number, title, state | Expanded scalar mutation confirmation | — |
 | close_milestone | number, title, state | Expanded scalar mutation confirmation | — |
@@ -137,7 +137,7 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
 |---|---|---|---|
-| scaffold_artifact | Success: artifact_type, name, files_created[]. Validation failure: artifact_type, name, error_message, missing_fields[], provided_fields[]. Other failure: artifact_type, name, error_message. | Path-specific scalar template plus bounded structured collections | formatted_files_created, schema_info, validation_schema |
+| scaffold_artifact | Success: artifact_type, name, files_created[]. Validation failure: artifact_type, name, error_message, missing_fields[], provided_fields[]. Other failure: artifact_type, name, error_message. | Path-specific scalar template plus bounded structured collections | validation_schema (`formatted_files_created` and `schema_info` removed) |
 | scaffold_schema | artifact_type | Scalar locator; schema remains deliberately resource-only | schema_data |
 
 ### Batch 4 — Scaffolding Tools
@@ -153,17 +153,27 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
 |---|---|---|---|
-| auto_fix | gates_executed_count, gates_executed[], modified_files_count, modified_files[] | Scalar header plus two bounded scalar collections | formatted_modified_files |
+| auto_fix | gates_executed_count, gates_executed[], modified_files_count, modified_files[] | Scalar header plus two bounded scalar collections | — (`formatted_modified_files` removed) |
 | run_quality_gates | overall_pass, scope, file_count, gates[].name, gates[].passed, gates[].status, gates[].score | Outcome-neutral scalar header plus bounded model collection | gates[].details |
-| run_tests | passed_count, failed_count, skipped_count, errors_count, summary_line, failures[].test_id, failures[].location, failures[].short_reason | Scalar summary plus bounded failure collection | exit_code, failures[].traceback, failures[].is_collection_error, coverage_pct, lf_cache_was_empty, stderr |
-| safe_edit_file | path, passed, written, issues | Expanded scalar template | mode, diff, has_diff |
+| run_tests | exit_code, passed_count, failed_count, skipped_count, errors_count, duration_seconds, coverage_pct, failures[].test_id, failures[].location, failures[].short_reason, failures[].is_collection_error | Structured scalar summary plus bounded failure collection | failures[].traceback, lf_cache_was_empty, stderr (`summary_line` removed) |
+| safe_edit_file | path, mode, passed, written, has_diff, issues[].message, issues[].severity, issues[].line, issues[].column, issues[].code | Expanded scalar template plus bounded structured validation-issue collection | diff |
 | validate_template | passed, errors_count, errors[].severity, errors[].message | Outcome-neutral scalar header plus bounded model collection | — |
 
 ---
 
+### Batch 5 — Quality, Testing, and Editing Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- All five rows are approved as the implementation target.
+- Test presentation uses structured exit code/counts, numeric duration, coverage, and bounded failures; `summary_line` is removed.
+- SafeEdit preserves validation issues as structured records through service, manager, and tool DTO boundaries.
+- All seven proven duplicate presentation fields are removed in an approved clean break.
+- Diagnostic evidence such as tracebacks, stderr, raw output, short reasons, and gate details is retained according to the cache/inline matrix.
+
 ## Full-Optimization Decision
 
-The field audit disproves the earlier shorthand that the 32 compact templates have no additional cached data. They often do. All 50 rows are proposed implementation scope, but their inline/cache-only splits remain proposals until the interactive Design review closes.
+The field audit disproves the earlier shorthand that the 32 compact templates have no additional cached data. They often do. All 50 rows are approved implementation scope. Their inline/cache-only splits and the structured DTO clean breaks are binding after five completed interactive review batches.
 
 A cache-only classification is intentional only under one of these actionability rules:
 
@@ -219,3 +229,4 @@ The inventory was derived from:
 | 1.0 | 2026-08-21 | Agent | Complete 50-tool target presentation and cache-field audit |
 | 1.1 | 2026-08-21 | Agent | Approve the 50-tool implementation target and explicit cache-only rationale categories |
 | 1.2 | 2026-08-21 | Agent | Reopen the matrix for mandatory interactive human review before Planning |
+| 1.3 | 2026-08-21 | Agent | Close all five human review batches and approve structured DTO cleanup plus the complete 50-tool target |

@@ -2,8 +2,8 @@
 <!-- template=design version=5827e841 created=2026-08-20T19:53Z updated=2026-08-20 -->
 # Compact Actionable Tool Summaries — Design
 
-**Status:** IN REVIEW  
-**Version:** 1.4  
+**Status:** APPROVED  
+**Version:** 1.5  
 **Last Updated:** 2026-08-21
 
 ---
@@ -16,7 +16,7 @@ Define the configuration and presentation-layer contracts for bounded, actionabl
 
 **In Scope:** TextPresenter orchestration, recursive collection projection, UTF-8 byte limiting, presentation configuration validation, scalar template enrichment, and durable behavioral tests.
 
-**Out of Scope:** Tool execution semantics, DTO changes outside the explicitly approved `GetWorkContextOutput` workflow-state contract, cache payload changes beyond that DTO serialization, transport-wide resource limits, sorting/filtering, tool-name-specific renderer code, and unrelated documentation modernization.
+**Out of Scope:** Tool execution semantics, DTO changes outside the explicitly approved workflow-state, SafeEdit-validation, pytest-duration, and presentation-debt clean breaks; cache payload changes beyond those DTO serializations, transport-wide resource limits, sorting/filtering, tool-name-specific renderer code, and unrelated documentation modernization.
 
 ## Prerequisites
 
@@ -64,7 +64,7 @@ Current scalar-only presentation templates make routine tool results under-infor
 - PresentationConfig remains a frozen pure Pydantic value object loaded only by ConfigLoader.
 - Tests use public APIs only.
 - The existing ResponsePresenter and ITextPresenter external contracts remain unchanged.
-- `GetWorkContextOutput.invalid_phase_warning` is replaced by structured workflow-state status and supporting fields as the explicitly approved clean-break exception.
+- Approved clean breaks replace `GetWorkContextOutput.invalid_phase_warning`, SafeEdit string issues, pytest summary text, and seven duplicate presentation fields with structured contracts; no compatibility bridge is introduced.
 - Both obsolete documentation-test modules and their 62 cases are deleted during Implementation, without replacement by textual snapshot tests.
 
 ---
@@ -167,7 +167,47 @@ Status semantics:
 
 A successful query retains `success=true` for all four statuses. The enum describes the discovered workflow-state condition; it is not an execution failure. `phase_source` and `phase_confidence` remain in the complete DTO for compatibility and diagnostics but are cache-only once the enum is inline.
 
-### 3.3. Configuration Contracts
+### 3.3. Structured DTO Cleanup Contracts
+
+The following frozen contract replaces SafeEdit's formatted issue string:
+
+    class ValidationIssueDTO(BaseModel):
+        model_config = ConfigDict(frozen=True, extra="forbid")
+        message: str
+        severity: str
+        line: int | None = None
+        column: int | None = None
+        code: str | None = None
+
+    class SafeEditOutput(BaseToolOutput):
+        # Existing path/mode/result fields remain.
+        issues: tuple[ValidationIssueDTO, ...] = ()
+        # The former issues string is removed.
+
+`ValidationService` must preserve `ValidationIssue` records through its public validation result instead of collapsing them into presentation text. ArtifactManager and SafeEditTool consume the same structured result through public contracts. Presentation configuration selects bounded issue fields and owns labels/layout.
+
+The pytest result contract becomes:
+
+    class RunTestsOutput(BaseToolOutput):
+        # Existing exit code, counts, failures, coverage, and diagnostics remain.
+        duration_seconds: float | None = None
+        # summary_line is removed.
+
+`PytestRunner` parses duration as numeric data when the pytest summary exposes it. Missing duration stays `None`; tools do not synthesize human-facing fallback wording. The presenter renders exit code, counts, duration, coverage, and bounded failures.
+
+The following duplicate fields are removed atomically after their templates use structured data:
+
+- `AutoFixOutput.formatted_modified_files`;
+- `LabelOperationOutput.formatted_labels`;
+- `ScaffoldArtifactOutput.formatted_files_created`;
+- `PhaseTransitionOutput.skipped_gates_warning`;
+- `PhaseTransitionOutput.passing_gates_info`;
+- `ScaffoldArtifactOutput.schema_info`;
+- `GetWorkContextOutput.invalid_phase_warning`.
+
+No replacement compatibility properties, aliases, dual writes, or deprecated fields are introduced.
+
+### 3.4. Configuration Contracts
 
 The existing configuration version remains 1.0.0 because schema and bundled YAML move atomically and no external migration contract exists.
 
@@ -232,7 +272,7 @@ The recursive shape is intentionally minimal. It supports phases → tasks, but 
 
 SafeNoneFormatter remains the generic value-formatting boundary for both scalar templates and collection item templates. In addition to its existing None behavior, it formats only flat scalar sequences (for example list[str]) according to inline_sequence_separator, inline_sequence_omission_template, and the active tool's max_items. This yields labels such as bug, priority:high, … 2 more rather than Python repr output. It does not inspect field or tool names.
 
-### 3.4. Presentation Service Contracts
+### 3.5. Presentation Service Contracts
 
     class CollectionTextRenderer:
         def render(
@@ -282,7 +322,7 @@ TextPresenter retains its current public signature. Internally it produces seman
 
 The emoji remains part of the scalar body. Cache publication still happens before this flow in the server, so limiting text cannot mutate or reduce the cached DTO.
 
-### 3.5. Data and Control Flow
+### 3.6. Data and Control Flow
 
 ```mermaid
 flowchart LR
@@ -302,7 +342,7 @@ flowchart LR
 
 The embedded validation schema produced by ValidationResourcePresenter remains a separate PresentationResource and is not counted toward the TextPresenter ceiling.
 
-### 3.6. Interactive Projection Review Gate
+### 3.7. Interactive Projection Review Gate
 
 The DTO-to-chat projection is a human-facing product contract, not an implementation detail. Before this Design can return to APPROVED, the human owner and designer must review all 50 tools using [Tool Presentation Field Audit](tool-presentation-field-audit.md) as the worksheet.
 
@@ -316,7 +356,7 @@ For each tool, the review records:
 
 Review proceeds in bounded functional batches so decisions remain inspectable: server/workflow, Git, GitHub, scaffolding, and quality/testing/editing. A batch is closed only after explicit human confirmation. Design remains `IN REVIEW` while any tool lacks a disposition. Cycle 4 may not reinterpret, extend, or silently override the resulting matrix; new evidence must reopen Design.
 
-### 3.7. Complete Tool Configuration Matrix
+### 3.8. Complete Tool Configuration Matrix
 
 The proposed 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). It becomes authoritative only after all functional batches receive explicit human approval. Every row then becomes an implementation deliverable, including templates intentionally retained after confirming their compact output is optimal.
 
@@ -354,7 +394,7 @@ The semantic templates become outcome-neutral:
 
 scaffold_schema remains deliberately resource-oriented.
 
-### 3.8. Alignment and Failure Behavior
+### 3.9. Alignment and Failure Behavior
 
 `validate_presentation_alignment` remains the startup authority. It first compares the complete authoritative registered public-tool-name set with the configured tool-key set, then recursively validates every matched template and collection against that tool's `output_model`. Registration stays owned by `ServerBootstrapper`; the validator receives the assembled tool list and does not discover or construct tools itself.
 
@@ -386,11 +426,12 @@ scaffold_schema remains deliberately resource-oriented.
 
 No new persisted state, metrics store, migration task, or cache format is introduced. The visible truncation and omission notices are sufficient user-facing observability; complete evidence remains at the existing resource URI.
 
-### 3.9. Compatibility and Migration
+### 3.10. Compatibility and Migration
 
 This is an atomic configuration-and-presenter change:
 
-- Existing DTO fields, tool inputs, output_model declarations, cache publication, cache URI shape, and PresentationResource payloads do not change.
+- Tool inputs, output_model declarations, cache publication, cache URI shape, and PresentationResource payloads do not change.
+- The approved DTO clean breaks remove the enumerated presentation-debt fields, replace SafeEdit string issues with structured records, replace pytest `summary_line` with numeric duration, and add structured workflow-state status.
 - Tools without collection declarations retain their existing presentation behavior except for the global safety ceiling.
 - Existing success/failure scalar placeholders continue to work.
 - The two helper services are wired only in the presentation composition path.
@@ -407,6 +448,9 @@ Tests are organized around lasting public behavior, not around the wording of al
 |---|---|
 | PresentationConfig validation | Frozen recursive config, inline-sequence settings, and enum-case mappings load; invalid fields, enum keys, placeholders, max_items combinations, duplicates, and insufficient budget fail. |
 | GetWorkContextOutput workflow state | Available, missing, unreadable, and invalid-phase paths produce only structured enum/supporting data; no human-facing warning text originates in the tool. |
+| SafeEdit validation boundary | ValidationService, ArtifactManager, and SafeEdit preserve issue message/severity/location/code records; no layer preformats the collection for chat. |
+| RunTests duration boundary | Numeric duration parsing covers normal pytest summaries; absent duration remains None; output has no `summary_line`. |
+| Removed presentation fields | Schema/source inspection and DTO construction tests prove all seven duplicate fields are absent and structured replacements remain. |
 | Enum-case presentation | Available state adds no warning block; each abnormal state selects exactly its configured warning/recovery block; invalid phase renders bounded valid phases. |
 | SafeNoneFormatter public formatting contract | Ordered scalar-sequence joining, empty sequence, exact limit, omission count, multibyte values, and rejection through alignment for nested/model sequences. |
 | CollectionTextRenderer.render | Flat model lists, scalar lists, empty lists, order, per-list limit, omission count, and nested phases/tasks. |
@@ -448,8 +492,7 @@ Planning must keep configuration/schema, generic services, integration, tool dec
 
 ## Open Questions
 
-- The interactive projection review is open for all five functional batches and all 50 tools.
-- Planning may resume only after every audit row has an explicit human disposition and the resulting complete matrix is approved.
+None. All five functional batches and all 50 tool projections have explicit human approval. The structured DTO cleanup strategy is approved and Design is ready for Planning.
 
 ## Related Documentation
 
@@ -470,3 +513,4 @@ Planning must keep configuration/schema, generic services, integration, tool dec
 | 1.2 | 2026-08-21 | Agent | Add exact registration/config parity and make the approved 50-tool field audit the complete rollout contract |
 | 1.3 | 2026-08-21 | Agent | Reopen Design and require interactive human approval of every DTO-to-chat projection before Planning |
 | 1.4 | 2026-08-21 | Agent | Define structured workflow-state enum and declarative enum-case presentation with no tool-owned human text |
+| 1.5 | 2026-08-21 | Agent | Approve structured SafeEdit issues, numeric pytest duration, removal of duplicate DTO presentation fields, and all five review batches |

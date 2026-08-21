@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -93,6 +93,14 @@
       "human_approval_message": "User explicitly requested evaluating whether removal of human-facing/preformatted tool DTO fields is responsible and can be accepted as a refactor scope expansion under the Architecture Principles.",
       "forced": true,
       "skip_reason": "Reopen Research to evaluate removal of preformatted and human-facing output DTO fields as an explicit architecture-driven scope expansion, including compatibility and consumer impact before any clean break."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-21T15:31:15.321523+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,
