@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "planning",
+  "current_phase": "research",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Reopen Research to evaluate removal of preformatted and human-facing output DTO fields as an explicit architecture-driven scope expansion, including compatibility and consumer impact before any clean break.",
+  "skip_reason": "Independent QA exposed a design-blocking ambiguity in exact tool/presentation parity for supported tokenless deployments. Reopen Research to record the human-approved catalog-parity strategy before Design is corrected.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -109,6 +109,14 @@
       "human_approval_message": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "research",
+      "timestamp": "2026-08-21T19:22:20.871550+00:00",
+      "human_approval_message": "User explicitly requested that blocker 1 be processed from the Research phase and committed separately.",
+      "forced": true,
+      "skip_reason": "Independent QA exposed a design-blocking ambiguity in exact tool/presentation parity for supported tokenless deployments. Reopen Research to record the human-approved catalog-parity strategy before Design is corrected."
     }
   ],
   "reconstructed": false,
