@@ -41,6 +41,20 @@ Every listed output model inherits these fields; they are not repeated in each r
 
 ---
 
+## Interactive Review Decisions
+
+### Batch 1 — Server and Workflow Tools
+
+| Decision | Disposition | Rationale |
+|---|---|---|
+| `health_check.reason` remains cache-only for now. | APPROVED | It is normally `None`; the current presenter cannot conditionally omit a scalar label. A generic declarative optional-block capability is parked for cross-tool evaluation. |
+| Complete `passing_gates[]` remains cache-only; `passing_gates_count` stays inline. | APPROVED | Successful gate identities are diagnostic/audit detail, not routine next-action data. |
+| Bounded `skipped_gates[]` is inline when non-empty. | APPROVED | Skipped gates identify deliberately bypassed blockers and require attention; configured collection rendering already omits empty collections. |
+| `phase_source` remains cache-only. | APPROVED | Normal initialized state always reports `state.json`; the value is diagnostic provenance rather than action data. |
+| `phase_confidence` inline versus cache-only. | OPEN | Since issue #298, initialized status is always `high`; `unknown` occurs only when work context cannot load branch state. Human decision pending. |
+
+The batch remains open until every server/workflow row and the optional-block design question have an explicit disposition.
+
 ## Server and Workflow Tools
 
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
