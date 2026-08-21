@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "design",
+  "current_phase": "research",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Reopen Research because direct runtime evidence showed missing workflow state produces empty human-facing output, and the approved no-DTO-change strategy conflicts with the Architecture Principles requirement that tools emit structured state rather than human-facing warning text.",
+  "skip_reason": "Reopen Research to evaluate removal of preformatted and human-facing output DTO fields as an explicit architecture-driven scope expansion, including compatibility and consumer impact before any clean break.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -85,6 +85,14 @@
       "human_approval_message": null,
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "research",
+      "timestamp": "2026-08-21T15:23:34.897475+00:00",
+      "human_approval_message": "User explicitly requested evaluating whether removal of human-facing/preformatted tool DTO fields is responsible and can be accepted as a refactor scope expansion under the Architecture Principles.",
+      "forced": true,
+      "skip_reason": "Reopen Research to evaluate removal of preformatted and human-facing output DTO fields as an explicit architecture-driven scope expansion, including compatibility and consumer impact before any clean break."
     }
   ],
   "reconstructed": false,

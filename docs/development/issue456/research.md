@@ -2,8 +2,8 @@
 <!-- template=research version=8b7bb3ab created=2026-08-20T19:16Z updated=2026-08-20 -->
 # Compact Actionable Tool Summaries — Research
 
-**Status:** APPROVED  
-**Version:** 1.4  
+**Status:** IN REVIEW  
+**Version:** 1.5  
 **Last Updated:** 2026-08-21
 
 ---
@@ -195,6 +195,48 @@ The controlled missing-state probe temporarily removed `.pgmcp/state.json` and c
 
 ---
 
+## DTO Presentation-Debt Evaluation
+
+The completed tool review identified output fields that pre-format human-facing text inside production/tool code. Removal risk differs by whether equivalent structured data already exists.
+
+### Category A — removable structured duplicates
+
+| Field | DTO | Structured replacement | Known direct consumers |
+|---|---|---|---|
+| `formatted_modified_files` | `AutoFixOutput` | `modified_files[]` plus count | Current presentation template and focused AutoFix tests. |
+| `formatted_labels` | `LabelOperationOutput` | `labels[]` | Current add/remove-label templates. |
+| `formatted_files_created` | `ScaffoldArtifactOutput` | `files_created[]` | Current template plus two acceptance and two integration assertions. |
+| `skipped_gates_warning` | `PhaseTransitionOutput` | `skipped_gates[]` plus count | Current forced-transition behavior/tests. |
+| `passing_gates_info` | `PhaseTransitionOutput` | `passing_gates[]` plus count | Current forced-transition behavior/tests. |
+| `schema_info` | `ScaffoldArtifactOutput` | `missing_fields[]`, `provided_fields[]`, and `validation_schema` resource | Current scaffold failure template. |
+| `invalid_phase_warning` | `GetWorkContextOutput` | Approved `WorkflowStateStatus` plus `valid_phases[]` | Current discovery tests and active discovery reference. |
+
+These fields can be removed in one clean break after presentation templates switch to structured inputs. No supported immediate-decision data is lost. Tests asserting the legacy convenience strings must be adapted or removed in favor of structured observable behavior.
+
+### Category B — replacement required before removal
+
+| Field | Why direct removal is unsafe | Structured direction |
+|---|---|---|
+| `summary_line` | It contains parsed pytest outcome wording and duration; counts and exit code cover outcome but not duration. It has broad test-contract usage. | Add a numeric duration field if duration remains required; rely on exit code, counts, coverage, and failures for presentation. |
+| `SafeEditOutput.issues` | `ValidationService` currently collapses `ValidationIssue` records into one formatted string consumed by SafeEditTool and ArtifactManager. | Preserve structured validation issues through the service boundary and expose a frozen issue DTO collection. |
+
+Removing either Category B field without its structured replacement would reduce cached evidence and violate the actionability objective. Their refactors affect manager/service contracts beyond presentation.yaml and require separate planning slices.
+
+### Category C — retained diagnostic text
+
+`error_message`, failure short reasons, raw subprocess output, tracebacks, stderr, and opaque gate details are not convenience presentation fields. They carry diagnostic evidence or exception semantics. Issue #456 may keep them cache-only or project a bounded structured subset, but a blanket text-field deletion is not justified.
+
+### Strategy Options
+
+| Option | Cost | Architecture result | Risk | Status |
+|---|---|---|---|---|
+| Stop consuming fields but retain every DTO field | Small | Presentation improves, production DTO debt remains. | Dead compatibility fields persist indefinitely. | Viable but not preferred |
+| Remove Category A only | Moderate | Eliminates all proven duplicate presentation fields with existing structured equivalents. | Clean-break consumer/test updates required. | Recommended minimum |
+| Remove Category A and refactor Category B in issue #456 | Larger | Extends structured-data ownership through pytest and validation service boundaries. | Increases implementation and validation blast radius substantially. | Recommended only with explicit scope approval |
+| Delete all text-like fields | Very large | Superficially strict but conflates diagnostics with presentation. | Loses evidence and breaks exception/error contracts. | Rejected |
+
+The decision must specify Category A and Category B independently before Research can close.
+
 ## Approved Strategy
 
 Human approval for the original strategy was recorded on 2026-08-20. On 2026-08-21 the user explicitly reopened Research and approved both scope expansions: active registered-tool/config validation and complete optimization of all tool presentation templates during issue #456.
@@ -312,3 +354,4 @@ None at the strategy boundary. Exact configuration models and presenter interfac
 
 | 1.3 | 2026-08-21 | Agent | Reopen Research for exact registration/config parity and full optimization of all 50 presentation templates |
 | 1.4 | 2026-08-21 | Agent | Approve structured get_work_context state enum and move all warning/recovery text into presentation configuration |
+| 1.5 | 2026-08-21 | Agent | Inventory removable DTO presentation debt and separate structured duplicates from fields requiring upstream replacement |
