@@ -47,7 +47,7 @@ class TransitionPhaseInput(BaseModel):
 
     @field_validator("human_approval_message", mode="before")
     @classmethod
-    def reject_boolean_approval(cls, v: Any) -> Any:
+    def reject_boolean_approval(cls, v: object) -> object:
         if isinstance(v, bool):
             raise ValueError("human_approval_message cannot be a boolean")
         return v
@@ -75,7 +75,7 @@ class ForcePhaseTransitionInput(BaseModel):
 
     @field_validator("human_approval_message", mode="before")
     @classmethod
-    def reject_boolean_approval(cls, v: Any) -> Any:
+    def reject_boolean_approval(cls, v: object) -> object:
         if isinstance(v, bool):
             raise ValueError("human_approval_message cannot be a boolean")
         return v
@@ -273,21 +273,6 @@ class ForcePhaseTransitionTool(
             blocking = result.get("skipped_gates", [])
             passing = result.get("passing_gates", [])
 
-            skipped_gates_warning = ""
-            if blocking:
-                lines = [
-                    f"⚠️ ACTION REQUIRED: {len(blocking)} skipped gate(s) would have"
-                    " BLOCKED a normal transition:"
-                ]
-                for gate in blocking:
-                    lines.append(f"  - {gate}")
-                lines.append("  Verify or resolve before proceeding.")
-                skipped_gates_warning = "\n".join(lines) + "\n"
-
-            passing_gates_info = ""
-            if passing:
-                passing_gates_info = f"\nℹ️ Gates that would have passed: {', '.join(passing)}"
-
             return ForcePhaseTransitionOutput(
                 success=True,
                 branch=params.branch,
@@ -299,8 +284,6 @@ class ForcePhaseTransitionTool(
                 skipped_gates_count=len(blocking),
                 skip_reason=params.skip_reason,
                 human_approval_message=params.human_approval_message,
-                skipped_gates_warning=skipped_gates_warning,
-                passing_gates_info=passing_gates_info,
             )
         except StateMutationConflictError as e:
             context.produce(

@@ -3,9 +3,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, NamedTuple
 
+from pydantic import BaseModel, ConfigDict
 
-class ValidationIssue(NamedTuple):
-    """Represents a single validation issue."""
+
+class ValidationIssue(BaseModel):
+    """Canonical frozen record for one validation issue."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     message: str
     line: int | None = None
@@ -28,16 +32,7 @@ class ValidationResult(NamedTuple):
         return {
             "passed": self.passed,
             "score": self.score,
-            "issues": [
-                {
-                    "message": issue.message,
-                    "line": issue.line,
-                    "column": issue.column,
-                    "code": issue.code,
-                    "severity": issue.severity,
-                }
-                for issue in self.issues
-            ],
+            "issues": [issue.model_dump() for issue in self.issues],
             "agent_hint": self.agent_hint,
             "content_guidance": self.content_guidance,
         }

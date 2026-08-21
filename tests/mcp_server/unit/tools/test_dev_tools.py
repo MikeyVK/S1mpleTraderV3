@@ -23,7 +23,7 @@ async def test_run_tests_tool(tmp_path: Path) -> None:
     runner = FakePytestRunner(
         result=PytestResult(
             exit_code=0,
-            summary_line="2 passed in 0.10s",
+            duration_seconds=0.1,
             passed=2,
             failed=0,
             skipped=0,

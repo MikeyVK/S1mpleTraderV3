@@ -1,5 +1,3 @@
-from tests.mcp_server.test_support import get_default_server_root
-
 # tests/mcp_server/unit/tools/test_discovery_tools.py
 # pyright: reportPrivateUsage=false
 """
@@ -32,9 +30,11 @@ from mcp_server.core.exceptions import StateNotFoundError
 from mcp_server.core.interfaces import IContextLoadedWriter
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.state_repository import StateBranchMismatchError
+from mcp_server.schemas.tool_outputs import WorkflowStateStatus
 from mcp_server.state.workflow_status import WorkflowStatusDTO
 from mcp_server.tools.discovery_tools import GetWorkContextInput, GetWorkContextTool
 from tests.mcp_server.test_support import (
+    get_default_server_root,
     make_phase_state_engine,
     make_project_manager,
 )
@@ -256,6 +256,7 @@ class TestGetWorkContextTool:
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
         assert result.phase_confidence == "unknown"
+        assert result.workflow_state_status is WorkflowStateStatus.UNREADABLE
 
 
 class TestGetWorkContextTddCycleInfo:
@@ -844,6 +845,7 @@ class TestGetWorkContextSubRoleAndPhaseInstructions:
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
         assert result.sub_role_hint == "implementer"
+        assert result.workflow_state_status is WorkflowStateStatus.AVAILABLE
 
     @pytest.mark.asyncio
     async def test_get_work_context_returns_phase_instructions_for_feature_implementation(
@@ -872,7 +874,9 @@ class TestGetWorkContextSubRoleAndPhaseInstructions:
 
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
-        assert "No phase instructions available" in result.phase_instructions
+        assert result.phase_instructions == ""
+        assert result.workflow_state_status is WorkflowStateStatus.INVALID_PHASE
+        assert "research" in result.valid_phases
 
     @pytest.mark.asyncio
     async def test_get_work_context_returns_empty_string_when_workflow_unavailable(
@@ -1042,11 +1046,12 @@ class TestGetWorkContextC1Restructuring:
 
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
-        assert "No instructions defined" in result.phase_instructions
+        assert result.phase_instructions == ""
+        assert result.workflow_state_status is WorkflowStateStatus.AVAILABLE
 
     @pytest.mark.asyncio
-    async def test_get_work_context_renders_invalid_phase_warning_for_known_workflow(self) -> None:
-        """Known workflow + invalid phase must render explicit recovery guidance."""
+    async def test_get_work_context_returns_structured_invalid_phase_status(self) -> None:
+        """Known workflow plus invalid phase returns status and valid phases only."""
         from mcp_server.schemas.tool_outputs import GetWorkContextOutput  # noqa: PLC0415
 
         tool = self._make_tool(workflow_name="feature", current_phase="invalid_phase")
@@ -1054,12 +1059,16 @@ class TestGetWorkContextC1Restructuring:
 
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
-        assert result.invalid_phase_warning is not None
-        assert "workflow 'feature' does not contains phase" in result.invalid_phase_warning
+        assert result.workflow_state_status is WorkflowStateStatus.INVALID_PHASE
+        assert result.phase_instructions == ""
+        assert tool._contracts_config is not None
+        assert result.valid_phases == tuple(
+            tool._contracts_config.workflows["feature"].get_phase_names()
+        )
 
     @pytest.mark.asyncio
-    async def test_get_work_context_places_invalid_phase_warning_before_instructions(self) -> None:
-        """Removed text check, verify both invalid_phase_warning and phase_instructions exist."""
+    async def test_get_work_context_does_not_synthesize_invalid_phase_prose(self) -> None:
+        """Invalid phase recovery wording belongs to presentation configuration."""
         from mcp_server.schemas.tool_outputs import GetWorkContextOutput  # noqa: PLC0415
 
         tool = self._make_tool(workflow_name="feature", current_phase="invalid_phase")
@@ -1067,8 +1076,9 @@ class TestGetWorkContextC1Restructuring:
 
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
-        assert result.invalid_phase_warning is not None
-        assert "No phase instructions available" in result.phase_instructions
+        assert result.workflow_state_status is WorkflowStateStatus.INVALID_PHASE
+        assert result.phase_instructions == ""
+        assert "invalid_phase_warning" not in type(result).model_fields
 
     @pytest.mark.asyncio
     async def test_get_work_context_returns_workflow_name_from_branch_state(self) -> None:
@@ -1157,6 +1167,7 @@ class TestGetWorkContextC1Restructuring:
         assert isinstance(result, GetWorkContextOutput)
         assert result.success
         assert result.current_branch == "feature/268-test"
+        assert result.workflow_state_status is WorkflowStateStatus.MISSING
 
 
 # ---------------------------------------------------------------------------

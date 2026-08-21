@@ -49,7 +49,7 @@ class TestStructuredToolOutputMigration:
         )
 
         assert output.issues[0] is issue
-        assert output.model_dump()["issues"] == [
+        assert output.model_dump(mode="json")["issues"] == [
             {
                 "message": "Invalid syntax",
                 "line": 4,

@@ -107,17 +107,14 @@ class ScaffoldArtifactTool(ICoreTool[ScaffoldArtifactInput, ScaffoldArtifactOutp
             )
 
             files_created = [str(artifact_path)]
-            formatted_files_created = str(artifact_path)
 
             return ScaffoldArtifactOutput(
                 success=True,
                 artifact_type=params.artifact_type,
                 name=params.name,
                 files_created=files_created,
-                formatted_files_created=formatted_files_created,
             )
         except ValidationError as e:
-            schema_info = getattr(e, "schema_info", "")
             validation_schema = getattr(e, "schema", None)
             if validation_schema is not None:
                 if hasattr(validation_schema, "to_dict"):
@@ -132,7 +129,6 @@ class ScaffoldArtifactTool(ICoreTool[ScaffoldArtifactInput, ScaffoldArtifactOutp
                 error_message=str(e),
                 artifact_type=params.artifact_type,
                 name=params.name,
-                schema_info=schema_info,
                 validation_schema=validation_schema,
                 missing_fields=missing_fields,
                 provided_fields=provided_fields,

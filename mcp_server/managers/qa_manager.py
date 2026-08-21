@@ -1158,9 +1158,6 @@ class QAManager:
             error_message=error_message,
             modified_files=modified_files,
             modified_files_count=len(modified_files),
-            formatted_modified_files=(
-                "\n".join(f"- {f}" for f in modified_files) if modified_files else ""
-            ),
             gates_executed=gates_executed,
             gates_executed_count=len(gates_executed),
         )

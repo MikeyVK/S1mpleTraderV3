@@ -31,6 +31,7 @@ from mcp_server.core.interfaces.icore_tool import ICoreTool
 from mcp_server.core.operation_notes import NoteContext
 from mcp_server.schemas.tool_outputs import SafeEditOutput
 from mcp_server.utils.atomic_file_writer import AtomicFileWriter
+from mcp_server.validation.base import ValidationIssue
 from mcp_server.validation.validation_service import ValidationService
 
 
@@ -185,7 +186,7 @@ class SafeEditTool(ICoreTool[SafeEditInput, SafeEditOutput]):
 
                     # Diff preview is no longer part of the public agent-facing contract.
                     diff_output = ""
-                    passed, issues_text = await self._validate(params.path, new_content)
+                    passed, issues = await self._validate(params.path, new_content)
 
                     # Build response DTO
                     if params.mode == "verify_only":
@@ -193,7 +194,7 @@ class SafeEditTool(ICoreTool[SafeEditInput, SafeEditOutput]):
                             success=True,
                             path=params.path,
                             passed=passed,
-                            issues=issues_text,
+                            issues=issues,
                             mode=params.mode,
                             written=False,
                             diff=diff_output,
@@ -205,14 +206,13 @@ class SafeEditTool(ICoreTool[SafeEditInput, SafeEditOutput]):
                         return SafeEditOutput(
                             success=False,
                             error_message=(
-                                f"Edit rejected due to validation errors "
-                                f"(Mode: strict):{issues_text}\n"
-                                "Use mode='interactive' to force save "
-                                "if necessary, or fix the content."
+                                "Edit rejected due to validation errors "
+                                "(Mode: strict). Use mode='interactive' to force "
+                                "save if necessary, or fix the content."
                             ),
                             path=params.path,
                             passed=passed,
-                            issues=issues_text,
+                            issues=issues,
                             mode=params.mode,
                             written=False,
                             diff=diff_output,
@@ -228,7 +228,7 @@ class SafeEditTool(ICoreTool[SafeEditInput, SafeEditOutput]):
                             error_message=f"Failed to write file: {e}",
                             path=params.path,
                             passed=passed,
-                            issues=issues_text,
+                            issues=issues,
                             mode=params.mode,
                             written=False,
                             diff=diff_output,
@@ -239,7 +239,7 @@ class SafeEditTool(ICoreTool[SafeEditInput, SafeEditOutput]):
                         success=True,
                         path=params.path,
                         passed=passed,
-                        issues=issues_text,
+                        issues=issues,
                         mode=params.mode,
                         written=True,
                         diff=diff_output,
@@ -375,7 +375,7 @@ class SafeEditTool(ICoreTool[SafeEditInput, SafeEditOutput]):
                 )
         return original
 
-    async def _validate(self, path: str, content: str) -> tuple[bool, str]:
+    async def _validate(self, path: str, content: str) -> tuple[bool, tuple[ValidationIssue, ...]]:
         """Delegate validation to ValidationService."""
         return await self.validation_service.validate(path, content)
 

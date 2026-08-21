@@ -29,7 +29,7 @@ class TestArtifactManagerMetadataEnrichment:
         )
         # Mock validation to avoid file I/O
         manager.validation_service = Mock()
-        manager.validation_service.validate = AsyncMock(return_value=(True, []))
+        manager.validation_service.validate = AsyncMock(return_value=(True, ()))
         return manager
 
     @pytest.mark.asyncio
@@ -166,7 +166,7 @@ class TestArtifactManagerTierChainExtraction:
         )
         # Mock validation to avoid file I/O
         manager.validation_service = Mock()
-        manager.validation_service.validate = AsyncMock(return_value=(True, []))
+        manager.validation_service.validate = AsyncMock(return_value=(True, ()))
         return manager
 
     @pytest.mark.asyncio

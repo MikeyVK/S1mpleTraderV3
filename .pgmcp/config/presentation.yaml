@@ -38,7 +38,7 @@ global:
     invalid_context_class: "Invalid Context class name: {class_name} (must end with 'Context')"
     render_context_not_found: "RenderContext class not found: {class_name}"
     generic_output_path_required: "Generic artifacts require explicit output_path in context"
-    artifact_validation_failed: "Generated {artifact_type} artifact failed validation:\n{issues}"
+    artifact_validation_failed: "Generated {artifact_type} artifact failed validation."
     missing_output_path: "Missing output_path for file artifact '{artifact_type}'"
     context_validation_failed: "Failed to validate {artifact_type} context: {error_details}"
     invalid_branch_type: "Invalid branch type: {branch_type}"
@@ -111,14 +111,20 @@ tools:
     max_items: 20
     template_success: |
       **Auto-Fix Run Completed Successfully**
-      - Gates executed: {gates_executed_count} ({gates_executed})
+      - Gates executed: {gates_executed_count}
       - Files modified: {modified_files_count}
-      {formatted_modified_files}
     template_failure: |
       **Auto-Fix Run Failed**
       - Error: {error_message}
-      - Gates executed: {gates_executed_count} ({gates_executed})
+      - Gates executed: {gates_executed_count}
       - Files modified: {modified_files_count}
+    collections:
+      - field: gates_executed
+        heading: "Gates executed:"
+        item_template: "- {item}"
+      - field: modified_files
+        heading: "Files modified:"
+        item_template: "- {item}"
   health_check:
     category: query
     template_success: |
@@ -145,11 +151,19 @@ tools:
       - "context_reset"
   get_work_context:
     category: query
+    max_items: 20
     template_success: |
       Branch: `{current_branch}` | Workflow: {workflow_name} | Issue: #{issue_number}
-      Phase: {phase} (confidence={phase_confidence})
-      Role: {sub_role_hint}
-      Parent: {parent_branch}
+      Phase: {phase} | Role: {sub_role_hint}
+      Parent: {parent_branch} | Cycle: {current_cycle} | Sub-phase: {sub_phase}
+      {phase_instructions}
+      {handover_template}
+    enum_cases:
+      - field: workflow_state_status
+        cases:
+          missing: "Workflow state is missing. Initialize the project before continuing."
+          unreadable: "Workflow state could not be read. Repair or recreate the project state before continuing."
+          invalid_phase: "Stored phase '{phase}' is invalid for workflow '{workflow_name}'. Valid phases: {valid_phases}. Use a force transition to recover."
     next_instructions:
       - "todo_discipline"
   initialize_project:
@@ -275,10 +289,12 @@ tools:
     template_success: "Deleted label '{label_name}' successfully."
   add_labels:
     category: mutation
-    template_success: "Added labels {formatted_labels} to issue #{issue_number}."
+    max_items: 20
+    template_success: "Added labels {labels} to issue #{issue_number}."
   remove_labels:
     category: mutation
-    template_success: "Removed labels {formatted_labels} from issue #{issue_number}."
+    max_items: 20
+    template_success: "Removed labels {labels} from issue #{issue_number}."
   list_milestones:
     category: query
     template_success: "Found {total_milestones} milestones."
@@ -290,18 +306,44 @@ tools:
     template_success: *milestone_success_template
   transition_phase:
     category: mutation
-    template_success: "Transitioned phase to '{to_phase}' on branch '{branch}' (Passed gates: {passing_gates_count}, Skipped gates: {skipped_gates_count})."
+    max_items: 20
+    template_success: "Transitioned '{from_phase}' → '{to_phase}' on branch '{branch}' (Passed gates: {passing_gates_count}, Skipped gates: {skipped_gates_count})."
+    collections:
+      - field: skipped_gates
+        heading: "Skipped gates:"
+        item_template: "- {item}"
     next_instructions:
       - "context_reset"
   force_phase_transition:
     category: mutation
-    template_success: "Transitioned phase to '{to_phase}' on branch '{branch}' (Passed gates: {passing_gates_count}, Skipped gates: {skipped_gates_count})."
+    max_items: 20
+    template_success: |
+      Force-transitioned '{from_phase}' → '{to_phase}' on branch '{branch}'.
+      - Passed gates: {passing_gates_count}
+      - Skipped gates: {skipped_gates_count}
+      - Reason: {skip_reason}
+      - Approval: {human_approval_message}
+    collections:
+      - field: skipped_gates
+        heading: "Skipped gates:"
+        item_template: "- {item}"
     next_instructions:
       - "context_reset"
   scaffold_artifact:
     category: scaffold
-    template_success: "Scaffolded artifact '{name}' of type '{artifact_type}' successfully (Created: {formatted_files_created})."
-    template_failure: "Scaffolding failed: {error_message}.\n{schema_info}"
+    max_items: 20
+    template_success: "Scaffolded artifact '{name}' of type '{artifact_type}' successfully."
+    template_failure: "Scaffolding '{name}' of type '{artifact_type}' failed: {error_message}."
+    collections:
+      - field: files_created
+        heading: "Files created:"
+        item_template: "- {item}"
+      - field: missing_fields
+        heading: "Missing fields:"
+        item_template: "- {item}"
+      - field: provided_fields
+        heading: "Provided fields:"
+        item_template: "- {item}"
   scaffold_schema:
     category: query
     template_success: "Retrieved schema for artifact type '{artifact_type}' successfully."
@@ -311,11 +353,29 @@ tools:
     template_failure: "Quality gates failed (file count: {file_count}, overall pass: {overall_pass})."
   run_tests:
     category: testing
-    template_success: "Tests completed: {summary_line}."
+    max_items: 20
+    template_success: |
+      Tests completed (exit {exit_code}).
+      - Passed: {passed_count}
+      - Failed: {failed_count}
+      - Skipped: {skipped_count}
+      - Errors: {errors_count}
+      - Duration: {duration_seconds}s
+      - Coverage: {coverage_pct}%
+    template_failure: "Test execution failed (exit {exit_code}): {error_message}."
+    collections:
+      - field: failures
+        heading: "Failures:"
+        item_template: "- {test_id} ({location}): {short_reason} [collection error: {is_collection_error}]"
   safe_edit_file:
     category: mutation
-    template_success: "File '{path}' edited successfully (passed validation: {passed}, written: {written})."
-    template_failure: "File edit rejected: {error_message}"
+    max_items: 20
+    template_success: "File '{path}' processed in '{mode}' mode (validation passed: {passed}, written: {written}, diff available: {has_diff})."
+    template_failure: "File '{path}' was rejected in '{mode}' mode (validation passed: {passed}, written: {written}): {error_message}"
+    collections:
+      - field: issues
+        heading: "Validation issues:"
+        item_template: "- [{severity}] {message} (line {line}, column {column}, code {code})"
   validate_template:
     category: query
     template_success: "Template validation passed: {passed}."

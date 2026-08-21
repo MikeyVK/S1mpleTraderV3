@@ -43,11 +43,11 @@ class PytestResult:
     """Single source of truth for a completed pytest invocation."""
 
     exit_code: int
-    summary_line: str
     passed: int
     failed: int
     skipped: int
     errors: int
+    duration_seconds: float | None
     failures: tuple[FailureDetail, ...]
     coverage_pct: float | None
     lf_cache_was_empty: bool
@@ -63,7 +63,6 @@ class ExitCodePolicy:
 
     outcome: Literal["ok", "error", "raise"]
     note_factory: Callable[[int], NoteEntry] | None
-    summary_line_when_no_parse: str
 
 
 @dataclass(frozen=True)
@@ -76,54 +75,35 @@ class _PytestExecution:
 
 
 _EXIT_CODE_POLICY: dict[int, ExitCodePolicy] = {
-    PytestExitCode.ALL_PASSED: ExitCodePolicy("ok", None, ""),
-    PytestExitCode.TESTS_FAILED: ExitCodePolicy("ok", None, ""),
+    PytestExitCode.ALL_PASSED: ExitCodePolicy("ok", None),
+    PytestExitCode.TESTS_FAILED: ExitCodePolicy("ok", None),
     PytestExitCode.INTERRUPTED: ExitCodePolicy(
         "error",
-        lambda _: Note(
-            key="pytest_interrupted_recovery",
-            params={},
-        ),
-        "pytest interrupted (exit 2)",
+        lambda _: Note(key="pytest_interrupted_recovery", params={}),
     ),
     PytestExitCode.INTERNAL_ERROR: ExitCodePolicy(
         "error",
-        lambda _: Note(
-            key="pytest_internal_error_recovery",
-            params={},
-        ),
-        "pytest internal error (exit 3)",
+        lambda _: Note(key="pytest_internal_error_recovery", params={}),
     ),
     PytestExitCode.USAGE_ERROR: ExitCodePolicy(
         "error",
-        lambda _: Note(
-            key="pytest_usage_error_recovery",
-            params={},
-        ),
-        "pytest usage error (exit 4)",
+        lambda _: Note(key="pytest_usage_error_recovery", params={}),
     ),
     PytestExitCode.NO_TESTS_COLLECTED: ExitCodePolicy(
         "ok",
-        lambda _: Note(
-            key="pytest_no_tests_collected_suggestion",
-            params={},
-        ),
-        "no tests collected",
+        lambda _: Note(key="pytest_no_tests_collected_suggestion", params={}),
     ),
 }
 
 _UNKNOWN_CODE_POLICY = ExitCodePolicy(
     "raise",
-    lambda c: Note(
-        key="pytest_unexpected_code_recovery",
-        params={"exit_code": c},
-    ),
-    "pytest exited with unexpected code",
+    lambda c: Note(key="pytest_unexpected_code_recovery", params={"exit_code": c}),
 )
 
 _FAILED_LINE_RE = re.compile(r"^FAILED (.+?)(?:\s+-\s+(.+))?$", re.MULTILINE)
 _TRACEBACK_ERROR_RE = re.compile(r"^E\s+(.+)$", re.MULTILINE)
 _COVERAGE_RE = re.compile(r"^TOTAL\b(?:\s+\d+)+\s+(\d+(?:\.\d+)?)%$", re.MULTILINE)
+_DURATION_RE = re.compile(r"\bin\s+(\d+(?:\.\d+)?)s(?:\s|=|$)")
 _LF_EMPTY_RE = re.compile(r"no previously failed tests,\s*not deselecting", re.IGNORECASE)
 
 
@@ -181,21 +161,20 @@ class PytestRunner:
     ) -> PytestResult:
         """Parse raw pytest stdout and return a fully typed PytestResult."""
         policy = _EXIT_CODE_POLICY.get(returncode, _UNKNOWN_CODE_POLICY)
-        policy = _EXIT_CODE_POLICY.get(returncode, _UNKNOWN_CODE_POLICY)
 
         passed, failed, skipped, errors = self._parse_counts(stdout)
         failures = self._parse_failures(stdout, verbose=verbose)
         coverage_pct = self._parse_coverage(stdout)
+        duration_seconds = self._parse_duration_seconds(stdout)
         lf_cache_was_empty = bool(_LF_EMPTY_RE.search(stdout))
-        summary_line = self._parse_summary_line(stdout, returncode, policy)
 
         return PytestResult(
             exit_code=returncode,
-            summary_line=summary_line,
             passed=passed,
             failed=failed,
             skipped=skipped,
             errors=errors,
+            duration_seconds=duration_seconds,
             failures=failures,
             coverage_pct=coverage_pct,
             lf_cache_was_empty=lf_cache_was_empty,
@@ -312,13 +291,7 @@ class PytestRunner:
         match = _COVERAGE_RE.search(stdout)
         return float(match.group(1)) if match else None
 
-    def _parse_summary_line(self, stdout: str, returncode: int, policy: ExitCodePolicy) -> str:
-        """Return the human-readable summary line — never empty."""
-        if policy.summary_line_when_no_parse:
-            return policy.summary_line_when_no_parse
-
-        candidates: list[str] = re.findall(r"={3,}\s+(.+?)\s+={3,}", stdout)
-        for candidate in reversed(candidates):
-            if "in " in candidate or "passed" in candidate or "failed" in candidate:
-                return candidate
-        return f"pytest exited with code {returncode}"
+    def _parse_duration_seconds(self, stdout: str) -> float | None:
+        """Extract the numeric duration from the final pytest summary, when present."""
+        matches = _DURATION_RE.findall(stdout)
+        return float(matches[-1]) if matches else None

@@ -1,6 +1,4 @@
 # mcp_server/validation/validation_service.py
-from __future__ import annotations
-
 """
 Validation service for orchestrating file validation.
 
@@ -9,9 +7,10 @@ Validation service for orchestrating file validation.
 @responsibilities:
   - Register validators (extension-based and pattern-based)
   - Get applicable validators for a file with context-specific filtering
-  - Run validation and aggregate results
-  - Format validation issues for display
+  - Run validation and aggregate canonical issue records
 """
+
+from __future__ import annotations
 
 # Standard library
 import re
@@ -22,7 +21,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from mcp_server.config.settings import Settings
 
-from mcp_server.validation.base import BaseValidator
+from mcp_server.validation.base import BaseValidator, ValidationIssue
 from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator
 from mcp_server.validation.python_validator import PythonSyntaxValidator
@@ -76,19 +75,12 @@ class ValidationService:
             r".*_adapters?\.py$", LayeredTemplateValidator("adapter", self.template_analyzer)
         )
 
-    async def validate(self, path: str, content: str) -> tuple[bool, str]:
-        """
-        Validate file content using applicable validators.
-
-        Args:
-            path: File path to validate.
-            content: File content to validate.
-
-        Returns:
-            Tuple of (passed, issues_text) where passed is True if all
-            validators passed, and issues_text contains formatted validation
-            issues (empty string if no issues).
-        """
+    async def validate(
+        self,
+        path: str,
+        content: str,
+    ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+        """Validate content and return ordered canonical issue records."""
         validators = self.get_applicable_validators(path)
         return await self.run_validators(validators, path, content)
 
@@ -203,37 +195,19 @@ class ValidationService:
         return validators
 
     async def run_validators(
-        self, validators: list[BaseValidator], path: str, content: str
-    ) -> tuple[bool, str]:
-        """
-        Run validators and aggregate results.
-
-        Args:
-            validators: List of validators to run.
-            path: File path being validated.
-            content: File content being validated.
-
-        Returns:
-            Tuple of (passed, issues_text) with formatted issues.
-        """
-        all_issues = []
+        self,
+        validators: list[BaseValidator],
+        path: str,
+        content: str,
+    ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+        """Run validators and preserve issue identity and result order."""
+        all_issues: list[ValidationIssue] = []
         passed = True
 
         for validator in validators:
             result = await validator.validate(path, content=content)
             if not result.passed:
                 passed = False
+            all_issues.extend(result.issues)
 
-            if result.issues:
-                all_issues.extend(result.issues)
-
-        # Format issues once at the end (avoid duplication)
-        issues_text = ""
-        if all_issues:
-            issues_text = "\n\n**Validation Issues:**\n"
-            for issue in all_issues:
-                icon = "❌" if issue.severity == "error" else "⚠️"
-                loc = f" (line {issue.line})" if issue.line else ""
-                issues_text += f"{icon} {issue.message}{loc}\n"
-
-        return passed, issues_text
+        return passed, tuple(all_issues)

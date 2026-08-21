@@ -135,7 +135,6 @@ class TestAutoFixTool:
             success=True,
             modified_files=["foo.py"],
             modified_files_count=1,
-            formatted_modified_files="- foo.py",
             gates_executed=["ruff"],
             gates_executed_count=1,
         )

@@ -243,7 +243,6 @@ class RemoveLabelsTool(ICoreTool[RemoveLabelsInput, LabelOperationOutput]):
             return LabelOperationOutput(
                 issue_number=params.issue_number,
                 labels=params.labels,
-                formatted_labels=", ".join(params.labels),
             )
         except Exception as e:
             raise ExecutionError(str(e)) from e
@@ -313,7 +312,6 @@ class AddLabelsTool(ICoreTool[AddLabelsInput, LabelOperationOutput]):
             return LabelOperationOutput(
                 issue_number=params.issue_number,
                 labels=params.labels,
-                formatted_labels=", ".join(params.labels),
             )
         except Exception as e:
             raise ExecutionError(str(e)) from e

@@ -59,7 +59,9 @@ class PythonValidator(BaseValidator):
                     content = f.read()
             except OSError as e:
                 return ValidationResult(
-                    passed=False, score=0.0, issues=[ValidationIssue(f"Failed to read file: {e}")]
+                    passed=False,
+                    score=0.0,
+                    issues=[ValidationIssue(message=f"Failed to read file: {e}")],
                 )
 
         # Syntax-only mode for pre-write validation (fast, no config needed)

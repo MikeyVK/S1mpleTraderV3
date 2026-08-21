@@ -56,7 +56,7 @@ async def test_scaffold_design_doc_with_required_context(
 
     # Assert
     assert result.success
-    content_text = result.formatted_files_created
+    content_text = result.files_created[0]
     assert "issue56_acceptance.md" in content_text or "issue56-acceptance-test" in content_text
     # Verify file created on disk
     output_file = temp_workspace / "docs/design/issue56_acceptance.md"
@@ -101,7 +101,7 @@ async def test_scaffold_dto_with_description(
 
     # Assert
     assert result.success
-    content_text = result.formatted_files_created
+    content_text = result.files_created[0]
     assert "AcceptanceTestDto" in content_text or "acceptance_test_dto.py" in content_text
     # Verify file created on disk
     output_file = temp_workspace / "backend/dtos/acceptance_test_dto.py"

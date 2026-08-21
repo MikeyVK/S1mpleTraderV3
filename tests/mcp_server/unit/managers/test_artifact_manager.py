@@ -9,13 +9,16 @@ from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 import pytest
 
+import mcp_server.managers.artifact_manager as artifact_manager_module
 from mcp_server.config.schemas.artifact_registry_config import (
+    ArtifactDefinition,
     ArtifactRegistryConfig,
     SchemaFieldDef,
 )
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.validation.base import ValidationIssue
 from tests.mcp_server.test_support import make_artifact_manager
 
 
@@ -54,7 +57,7 @@ class TestArtifactManagerCore:
 
         mock_validation_service = Mock()
         # Make validate return an async coroutine
-        mock_validation_service.validate = AsyncMock(return_value=(True, []))
+        mock_validation_service.validate = AsyncMock(return_value=(True, ()))
 
         # Mock get_artifact_path to avoid complex dependency chain
         mock_artifact = Mock()
@@ -111,6 +114,35 @@ class TestArtifactManagerCore:
 
         # Verify path was returned (normalize for cross-platform)
         assert result == str(Path("/test/test.py"))
+
+    @pytest.mark.asyncio
+    async def test_strict_validation_forwards_canonical_issue_tuple(self) -> None:
+        """Strict rejection preserves the validation service record tuple."""
+        issue = ValidationIssue(message="Invalid syntax", line=3, code="E001")
+        issues = (issue,)
+        registry = Mock(spec=ArtifactRegistryConfig)
+        registry.get_artifact.return_value = Mock(
+            strict_validation=True,
+            output_type="file",
+            type="code",
+        )
+        validation_service = Mock()
+        validation_service.validate = AsyncMock(return_value=(False, issues))
+        manager = ArtifactManager(
+            registry=registry,
+            validation_service=validation_service,
+            fs_adapter=Mock(),
+            server_root=Path("."),
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            await manager._validate_and_write(  # pyright: ignore[reportPrivateUsage]
+                "dto", "test.py", "invalid"
+            )
+
+        forwarded = exc_info.value.params["issues"]
+        assert forwarded is issues
+        assert forwarded[0] is issue
 
     def test_validate_artifact_delegates_to_scaffolder(self) -> None:
         """Test that validate_artifact delegates to scaffolder."""
@@ -214,18 +246,12 @@ class TestArtifactManagerDynamicContext:
 
     def test_artifact_definition_has_context_class(self) -> None:
         """Verify context_class field is present on ArtifactDefinition."""
-        from mcp_server.config.schemas.artifact_registry_config import (
-            ArtifactDefinition,  # noqa: PLC0415
-        )
-
         assert "context_schema" in ArtifactDefinition.model_fields
         assert "context_class" in ArtifactDefinition.model_fields
 
     def test_v2_context_registry_removed(self) -> None:
         """Verify _v2_context_registry has been removed from artifact_manager.py."""
-        import mcp_server.managers.artifact_manager as am  # noqa: PLC0415
-
-        assert not hasattr(am, "_v2_context_registry")
+        assert not hasattr(artifact_manager_module, "_v2_context_registry")
 
     def test_get_context_schema_raises_config_error_if_no_yaml_schema(self) -> None:
         """Test that get_context_schema raises ConfigError if YAML context_schema is missing."""
