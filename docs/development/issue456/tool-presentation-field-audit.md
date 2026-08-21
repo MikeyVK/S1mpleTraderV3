@@ -105,23 +105,33 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
 |---|---|---|---|
-| create_issue | number, title, html_url | Scalar template, unchanged | state, milestone_title, assignees_summary, body, labels[], created_at, updated_at, closed_at, author |
-| update_issue | number, title, html_url | Scalar template, unchanged | state, milestone_title, assignees_summary, body, labels[], created_at, updated_at, closed_at, author |
-| get_issue | number, title, state, milestone_title, assignees_summary, html_url, body, labels[] | Expanded scalar template; labels use bounded inline scalar-sequence formatting | created_at, updated_at, closed_at, author |
+| create_issue | number, title, state, html_url, milestone_title, assignees_summary, labels[] | Expanded scalar template; labels use bounded inline scalar-sequence formatting | body, created_at, updated_at, closed_at, author |
+| update_issue | number, title, state, html_url, milestone_title, assignees_summary, labels[] | Expanded scalar template; labels use bounded inline scalar-sequence formatting | body, created_at, updated_at, closed_at, author |
+| get_issue | number, title, state, milestone_title, assignees_summary, html_url, body, labels[], created_at, updated_at, closed_at | Expanded scalar template; labels use bounded inline scalar-sequence formatting | author |
 | close_issue | issue_number | Scalar template, unchanged | — |
-| list_issues | issues_count, issues[].number, issues[].title, issues[].state, issues[].html_url, issues[].labels[] | Scalar header plus bounded model collection; labels use bounded inline scalar-sequence formatting per item | issues[].assignees_summary, issues[].created_at |
-| get_pr | number, title, html_url, state, base_ref, head_ref, body | Expanded scalar template | merged_at, merge_sha |
-| submit_pr | number, title, html_url, base_ref, head_ref | Scalar template, unchanged | state, merged_at, merge_sha, body |
+| list_issues | issues_count, issues[].number, issues[].title, issues[].state, issues[].html_url, issues[].labels[], issues[].assignees_summary, issues[].created_at | Scalar header plus bounded model collection with compact one-line metadata; labels use bounded inline scalar-sequence formatting per item | — |
+| get_pr | number, title, html_url, state, base_ref, head_ref, body, merged_at, merge_sha | Expanded scalar template; absent merge fields render the configured None value | — |
+| submit_pr | number, title, html_url, state, base_ref, head_ref | Expanded scalar mutation confirmation | merged_at, merge_sha, body |
 | merge_pr | pr_number, merge_method, merge_sha | Scalar template, unchanged | — |
 | list_prs | prs_count, pull_requests[].number, pull_requests[].title, pull_requests[].state, pull_requests[].html_url, pull_requests[].base_ref, pull_requests[].head_ref | Scalar header plus bounded model collection | — |
 | list_labels | total_labels, labels[].name, labels[].color, labels[].description | Scalar header plus bounded model collection | — |
 | create_label | label_name, color | Scalar template, unchanged | — |
 | delete_label | label_name | Scalar template, unchanged | — |
-| add_labels | formatted_labels, issue_number | Scalar template, unchanged | labels[] |
-| remove_labels | formatted_labels, issue_number | Scalar template, unchanged | labels[] |
+| add_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | formatted_labels |
+| remove_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | formatted_labels |
 | list_milestones | total_milestones, milestones[].number, milestones[].title, milestones[].state | Scalar header plus bounded model collection | — |
-| create_milestone | number, title | Scalar template, unchanged | state |
-| close_milestone | number, title | Scalar template, unchanged | state |
+| create_milestone | number, title, state | Expanded scalar mutation confirmation | — |
+| close_milestone | number, title, state | Expanded scalar mutation confirmation | — |
+
+### Batch 3 — GitHub Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- All seventeen GitHub rows below are approved as the implementation target.
+- `get_issue` includes created, updated, and closed timestamps; author remains cache-only.
+- `list_issues` includes `created_at` in a compact metadata line alongside state and assignee.
+- Mutation responses expose realized state and metadata while caller-supplied bodies and low-value audit metadata remain cache-only.
+- Structured `labels[]` replaces preformatted `formatted_labels` as the presentation source for add/remove operations.
 
 ## Scaffolding Tools
 
