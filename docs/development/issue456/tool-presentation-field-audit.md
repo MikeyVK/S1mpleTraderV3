@@ -137,8 +137,17 @@ Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatu
 
 | Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
 |---|---|---|---|
-| scaffold_artifact | artifact_type, name, files_created[] | Scalar header plus bounded scalar collection | formatted_files_created, schema_info, validation_schema, missing_fields[], provided_fields[] |
+| scaffold_artifact | Success: artifact_type, name, files_created[]. Validation failure: artifact_type, name, error_message, missing_fields[], provided_fields[]. Other failure: artifact_type, name, error_message. | Path-specific scalar template plus bounded structured collections | formatted_files_created, schema_info, validation_schema |
 | scaffold_schema | artifact_type | Scalar locator; schema remains deliberately resource-only | schema_data |
+
+### Batch 4 — Scaffolding Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- `scaffold_artifact` has distinct success, validation-failure, and other-failure projections.
+- Structured `files_created[]`, `missing_fields[]`, and `provided_fields[]` replace preformatted convenience text as presentation sources.
+- Full validation schemas remain resource/cache-only; `scaffold_schema` remains the deliberate resource-oriented exception.
+- Empty/default schema and field sections are not rendered.
 
 ## Quality, Testing, and Editing Tools
 
