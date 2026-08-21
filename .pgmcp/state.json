@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "design",
+  "current_phase": "planning",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -123,6 +123,14 @@
       "to_phase": "design",
       "timestamp": "2026-08-21T20:43:37.744290+00:00",
       "human_approval_message": "User explicitly approved moving to Design to process QA blockers 2 and 3 with a structured plan.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "planning",
+      "timestamp": "2026-08-21T21:06:31.239338+00:00",
+      "human_approval_message": "User approved progression to Planning after independent Design QA returned GO.",
       "forced": false,
       "skip_reason": null
     }

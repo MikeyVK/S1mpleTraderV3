@@ -19,28 +19,54 @@
       "created_at": "2026-08-20T15:40:10.649773+00:00",
       "planning_deliverables": {
         "cycles": {
-          "total": 6,
+          "total": 8,
           "cycles": [
             {
               "cycle_number": 1,
-              "name": "Presentation configuration and alignment",
+              "name": "Runtime tool assembly and supported catalog",
+              "deliverables": [
+                {
+                  "id": "C_ASSEMBLY.1",
+                  "description": "One ToolAssembly exposes immutable supported_tools, active_tools, and derived supported_contracts tuples from one authoritative composition-root construction path."
+                },
+                {
+                  "id": "C_ASSEMBLY.2",
+                  "description": "Each supported contract resolves exactly one non-empty tool name and Pydantic output model; empty/duplicate names and unresolved or conflicting explicit/generic output models fail deterministically."
+                },
+                {
+                  "id": "C_ASSEMBLY.3",
+                  "description": "Active tools are an object subset of supported tools; token-enabled activation covers the supported set and tokenless activation preserves the existing credential-free subset without a separately maintained count/name catalog."
+                },
+                {
+                  "id": "C_ASSEMBLY.4",
+                  "description": "Supported-but-inactive tool construction performs no external work; the existing lazy GitHub boundary and tokenless startup remain intact."
+                },
+                {
+                  "id": "C_ASSEMBLY.5",
+                  "description": "Focused tests cover both settings variants and every assembly invariant through the public bootstrap/assembly contract."
+                }
+              ],
+              "exit_criteria": "One assembly owns supported and active objects; every supported output model resolves; tokenless startup succeeds; invalid identity/subset cases fail with actionable context; focused tests and file-scoped gates pass. Stop on external-work construction, a separately maintained catalog, or broader metadata/capability requirements."
+            },
+            {
+              "cycle_number": 2,
+              "name": "Presentation configuration and complete-catalog alignment",
               "deliverables": [
                 {
                   "id": "C_CONFIG.1",
-                  "description": "Frozen schema represents recursive collections, inline scalar sequences, max_items, omission/truncation wording, and the global text budget.",
-                  "validates": {
-                    "type": "contains_text",
-                    "file": "mcp_server/config/schemas/presentation_config.py",
-                    "text": "CollectionPresentationConfig"
-                  }
+                  "description": "Frozen schema represents recursive direct-child collections, enum cases, list/tuple scalar sequences, one per-tool max_items, omission/truncation wording, and the global byte ceiling."
                 },
                 {
                   "id": "C_CONFIG.2",
-                  "description": "Startup alignment recursively validates collection fields, types, placeholders, duplicates, inline sequences, max_items usage, and mandatory-tail budget."
+                  "description": "Startup alignment recursively validates direct fields, list/tuple item categories, placeholders, duplicate siblings, enum cases, max_items use, and mandatory-tail budget against every supported output model."
                 },
                 {
                   "id": "C_CONFIG.3",
-                  "description": "Global presentation configuration supplies the 8,000-byte ceiling and omission/truncation wording.",
+                  "description": "Alignment enforces deterministic bidirectional supported-catalog/config parity while accepting valid inactive templates and rejecting missing, unknown, or obsolete keys."
+                },
+                {
+                  "id": "C_CONFIG.4",
+                  "description": "Global presentation.yaml values supply the 8,000-byte ceiling and all generic omission/truncation wording without adding tool-specific Python policy.",
                   "validates": {
                     "type": "contains_text",
                     "file": ".pgmcp/config/presentation.yaml",
@@ -48,66 +74,54 @@
                   }
                 },
                 {
-                  "id": "C_CONFIG.4",
-                  "description": "Durable schema and alignment tests cover accepted and rejected contracts.",
-                  "validates": {
-                    "type": "file_exists",
-                    "file": "tests/mcp_server/unit/config/test_presentation_config.py"
-                  }
-                },
-                {
                   "id": "C_CONFIG.5",
-                  "description": "Startup alignment enforces deterministic exact parity between registered public tool names and presentation.yaml keys and rejects duplicate registered names."
+                  "description": "Durable schema/alignment tests cover representative flat, scalar-sequence, model-collection, nested, enum, list, and tuple declarations plus every designed startup rejection category."
                 }
               ],
-              "exit_criteria": "Valid configuration loads; registered public tools and presentation keys match exactly; every designed invalid contract fails with actionable context; focused tests and file-scoped gates pass; no tool-name dispatch or registry ownership shift."
+              "exit_criteria": "All current supported contracts and bundled keys match; inactive templates are accepted; every supported output model is validated; invalid declarations fail with deterministic tool/path context; focused tests and file-scoped gates pass. Stop on active-only catalog truth, skipped models, alignment-owned construction, or tool-name dispatch."
             },
             {
-              "cycle_number": 2,
-              "name": "Generic sequence and collection presentation",
+              "cycle_number": 3,
+              "name": "Generic ordered-sequence and collection presentation",
               "deliverables": [
                 {
-                  "id": "C_COLLECTION.1",
-                  "description": "Standalone SafeNoneFormatter renders bounded flat scalar sequences generically.",
-                  "validates": {
-                    "type": "file_exists",
-                    "file": "mcp_server/presenters/value_formatter.py"
-                  }
+                  "id": "C_SEQUENCE.1",
+                  "description": "One shared classifier recognizes only concrete scalar/model list[T] and tuple[T, ...] shapes for both alignment and rendering."
                 },
                 {
-                  "id": "C_COLLECTION.2",
-                  "description": "CollectionTextRenderer renders scalar, model, sibling, and nested lists depth-first in DTO order.",
+                  "id": "C_SEQUENCE.2",
+                  "description": "SafeNoneFormatter generically renders bounded flat scalar lists/tuples with configured separators, omission count, and None behavior."
+                },
+                {
+                  "id": "C_SEQUENCE.3",
+                  "description": "CollectionTextRenderer renders scalar/model lists and tuples, siblings, and direct-child nesting depth-first in authoritative DTO order.",
                   "validates": {
                     "type": "file_exists",
                     "file": "mcp_server/presenters/collection_text_renderer.py"
                   }
                 },
                 {
-                  "id": "C_COLLECTION.3",
-                  "description": "Durable public-contract coverage spans empty, exact, over-limit, None, multibyte, sibling, and nested cases.",
-                  "validates": {
-                    "type": "file_glob",
-                    "file": "tests/mcp_server/unit/presenters/test_*collection*.py"
-                  }
+                  "id": "C_SEQUENCE.4",
+                  "description": "Empty, exact-limit, over-limit, None, multibyte, list, tuple, sibling, and nested behavior has durable public-contract coverage."
                 },
                 {
-                  "id": "C_COLLECTION.4",
-                  "description": "Formatter and renderer contain no tool dispatch, sorting, filtering, or model-list Python representation."
+                  "id": "C_SEQUENCE.5",
+                  "description": "Missing fields, non-list/tuple containers, and wrongly typed items raise ConfigError with usable field/path and item-index context."
                 },
                 {
-                  "id": "C_COLLECTION.5",
-                  "description": "Missing fields, non-list runtime values, and wrongly typed collection items fail with ConfigError containing usable field/path context."
+                  "id": "C_SEQUENCE.6",
+                  "description": "Source and tests prove there is no tool/DTO dispatch, sorting, filtering, model-sequence Python repr, or arbitrary-iterable acceptance."
                 }
               ],
-              "exit_criteria": "Generic public behavior preserves order and bounds at every depth, avoids Python repr and tool-name logic, and raises ConfigError with usable field/path context for missing, non-list, or wrongly typed runtime collection data; focused tests and file-scoped gates pass."
+              "exit_criteria": "Generic public behavior preserves order and bounds for list/tuple values at every configured depth, avoids Python repr and special cases, and raises path-rich ConfigError for every malformed runtime shape; focused tests and file-scoped gates pass."
             },
             {
-              "cycle_number": 3,
+              "cycle_number": 4,
               "name": "UTF-8 text budget enforcement",
               "deliverables": [
                 {
                   "id": "C_BUDGET.1",
-                  "description": "TextBudgetLimiter enforces the configured UTF-8 byte ceiling.",
+                  "description": "TextBudgetLimiter returns under-budget content byte-for-byte unchanged and caps every overflow result at max_text_response_bytes.",
                   "validates": {
                     "type": "file_exists",
                     "file": "mcp_server/presenters/text_budget_limiter.py"
@@ -115,125 +129,151 @@
                 },
                 {
                   "id": "C_BUDGET.2",
-                  "description": "Overflow reserves the complete cache reference and correct notice before body content."
+                  "description": "Overflow reserves the complete cache reference and correct configured notice before retaining body content."
                 },
                 {
                   "id": "C_BUDGET.3",
-                  "description": "Truncation preserves code points, prefers blocks/lines, and closes intersected fenced blocks."
+                  "description": "Truncation preserves UTF-8 code points, prefers complete blocks/lines, and closes an intersected fenced block."
                 },
                 {
                   "id": "C_BUDGET.4",
-                  "description": "Cache-unavailable truncation stays bounded without claiming cached completeness.",
+                  "description": "Cache-unavailable truncation remains bounded without claiming that complete detail was cached."
+                },
+                {
+                  "id": "C_BUDGET.5",
+                  "description": "Boundary tests cover under, exact, over, mandatory-tail, multibyte, fenced Markdown, and cache-unavailable cases.",
                   "validates": {
                     "type": "file_exists",
                     "file": "tests/mcp_server/unit/presenters/test_text_budget_limiter.py"
                   }
                 }
               ],
-              "exit_criteria": "Every limiter result is valid UTF-8 and within budget; available URI and notice survive; cache-failure text is truthful; focused tests and file-scoped gates pass."
-            },
-            {
-              "cycle_number": 4,
-              "name": "Structured DTO presentation refactor",
-              "deliverables": [
-                {
-                  "id": "C_DTO.1",
-                  "description": "WorkflowStateStatus represents available, missing, unreadable, and invalid-phase states; GetWorkContextTool emits enum/supporting data and no warning/recovery prose."
-                },
-                {
-                  "id": "C_DTO.2",
-                  "description": "Frozen ValidationIssueDTO records preserve message, severity, line, column, and code through ValidationService, ArtifactManager, and SafeEditOutput."
-                },
-                {
-                  "id": "C_DTO.3",
-                  "description": "RunTestsOutput exposes numeric duration_seconds; PytestRunner parses duration without producing presentation wording."
-                },
-                {
-                  "id": "C_DTO.4",
-                  "description": "Public-contract tests cover every enum path, structured validation propagation, absent locations/codes, parsed/missing duration, and immutable DTO behavior."
-                },
-                {
-                  "id": "C_DTO.5",
-                  "description": "No new tool, manager, or service branch produces user-facing labels, layout, warnings, or recovery prose."
-                }
-              ],
-              "exit_criteria": "Structured data reaches each tool DTO without human-facing composition and every affected public contract has durable tests; no diagnostic evidence, tool input, or success/error semantic is changed beyond the Approved Strategy."
+              "exit_criteria": "Every limiter result is valid UTF-8 and within budget; under-budget text is identical; available URI and notice survive; cache-failure text is truthful; focused tests and file-scoped gates pass."
             },
             {
               "cycle_number": 5,
-              "name": "TextPresenter integration and complete tool rollout",
+              "name": "TextPresenter composition",
               "deliverables": [
                 {
-                  "id": "C_INTEGRATION.1",
-                  "description": "TextPresenter composes scalar text, collections, instructions, notes, fallback, reserved URI, and final limiter in approved order."
+                  "id": "C_COMPOSE.1",
+                  "description": "TextPresenter assembles scalar text, enum cases, configured collections, instructions, notes, sanitized fallback, reserved cache reference, and the final limiter in the approved order."
                 },
                 {
-                  "id": "C_INTEGRATION.2",
-                  "description": "All thirteen collection tools declare valid collections and max_items within the complete 50-tool configuration.",
-                  "validates": {
-                    "type": "contains_text",
-                    "file": ".pgmcp/config/presentation.yaml",
-                    "text": "collections:"
-                  }
+                  "id": "C_COMPOSE.2",
+                  "description": "Bootstrap injects/composes the new helpers once and decorates/registers only ToolAssembly.active_tools; alignment still receives complete supported contracts."
                 },
                 {
-                  "id": "C_INTEGRATION.3",
-                  "description": "Four scalar tools expose approved additions and get_issue labels are bounded to ten."
+                  "id": "C_COMPOSE.3",
+                  "description": "Under-budget legacy-compatible templates remain byte-for-byte unchanged; over-budget output changes only through the universal limiter."
                 },
                 {
-                  "id": "C_INTEGRATION.4",
-                  "description": "run_quality_gates and validate_template use outcome-neutral wording."
+                  "id": "C_COMPOSE.4",
+                  "description": "Server/pipeline evidence proves cached DTOs remain complete and separately embedded validation resources are not counted in the text ceiling."
                 },
                 {
-                  "id": "C_INTEGRATION.5",
-                  "description": "Representative verification outputs expose bounded actionable rows while excluding verbose fields."
-                },
-                {
-                  "id": "C_INTEGRATION.6",
-                  "description": "Integration evidence proves complete cached DTOs and separately embedded validation resources remain unchanged."
-                },
-                {
-                  "id": "C_INTEGRATION.7",
-                  "description": "A template intentionally retained by the approved audit remains byte-for-byte unchanged below budget and limiter-only different above it."
-                },
-                {
-                  "id": "C_INTEGRATION.8",
-                  "description": "Every one of the 50 registered tool templates is implemented or explicitly confirmed against the approved field-audit inline/cache-only target."
-                },
-                {
-                  "id": "C_INTEGRATION.9",
-                  "description": "Structural evidence classifies every tool-specific DTO field inline or cache-only and ties each cache-only choice to an approved rationale category."
-                },
-                {
-                  "id": "C_INTEGRATION.10",
-                  "description": "Bundled presentation.yaml has exact bidirectional parity with the runtime public-tool registry; missing, obsolete, or duplicate identities fail startup."
-                },
-                {
-                  "id": "C_INTEGRATION.11",
-                  "description": "All seven duplicate presentation fields and RunTestsOutput.summary_line are absent from DTOs, producers, templates, and tests with no compatibility aliases or dual writes."
-                },
-                {
-                  "id": "C_INTEGRATION.12",
-                  "description": "get_work_context enum warnings, SafeEdit structured issues, and run_tests numeric duration are rendered exclusively through declarative configuration and remain complete in cache."
+                  "id": "C_COMPOSE.5",
+                  "description": "Presenter source and tests contain no tool-name, output-DTO-type, or validation-record-type dispatch."
                 }
               ],
-              "exit_criteria": "Startup accepts exact 50-tool parity; every approved field-audit row is closed; all approved legacy fields are absent; structured warnings, issues, and duration are actionable and bounded; cache publication reflects the approved DTO clean breaks; retained compact templates are compatible below budget; no tool-name dispatch."
+              "exit_criteria": "The generic pipeline works end to end; complete supported alignment remains distinct from active registration; cache evidence is unchanged; a retained compact template is stable below the ceiling; focused tests and file-scoped gates pass. Stop on ResponsePresenter/cache changes or any special-case dispatch."
             },
             {
               "cycle_number": 6,
+              "name": "Atomic structured DTO and dependent-template migration",
+              "deliverables": [
+                {
+                  "id": "C_STRUCTURED.1",
+                  "description": "WorkflowStateStatus represents available, missing, unreadable, and invalid-phase states; GetWorkContextTool emits structured state/supporting data and no warning/recovery prose."
+                },
+                {
+                  "id": "C_STRUCTURED.2",
+                  "description": "The existing canonical ValidationIssue becomes the single frozen serializable record; ValidationService aggregates ordered records and ArtifactManager/SafeEditTool forward the same records without formatting, parsing, copying, or field mapping."
+                },
+                {
+                  "id": "C_STRUCTURED.3",
+                  "description": "SafeEditOutput.issues is the canonical record tuple and its template uses the generic bounded model-collection mechanism with message, severity, line, column, and code."
+                },
+                {
+                  "id": "C_STRUCTURED.4",
+                  "description": "RunTestsOutput exposes numeric duration_seconds; PytestRunner parses it without producing presentation wording and summary_line is removed."
+                },
+                {
+                  "id": "C_STRUCTURED.5",
+                  "description": "All seven approved duplicate presentation fields and their producer writes are removed without aliases or dual writes."
+                },
+                {
+                  "id": "C_STRUCTURED.6",
+                  "description": "Every template affected by C_STRUCTURED.1\u20135 moves atomically to structured fields and passes complete-catalog startup alignment at cycle exit."
+                },
+                {
+                  "id": "C_STRUCTURED.7",
+                  "description": "Durable public-contract tests cover enum outcomes, canonical record identity/value propagation through both consumers, optional validation locations/codes, numeric/missing duration, removed-field absence, cache serialization, and immutability."
+                },
+                {
+                  "id": "C_STRUCTURED.8",
+                  "description": "Config validation, input validation, and explicit template-validation tools retain their existing separate DTOs and responsibilities."
+                }
+              ],
+              "exit_criteria": "All structured contracts and dependent templates load together; the same canonical validation records reach both consumers; every approved obsolete field is absent; startup alignment, focused tests, and file-scoped gates pass. Stop on a second issue DTO, mapping/parsing, presenter type dispatch, compatibility bridge, or unrelated validation redesign."
+            },
+            {
+              "cycle_number": 7,
+              "name": "Complete 50-tool projection rollout",
+              "deliverables": [
+                {
+                  "id": "C_ROLLOUT.1",
+                  "description": "All 50 supported tool templates implement or explicitly retain the approved inline/cache-only target from the field audit."
+                },
+                {
+                  "id": "C_ROLLOUT.2",
+                  "description": "One structural matrix proves all 29 tools declare every required inline scalar sequence, root/child collection, item contract, and limit from Design Section 3.8."
+                },
+                {
+                  "id": "C_ROLLOUT.3",
+                  "description": "get_work_context, get_issue, and get_pr expose the three approved scalar expansions; issue labels use bounded generic sequence formatting."
+                },
+                {
+                  "id": "C_ROLLOUT.4",
+                  "description": "run_quality_gates and validate_template use outcome-neutral completion wording and expose their actual result as data."
+                },
+                {
+                  "id": "C_ROLLOUT.5",
+                  "description": "Representative run_tests and run_quality_gates summaries expose bounded actionable rows while excluding traceback, stderr, and verbose gate details."
+                },
+                {
+                  "id": "C_ROLLOUT.6",
+                  "description": "get_project_plan renders its nested phase/task association in DTO order; list and tuple projections use the same generic behavior."
+                },
+                {
+                  "id": "C_ROLLOUT.7",
+                  "description": "Complete supported-catalog/config parity and recursive output-model alignment pass for token-enabled and tokenless settings; valid inactive keys remain accepted."
+                },
+                {
+                  "id": "C_ROLLOUT.8",
+                  "description": "Cached DTOs remain complete, each cache-only decision matches an approved rationale category, and source inspection finds no tool/DTO dispatch."
+                },
+                {
+                  "id": "C_ROLLOUT.9",
+                  "description": "A template explicitly retained by the audit remains byte-for-byte stable below budget and limiter-only different above it."
+                }
+              ],
+              "exit_criteria": "All 50 audit rows and all 29 mechanics rows are closed; both settings variants start; exact supported/config parity passes; diagnostic outputs are actionable and bounded; cache authority is intact; focused tests and file-scoped gates pass. Stop on unapproved field classification, static catalog, special-case rendering, or new DTO/cache/transport behavior."
+            },
+            {
+              "cycle_number": 8,
               "name": "Obsolete documentation-test removal",
               "deliverables": [
                 {
                   "id": "C_TEST_CLEANUP.1",
-                  "description": "Remove tests/documentation/test_c4_doc_alignment.py."
+                  "description": "tests/documentation/test_c4_doc_alignment.py is absent."
                 },
                 {
                   "id": "C_TEST_CLEANUP.2",
-                  "description": "Remove tests/documentation/test_agent_instruction_search_contract.py."
+                  "description": "tests/documentation/test_agent_instruction_search_contract.py is absent."
                 },
                 {
                   "id": "C_TEST_CLEANUP.3",
-                  "description": "All 62 cases disappear without replacement mutable-prose tests."
+                  "description": "All 62 collected cases disappear without replacement mutable-prose tests."
                 }
               ],
               "exit_criteria": "Both obsolete modules and all 62 cases are absent; no replacement prose snapshots or unrelated changes exist; no artificial RED was created."
@@ -244,7 +284,7 @@
           "deliverables": [
             {
               "id": "VAL_FOCUSED.1",
-              "description": "Reconfirm all affected focused tests after final implementation changes."
+              "description": "Reconfirm affected assembly, catalog, config, formatter, renderer, limiter, presenter, structured-boundary, server, and pipeline tests after final implementation changes."
             },
             {
               "id": "VAL_FULL.1",
@@ -256,11 +296,11 @@
             },
             {
               "id": "VAL_BEHAVIOR.1",
-              "description": "Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, enum warnings, structured SafeEdit issues, numeric test duration, removed-field absence, semantic outcomes, exact 50-tool parity, full field-audit closure, retained-template compatibility, and approved cached DTO contracts."
+              "description": "Record evidence for supported/active assembly invariants, tokenless startup, exact complete-catalog parity, 8,000-byte enforcement, cache-URI retention, list/tuple order and limits, all 29 mechanics, nested plan, labels, enum warnings, canonical SafeEdit issues, numeric test duration, removed-field absence, semantic outcomes, all 50 audit rows, retained-template compatibility, and complete cached DTOs."
             },
             {
               "id": "VAL_DEFERRED.1",
-              "description": "Carry structured quality-gate findings into validation.md for Ready/PR triage."
+              "description": "Carry the structured quality-gate findings gap into validation.md for Ready/PR triage."
             },
             {
               "id": "VAL_REPORT.1",
@@ -276,7 +316,7 @@
           "deliverables": [
             {
               "id": "DOC_PRESENTATION.1",
-              "description": "Update presentation architecture for declarative collections, inline sequences, final byte limiting, and cache authority.",
+              "description": "Update presentation architecture for runtime supported/active assembly, complete-catalog alignment, declarative list/tuple collections, final byte limiting, and cache authority.",
               "validates": {
                 "type": "file_exists",
                 "file": "docs/reference/presentation_architecture.md"
@@ -284,15 +324,15 @@
             },
             {
               "id": "DOC_TOOLS.1",
-              "description": "Correct affected active discovery, project, GitHub, quality, scaffolding, and overview documentation."
+              "description": "Correct active discovery, project, GitHub, quality, scaffolding, and tools-overview claims affected by richer inline summaries."
             },
             {
               "id": "DOC_AGENT.1",
-              "description": "Review agent cache guidance and change only stale mandatory-resource-read claims."
+              "description": "Review agent cache guidance and change it only where it still mandates a resource read for information now guaranteed inline."
             },
             {
               "id": "DOC_DEFERRED.1",
-              "description": "Preserve structured quality-gate findings as deferred work rather than current behavior."
+              "description": "Preserve the structured quality-gate finding as deferred work, not current behavior."
             }
           ]
         }
