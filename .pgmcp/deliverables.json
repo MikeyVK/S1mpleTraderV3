@@ -54,9 +54,13 @@
                     "type": "file_exists",
                     "file": "tests/mcp_server/unit/config/test_presentation_config.py"
                   }
+                },
+                {
+                  "id": "C_CONFIG.5",
+                  "description": "Startup alignment enforces deterministic exact parity between registered public tool names and presentation.yaml keys and rejects duplicate registered names."
                 }
               ],
-              "exit_criteria": "Valid configuration loads; every designed invalid contract fails with actionable context; focused tests and file-scoped gates pass; no tool-name logic."
+              "exit_criteria": "Valid configuration loads; registered public tools and presentation keys match exactly; every designed invalid contract fails with actionable context; focused tests and file-scoped gates pass; no tool-name dispatch or registry ownership shift."
             },
             {
               "cycle_number": 2,
@@ -138,7 +142,7 @@
                 },
                 {
                   "id": "C_INTEGRATION.2",
-                  "description": "All thirteen audited collection tools declare valid collections and max_items.",
+                  "description": "All thirteen collection tools declare valid collections and max_items within the complete 50-tool configuration.",
                   "validates": {
                     "type": "contains_text",
                     "file": ".pgmcp/config/presentation.yaml",
@@ -163,10 +167,22 @@
                 },
                 {
                   "id": "C_INTEGRATION.7",
-                  "description": "A representative tool without new declarations remains byte-for-byte unchanged while under budget and changes only through the universal limiter when over budget."
+                  "description": "A template intentionally retained by the approved audit remains byte-for-byte unchanged below budget and limiter-only different above it."
+                },
+                {
+                  "id": "C_INTEGRATION.8",
+                  "description": "Every one of the 50 registered tool templates is implemented or explicitly confirmed against the approved field-audit inline/cache-only target."
+                },
+                {
+                  "id": "C_INTEGRATION.9",
+                  "description": "Structural evidence classifies every tool-specific DTO field inline or cache-only and ties each cache-only choice to an approved rationale category."
+                },
+                {
+                  "id": "C_INTEGRATION.10",
+                  "description": "Bundled presentation.yaml has exact bidirectional parity with the runtime public-tool registry; missing, obsolete, or duplicate identities fail startup."
                 }
               ],
-              "exit_criteria": "Bundled YAML aligns; representative output is actionable and bounded; DTO/cache/resource contracts remain unchanged; a representative non-adapted tool is byte-for-byte stable below the ceiling and limiter-only different above it; no affected tool-name dispatch; focused tests and file-scoped gates pass."
+              "exit_criteria": "Startup accepts exact 50-tool parity; every approved field-audit row is closed; output is actionable and bounded; cache contracts remain unchanged; retained compact templates are compatible below budget; no tool-name dispatch."
             },
             {
               "cycle_number": 5,
@@ -205,7 +221,7 @@
             },
             {
               "id": "VAL_BEHAVIOR.1",
-              "description": "Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, unchanged-tool compatibility, and unchanged cached DTOs."
+              "description": "Record evidence for 8,000-byte enforcement, cache-URI retention, order/limits, nested plan, labels, semantic outcomes, exact 50-tool parity, full field-audit closure, retained-template compatibility, and unchanged cached DTOs."
             },
             {
               "id": "VAL_DEFERRED.1",
