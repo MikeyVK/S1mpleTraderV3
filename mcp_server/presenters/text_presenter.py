@@ -34,7 +34,6 @@ from mcp_server.presenters.collection_text_renderer import (
 )
 from mcp_server.presenters.text_budget_limiter import TextBudgetLimiter
 from mcp_server.schemas.cache_publication import CachePublication
-from mcp_server.schemas.error_outputs import ToolErrorOutput
 
 if TYPE_CHECKING:
     from mcp_server.bootstrap import SupportedToolContract
@@ -259,7 +258,7 @@ class TextPresenter(ITextPresenter):
         if emoji:
             text = f"{emoji} {text}"
 
-        if tool_cfg is not None and not isinstance(data, ToolErrorOutput):
+        if tool_cfg is not None:
             for enum_case in tool_cfg.enum_cases:
                 raw_value = data_dict.get(enum_case.field)
                 serialized_value = (
@@ -274,12 +273,17 @@ class TextPresenter(ITextPresenter):
                     )
                     text = f"{text}\n\n{enum_text}"
 
-            if tool_cfg.collections:
+            collections = tool_cfg.collections
+            if not resolved_success:
+                collections = tuple(
+                    declaration for declaration in collections if declaration.field in data_dict
+                )
+            if collections:
                 if tool_cfg.max_items is None:
                     raise ConfigError("Configured collections require max_items")
                 collection_text = self._collection_renderer.render(
                     data_dict,
-                    tool_cfg.collections,
+                    collections,
                     tool_cfg.max_items,
                 )
                 if collection_text:
