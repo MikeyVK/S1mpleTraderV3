@@ -11,7 +11,7 @@ import json
 import string
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, TypeGuard, get_args, get_origin
+from typing import TYPE_CHECKING, Any, TypeGuard, get_origin
 
 from pydantic import BaseModel
 
@@ -25,6 +25,9 @@ from mcp_server.config.schemas.presentation_config import (
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.core.interfaces.ipresenter import ITextPresenter
 from mcp_server.core.operation_notes import NoteEntry
+from mcp_server.presenters.collection_text_renderer import (
+    classify_sequence_annotation,
+)
 from mcp_server.schemas.cache_publication import CachePublication
 
 if TYPE_CHECKING:
@@ -486,15 +489,7 @@ def validate_presentation_alignment(
         return annotation in {str, int, float, bool} or issubclass(annotation, Enum)
 
     def get_sequence_item(annotation: object, path: str) -> object:
-        origin = get_origin(annotation)
-        args = get_args(annotation)
-        if origin is list and len(args) == 1:
-            return args[0]
-        if origin is tuple and len(args) == 2 and args[1] is Ellipsis:
-            return args[0]
-        raise ConfigError(
-            f"Presentation field '{path}' must be annotated as list[T] or tuple[T, ...]"
-        )
+        return classify_sequence_annotation(annotation, path=path).item_type
 
     def template_uses_sequence(
         template: str,
