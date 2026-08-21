@@ -84,7 +84,11 @@ class ValidationService:
         validators = self.get_applicable_validators(path)
         return await self.run_validators(validators, path, content)
 
-    def validate_syntax(self, path: str, content: str) -> tuple[bool, str]:
+    def validate_syntax(
+        self,
+        path: str,
+        content: str,
+    ) -> tuple[bool, tuple[ValidationIssue, ...]]:
         """
         Lightweight syntax validation for pre-write checks.
 
@@ -96,28 +100,44 @@ class ValidationService:
             content: Content to validate
 
         Returns:
-            Tuple of (passed, issues_text)
+            Tuple of (passed, ordered canonical issue records)
         """
         # Determine validation based on file extension
         if path.endswith(".py"):
             # Python syntax check
             try:
                 compile(content, path, "exec")
-                return True, ""
-            except SyntaxError as e:
-                return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
+                return True, ()
+            except SyntaxError as exc:
+                return False, (
+                    ValidationIssue(
+                        message=f"Python syntax error: {exc.msg}",
+                        line=exc.lineno,
+                        column=exc.offset,
+                        code="python_syntax_error",
+                    ),
+                )
 
         elif path.endswith(".md"):
             # Markdown validation: check for H1 title
             h1_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
             if not h1_match:
-                return False, "❌ Markdown missing H1 title (line must start with '# ')"
-            return True, ""
+                return False, (
+                    ValidationIssue(
+                        message="Markdown is missing an H1 title",
+                        code="markdown_missing_h1",
+                    ),
+                )
+            return True, ()
 
         # Other file types pass (no validation)
-        return True, ""
+        return True, ()
 
-    def validate_content(self, content: str, artifact_type: str) -> tuple[bool, str]:
+    def validate_content(
+        self,
+        content: str,
+        artifact_type: str,
+    ) -> tuple[bool, tuple[ValidationIssue, ...]]:
         """
         Validate artifact content synchronously (for pre-write validation).
 
@@ -130,8 +150,7 @@ class ValidationService:
             artifact_type: Artifact category ("code" or "doc") or specific type_id
 
         Returns:
-            Tuple of (passed, issues_text) where passed is True if validation
-            succeeds, and issues_text contains formatted issues if any.
+            Tuple of (passed, ordered canonical issue records).
         """
         # For code artifacts, do Python syntax validation
         if artifact_type == "code" or artifact_type in [
@@ -151,13 +170,20 @@ class ValidationService:
             try:
                 # Try to compile the content to check for syntax errors
                 compile(content, f"<{artifact_type}>", "exec")
-                return True, ""
-            except SyntaxError as e:
-                return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
+                return True, ()
+            except SyntaxError as exc:
+                return False, (
+                    ValidationIssue(
+                        message=f"Python syntax error: {exc.msg}",
+                        line=exc.lineno,
+                        column=exc.offset,
+                        code="python_syntax_error",
+                    ),
+                )
 
         # For non-code artifacts (documents, etc.), skip validation
         # This implements WARN policy: docs pass validation (manager can log warnings)
-        return True, ""
+        return True, ()
 
     def get_applicable_validators(self, path: str) -> list[BaseValidator]:
         """
