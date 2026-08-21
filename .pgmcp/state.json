@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -117,6 +117,14 @@
       "human_approval_message": "User explicitly requested that blocker 1 be processed from the Research phase and committed separately.",
       "forced": true,
       "skip_reason": "Independent QA exposed a design-blocking ambiguity in exact tool/presentation parity for supported tokenless deployments. Reopen Research to record the human-approved catalog-parity strategy before Design is corrected."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-21T20:43:37.744290+00:00",
+      "human_approval_message": "User explicitly approved moving to Design to process QA blockers 2 and 3 with a structured plan.",
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,
