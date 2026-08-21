@@ -23,9 +23,11 @@ Dependency injection and bootstrap orchestration layer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast, get_args, get_origin
+
+from pydantic import BaseModel
 
 from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.schemas import (
@@ -48,7 +50,12 @@ from mcp_server.config.schemas import (
 from mcp_server.config.settings import Settings
 from mcp_server.config.validator import ConfigValidator
 from mcp_server.core.commit_phase_detector import CommitPhaseDetector
-from mcp_server.core.interfaces import IToolResponsePublisher, IToolResponseReader
+from mcp_server.core.exceptions import ConfigError
+from mcp_server.core.interfaces import (
+    ICoreTool,
+    IToolResponsePublisher,
+    IToolResponseReader,
+)
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.core.tool_factory import ToolFactory as CoreToolFactory
@@ -197,6 +204,124 @@ class ManagerGraph:
     response_cache: IToolResponsePublisher | IToolResponseReader
 
 
+@dataclass(frozen=True)
+class SupportedToolContract:
+    """Minimal presentation-validation contract derived from a core tool."""
+
+    name: str
+    output_model: type[BaseModel]
+
+
+def _resolve_generic_output_models(tool_type: type[Any]) -> tuple[type[BaseModel], ...]:
+    """Resolve concrete ICoreTool output arguments across generic base classes."""
+    resolved: list[type[BaseModel]] = []
+
+    def resolve_binding(value: object, bindings: dict[object, object]) -> object:
+        seen: set[object] = set()
+        current = value
+        while current in bindings and current not in seen:
+            seen.add(current)
+            current = bindings[current]
+        return current
+
+    def visit(current: type[Any], bindings: dict[object, object]) -> None:
+        original_bases = current.__dict__.get("__orig_bases__")
+        bases = original_bases if original_bases is not None else current.__bases__
+        for generic_base in bases:
+            origin = get_origin(generic_base) or generic_base
+            arguments = tuple(
+                resolve_binding(argument, bindings) for argument in get_args(generic_base)
+            )
+            if origin is ICoreTool:
+                if len(arguments) != 2:
+                    continue
+                output_candidate = arguments[1]
+                if (
+                    isinstance(output_candidate, type)
+                    and issubclass(output_candidate, BaseModel)
+                    and output_candidate not in resolved
+                ):
+                    resolved.append(output_candidate)
+                continue
+            if not isinstance(origin, type) or origin is object:
+                continue
+            parameters = getattr(origin, "__parameters__", ())
+            child_bindings = dict(zip(parameters, arguments, strict=False))
+            visit(origin, child_bindings)
+
+    visit(tool_type, {})
+    return tuple(resolved)
+
+
+def _resolve_supported_tool_contract(tool: object) -> SupportedToolContract:
+    """Derive and validate the minimal contract for one supported core tool."""
+    name = getattr(tool, "name", None)
+    if not isinstance(name, str) or not name.strip():
+        raise ConfigError("Supported tool name must be a non-empty string")
+
+    explicit_model = getattr(tool, "output_model", None)
+    if explicit_model is not None and (
+        not isinstance(explicit_model, type) or not issubclass(explicit_model, BaseModel)
+    ):
+        raise ConfigError(f"Invalid explicit output model for supported tool '{name}'")
+
+    generic_models = _resolve_generic_output_models(type(tool))
+    if len(generic_models) > 1:
+        model_names = ", ".join(model.__name__ for model in generic_models)
+        raise ConfigError(
+            f"Conflicting generic output models for supported tool '{name}': {model_names}"
+        )
+
+    generic_model = generic_models[0] if generic_models else None
+    if (
+        explicit_model is not None
+        and generic_model is not None
+        and explicit_model is not generic_model
+    ):
+        raise ConfigError(
+            f"Conflicting explicit and generic output models for supported tool '{name}'"
+        )
+
+    output_model = explicit_model or generic_model
+    if output_model is None:
+        raise ConfigError(f"Unable to resolve output model for supported tool '{name}'")
+    return SupportedToolContract(name=name, output_model=output_model)
+
+
+@dataclass(frozen=True)
+class ToolAssembly:
+    """Complete supported core tools plus the settings-dependent active subset."""
+
+    supported_tools: tuple[ICoreTool[Any, Any], ...]
+    active_tools: tuple[ICoreTool[Any, Any], ...]
+    supported_contracts: tuple[SupportedToolContract, ...] = field(init=False)
+
+    def __post_init__(self) -> None:
+        contracts = tuple(_resolve_supported_tool_contract(tool) for tool in self.supported_tools)
+        names = [contract.name for contract in contracts]
+        duplicate_names = sorted({name for name in names if names.count(name) > 1})
+        if duplicate_names:
+            raise ConfigError("Duplicate supported tool names: " + ", ".join(duplicate_names))
+
+        supported_ids = {id(tool) for tool in self.supported_tools}
+        if any(id(tool) not in supported_ids for tool in self.active_tools):
+            raise ConfigError("Every active tool must be an object from supported_tools")
+
+        object.__setattr__(self, "supported_contracts", contracts)
+
+    @classmethod
+    def create(
+        cls,
+        supported_tools: tuple[Any, ...],
+        active_tools: tuple[Any, ...],
+    ) -> ToolAssembly:
+        """Validate and freeze supported and active core-tool tuples."""
+        return cls(
+            supported_tools=cast(tuple[ICoreTool[Any, Any], ...], supported_tools),
+            active_tools=cast(tuple[ICoreTool[Any, Any], ...], active_tools),
+        )
+
+
 class ServerBootstrapper:
     """Orchestrates configuration loading and manager graph instantiation."""
 
@@ -237,11 +362,14 @@ class ServerBootstrapper:
         managers = self._build_manager_graph(configs, template_registry)
 
         # Build Tools and Resources
-        core_tools = self._build_tools(configs, managers)
+        tool_assembly = self._build_tool_assembly(configs, managers)
         resources = self._build_resources(configs, managers)
 
         text_presenter = TextPresenter(config=configs.presentation_config)
-        validate_presentation_alignment(text_presenter, core_tools)
+        validate_presentation_alignment(
+            text_presenter,
+            list(tool_assembly.supported_tools),
+        )
         resource_presenter = ValidationResourcePresenter()
         presenter = ResponsePresenter(
             text_presenter=text_presenter,
@@ -253,7 +381,7 @@ class ServerBootstrapper:
             enforcement_runner=managers.enforcement_runner,
             workspace_root=Path(settings.server.workspace_root),
         )
-        tools = [factory.create_tool(t) for t in core_tools]
+        tools = [factory.create_tool(tool) for tool in tool_assembly.active_tools]
 
         return MCPServer(
             settings=settings,
@@ -439,20 +567,29 @@ class ServerBootstrapper:
             response_cache=response_cache,
         )
 
-    def _build_tools(self, configs: ConfigLayer, managers: ManagerGraph) -> list[Any]:
-        """Compose the list of available tools."""
+    def _build_tool_assembly(
+        self,
+        configs: ConfigLayer,
+        managers: ManagerGraph,
+    ) -> ToolAssembly:
+        """Compose all supported tools and select the settings-dependent active subset."""
         settings = self._settings
+        branch_validated_reader = BranchValidatedStateReader(inner=managers.state_repository)
+        merge_readiness_context = MergeReadinessContext(
+            terminal_phase=configs.workphases_config.get_terminal_phase(),
+            pr_allowed_phase=configs.contracts_config.get_pr_allowed_phase(),
+            branch_local_artifacts=tuple(
+                configs.contracts_config.merge_policy.branch_local_artifacts
+            ),
+        )
 
-        _branch_validated_reader = BranchValidatedStateReader(inner=managers.state_repository)
-
-        tools: list[Any] = [
-            # Git tools
+        base_tools: list[ICoreTool[Any, Any]] = [
             CreateBranchTool(manager=managers.git_manager),
             GitStatusTool(manager=managers.git_manager),
             GitCommitTool(
                 manager=managers.git_manager,
                 phase_guard=build_phase_guard(
-                    state_reader=_branch_validated_reader,
+                    state_reader=branch_validated_reader,
                     phase_contract_resolver=managers.phase_contract_resolver,
                 ),
                 commit_type_resolver=build_commit_type_resolver(
@@ -481,20 +618,18 @@ class ServerBootstrapper:
             GitListBranchesTool(manager=managers.git_manager),
             GitDiffTool(manager=managers.git_manager),
             GetParentBranchTool(
-                manager=managers.git_manager, state_engine=managers.phase_state_engine
+                manager=managers.git_manager,
+                state_engine=managers.phase_state_engine,
             ),
             CheckMergeTool(manager=managers.git_manager),
-            # Quality tools
             RunQualityGatesTool(manager=managers.qa_manager),
             SafeEditTool(),
             TemplateValidationTool(),
-            # Development tools
             HealthCheckTool(),
             RestartServerTool(
-                server_root=Path(settings.server.workspace_root) / settings.server.server_root_dir
+                server_root=(Path(settings.server.workspace_root) / settings.server.server_root_dir)
             ),
             RunTestsTool(runner=PytestRunner(), settings=settings),
-            # Project tools (Phase 0.5)
             InitializeProjectTool(
                 workspace_root=Path(settings.server.workspace_root),
                 manager=managers.project_manager,
@@ -505,29 +640,33 @@ class ServerBootstrapper:
             GetProjectPlanTool(manager=managers.project_manager),
             SavePlanningDeliverablesTool(manager=managers.project_manager),
             UpdatePlanningDeliverablesTool(manager=managers.project_manager),
-            # Phase tools (Phase B)
             TransitionPhaseTool(
                 workspace_root=Path(settings.server.workspace_root),
                 project_manager=managers.project_manager,
                 state_engine=managers.phase_state_engine,
-                server_root=Path(settings.server.workspace_root) / settings.server.server_root_dir,
+                server_root=(
+                    Path(settings.server.workspace_root) / settings.server.server_root_dir
+                ),
                 workphases_config=configs.workphases_config,
             ),
             ForcePhaseTransitionTool(
                 workspace_root=Path(settings.server.workspace_root),
                 project_manager=managers.project_manager,
                 state_engine=managers.phase_state_engine,
-                server_root=Path(settings.server.workspace_root) / settings.server.server_root_dir,
+                server_root=(
+                    Path(settings.server.workspace_root) / settings.server.server_root_dir
+                ),
                 workphases_config=configs.workphases_config,
             ),
-            # TDD Cycle tools (Issue #146)
             TransitionCycleTool(
                 workspace_root=Path(settings.server.workspace_root),
                 project_manager=managers.project_manager,
                 state_engine=managers.phase_state_engine,
                 git_manager=managers.git_manager,
                 gate_runner=managers.workflow_gate_runner,
-                server_root=Path(settings.server.workspace_root) / settings.server.server_root_dir,
+                server_root=(
+                    Path(settings.server.workspace_root) / settings.server.server_root_dir
+                ),
             ),
             ForceCycleTransitionTool(
                 workspace_root=Path(settings.server.workspace_root),
@@ -535,12 +674,12 @@ class ServerBootstrapper:
                 state_engine=managers.phase_state_engine,
                 git_manager=managers.git_manager,
                 gate_runner=managers.workflow_gate_runner,
-                server_root=Path(settings.server.workspace_root) / settings.server.server_root_dir,
+                server_root=(
+                    Path(settings.server.workspace_root) / settings.server.server_root_dir
+                ),
             ),
-            # Scaffold tools (unified artifact scaffolding)
             ScaffoldArtifactTool(manager=managers.artifact_manager),
             ScaffoldSchemaTool(manager=managers.artifact_manager),
-            # Discovery tools
             GetWorkContextTool(
                 settings=settings,
                 git_manager=managers.git_manager,
@@ -554,93 +693,79 @@ class ServerBootstrapper:
             ),
         ]
 
-        if settings.github.token:
-            _merge_readiness_context = MergeReadinessContext(
-                terminal_phase=configs.workphases_config.get_terminal_phase(),
-                pr_allowed_phase=configs.contracts_config.get_pr_allowed_phase(),
-                branch_local_artifacts=tuple(
-                    configs.contracts_config.merge_policy.branch_local_artifacts
-                ),
-            )
-            tools.extend(
-                [
-                    # GitHub Issue tools
-                    CreateIssueTool(
-                        manager=managers.github_manager,
-                        issue_config=configs.issue_config,
-                        milestone_config=configs.milestone_config,
-                        contracts_config=configs.contracts_config,
-                        label_config=configs.label_config,
-                        scope_config=configs.scope_config,
-                        git_config=configs.git_config,
-                    ),
-                    ListIssuesTool(manager=managers.github_manager),
-                    GetIssueTool(manager=managers.github_manager),
-                    CloseIssueTool(manager=managers.github_manager),
-                    UpdateIssueTool(manager=managers.github_manager),
-                    # PR and Label tools (require token at init time)
-                    ListPRsTool(manager=managers.github_manager, git_config=configs.git_config),
-                    GetPRTool(manager=managers.github_manager),
-                    MergePRTool(
-                        manager=managers.github_manager,
-                        git_config=configs.git_config,
-                        pr_status_writer=managers.pr_status_cache,
-                    ),
-                    SubmitPRTool(
-                        git_manager=managers.git_manager,
-                        github_manager=managers.github_manager,
-                        pr_status_writer=managers.pr_status_cache,
-                        merge_readiness_context=_merge_readiness_context,
-                        branch_parent_reader=BranchStateParentReader(
-                            state_reader=managers.state_repository,
-                            git_config=configs.git_config,
-                        ),
-                    ),
-                    AddLabelsTool(
-                        manager=managers.github_manager,
-                        label_config=configs.label_config,
-                        workphases_config=configs.workphases_config,
-                    ),
-                    ListLabelsTool(
-                        manager=managers.github_manager, label_config=configs.label_config
-                    ),
-                    CreateLabelTool(
-                        manager=managers.github_manager,
-                        label_config=configs.label_config,
-                        workphases_config=configs.workphases_config,
-                    ),
-                    DeleteLabelTool(
-                        manager=managers.github_manager, label_config=configs.label_config
-                    ),
-                    RemoveLabelsTool(
-                        manager=managers.github_manager, label_config=configs.label_config
-                    ),
-                    ListMilestonesTool(manager=managers.github_manager),
-                    CreateMilestoneTool(manager=managers.github_manager),
-                    CloseMilestoneTool(manager=managers.github_manager),
-                ]
-            )
-        else:
-            tools.extend(
-                [
-                    CreateIssueTool(
-                        manager=managers.github_manager,
-                        issue_config=configs.issue_config,
-                        milestone_config=configs.milestone_config,
-                        contracts_config=configs.contracts_config,
-                        label_config=configs.label_config,
-                        scope_config=configs.scope_config,
-                        git_config=configs.git_config,
-                    ),
-                    ListIssuesTool(manager=managers.github_manager),
-                    GetIssueTool(manager=managers.github_manager),
-                    CloseIssueTool(manager=managers.github_manager),
-                    UpdateIssueTool(manager=managers.github_manager),
-                ]
-            )
+        issue_tools: list[ICoreTool[Any, Any]] = [
+            CreateIssueTool(
+                manager=managers.github_manager,
+                issue_config=configs.issue_config,
+                milestone_config=configs.milestone_config,
+                contracts_config=configs.contracts_config,
+                label_config=configs.label_config,
+                scope_config=configs.scope_config,
+                git_config=configs.git_config,
+            ),
+            ListIssuesTool(manager=managers.github_manager),
+            GetIssueTool(manager=managers.github_manager),
+            CloseIssueTool(manager=managers.github_manager),
+            UpdateIssueTool(manager=managers.github_manager),
+        ]
 
-        tools.append(AutoFixTool(qa_manager=managers.qa_manager))
-        return tools
+        credential_tools: list[ICoreTool[Any, Any]] = [
+            ListPRsTool(
+                manager=managers.github_manager,
+                git_config=configs.git_config,
+            ),
+            GetPRTool(manager=managers.github_manager),
+            MergePRTool(
+                manager=managers.github_manager,
+                git_config=configs.git_config,
+                pr_status_writer=managers.pr_status_cache,
+            ),
+            SubmitPRTool(
+                git_manager=managers.git_manager,
+                github_manager=managers.github_manager,
+                pr_status_writer=managers.pr_status_cache,
+                merge_readiness_context=merge_readiness_context,
+                branch_parent_reader=BranchStateParentReader(
+                    state_reader=managers.state_repository,
+                    git_config=configs.git_config,
+                ),
+            ),
+            AddLabelsTool(
+                manager=managers.github_manager,
+                label_config=configs.label_config,
+                workphases_config=configs.workphases_config,
+            ),
+            ListLabelsTool(
+                manager=managers.github_manager,
+                label_config=configs.label_config,
+            ),
+            CreateLabelTool(
+                manager=managers.github_manager,
+                label_config=configs.label_config,
+                workphases_config=configs.workphases_config,
+            ),
+            DeleteLabelTool(
+                manager=managers.github_manager,
+                label_config=configs.label_config,
+            ),
+            RemoveLabelsTool(
+                manager=managers.github_manager,
+                label_config=configs.label_config,
+            ),
+            ListMilestonesTool(manager=managers.github_manager),
+            CreateMilestoneTool(manager=managers.github_manager),
+            CloseMilestoneTool(manager=managers.github_manager),
+        ]
+
+        auto_fix_tool = AutoFixTool(qa_manager=managers.qa_manager)
+        supported_tools = (*base_tools, *issue_tools, *credential_tools, auto_fix_tool)
+        active_tools = (
+            supported_tools if settings.github.token else (*base_tools, *issue_tools, auto_fix_tool)
+        )
+        return ToolAssembly.create(
+            supported_tools=supported_tools,
+            active_tools=active_tools,
+        )
 
     def _build_resources(
         self,

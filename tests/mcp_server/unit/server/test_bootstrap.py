@@ -64,7 +64,6 @@ from mcp_server.state.pr_status_cache import PRStatusCache
 from tests.mcp_server.test_support import get_default_server_root
 
 
-
 class _AssemblyInput(BaseModel):
     """Synthetic core-tool input for assembly contract tests."""
 
@@ -95,9 +94,7 @@ class _GenericAssemblyTool(ICoreTool[_AssemblyInput, _AssemblyOutput]):
     def args_model(self) -> type[BaseModel]:
         return _AssemblyInput
 
-    async def execute(
-        self, params: _AssemblyInput, context: NoteContext
-    ) -> _AssemblyOutput:
+    async def execute(self, params: _AssemblyInput, context: NoteContext) -> _AssemblyOutput:
         del params, context
         return _AssemblyOutput()
 
@@ -145,7 +142,7 @@ class TestToolAssembly:
                 "duplicate",
             ),
             ((_UnresolvedAssemblyTool(),), "output model"),
-            ((_ConflictingAssemblyTool(),), "conflicting"),
+            ((_ConflictingAssemblyTool(),), "Conflicting"),
         ],
     )
     def test_rejects_invalid_supported_contracts(
@@ -168,6 +165,7 @@ class TestToolAssembly:
                 supported_tools=(supported,),
                 active_tools=(unrelated,),
             )
+
 
 class TestBootstrap:
     """Test suite for bootstrap containers."""
@@ -450,6 +448,30 @@ class TestServerBootstrapperToolsAndResources:
             assert "create_issue" in tool_names
             assert "get_pr" not in tool_names
             assert "git_status" in tool_names
+
+    def test_supported_inactive_tools_keep_github_adapter_lazy(self) -> None:
+        """Constructing the complete tokenless catalog must not create an adapter."""
+        mock_settings = MagicMock()
+        mock_settings.github.token = None
+        mock_settings.server.name = "test-server"
+        mock_settings.server.workspace_root = "/fake/root"
+        mock_settings.server.server_root_dir = get_default_server_root()
+        mock_settings.server.logs_dir = "logs"
+        mock_settings.logging.level = "WARNING"
+        mock_settings.logging.audit_log = "/fake/root/.pgmcp/logs/mcp_audit.log"
+
+        with (
+            patch("mcp_server.bootstrap.setup_logging"),
+            patch("mcp_server.bootstrap.TemplateRegistry"),
+            patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
+            patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.managers.github_manager.GitHubAdapter") as adapter_cls,
+        ):
+            _setup_mock_config_loader(mock_config_loader_cls)
+
+            ServerBootstrapper(mock_settings).bootstrap()
+
+            adapter_cls.assert_not_called()
 
     def test_build_tools_with_github_token(self) -> None:
         """Verify bootstrap returns GitHub tools when token is present."""
