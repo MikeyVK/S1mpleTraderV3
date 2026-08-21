@@ -2,8 +2,8 @@
 <!-- template=generic_doc version=ad8498ef created=2026-08-21 updated=2026-08-21 -->
 # Tool Presentation Field Audit
 
-**Status:** PRELIMINARY  
-**Version:** 1.0  
+**Status:** APPROVED  
+**Version:** 1.1  
 **Last Updated:** 2026-08-21
 
 ---
@@ -20,7 +20,7 @@ Provide a complete field-level target audit for every registered MCP tool before
 
 ## Interpretation
 
-This is the intended normal-success presentation after issue #456, not a claim about code already implemented.
+This is the approved normal-success presentation target after issue #456, not a claim about code already implemented. Every row is an implementation deliverable, including rows whose current compact scalar template remains appropriate after review.
 
 - **Inline fields** names every tool-specific DTO field intended to appear in chat. Nested paths use collection[].field notation.
 - **Mechanism** identifies ordinary scalar interpolation, inline bounded scalar sequences, configured collections, or the resource-only exception.
@@ -118,22 +118,23 @@ Every listed output model inherits these fields; they are not repeated in each r
 
 ---
 
-## Findings Exposed by the Audit
+## Full-Optimization Decision
 
-The field audit disproves the earlier shorthand that the 32 unchanged templates have no additional cached data. They often do; their approved rationale is only that the current compact confirmation was judged sufficient for the immediate next decision.
+The field audit disproves the earlier shorthand that the 32 compact templates have no additional cached data. They often do. All 50 rows are now explicitly in implementation scope, and the inline/cache-only split in each row is the approved target.
 
-Potentially actionable omissions among unchanged templates include:
+A cache-only classification is intentional only under one of these actionability rules:
 
-- health_check.reason;
-- transition passing_gates[] and skipped_gates[];
-- initialize_project.required_phases[] and files_created[];
-- git_add_or_commit.files[];
-- create/update issue body, labels, state, and assignment metadata;
-- transition warnings and gate information.
+| Rationale | Representative fields |
+|---|---|
+| Redundant confirmation or caller-supplied input | create/update issue body and labels, commit/restore file lists, transition gate lists after a successful transition |
+| Internal or low-value operational metadata | timestamps, process identifiers, author metadata, prior phase/cycle values |
+| Raw or deep inspection evidence | raw Git output, diffs, tracebacks, stderr, validation schemas, opaque gate details |
+| Duplicate convenience representation | formatted file or label strings when the underlying bounded collection is inline |
+| Semantically unreliable without a richer DTO contract | `gates[].details` until structured findings exist |
 
-This document records those omissions explicitly. Whether any of them should move inline is a product-scope decision that must be settled before Implementation rather than chosen implicitly while editing presentation.yaml.
+Optimization requires implementing and reviewing every row, not forcing every DTO field inline. The current compact scalar result remains optimal where extra fields are redundant, operational metadata, or deep-inspection evidence. The complete cache continues to expose all omitted fields.
 
-The deferred quality-gate gap remains unchanged: gates[].details is an opaque string. Showing bounded concrete diagnostics requires a future structured finding contract rather than gate-specific presentation parsing.
+The deferred quality-gate gap remains unchanged: `gates[].details` is an opaque string. Showing bounded concrete diagnostics requires a future structured finding contract rather than gate-specific presentation parsing.
 
 ## Evidence and Reproducibility
 
@@ -152,7 +153,9 @@ The inventory was derived from:
 - [ ] Every tool maps to a registered output model.
 - [ ] Every tool-specific DTO field is classified as inline or cache-only.
 - [ ] Nested DTO fields use explicit path notation.
-- [ ] Any decision to move an additional cache-only field inline is reflected in Research, Design, Planning, and structured deliverables.
+- [ ] Every row is implemented or explicitly confirmed unchanged against its approved inline/cache-only target.
+- [ ] Registered public tool names and presentation keys have exact bidirectional parity.
+- [ ] Any change to the approved inline/cache-only split is reflected in Research, Design, Planning, and structured deliverables.
 
 ## Related Documentation
 
@@ -170,3 +173,4 @@ The inventory was derived from:
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0 | 2026-08-21 | Agent | Complete 50-tool target presentation and cache-field audit |
+| 1.1 | 2026-08-21 | Agent | Approve the 50-tool implementation target and explicit cache-only rationale categories |

@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -45,6 +45,14 @@
       "human_approval_message": "User explicitly requested returning issue #456 from Planning to Research to record both scope expansions, then reassess Design and update Planning before Implementation.",
       "forced": true,
       "skip_reason": "Reopen Research from Planning because two material scope gaps were identified before Implementation: presentation.yaml is not actively validated against the registered tool set, and the post-planning 50-tool field audit requires full optimization of every tool presentation template within issue #456."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-21T13:54:27.670973+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,

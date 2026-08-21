@@ -3,8 +3,8 @@
 # Compact Actionable Tool Summaries — Design
 
 **Status:** APPROVED  
-**Version:** 1.1  
-**Last Updated:** 2026-08-20
+**Version:** 1.2  
+**Last Updated:** 2026-08-21
 
 ---
 
@@ -42,8 +42,10 @@ Current scalar-only presentation templates make routine tool results under-infor
 - Preserve a truncation notice and cache URI inside the budget whenever a cache URI exists.
 - Handle cache-publication failure explicitly when no resource URI can be retained.
 - Validate collection paths and placeholders against tool output models at startup.
+- Enforce exact bidirectional parity between registered public tool names and `presentation.yaml` tool keys at startup.
+- Implement and verify the approved field-level target for every one of the 50 registered tool templates.
 - Keep deep logs, tracebacks, schemas, diffs, and full result sets in the cache.
-- Enrich the four approved scalar templates and correct the two contradictory outcome templates.
+- Enrich the approved scalar templates, correct the two contradictory outcome templates, and review every compact scalar template against the approved field audit.
 
 **Non-Functional:**
 
@@ -124,7 +126,8 @@ Create specialized renderer logic for each long-output tool.
 | Component | Responsibility | Explicitly does not own |
 |---|---|---|
 | Tool and output DTO | Produce complete structured result data. | Markdown, item limits, byte limits. |
-| ConfigLoader and PresentationConfig | Parse and validate presentation policy. | Runtime rendering or cache publication. |
+| ConfigLoader and PresentationConfig | Parse and validate presentation policy. | Runtime rendering, tool registration ownership, or cache publication. |
+| Startup presentation alignment | Compare the authoritative registered public-tool set with configured keys and validate every configured template against its output model. | Register tools or choose presentation content. |
 | SafeNoneFormatter | Format scalar values and bounded flat scalar sequences consistently. | Tool identity, nested model rendering, final byte enforcement. |
 | CollectionTextRenderer | Project configured list fields into bounded Markdown in DTO order. | Tool identity, sorting, filtering, final byte enforcement. |
 | TextBudgetLimiter | Enforce the final UTF-8 byte ceiling and retain required tail content. | DTO traversal or tool-specific semantics. |
@@ -259,9 +262,11 @@ flowchart LR
 
 The embedded validation schema produced by ValidationResourcePresenter remains a separate PresentationResource and is not counted toward the TextPresenter ceiling.
 
-### 3.5. Tool Configuration Matrix
+### 3.5. Complete Tool Configuration Matrix
 
-Limits reflect item density: five diagnostic failures, ten normal records, and twenty short identifiers or paths. The final byte ceiling remains authoritative.
+The authoritative 50-tool field matrix is [Tool Presentation Field Audit](tool-presentation-field-audit.md). Every row is an implementation and review deliverable, including templates intentionally retained after confirming their compact output is optimal. Every cache-only field must match one of the approved rationale categories in that audit.
+
+The table below identifies tools that require the new collection or inline-sequence mechanics. Limits reflect item density: five diagnostic failures, ten normal records, and twenty short identifiers or paths. The final byte ceiling remains authoritative.
 
 | Tool | max_items | Root collection(s) | Nested collection | Inline item contract |
 |---|---:|---|---|---|
@@ -297,10 +302,14 @@ scaffold_schema remains deliberately resource-oriented.
 
 ### 3.6. Alignment and Failure Behavior
 
-validate_presentation_alignment remains the startup authority and recursively validates every configured collection against each tool output_model.
+`validate_presentation_alignment` remains the startup authority. It first compares the complete authoritative registered public-tool-name set with the configured tool-key set, then recursively validates every matched template and collection against that tool's `output_model`. Registration stays owned by `ServerBootstrapper`; the validator receives the assembled tool list and does not discover or construct tools itself.
 
 | Condition | Required behavior |
 |---|---|
+| Registered public tool has no presentation key | Startup ConfigError listing missing tool names in deterministic order. |
+| Presentation key has no registered public tool | Startup ConfigError listing unknown/obsolete keys in deterministic order. |
+| Duplicate registered public tool name | Startup ConfigError; registration ambiguity must not be hidden by set comparison. |
+| Exact registration/config parity | Continue with output-model and template validation for every tool. |
 | Unknown root or child field | Startup ConfigError naming tool and path. |
 | Field is not a list | Startup ConfigError naming the incompatible field. |
 | Invalid model-item placeholder | Startup ConfigError naming template, DTO, and placeholder. |
@@ -349,7 +358,7 @@ Tests are organized around lasting public behavior, not around the wording of al
 | Semantic outcome regression | overall_pass=False and passed=False produce neutral, non-contradictory summaries. |
 | Server/presenter integration | Cached DTO content remains complete while presented text is bounded. |
 
-The configuration matrix is checked structurally: all thirteen audited collection tools declare valid collection specs and limits, and no Python source branches on those tool names. This is one configuration contract test, not thirteen wording snapshots.
+The configuration matrix is checked structurally at two levels: all 50 registered public tools have exact key parity and match the approved field-audit target, while the thirteen collection tools declare valid collection specs and limits. No Python source branches on those tool names. Evidence uses capability and field-classification matrices rather than 50 exact-wording snapshots.
 
 Implementation deletes:
 
@@ -370,6 +379,8 @@ No replacement test asserts mutable prose across agent or documentation files. D
 | Cache URI is lost | Mandatory-tail reservation and startup budget validation. | Treat URI-retention failure as stop-go blocking. |
 | Diagnostics leak verbose data | Templates can reference only selected item fields; representative DTO tests exclude verbose fields. | Include quality/test outputs in integration coverage. |
 | Config drifts from DTO shapes | Recursive startup alignment. | Configuration declarations and validator evolve together. |
+| Config keys drift from runtime registrations | Exact bidirectional startup parity and duplicate-name rejection. | Add parity behavior and tests to the configuration/alignment slice. |
+| Partial rollout misses previously compact tools | Approved 50-tool field matrix with explicit cache-only rationales. | Plan full-matrix implementation and structural evidence, not only the thirteen collection tools. |
 | Test explosion returns | Capability matrix, not per-tool prose snapshots. | Delete 62 obsolete tests and keep new coverage seam-oriented. |
 
 Planning must keep configuration/schema, generic services, integration, tool declarations, and documentation traceable as separate concerns, but must not reinterpret the Approved Strategy.
@@ -394,3 +405,4 @@ None. The design is ready for independent review and Planning after approval.
 |---|---|---|---|
 | 1.0 | 2026-08-20 | Agent | Approved configuration, presentation-service, failure, compatibility, and test design |
 | 1.1 | 2026-08-20 | Agent | Define generic bounded inline scalar-sequence formatting for issue labels |
+| 1.2 | 2026-08-21 | Agent | Add exact registration/config parity and make the approved 50-tool field audit the complete rollout contract |
