@@ -4,8 +4,8 @@
   "issue_number": 456,
   "workflow_name": "feature",
   "current_phase": "implementation",
-  "current_cycle": 3,
-  "last_cycle": 2,
+  "current_cycle": 4,
+  "last_cycle": 3,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -18,6 +18,12 @@
       "name": "Generic ordered-sequence and collection presentation",
       "forced": false,
       "entered": "2026-08-21T21:55:59.873597+00:00"
+    },
+    {
+      "cycle_number": 4,
+      "name": "UTF-8 text budget enforcement",
+      "forced": false,
+      "entered": "2026-08-21T22:06:23.639956+00:00"
     }
   ],
   "required_phases": [
@@ -157,5 +163,5 @@
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "green"
+  "current_sub_phase": "red"
 }
