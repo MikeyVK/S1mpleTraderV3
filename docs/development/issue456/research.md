@@ -3,8 +3,8 @@
 # Compact Actionable Tool Summaries — Research
 
 **Status:** APPROVED  
-**Version:** 1.2  
-**Last Updated:** 2026-08-20
+**Version:** 1.3  
+**Last Updated:** 2026-08-21
 
 ---
 
@@ -17,7 +17,9 @@ Establish the evidence, scope, and Approved Strategy for compact, actionable MCP
 **In Scope:**
 
 - Text produced by `TextPresenter` and configured through `.pgmcp/config/presentation.yaml`.
-- All 50 currently registered public tools and their output DTO shapes.
+- All 50 currently registered public tools, every corresponding `presentation.yaml` template, and their output DTO shapes.
+- A field-level optimization decision for every registered tool template; no template is accepted as unchanged without an explicit actionability rationale.
+- Bidirectional startup validation between registered public tools and `presentation.yaml` tool keys.
 - Configuration validation, presentation alignment, unit and integration tests, active tool documentation, and agent-facing cache guidance.
 - Cross-harness output constraints relevant to selecting a conservative text-response ceiling.
 - Removal of `tests/documentation/test_c4_doc_alignment.py` and `tests/documentation/test_agent_instruction_search_contract.py`, including all 62 collected cases.
@@ -81,9 +83,9 @@ The selected 8,000-byte ceiling is one safety boundary, not a soft target plus a
 
 ## Complete Tool Audit
 
-### Compact scalar confirmation remains sufficient
+### Initial compact-scalar classification requires full reassessment
 
-The following 32 tools already expose enough information for their normal immediate decision. They require only the global text ceiling; their complete DTOs remain available in cache:
+The initial Research classified the following 32 tools as already sufficient. The later field-level audit disproved that this classification was complete: many of these DTOs contain additional fields that may improve the immediate next decision. Issue #456 now requires every one of these templates to be reassessed and optimized; retaining a compact template is allowed only when the field-level target records why omitted fields are redundant, caller-supplied, operationally verbose, or deep-inspection-only:
 
 `health_check`, `restart_server`, `transition_cycle`, `force_cycle_transition`,
 `initialize_project`, `save_planning_deliverables`,
@@ -95,7 +97,7 @@ The following 32 tools already expose enough information for their normal immedi
 `remove_labels`, `create_milestone`, `close_milestone`,
 `transition_phase`, and `force_phase_transition`.
 
-These are primarily confirmations or bounded status responses. Repeating caller-supplied input or complete changed-file sets inline would add noise without improving the next decision.
+The binding field inventory is [Tool Presentation Field Audit](tool-presentation-field-audit.md). Design must turn its preliminary classifications into a complete 50-tool target matrix. Optimization means maximizing immediate actionability within the shared byte budget, not indiscriminately copying every DTO field into chat; every cache-only classification must nevertheless be deliberate and justified.
 
 ### Declarative collection presentation is useful
 
@@ -150,6 +152,20 @@ Synthetic DTO presentation through the current `TextPresenter` reproduced two co
 
 Both templates must use outcome-neutral completion wording and expose the actual result as data. This is distinct from the four scalar template expansions above.
 
+## Reopened Scope Findings
+
+### Registered-tool and presentation-key drift is not fail-fast
+
+`ServerBootstrapper` constructs `TextPresenter` and calls `validate_presentation_alignment(text_presenter, core_tools)` at startup, so the existing composition seam is suitable for fail-fast enforcement. The validator currently iterates registered tools, looks up `presenter.tools_config.get(tool_name)`, and silently continues when the entry is absent. It never rejects configured tool keys that have no registered public tool. Consequently, schema-valid YAML can still omit a registered tool or retain an obsolete tool without startup failure.
+
+The required boundary is exact bidirectional parity between the registered public tool-name set and the `presentation.yaml` tool-key set. Validation must report missing and unknown names deterministically and fail startup before serving requests. This extends the existing alignment authority; it does not move registration ownership into configuration or add a second registry.
+
+### Post-planning field audit broadens rollout scope
+
+The [Tool Presentation Field Audit](tool-presentation-field-audit.md) was produced after Planning and classifies every tool-specific output field for all 50 tools. It exposes potentially actionable omissions in templates previously treated as complete, including health reasons, workflow gate/warning context, initialization results, commit file effects, and issue metadata. The original rollout matrix therefore cannot remain limited to thirteen collection tools, four scalar expansions, and two semantic corrections.
+
+Every registered tool template is now an implementation deliverable. Design must define a complete target matrix that either places each tool-specific field inline through the generic presentation mechanisms or records a concrete cache-only rationale. Planning must provide implementation and evidence for the full matrix without introducing one brittle prose snapshot per tool.
+
 ## Options Considered
 
 | Option | Benefit | Cost / risk | Decision |
@@ -160,12 +176,16 @@ Both templates must use outcome-neutral completion wording and expose the actual
 | Add one bounded declarative projection pipeline | Compact common behavior with per-tool presentation choices in configuration. | Requires a small generic collection capability and robust final text limiting. | Approved |
 | Add sorting/filtering semantics | Could prioritize selected records. | Changes authoritative order and expands configuration complexity. | Rejected |
 | Add a generic JSON renderer | Could inline `scaffold_schema`. | Adds complexity for one deep-inspection case and duplicates cache data. | Rejected |
+| Validate only configured templates encountered while iterating tools | Reuses current behavior. | Missing registered tools and obsolete configuration remain silent. | Rejected |
+| Enforce exact registered-tool/config-key parity at startup | Makes template coverage complete and drift deterministic. | Every public registration change must update presentation configuration atomically. | Approved |
+| Preserve the original partial rollout matrix | Smaller implementation scope. | Ignores the later field audit and leaves avoidable second resource reads. | Rejected |
+| Optimize all 50 templates against a field-level actionability matrix | Makes the user-facing contract explicit for every tool while retaining cache authority. | Broadens configuration, review, and evidence scope; requires disciplined cache-only rationales. | Approved |
 
 ---
 
 ## Approved Strategy
 
-Human approval was recorded in this Research conversation on 2026-08-20.
+Human approval for the original strategy was recorded on 2026-08-20. On 2026-08-21 the user explicitly reopened Research and approved both scope expansions: active registered-tool/config validation and complete optimization of all tool presentation templates during issue #456.
 
 1. Preserve every tool DTO and the untruncated resource cache as the complete structured source of truth.
 2. Apply one configurable `8,000` UTF-8-byte ceiling to the chat text produced by `TextPresenter`.
@@ -179,19 +199,23 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 10. The ceiling applies to `TextPresenter` chat text. Separately embedded validation resources remain governed by the existing presentation-resource contract; no transport-wide response-size guarantee is claimed.
 11. Preserve supported consumer contracts: no DTO field, tool input, cache URI, or resource payload migration is required. Text becomes additively more informative.
 12. Delete both current `tests/documentation` test modules and all 62 collected cases during Implementation.
+13. Enforce exact bidirectional startup parity between registered public tool names and `presentation.yaml` tool keys. Missing templates and unknown/obsolete keys are configuration errors; the runtime tool registry remains authoritative.
+14. Treat all 50 registered tool templates as implementation scope. Use the field audit as traceability input and produce a complete design target matrix; every tool-specific DTO field must be either intentionally inline or explicitly cache-only with a concrete rationale.
+15. Optimize for the immediate next decision within the shared byte and item limits. Full optimization does not override the cache-only policy for verbose logs, tracebacks, schemas, diffs, raw process output, or redundant caller-supplied data.
+16. Preserve the generic configuration-driven pipeline and capability-oriented tests. Full-template coverage must not introduce tool-name branches or one exact-wording snapshot per tool.
 
 ## Blast Radius
 
 | Area | Expected impact |
 |---|---|
 | Production code | Generic text projection, collection formatting, and final UTF-8-safe limiting in the presentation layer. No tool execution changes. |
-| Configuration | Additive presentation schema and `presentation.yaml` declarations for affected tools. |
+| Configuration | Additive presentation schema plus reviewed and optimized `presentation.yaml` declarations for all 50 registered tools. Configuration keys must exactly match the runtime public-tool registry. |
 | DTOs | No authoritative DTO changes expected. Existing formatted convenience fields may remain even when no longer used by text templates. |
 | Tests | Delete both legacy `tests/documentation` modules and their 62 cases. For the feature itself, use presenter unit tests, configuration/alignment tests, multibyte and reserved-cache-suffix boundary tests, collection-order/item-limit tests, nested-plan coverage, and a small representative set of tool presentation tests. Avoid one wording/snapshot test per tool. |
 | Test quality | Tests must verify durable presentation contracts rather than snapshot every wording detail. Verbose logs remain cache assertions, not large inline snapshots. |
 | Documentation | Presentation architecture and relevant tool references for discovery/project/GitHub/quality/scaffolding must reflect the compact-text/cache boundary. |
 | Agent instructions | Cache guidance remains valid: agents read resources for complete structured data or verbose logs. Verify wording does not continue to require resource reads for routine summaries that are now inline. |
-| Templates / enforcement | Artifact templates are unaffected. Startup presentation alignment must validate any new declarative fields against DTO shapes. |
+| Templates / enforcement | Artifact templates are unaffected. Startup presentation alignment must validate new declarative fields against DTO shapes and enforce exact bidirectional parity between public tool registrations and presentation keys. |
 | Consumers | Routine query consumers gain direct Markdown; consumers needing completeness continue using the same cache URI and DTO. |
 
 ## Risks and Verification Expectations
@@ -201,6 +225,8 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 | Byte limiting corrupts UTF-8 or Markdown | Multibyte boundary tests and block-aware truncation tests. |
 | Cache link disappears during truncation | Tests proving the cache URI and truncation notice remain inside the configured budget. |
 | Collection templates drift from DTO fields | Startup/config alignment validation for collection and nested item placeholders. |
+| Registered tools and presentation keys drift | Startup evidence for missing-template and unknown-key failures plus acceptance of the complete 50-tool set. |
+| A previously “unchanged” template remains under-informative | Field-level traceability showing an inline or justified cache-only decision for every tool-specific DTO field. |
 | Rich summaries accidentally inline verbose logs | Representative `run_tests` and `run_quality_gates` tests for normal and verbose DTOs. |
 | Nested plan rendering becomes tool-specific | Architecture review proving no tool-name branch exists. |
 | Text changes break structured consumers | Tests proving cached DTO publication and content are unchanged. |
@@ -213,7 +239,8 @@ Human approval was recorded in this Research conversation on 2026-08-20.
 - Configured collections respect their item limit and preserve DTO order.
 - Every `TextPresenter` result remains within 8,000 UTF-8 bytes while preserving a truncation notice and cache URI when content is omitted.
 - Cached DTOs remain complete and unchanged.
-- Presentation configuration remains the source of truth for per-tool content choices.
+- Presentation configuration remains the source of truth for per-tool content choices and exactly covers the registered public-tool set.
+- All 50 tool templates are optimized against the field-level actionability audit; every cache-only field has an explicit rationale.
 - No tool-specific presentation branches are introduced.
 - Both obsolete documentation-test modules and all 62 collected cases are removed.
 
@@ -267,3 +294,5 @@ None at the strategy boundary. Exact configuration models and presenter interfac
 | 1.0 | 2026-08-20 | Agent | Approved research, complete tool audit, and strategy boundary |
 | 1.1 | 2026-08-20 | Agent | Add mandatory removal of brittle documentation tests to the approved scope |
 | 1.2 | 2026-08-20 | Agent | Record structured quality-gate findings as explicit deferred work |
+
+| 1.3 | 2026-08-21 | Agent | Reopen Research for exact registration/config parity and full optimization of all 50 presentation templates |

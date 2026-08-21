@@ -3,7 +3,7 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "planning",
+  "current_phase": "research",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": null,
+  "skip_reason": "Reopen Research from Planning because two material scope gaps were identified before Implementation: presentation.yaml is not actively validated against the registered tool set, and the post-planning 50-tool field audit requires full optimization of every tool presentation template within issue #456.",
   "issue_title": "Compact actionable tool summaries in presentation responses",
   "parent_branch": "main",
   "created_at": "2026-08-20T15:40:10.662490+00:00",
@@ -37,6 +37,14 @@
       "human_approval_message": "User approved transition to Planning and requested execution of the applicable phase instructions.",
       "forced": false,
       "skip_reason": null
+    },
+    {
+      "from_phase": "planning",
+      "to_phase": "research",
+      "timestamp": "2026-08-21T13:51:13.838521+00:00",
+      "human_approval_message": "User explicitly requested returning issue #456 from Planning to Research to record both scope expansions, then reassess Design and update Planning before Implementation.",
+      "forced": true,
+      "skip_reason": "Reopen Research from Planning because two material scope gaps were identified before Implementation: presentation.yaml is not actively validated against the registered tool set, and the post-planning 50-tool field audit requires full optimization of every tool presentation template within issue #456."
     }
   ],
   "reconstructed": false,
