@@ -3,9 +3,9 @@
   "branch": "feature/456-compact-actionable-tool-summaries",
   "issue_number": 456,
   "workflow_name": "feature",
-  "current_phase": "implementation",
+  "current_phase": "validation",
   "current_cycle": 8,
-  "last_cycle": 7,
+  "last_cycle": 8,
   "cycle_history": [
     {
       "cycle_number": 2,
@@ -299,8 +299,16 @@
       "human_approval_message": "Workspace owner approved autonomous completion through Validation on 2026-08-22.",
       "forced": true,
       "skip_reason": "Validation deliverable mapping exposed prohibited output-DTO-type dispatch in TextPresenter; return to Cycle 5 for a generic success/failure-contract correction."
+    },
+    {
+      "from_phase": "implementation",
+      "to_phase": "validation",
+      "timestamp": "2026-08-21T23:39:50.768569+00:00",
+      "human_approval_message": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,
-  "current_sub_phase": "green"
+  "current_sub_phase": null
 }
