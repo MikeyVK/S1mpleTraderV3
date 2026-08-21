@@ -86,7 +86,7 @@ class TestTextBudgetLimiter:
     def test_closes_intersected_fenced_markdown_before_tail(self) -> None:
         cache_reference = "cache:" + "d" * 32
         limiter = _limiter(135)
-        body = "Before\n\n```text\n" + "inside\n" * 30
+        body = "Before\n```text\n" + "inside\n" * 30
 
         result = limiter.limit(body, cache_reference)
 
@@ -104,6 +104,13 @@ class TestTextBudgetLimiter:
         assert _formatting().cache_unavailable_truncation_notice in result
         assert _formatting().truncation_notice not in result
         assert "pgmcp://cache/runs/" not in result
+
+    def test_exact_mandatory_tail_budget_retains_complete_tail(self) -> None:
+        cache_reference = "cache:" + "e" * 32
+        tail = f"{_formatting().truncation_notice}\n\n{cache_reference}"
+        limiter = _limiter(len(tail.encode("utf-8")))
+
+        assert limiter.limit("x" * 100, cache_reference) == tail
 
     def test_rejects_budget_that_cannot_hold_mandatory_tail(self) -> None:
         limiter = _limiter(10)
