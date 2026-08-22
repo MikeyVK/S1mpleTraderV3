@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 # Module under test
 from mcp_server.core.operation_notes import Note, NoteContext
+from mcp_server.schemas import tool_outputs
 from mcp_server.schemas.tool_outputs import RunQualityGatesOutput
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from mcp_server.tools.tool_result import ToolResult
@@ -191,17 +192,10 @@ class TestRunQualityGatesTool:
         assert "Quality gates" in text
 
     @pytest.mark.asyncio
-    async def test_quality_gates_issues_missing_fields(self) -> None:
-        """Test result with empty issues dict — summary line is returned without crash."""
+    async def test_quality_gate_finding_missing_message_fails_fast(self) -> None:
+        """An invalid manager issue must not receive invented presentation text."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
-            "summary": {
-                "passed": 0,
-                "failed": 1,
-                "skipped": 0,
-                "total_violations": 0,
-                "auto_fixable": 0,
-            },
             "overall_pass": False,
             "gates": [
                 {
@@ -215,12 +209,12 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(
-            RunQualityGatesInput(scope="files", files=["foo.py"]), NoteContext()
-        )
 
-        text = _summary_text(result)
-        assert "Quality gates" in text
+        with pytest.raises(KeyError, match="message"):
+            await tool.execute(
+                RunQualityGatesInput(scope="files", files=["foo.py"]),
+                NoteContext(),
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.asyncio
@@ -853,3 +847,105 @@ class TestRunQualityGatesVerboseOption:
             n for n in context.of_type(Note) if n.key == "quality_gates_failed_verbose_suggestion"
         ]
         assert len(notes) == 0
+
+
+class TestStructuredGateFindings:
+    """Public structured finding contract for run_quality_gates."""
+
+    def test_finding_dto_is_frozen_serializable_and_forbids_extras(self) -> None:
+        """The public finding is immutable, complete, and closed to unknown fields."""
+        finding = tool_outputs.GateFindingDTO(gate="ruff", message="Invalid import order")
+
+        assert finding.model_dump(mode="json") == {
+            "gate": "ruff",
+            "message": "Invalid import order",
+            "file": None,
+            "line": None,
+            "column": None,
+            "code": None,
+            "severity": None,
+            "fixable": False,
+            "details": None,
+        }
+        with pytest.raises(ValidationError):
+            finding.message = "changed"  # type: ignore[misc]
+        with pytest.raises(ValidationError):
+            tool_outputs.GateFindingDTO.model_validate(
+                {
+                    "gate": "ruff",
+                    "message": "Invalid import order",
+                    "unexpected": "not allowed",
+                }
+            )
+
+    @pytest.mark.asyncio
+    async def test_maps_ordered_full_and_message_only_findings(self) -> None:
+        """The tool losslessly adapts manager issues without reclassifying them."""
+        mock_manager = MagicMock()
+        mock_manager.run_quality_gates.return_value = {
+            "overall_pass": False,
+            "gates": [
+                {
+                    "name": "ruff",
+                    "passed": False,
+                    "status": "failed",
+                    "score": "Fail",
+                    "details": "raw ruff output",
+                    "issues": [
+                        {
+                            "file": "mcp_server/example.py",
+                            "line": 12,
+                            "col": 7,
+                            "rule": "E501",
+                            "message": "Line too long",
+                            "severity": "error",
+                            "fixable": True,
+                            "details": "line 12 exceeded the configured limit",
+                        },
+                        {"message": "ruff executable unavailable"},
+                    ],
+                },
+                {
+                    "name": "mypy",
+                    "passed": True,
+                    "status": "passed",
+                    "score": "Pass",
+                    "issues": [],
+                },
+            ],
+        }
+
+        result = await RunQualityGatesTool(manager=mock_manager).execute(
+            RunQualityGatesInput(scope="files", files=["mcp_server/example.py"]),
+            NoteContext(),
+        )
+
+        assert [gate.name for gate in result.gates] == ["ruff", "mypy"]
+        assert result.gates[0].details == "raw ruff output"
+        assert [finding.message for finding in result.gates[0].findings] == [
+            "Line too long",
+            "ruff executable unavailable",
+        ]
+        assert result.gates[0].findings[0].model_dump(mode="json") == {
+            "gate": "ruff",
+            "message": "Line too long",
+            "file": "mcp_server/example.py",
+            "line": 12,
+            "column": 7,
+            "code": "E501",
+            "severity": "error",
+            "fixable": True,
+            "details": "line 12 exceeded the configured limit",
+        }
+        assert result.gates[0].findings[1].model_dump(mode="json") == {
+            "gate": "ruff",
+            "message": "ruff executable unavailable",
+            "file": None,
+            "line": None,
+            "column": None,
+            "code": None,
+            "severity": None,
+            "fixable": False,
+            "details": None,
+        }
+        assert result.gates[1].findings == []
