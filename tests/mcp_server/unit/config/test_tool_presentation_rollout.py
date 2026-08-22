@@ -423,9 +423,7 @@ class TestToolPresentationRollout:
             {
                 "global": config.global_settings.model_dump(mode="python"),
                 "tools": {
-                    "run_quality_gates": config.tools[
-                        "run_quality_gates"
-                    ].model_dump(mode="python")
+                    "run_quality_gates": config.tools["run_quality_gates"].model_dump(mode="python")
                 },
             }
         )
