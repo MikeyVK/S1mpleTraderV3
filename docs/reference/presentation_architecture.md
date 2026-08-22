@@ -3,7 +3,7 @@
 # Presentation Architecture and Resource Delegation
 
 **Status:** DEFINITIVE  
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Last Updated:** 2026-08-22
 
 **Configuration:** [presentation.yaml](../../.pgmcp/config/presentation.yaml)  
@@ -206,14 +206,43 @@ structured contract.
 `scaffold_schema` is a deliberate resource-oriented exception: the text identifies the
 artifact type, while the nested JSON Schema remains in the cached DTO.
 
-## Quality-Gate Limitation
+## Structured Quality-Gate Findings
 
-`run_quality_gates` presents bounded gate status records, but each gate's `details` field
-is still an opaque string and remains cache-only. A generic structured finding DTO and an
-inline finding limit are deferred work; the presenter does not parse gate-specific text.
+`run_quality_gates` uses the same generic nested-collection path as the other structured
+tools:
+
+| DTO level | Ordered collection |
+|---|---|
+| `RunQualityGatesOutput` | `gates: list[GateResultDTO]` |
+| `GateResultDTO` | `findings: list[GateFindingDTO]` |
+| `GateFindingDTO` | Structured diagnostic fields; no child collection |
+
+`QAManager` and `ViolationParser` normalize checker diagnostics and operational
+failures. `RunQualityGatesTool` performs only structural adaptation into the public
+DTO: the enclosing gate supplies `gate`, manager `col` becomes `column`, and
+`rule` becomes `code`. The presenter does not parse messages or checker-specific
+text.
+
+`presentation.yaml` declares `findings` as a child collection of `gates`. Gate and
+finding order remain identical to the DTO. The tool's `max_items=10` independently
+limits the inline gate collection and every gate's inline finding collection; the final
+8,000-byte limiter still bounds the complete response.
+
+The inline item projection contains optional location and code, required message,
+severity, and fixability. Generic None formatting makes message-only operational
+failures explicit without a tool-specific rendering branch. Gate-level and finding-level
+`details` remain cache-only.
+
+The complete `RunQualityGatesOutput` is published before presentation. Consequently,
+every finding and raw diagnostic remains available through the cached MCP Resource even
+when collection omission or final byte truncation shortens the chat response. Clients
+must read that resource for exhaustive evidence and must not reconstruct findings from
+Markdown.
 
 ## Primary Implementation and Evidence
 
+- [Structured tool-output schemas](../../mcp_server/schemas/tool_outputs.py)
+- [Quality-gate structural adapter](../../mcp_server/tools/quality_tools.py)
 - [Presentation configuration schema](../../mcp_server/config/schemas/presentation_config.py)
 - [Text presenter and startup alignment](../../mcp_server/presenters/text_presenter.py)
 - [Collection renderer](../../mcp_server/presenters/collection_text_renderer.py)
@@ -236,5 +265,6 @@ inline finding limit are deferred work; the presenter does not parse gate-specif
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 2.1.0 | 2026-08-22 | Agent | Document nested structured quality-gate findings and complete cached evidence |
 | 2.0.0 | 2026-08-22 | Agent | Document bounded declarative projection, runtime catalog alignment, ordered collections, and final byte limiting |
 | 1.1.0 | 2026-08-19 | Agent | Document composite text and validation-resource presentation |

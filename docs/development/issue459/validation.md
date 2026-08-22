@@ -20,8 +20,12 @@ Branch-wide verification of the additive quality-gate finding DTO, structural to
 
 ## Outcome
 
-Current validation status: **PASS**.## Related Documentation
+Current validation status: **PASS**.
+
+## Related Documentation
+
 None
+
 ---
 
 ## Verification Evidence
