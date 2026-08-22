@@ -16,7 +16,178 @@
       ],
       "skip_reason": null,
       "parent_branch": "main",
-      "created_at": "2026-08-22T07:44:54.654081+00:00"
+      "created_at": "2026-08-22T07:44:54.654081+00:00",
+      "planning_deliverables": {
+        "cycles": {
+          "total": 2,
+          "cycles": [
+            {
+              "cycle_number": 1,
+              "name": "Structured finding transport",
+              "deliverables": [
+                {
+                  "id": "C1-D1",
+                  "description": "Frozen serializable GateFindingDTO and additive GateResultDTO.findings default.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "mcp_server/schemas/tool_outputs.py",
+                    "text": "class GateFindingDTO"
+                  }
+                },
+                {
+                  "id": "C1-D2",
+                  "description": "RunQualityGatesTool preserves ordered manager issues in nested public DTOs.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "mcp_server/tools/quality_tools.py",
+                    "text": "findings="
+                  }
+                },
+                {
+                  "id": "C1-D3",
+                  "description": "Structural col/rule to column/code mapping without prose parsing.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "mcp_server/tools/quality_tools.py",
+                    "text": "column="
+                  }
+                },
+                {
+                  "id": "C1-D4",
+                  "description": "Missing required message fails fast.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "tests/mcp_server/unit/tools/test_quality_tools.py",
+                    "text": "missing_message"
+                  }
+                },
+                {
+                  "id": "C1-D5",
+                  "description": "Existing quality-gate inputs, summaries, details, and failure outputs remain compatible.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/tools/test_quality_tools.py"
+                  }
+                }
+              ],
+              "exit_criteria": "Focused quality-tool tests pass, file-scoped gates pass, source order and complete approved field mapping are proven, and no manager/parser or presentation changes are included."
+            },
+            {
+              "cycle_number": 2,
+              "name": "Bounded declarative presentation",
+              "deliverables": [
+                {
+                  "id": "C2-D1",
+                  "description": "Findings are declared as a nested generic child collection under gates.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": ".pgmcp/config/presentation.yaml",
+                    "text": "field: findings"
+                  }
+                },
+                {
+                  "id": "C2-D2",
+                  "description": "Per-gate max_items omission and global byte-limiter semantics are proven.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "tests/mcp_server/unit/config/test_tool_presentation_rollout.py",
+                    "text": "findings"
+                  }
+                },
+                {
+                  "id": "C2-D3",
+                  "description": "Complete structured findings and details survive inline omission.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "tests/mcp_server/unit/config/test_tool_presentation_rollout.py",
+                    "text": "model_dump"
+                  }
+                },
+                {
+                  "id": "C2-D4",
+                  "description": "Details remain cache-only and optional fields use generic none formatting.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/config/test_tool_presentation_rollout.py"
+                  }
+                },
+                {
+                  "id": "C2-D5",
+                  "description": "Empty findings and failure envelopes retain compatible presentation behavior.",
+                  "validates": {
+                    "type": "file_exists",
+                    "file": "tests/mcp_server/unit/config/test_tool_presentation_rollout.py"
+                  }
+                },
+                {
+                  "id": "C2-D6",
+                  "description": "Real presentation configuration aligns with nested GateFindingDTO paths at startup.",
+                  "validates": {
+                    "type": "contains_text",
+                    "file": "tests/mcp_server/unit/config/test_tool_presentation_rollout.py",
+                    "text": "run_quality_gates"
+                  }
+                }
+              ],
+              "exit_criteria": "Focused real-config presentation tests and file-scoped gates pass; presenter/config schema production code remains unchanged; inline output is bounded and the DTO graph remains complete."
+            }
+          ]
+        },
+        "design": {
+          "deliverables": [
+            {
+              "id": "DESIGN-1",
+              "description": "Approved interface, data-flow, failure, compatibility, and test contracts.",
+              "validates": {
+                "type": "file_exists",
+                "file": "docs/development/issue459/design.md"
+              }
+            }
+          ]
+        },
+        "validation": {
+          "deliverables": [
+            {
+              "id": "VAL-1",
+              "description": "One complete workspace test run with cached structured evidence inspected.",
+              "validates": {
+                "type": "file_exists",
+                "file": "docs/development/issue459/validation.md"
+              }
+            },
+            {
+              "id": "VAL-2",
+              "description": "One branch-wide quality-gate run with cached structured findings inspected.",
+              "validates": {
+                "type": "file_exists",
+                "file": "docs/development/issue459/validation.md"
+              }
+            }
+          ]
+        },
+        "documentation": {
+          "deliverables": [
+            {
+              "id": "DOC-1",
+              "description": "Active quality-tool reference describes structured findings and complete cached evidence.",
+              "validates": {
+                "type": "contains_text",
+                "file": "docs/reference/tools/quality.md",
+                "text": "finding"
+              }
+            },
+            {
+              "id": "DOC-2",
+              "description": "Presentation architecture reference removes the deferred finding limitation and describes nested bounded projection.",
+              "validates": {
+                "type": "contains_text",
+                "file": "docs/reference/presentation_architecture.md",
+                "text": "finding"
+              }
+            }
+          ]
+        }
+      }
     }
   }
 }
