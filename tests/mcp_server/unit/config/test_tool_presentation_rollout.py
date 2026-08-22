@@ -18,12 +18,17 @@ from typing import TypeAlias
 
 import yaml
 
+from mcp_server.bootstrap import SupportedToolContract
 from mcp_server.config.schemas.presentation_config import (
     CollectionPresentationConfig,
     PresentationConfig,
 )
-from mcp_server.presenters.text_presenter import TextPresenter
+from mcp_server.presenters.text_presenter import (
+    TextPresenter,
+    validate_presentation_alignment,
+)
 from mcp_server.schemas.tool_outputs import (
+    GateFindingDTO,
     GateResultDTO,
     HealthCheckOutput,
     HealthStatus,
@@ -174,7 +179,26 @@ _MECHANICS: dict[str, tuple[int, tuple[CollectionExpectation, ...]]] = {
     ),
     "run_quality_gates": (
         10,
-        (("gates", frozenset({"name", "passed", "status", "score"}), None),),
+        (
+            (
+                "gates",
+                frozenset({"name", "passed", "status", "score"}),
+                (
+                    "findings",
+                    frozenset(
+                        {
+                            "file",
+                            "line",
+                            "column",
+                            "code",
+                            "message",
+                            "severity",
+                            "fixable",
+                        }
+                    ),
+                ),
+            ),
+        ),
     ),
     "run_tests": (
         5,
@@ -345,6 +369,77 @@ class TestToolPresentationRollout:
         assert "verbose details stay cached" not in text
         assert "passed successfully" not in text
         assert "Quality gates failed" not in text
+
+    def test_renders_bounded_quality_findings_without_cached_details(self) -> None:
+        """Inline findings are bounded while the structured DTO remains complete."""
+        presenter = TextPresenter(config=_load_config())
+        findings = [
+            GateFindingDTO(
+                gate="ruff",
+                message=("ruff executable unavailable" if index == 1 else f"issue-{index}"),
+                file=None if index == 1 else f"src/file_{index}.py",
+                line=None if index == 1 else index + 1,
+                column=None if index == 1 else 3,
+                code=None if index == 1 else f"E{index:03}",
+                severity=None if index == 1 else "error",
+                fixable=index % 2 == 0,
+                details=f"private-detail-{index}",
+            )
+            for index in range(12)
+        ]
+        output = RunQualityGatesOutput(
+            overall_pass=False,
+            scope="files",
+            file_count=12,
+            gates=[
+                GateResultDTO(
+                    name="ruff",
+                    passed=False,
+                    status="failed",
+                    score="Fail",
+                    details="private gate details",
+                    findings=findings,
+                )
+            ],
+        )
+
+        text = presenter.present_text("run_quality_gates", output)
+        cached_payload = output.model_dump(mode="json")
+
+        assert "issue-0" in text
+        assert "issue-9" in text
+        assert "issue-10" not in text
+        assert "… 2 more findings" in text
+        assert "-:-:- [-] ruff executable unavailable" in text
+        assert "private-detail" not in text
+        assert "private gate details" not in text
+        assert len(cached_payload["gates"][0]["findings"]) == 12
+        assert cached_payload["gates"][0]["findings"][11]["details"] == "private-detail-11"
+
+    def test_real_quality_gate_config_aligns_with_nested_output_contract(self) -> None:
+        """The deployed YAML section must resolve every nested DTO placeholder."""
+        config = _load_config()
+        focused_config = PresentationConfig.model_validate(
+            {
+                "global": config.global_settings.model_dump(mode="python"),
+                "tools": {
+                    "run_quality_gates": config.tools[
+                        "run_quality_gates"
+                    ].model_dump(mode="python")
+                },
+            }
+        )
+        presenter = TextPresenter(config=focused_config)
+
+        validate_presentation_alignment(
+            presenter,
+            (
+                SupportedToolContract(
+                    name="run_quality_gates",
+                    output_model=RunQualityGatesOutput,
+                ),
+            ),
+        )
 
     def test_expands_issue_and_pr_details(self) -> None:
         presenter = TextPresenter(config=_load_config())
