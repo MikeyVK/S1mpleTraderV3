@@ -8,7 +8,12 @@ from mcp_server.core.interfaces import ICoreTool
 from mcp_server.core.operation_notes import Note, NoteContext
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.managers.quality_state_repository import QualityStateMutationConflictError
-from mcp_server.schemas.tool_outputs import AutoFixOutput, GateResultDTO, RunQualityGatesOutput
+from mcp_server.schemas.tool_outputs import (
+    AutoFixOutput,
+    GateFindingDTO,
+    GateResultDTO,
+    RunQualityGatesOutput,
+)
 from mcp_server.utils.schema_utils import resolve_schema_refs
 
 
@@ -153,13 +158,29 @@ class RunQualityGatesTool(ICoreTool[RunQualityGatesInput, RunQualityGatesOutput]
 
         gates_list = []
         for g in result.get("gates", []):
+            gate_name = g.get("name") or g.get("id") or ""
+            findings = [
+                GateFindingDTO(
+                    gate=gate_name,
+                    message=issue["message"],
+                    file=issue.get("file") or None,
+                    line=issue.get("line"),
+                    column=issue.get("col"),
+                    code=issue.get("rule"),
+                    severity=issue.get("severity"),
+                    fixable=issue.get("fixable", False),
+                    details=issue.get("details"),
+                )
+                for issue in g.get("issues", [])
+            ]
             gates_list.append(
                 GateResultDTO(
-                    name=g.get("name") or g.get("id") or "",
+                    name=gate_name,
                     passed=g.get("passed", False),
                     status=g.get("status") or "",
                     score=str(g.get("score")) if g.get("score") is not None else None,
                     details=g.get("details", ""),
+                    findings=findings,
                 )
             )
 
