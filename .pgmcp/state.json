@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "branch": "feature/459-structured-quality-gate-findings",
+  "issue_number": 459,
+  "workflow_name": "feature",
+  "current_phase": "research",
+  "current_cycle": null,
+  "last_cycle": null,
+  "cycle_history": [],
+  "required_phases": [
+    "research",
+    "design",
+    "planning",
+    "implementation",
+    "validation",
+    "documentation",
+    "ready"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": null,
+  "issue_title": "Expose structured quality-gate findings for bounded presentation",
+  "parent_branch": "main",
+  "created_at": "2026-08-22T07:44:54.671600+00:00",
+  "transitions": [],
+  "reconstructed": false,
+  "current_sub_phase": null
+}
