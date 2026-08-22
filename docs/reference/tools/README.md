@@ -144,10 +144,12 @@ Unified artifact generation from Jinja2 templates for code and documentation art
 | `scaffold_artifact` | Generate code/docs from templates | `artifact_type`, `name`, `output_path`, `context` |
 | `scaffold_schema` | Return JSON Schema for artifact type context | `artifact_type` |
 
-**Supported Artifact Types:**
-- **Code:** `dto`, `typescript_dto`, `worker`, `adapter`, `tool`, `manager`, `service`
-- **Documentation:** `design`, `architecture`, `tracking`, `research`, `reference`, `planning`, `guide`, `procedure`
-**📖 See:** [scaffolding.md](scaffolding.md) for artifact registry structure, template resolution, and context variables.
+Artifact types are loaded from the modular registry; this navigation index deliberately
+does not duplicate that evolving inventory.
+
+**📖 See:** [scaffolding.md](scaffolding.md) for the current artifact categories,
+template resolution, and context variables. The authoritative registry is
+[`.pgmcp/templates/config/`](../../../.pgmcp/templates/config/).
 
 ---
 
