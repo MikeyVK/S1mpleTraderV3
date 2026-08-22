@@ -25,6 +25,8 @@ This directory links the MCP server architecture and operational guidance around
 
 - **[Architecture](architecture.md)**
   High-level design, layers, component responsibilities, and composition root.
+- **[Presentation Architecture](../reference/presentation_architecture.md)**
+  Runtime tool catalog alignment, bounded text projections, cache authority, and byte limiting.
 - **[Phase Workflows](phase-workflows.md)**
   Development phase workflows and lifecycle guidance.
 - **[GitHub Setup](github-setup.md)**
@@ -86,5 +88,6 @@ Use `submit_pr` for public PR creation. The tool:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2026-08-22 | Agent | Add the bounded presentation architecture to the active documentation index |
 | 1.1 | 2026-07-20 | Agent | Fix stale reference/mcp/ paths in tool index links |
 | 1.0 | 2026-06-04 | Agent | Initial README |

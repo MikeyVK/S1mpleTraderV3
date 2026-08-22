@@ -3,18 +3,20 @@
 # GitHub Integration Tools
 
 **Status:** DEFINITIVE  
-**Version:** 3.0  
-**Last Updated:** 2026-06-15  
+**Version:** 3.1  
+**Last Updated:** 2026-08-22  
 
-**Source:** [mcp_server/tools/issue_tools.py](../../../../mcp_server/tools/issue_tools.py), [pr_tools.py](../../../../mcp_server/tools/pr_tools.py), [label_tools.py](../../../../mcp_server/tools/label_tools.py), [milestone_tools.py](../../../../mcp_server/tools/milestone_tools.py)  
-**Tests:** [tests/unit/test_github_tools.py](../../../../tests/unit/test_github_tools.py)  
+**Source:** [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py), [pr_tools.py](../../../mcp_server/tools/pr_tools.py), [label_tools.py](../../../mcp_server/tools/label_tools.py), [milestone_tools.py](../../../mcp_server/tools/milestone_tools.py)  
+**Tests:** [issue tool tests](../../../tests/mcp_server/unit/tools/test_issue_tools.py), [PR tool tests](../../../tests/mcp_server/unit/tools/test_pr_tools.py), [label tool tests](../../../tests/mcp_server/unit/tools/test_label_tools.py), and [milestone tool tests](../../../tests/mcp_server/unit/tools/test_milestone_tools.py)  
 
 ---
 ## Purpose
 
 Complete reference documentation for all 17 GitHub API integration tools covering issues, pull requests, labels, and milestones. These tools provide full GitHub workflow automation with Unicode safety, validation against repository state, and structured error handling.
 
-All GitHub tools require a `GITHUB_TOKEN` environment variable. Tools are registered even without a token (schema-only), but execution returns errors if the token is missing.
+All GitHub operations require a `GITHUB_TOKEN` to execute. The five issue tools remain
+registered without a token so their schemas are discoverable; the twelve PR, label, and
+milestone tools are active only when credentials are configured.
 
 ---
 
@@ -35,6 +37,17 @@ All tools:
 - ✅ Return structured responses with detailed error messages
 - ✅ Require `GITHUB_TOKEN` environment variable
 - ✅ Detect repository from git remote or `GITHUB_REPO` env var
+
+### Presentation and Cache Contract
+
+GitHub tools return bounded Markdown projections and publish their complete frozen DTOs
+at `pgmcp://cache/runs/{run_id}`. Detail and mutation tools present the fields needed to
+confirm the requested action. `list_issues`, `list_prs`, `list_labels`, and
+`list_milestones` render at most ten records, preserve adapter/DTO order, and report the
+omitted count when more records exist. Flat label sequences use the same ten-item bound.
+
+The cache remains authoritative for complete collections and intentionally omitted
+metadata. The presenter does not sort, filter, or mutate GitHub results.
 
 ---
 
@@ -59,7 +72,7 @@ All tools:
 
 **MCP Name:** `create_issue`  
 **Class:** `CreateIssueTool`  
-**File:** [mcp_server/tools/issue_tools.py](../../../../mcp_server/tools/issue_tools.py)
+**File:** [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py)
 
 Create a new GitHub issue. Uses a structured input contract: `issue_type`, `priority`, and `scope` are required top-level fields with config-driven enum values (A4 schema override); free-form `labels` are assembled internally from those values.
 
@@ -82,28 +95,12 @@ Create a new GitHub issue. Uses a structured input contract: `issue_type`, `prio
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "issue": {
-    "number": 123,
-    "url": "https://github.com/owner/repo/issues/123",
-    "title": "Add structured issue creation",
-    "state": "open",
-    "labels": ["type:feature", "priority:medium", "scope:mcp-server"],
-    "milestone": null,
-    "assignees": []
-  }
-}
-```
+The mutation confirmation presents issue number, title, realized state, URL, milestone
+title, assignee summary, and up to ten labels. The complete `IssueOutput`, including body,
+timestamps, and author, is stored in the resource cache.
 
 #### Example Usage
 
-```json
-{
-  "issue_type": "feature",
-  "title": "Add structured issue creation",
-  "priority": "medium",
 ```json
 {
   "issue_type": "feature",
@@ -140,7 +137,7 @@ Create a new GitHub issue. Uses a structured input contract: `issue_type`, `prio
 
 **MCP Name:** `get_issue`  
 **Class:** `GetIssueTool`  
-**File:** [mcp_server/tools/issue_tools.py](../../../../mcp_server/tools/issue_tools.py)
+**File:** [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py)
 
 Retrieve detailed information about a specific issue.
 
@@ -152,19 +149,22 @@ Retrieve detailed information about a specific issue.
 
 #### Returns (via MCP Resource Cache)
 
-`get_issue` returns a single `TextContent` block containing formatted markdown of the issue details and the resource cache link pointing to the cached `GetIssueOutput` DTO.
+`get_issue` presents the number, title, state, milestone title, assignee summary, URL,
+bounded labels, created/updated/closed timestamps, and body. The author remains
+cache-only.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `success`: `bool`
 - `error_message`: `string | null`
+- `post_tool_instruction`: `string | null`
 - `number`: `int`
-- `url`: `string`
 - `title`: `string`
-- `body`: `string`
 - `state`: `string`
+- `milestone_title`: `string`
+- `assignees_summary`: `string`
+- `html_url`: `string`
+- `body`: `string`
 - `labels`: `list[string]`
-- `milestone`: `MilestoneDTO | null` (having `number`, `title`, `state`)
-- `assignees`: `list[string]`
 - `created_at`: `string`
 - `updated_at`: `string`
 - `closed_at`: `string | null`
@@ -180,7 +180,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 #### Behavior Notes
 
-- Returns full issue details including milestone object (not just number)
+- Returns normalized milestone and assignee summaries rather than nested GitHub objects
 - `closed_at` is `null` for open issues
 - Includes timestamps in ISO 8601 format
 
@@ -190,7 +190,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 **MCP Name:** `list_issues`  
 **Class:** `ListIssuesTool`  
-**File:** [mcp_server/tools/issue_tools.py](../../../../mcp_server/tools/issue_tools.py)
+**File:** [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py)
 
 List repository issues with optional state and label filters.
 
@@ -203,30 +203,20 @@ List repository issues with optional state and label filters.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "issues": [
-    {
-      "number": 123,
-      "title": "Feature request",
-      "state": "open",
-      "labels": ["type:feature"],
-      "milestone": 5,
-      "assignees": ["user1"]
-    },
-    {
-      "number": 124,
-      "title": "Bug report",
-      "state": "closed",
-      "labels": ["type:bug", "priority:high"],
-      "milestone": null,
-      "assignees": []
-    }
-  ],
-  "count": 2
-}
+The text response shows `issues_count` and up to ten one-line issue records containing
+number, state, title, URL, bounded labels, assignee summary, and creation timestamp. For
+example:
+
+```text
+Found 25 issues matching criteria.
+
+Issues:
+- #456 [open] feat: Compact actionable tool summaries — https://github.com/.../456 | labels: priority:high, type:feature | assignees: Unassigned | created: 2026-08-19T20:28:16+00:00
+- … 15 more issues
 ```
+
+The cached `ListIssuesOutput` contains `issues_count` and the complete
+`issues: list[IssueSummaryDTO]` collection.
 
 #### Example Usage
 
@@ -249,8 +239,8 @@ List repository issues with optional state and label filters.
 
 - **Label Filter Logic:** ALL labels must be present (AND, not OR)
 - **Default State:** If `state` is `null`, returns issues in all states
-- **Pagination:** Currently returns first 100 issues (GitHub API default)
-- **Sort Order:** Newest first (by creation date)
+- **Presentation limit:** At most ten returned DTO records are rendered inline; this does not change the cached collection.
+- **Order:** The presenter preserves the order supplied by the adapter; it does not add a sort policy.
 
 ---
 
@@ -258,7 +248,7 @@ List repository issues with optional state and label filters.
 
 **MCP Name:** `update_issue`  
 **Class:** `UpdateIssueTool`  
-**File:** [mcp_server/tools/issue_tools.py](../../../../mcp_server/tools/issue_tools.py)
+**File:** [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py)
 
 Update any combination of issue fields: title, body, state, labels, milestone, assignees.
 
@@ -276,20 +266,9 @@ Update any combination of issue fields: title, body, state, labels, milestone, a
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "issue": {
-    "number": 123,
-    "url": "https://github.com/owner/repo/issues/123",
-    "title": "Updated title",
-    "state": "closed",
-    "labels": ["type:feature", "phase:documentation"],
-    "milestone": 6,
-    "assignees": ["newuser"]
-  }
-}
-```
+The mutation confirmation uses the same bounded `IssueOutput` projection as
+`create_issue`: number, title, realized state, URL, milestone title, assignee summary,
+and labels. Body, timestamps, and author remain available in the cached DTO.
 
 #### Example Usage
 
@@ -323,7 +302,7 @@ Update any combination of issue fields: title, body, state, labels, milestone, a
 
 **MCP Name:** `close_issue`  
 **Class:** `CloseIssueTool`  
-**File:** [mcp_server/tools/issue_tools.py](../../../../mcp_server/tools/issue_tools.py)
+**File:** [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py)
 
 Close an issue with an optional closing comment.
 
@@ -379,7 +358,7 @@ Close an issue with an optional closing comment.
 
 **MCP Name:** `submit_pr`
 **Class:** `SubmitPRTool`
-**File:** [mcp_server/tools/pr_tools.py](../../../../mcp_server/tools/pr_tools.py)
+**File:** [mcp_server/tools/pr_tools.py](../../../mcp_server/tools/pr_tools.py)
 
 Create a pull request via an **atomic, self-contained flow** that handles branch-local
 artifact neutralization, the final commit, push, GitHub PR creation, and PR-status
@@ -470,9 +449,8 @@ Configured in `.pgmcp/config/contracts.yaml` → `branch_local_artifacts`.
 
 #### Returns
 
-```
-Created PR #45: https://github.com/owner/repo/pull/45
-```
+The success response confirms PR number, title, state, URL, target branch, and source
+branch. The cached `PROutput` additionally retains body and merge fields.
 
 Error result on failure:
 ```
@@ -517,7 +495,7 @@ Error result on failure:
 
 **MCP Name:** `list_prs`  
 **Class:** `ListPRsTool`  
-**File:** [mcp_server/tools/pr_tools.py](../../../../mcp_server/tools/pr_tools.py)
+**File:** [mcp_server/tools/pr_tools.py](../../../mcp_server/tools/pr_tools.py)
 
 List repository pull requests with optional state, base, and head filters.
 
@@ -531,32 +509,9 @@ List repository pull requests with optional state, base, and head filters.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "prs": [
-    {
-      "number": 45,
-      "title": "Feature: Add OAuth2 authentication",
-      "head": "feature/123-oauth",
-      "base": "main",
-      "state": "open",
-      "draft": false,
-      "mergeable": true
-    },
-    {
-      "number": 44,
-      "title": "Bugfix: Fix login issue",
-      "head": "bug/122-login",
-      "base": "main",
-      "state": "closed",
-      "draft": false,
-      "mergeable": null
-    }
-  ],
-  "count": 2
-}
-```
+The text response shows `prs_count` and up to ten pull requests with number, state,
+title, URL, head branch, and base branch. The cached `ListPRsOutput` retains the complete
+`pull_requests: list[PRSummaryDTO]` collection.
 
 #### Example Usage
 
@@ -585,9 +540,8 @@ List repository pull requests with optional state, base, and head filters.
 #### Behavior Notes
 
 - **Default State:** `"open"` (unlike `list_issues` which defaults to all states)
-- **Pagination:** Returns first 100 PRs (GitHub API default)
-- **mergeable Field:** `true`, `false`, or `null` (GitHub hasn't computed merge status yet)
-- **Draft PRs:** Included in results with `draft: true`
+- **Presentation limit:** At most ten returned DTO records are rendered inline.
+- **Order:** The presenter preserves adapter/DTO order.
 
 ---
 
@@ -595,7 +549,7 @@ List repository pull requests with optional state, base, and head filters.
 
 **MCP Name:** `merge_pr`  
 **Class:** `MergePRTool`  
-**File:** [mcp_server/tools/pr_tools.py](../../../../mcp_server/tools/pr_tools.py)
+**File:** [mcp_server/tools/pr_tools.py](../../../mcp_server/tools/pr_tools.py)
 
 Merge a pull request with specified merge strategy.
 
@@ -609,17 +563,8 @@ Merge a pull request with specified merge strategy.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "PR #45 merged successfully",
-  "merge": {
-    "sha": "abc123def456",
-    "merged": true,
-    "method": "merge"
-  }
-}
-```
+The success response confirms `pr_number`, `merge_method`, and `merge_sha`; the same
+structured fields are stored in `MergePROutput`.
 
 #### Example Usage
 
@@ -651,7 +596,7 @@ Merge a pull request with specified merge strategy.
 
 **MCP Name:** `get_pr`  
 **Class:** `GetPRTool`  
-**File:** [mcp_server/tools/pr_tools.py](../../../../mcp_server/tools/pr_tools.py)
+**File:** [mcp_server/tools/pr_tools.py](../../../mcp_server/tools/pr_tools.py)
 
 Retrieve detailed information about a specific pull request.
 
@@ -663,16 +608,19 @@ Retrieve detailed information about a specific pull request.
 
 #### Returns (via MCP Resource Cache)
 
-`get_pr` returns a single `TextContent` block containing formatted markdown of the PR details and the resource cache link pointing to the cached `GetPROutput` DTO.
+`get_pr` presents number, title, state, URL, base/head branches, merge timestamp, merge
+SHA, and body. The complete `PROutput` uses the same fields in the cache.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `success`: `bool`
 - `error_message`: `string | null`
-- `pr_number`: `int`
+- `post_tool_instruction`: `string | null`
+- `number`: `int`
 - `title`: `string`
+- `html_url`: `string`
 - `state`: `string`
-- `base_branch`: `string`
-- `head_branch`: `string`
+- `base_ref`: `string`
+- `head_ref`: `string`
 - `merged_at`: `string | null`
 - `merge_sha`: `string | null`
 - `body`: `string`
@@ -698,7 +646,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 **MCP Name:** `list_labels`  
 **Class:** `ListLabelsTool`  
-**File:** [mcp_server/tools/label_tools.py](../../../../mcp_server/tools/label_tools.py)
+**File:** [mcp_server/tools/label_tools.py](../../../mcp_server/tools/label_tools.py)
 
 List all labels defined in the repository.
 
@@ -708,29 +656,9 @@ None.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "labels": [
-    {
-      "name": "type:feature",
-      "color": "0e8a16",
-      "description": "New feature or request"
-    },
-    {
-      "name": "type:bug",
-      "color": "d73a4a",
-      "description": "Something isn't working"
-    },
-    {
-      "name": "priority:high",
-      "color": "ff0000",
-      "description": "High priority"
-    }
-  ],
-  "count": 3
-}
-```
+The text response shows `total_labels` and up to ten labels with name, color, and
+description. The complete `labels: list[LabelOutputModel]` remains in the cached
+`ListLabelsOutput`.
 
 #### Example Usage
 
@@ -750,7 +678,7 @@ None.
 
 **MCP Name:** `create_label`  
 **Class:** `CreateLabelTool`  
-**File:** [mcp_server/tools/label_tools.py](../../../../mcp_server/tools/label_tools.py)
+**File:** [mcp_server/tools/label_tools.py](../../../mcp_server/tools/label_tools.py)
 
 Create a new label in the repository. Validates against `LabelConfig` patterns.
 
@@ -764,16 +692,8 @@ Create a new label in the repository. Validates against `LabelConfig` patterns.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "label": {
-    "name": "type:feature",
-    "color": "0e8a16",
-    "description": "New feature or request"
-  }
-}
-```
+The mutation response confirms `label_name` and `color`. Description is caller input and
+is not duplicated in the `CreateLabelOutput` DTO.
 
 #### Example Usage
 
@@ -787,7 +707,7 @@ Create a new label in the repository. Validates against `LabelConfig` patterns.
 
 #### Behavior Notes
 
-- **LabelConfig Validation:** Validates name against patterns in [.pgmcp/labels.yaml](../../../../.pgmcp/labels.yaml)
+- **LabelConfig Validation:** Validates name against patterns in [.pgmcp/config/labels.yaml](../../../.pgmcp/config/labels.yaml)
 - **Duplicate Check:** Returns error if label already exists
 - **Color Format:** Must be 6-character hex WITHOUT `#` (validated by Pydantic)
 
@@ -797,7 +717,7 @@ Create a new label in the repository. Validates against `LabelConfig` patterns.
 
 **MCP Name:** `delete_label`  
 **Class:** `DeleteLabelTool`  
-**File:** [mcp_server/tools/label_tools.py](../../../../mcp_server/tools/label_tools.py)
+**File:** [mcp_server/tools/label_tools.py](../../../mcp_server/tools/label_tools.py)
 
 Delete a label from the repository.
 
@@ -809,12 +729,7 @@ Delete a label from the repository.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "Label 'type:feature' deleted"
-}
-```
+The mutation response confirms `label_name` through `DeleteLabelOutput`.
 
 #### Example Usage
 
@@ -836,7 +751,7 @@ Delete a label from the repository.
 
 **MCP Name:** `add_labels`  
 **Class:** `AddLabelsTool`  
-**File:** [mcp_server/tools/label_tools.py](../../../../mcp_server/tools/label_tools.py)
+**File:** [mcp_server/tools/label_tools.py](../../../mcp_server/tools/label_tools.py)
 
 Add labels to an issue or pull request. Validates label existence before applying.
 
@@ -849,13 +764,8 @@ Add labels to an issue or pull request. Validates label existence before applyin
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "Labels added to issue #123",
-  "labels": ["type:feature", "priority:high"]
-}
-```
+The mutation response confirms `issue_number` and up to ten structured `labels` from
+`LabelOperationOutput`; no preformatted duplicate label field exists.
 
 #### Example Usage
 
@@ -878,7 +788,7 @@ Add labels to an issue or pull request. Validates label existence before applyin
 
 **MCP Name:** `remove_labels`  
 **Class:** `RemoveLabelsTool`  
-**File:** [mcp_server/tools/label_tools.py](../../../../mcp_server/tools/label_tools.py)
+**File:** [mcp_server/tools/label_tools.py](../../../mcp_server/tools/label_tools.py)
 
 Remove labels from an issue or pull request.
 
@@ -891,13 +801,8 @@ Remove labels from an issue or pull request.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "Labels removed from issue #123",
-  "labels": ["phase:implementation"]
-}
-```
+The mutation response uses the same bounded `LabelOperationOutput` projection as
+`add_labels`.
 
 #### Example Usage
 
@@ -921,7 +826,7 @@ Remove labels from an issue or pull request.
 
 **MCP Name:** `list_milestones`  
 **Class:** `ListMilestonesTool`  
-**File:** [mcp_server/tools/milestone_tools.py](../../../../mcp_server/tools/milestone_tools.py)
+**File:** [mcp_server/tools/milestone_tools.py](../../../mcp_server/tools/milestone_tools.py)
 
 List repository milestones with optional state filter.
 
@@ -933,32 +838,9 @@ List repository milestones with optional state filter.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "milestones": [
-    {
-      "number": 5,
-      "title": "v2.0",
-      "state": "open",
-      "description": "Version 2.0 release",
-      "due_on": "2026-03-01T00:00:00Z",
-      "open_issues": 12,
-      "closed_issues": 8
-    },
-    {
-      "number": 4,
-      "title": "v1.5",
-      "state": "closed",
-      "description": null,
-      "due_on": null,
-      "open_issues": 0,
-      "closed_issues": 15
-    }
-  ],
-  "count": 2
-}
-```
+The text response shows `total_milestones` and up to ten records with number, state, and
+title. The complete `milestones: list[MilestoneSummaryDTO]` remains in the cached
+`ListMilestonesOutput`.
 
 #### Example Usage
 
@@ -979,8 +861,7 @@ List repository milestones with optional state filter.
 #### Behavior Notes
 
 - **Default State:** `"open"` (only open milestones)
-- **due_on:** ISO 8601 timestamp or `null` if no due date
-- **Issue Counts:** Includes open/closed issue counts
+- **Presentation:** Due dates, descriptions, and issue counts are not part of `MilestoneSummaryDTO`.
 
 ---
 
@@ -988,7 +869,7 @@ List repository milestones with optional state filter.
 
 **MCP Name:** `create_milestone`  
 **Class:** `CreateMilestoneTool`  
-**File:** [mcp_server/tools/milestone_tools.py](../../../../mcp_server/tools/milestone_tools.py)
+**File:** [mcp_server/tools/milestone_tools.py](../../../mcp_server/tools/milestone_tools.py)
 
 Create a new milestone in the repository.
 
@@ -1002,18 +883,9 @@ Create a new milestone in the repository.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "milestone": {
-    "number": 6,
-    "title": "v2.1",
-    "state": "open",
-    "description": "Minor release",
-    "due_on": "2026-04-01T00:00:00Z"
-  }
-}
-```
+The mutation response confirms milestone `number`, `title`, and realized `state` through
+`MilestoneOutput`. Description and due date are caller inputs and are not duplicated in
+the output DTO.
 
 #### Example Usage
 
@@ -1046,7 +918,7 @@ Create a new milestone in the repository.
 
 **MCP Name:** `close_milestone`  
 **Class:** `CloseMilestoneTool`  
-**File:** [mcp_server/tools/milestone_tools.py](../../../../mcp_server/tools/milestone_tools.py)
+**File:** [mcp_server/tools/milestone_tools.py](../../../mcp_server/tools/milestone_tools.py)
 
 Close a milestone by number.
 
@@ -1058,17 +930,8 @@ Close a milestone by number.
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "Milestone #5 'v2.0' closed",
-  "milestone": {
-    "number": 5,
-    "title": "v2.0",
-    "state": "closed"
-  }
-}
-```
+The mutation response confirms milestone `number`, `title`, and realized `state` through
+`MilestoneOutput`.
 
 #### Example Usage
 
@@ -1133,9 +996,9 @@ All GitHub tools fully support Unicode content including emojis, non-ASCII chara
 
 ## Configuration
 
-### .pgmcp/labels.yaml
+### .pgmcp/config/labels.yaml
 
-Labels created via `create_label` are validated against patterns in [.pgmcp/labels.yaml](../../../../.pgmcp/labels.yaml):
+Labels created via `create_label` are validated against patterns in [.pgmcp/config/labels.yaml](../../../.pgmcp/config/labels.yaml):
 
 ```yaml
 # Labels are defined in .pgmcp/config/labels.yaml
@@ -1155,8 +1018,8 @@ Labels matching `freeform-*` pattern bypass pattern validation.
 
 - [README.md](README.md) — MCP Tools navigation index
 - [project.md](project.md) — Project initialization and phase management
-- [.pgmcp/labels.yaml](../../../../.pgmcp/labels.yaml) — Label configuration
-- [docs/development/issue19/research.md](../../../development/issue19/research.md) — Tool inventory research (Section 1.4-1.7: GitHub tools)
+- [.pgmcp/config/labels.yaml](../../../.pgmcp/config/labels.yaml) — Label configuration
+- [docs/development/archive/issue19/research.md](../../development/archive/issue19/research.md) — Historical tool inventory research (Section 1.4-1.7: GitHub tools)
 
 ---
 
@@ -1164,4 +1027,5 @@ Labels matching `freeform-*` pattern bypass pattern validation.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.1 | 2026-08-22 | Agent | Align credential activation, bounded list/detail projections, and cached DTO contracts |
 | 2.0 | 2026-02-08 | Agent | Complete reference for 16 GitHub tools: issues (5), PRs (3), labels (5), milestones (3) |

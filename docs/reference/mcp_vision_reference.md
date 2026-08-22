@@ -2,9 +2,9 @@
 
 **Document Type:** Vision & Architecture Reference  
 **Status:** HISTORICAL ARCHITECTURE CONTEXT  
-**Version:** 1.2  
+**Version:** 1.3  
 **Created:** 2026-01-16  
-**Last Updated:** 2026-08-20  
+**Last Updated:** 2026-08-22  
 **Purpose:** Preserve the foundational vision and historical roadmap; current operational contracts live in the active references below  
 **Audience:** New agents, developers, maintainers  
 **Context:** Created during Issue #56 research to establish foundational understanding
@@ -162,19 +162,23 @@ graph TB
 
 **Consequence**: Can directly use Pydantic models from backend in MCP tools
 
-#### Decision 2: Configuration-Driven Everything
+#### Decision 2: Configuration-Driven Policy and Presentation
 
 **Context**: Traditional MCP servers hardcode workflow logic
 
-**Decision**: All behavior controlled by YAML configs
+**Decision**: Shared workflow policy and user-facing presentation choices are controlled
+by validated YAML configuration; generic execution and rendering mechanics remain in
+Python.
 
 **Rationale**:
-- Mirrors the project's "Configuration-Driven" principle
-- Workflows customizable without code changes
-- Policies enforceable at config level
-- Extensible without modifying Python code
+- Mirrors the project's Config-First and Presentation Boundary principles
+- Keeps workflow contracts and presentation wording outside domain services
+- Validates configuration against runtime contracts at startup
+- Extends supported content through configuration where the generic mechanism already exists
 
-**Consequence**: 7 YAML files control all server behavior
+**Consequence**: `presentation.yaml` exactly covers the runtime-derived 50-tool supported
+catalog. It owns field selection, wording, order, and item limits; generic renderers own
+ordered-sequence mechanics and the universal 8,000-byte ceiling.
 
 #### Decision 3: Strict Separation of Tooling vs Enforcement
 

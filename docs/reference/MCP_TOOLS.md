@@ -213,47 +213,38 @@ Work context aggregation and server administration.
 
 ### Tool Registration
 
-All tools are registered in `mcp_server/server.py`:
+Supported and active tools are assembled in `ServerBootstrapper._build_tool_assembly()`:
 
-**Always Available (33 tools):**
-- Git tools (15)
-- Project/Phase tools (8)
-- Quality tools (4)
-- File Editing (1)
-- Scaffold tools (2)
-- Discovery & Admin tools (3)
+The runtime-derived supported catalog always contains 50 name/output-model contracts.
+The active set is settings-dependent:
 
-**GitHub-Dependent (17 tools, requires GITHUB_TOKEN):**
-- Issue tools (5)
-- PR tools (4)
-- Label tools (5)
-- Milestone tools (3)
+- 33 core tools are always registered;
+- five issue tools also remain registered without a token so their schemas are visible,
+  although execution requires GitHub credentials;
+- twelve PR, label, and milestone tools become active when `GITHUB_TOKEN` is present.
 
-**Total: 50 tools** (33 always-available + 17 GitHub-dependent)
+The resulting active totals are 38 without a token and 50 with one. The complete
+supported catalog, rather than the active subset, is used to validate exact
+`presentation.yaml` coverage at startup.
 
 ### Execution Flow
 
+```mermaid
+flowchart TD
+    Client[Agent / MCP client] --> Server[MCPServer]
+    Server --> Tool[Decorated ICoreTool]
+    Tool --> Manager[Manager / domain service]
+    Manager --> Adapter[Adapter]
+    Tool --> DTO[Frozen output DTO]
+    DTO --> Cache[Complete MCP Resource cache]
+    DTO --> Presenter[Configured bounded presentation]
+    Presenter --> Response[CallToolResult]
 ```
-User Request (VS Code)
-    ↓
-MCP Client (VS Code Extension)
-    ↓
-MCP Protocol (stdio)
-    ↓
-MCPServer.execute_tool()
-    ↓
-Tool.execute(**params)
-    ↓
-Manager.operation() [business logic]
-    ↓
-Adapter.method() [external API calls]
-    ↓
-ToolResult (success/error)
-    ↓
-MCP Response
-    ↓
-VS Code Display
-```
+
+`presentation.yaml` selects scalar fields, ordered collections, wording, and per-tool
+item limits. A final universal limiter keeps composed text at or below 8,000 UTF-8 bytes
+and retains the cache URI when publication succeeds. See
+[Presentation Architecture](presentation_architecture.md).
 
 ### Error Handling
 

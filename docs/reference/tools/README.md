@@ -3,8 +3,8 @@
 # MCP Tools Reference — Navigation Index
 
 **Status:** DEFINITIVE  
-**Version:** 3.0  
-**Last Updated:** 2026-08-18  
+**Version:** 4.0  
+**Last Updated:** 2026-08-22  
 
 **Source:** [mcp_server/bootstrap.py](../../../mcp_server/bootstrap.py)  
 **Tests:** [tests/mcp_server/](../../../tests/mcp_server/)  
@@ -13,14 +13,14 @@
 
 ## Purpose
 
-Comprehensive navigation index for all 50 MCP server tools organized by functional category. This document serves as the entry point to the MCP Tools Reference suite, providing quick lookup and category-based navigation to detailed tool documentation.
+Comprehensive navigation index for all 50 supported MCP server tools organized by functional category. This document serves as the entry point to the MCP Tools Reference suite, providing quick lookup and category-based navigation to detailed tool documentation.
 The MCP server exposes tools across seven functional categories: Git workflow automation, GitHub API integration, project lifecycle management, file editing, code scaffolding, quality assurance, and discovery/server administration.
 
 ---
 
 ## Tool Inventory Overview
 
-The MCP server has **50 registered tools** across 7 categories:
+The MCP server supports **50 tools** across 7 categories:
 | Category | Tools | Documentation |
 |----------|-------|---------------|
 | **Git Workflow & Analysis** | 15 | [git.md](git.md) |
@@ -183,11 +183,17 @@ Work context aggregation and server administration.
 ## Tool Registration Architecture
 
 | Tier | Tools | Count | Registration Condition |
-| **Always Available** | Git (15), Quality (4), File Editing (1), Project/Phase (8), Scaffolding (2), Discovery & Admin (3) | **33** | None |
-| **GitHub-Dependent** | Issues (5), PRs (4), Labels (5), Milestones (3) | **17** | Requires `GITHUB_TOKEN` environment variable |
-| **TOTAL (with token)** | — | **50** | — |
-| **TOTAL (without token)** | — | **38** | Issues (5) registered as schema-only (no `GITHUB_TOKEN`) |
-**Note:** Issue management tools (5) are registered even without a token (schema-only registration). Tool calls will return errors if `GITHUB_TOKEN` is missing.
+|---|---|---:|---|
+| **Core active set** | Git (15), Quality (4), File Editing (1), Project/Phase (8), Scaffolding (2), Discovery & Admin (3) | **33** | Always registered |
+| **Issue tools** | Issues (5) | **5** | Registered without a token so their schemas remain available; execution still requires GitHub credentials |
+| **Credential-dependent set** | PRs (4), Labels (5), Milestones (3) | **12** | Active only with `GITHUB_TOKEN` |
+| **Active without token** | Core + Issues | **38** | — |
+| **Active with token** | Complete supported catalog | **50** | — |
+
+The complete supported catalog is derived from the constructed tool instances at runtime
+and always contains all 50 name/output-model contracts. Startup validates
+`presentation.yaml` against that complete catalog, while settings select the smaller
+active subset exposed to the client.
 
 ---
 
@@ -232,7 +238,21 @@ Each tool has one clear purpose. Complex workflows compose multiple tools rather
 
 ### 1. Unified DTO & MCP Resource Caching Architecture
 
-All registered tools implement the `ITool` interface and return a pure, frozen Pydantic DTO (completely decoupled from protocol-level concerns). A resource caching decorator generates a unique `run_id` and persists the DTO output as an MCP Resource (`pgmcp://cache/runs/{run_id}`). The server responds exclusively with a single `TextContent` block (formatted using `presentation.yaml` templates) that links to the resource URI. This completely eliminates double serialization, avoids client-side chat truncation, and keeps the LLM context window clean.
+All registered tools implement the `ITool` interface and return a pure, frozen Pydantic
+DTO, decoupled from protocol-level concerns. The server publishes the complete DTO as an
+MCP Resource (`pgmcp://cache/runs/{run_id}`), then renders a bounded Markdown projection
+from `presentation.yaml`.
+
+The projection can include configured scalar fields, bounded scalar sequences, nested
+ordered collections, enum-selected guidance, and operation notes. Collection item limits
+preserve DTO order, and one final limiter keeps the complete composed text at or below
+8,000 UTF-8 bytes while retaining the cache reference when publication succeeded.
+
+Use the inline response for routine decisions. Read the cached DTO for completeness,
+fields deliberately kept cache-only, or verbose diagnostics. Validation-input failures
+may additionally include an embedded `schema://validation` resource. See
+[Presentation Architecture](../presentation_architecture.md) for the complete contract.
+
 ### 2. Fail-Fast Validation
 
 Tools validate inputs before execution. Invalid parameters return structured errors, not partial operations.
@@ -277,13 +297,14 @@ All GitHub tools (issues, PRs, labels, milestones) handle Unicode content correc
 - [project.md](project.md) — Workflow types and phase management
 - [docs/reference/mcp/proxy_restart.md](../proxy_restart.md) — Hot-reload mechanism for `restart_server`
 - [docs/reference/mcp/mcp_vision_reference.md](../mcp_vision_reference.md) — MCP server architecture and vision
-- [docs/development/issue268/validation.md](../../../development/issue268/validation.md) — Validation evidence for the delivered `get_work_context` contract and context-loaded gate
+- [docs/development/archive/issue268/validation.md](../../development/archive/issue268/validation.md) — Historical validation evidence for the delivered `get_work_context` contract and context-loaded gate
 
 ---
 
 ## Version History
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 4.0 | 2026-08-22 | Agent | Document runtime supported/active catalog and bounded presentation/cache contract |
 | 3.1 | 2026-07-16 | Agent | Updated scaffolding reference to modular configurations and added typescript_dto type. |
 | 3.0 | 2026-06-15 | Agent | Document ITool DTO and MCP Resource Caching migration (#402) |
 | 2.2 | 2026-05-23 | Agent | Update discovery/index guidance for the delivered `get_work_context` contract and startup flow |

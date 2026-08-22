@@ -3,8 +3,8 @@
 # Discovery & Admin Tools
 
 **Status:** DEFINITIVE  
-**Version:** 3.0  
-**Last Updated:** 2026-08-18  
+**Version:** 3.2  
+**Last Updated:** 2026-08-22  
 
 **Source:** [mcp_server/tools/discovery_tools.py](../../../mcp_server/tools/discovery_tools.py), [health_tools.py](../../../mcp_server/tools/health_tools.py), [admin_tools.py](../../../mcp_server/tools/admin_tools.py)  
 **Tests:** [tests/mcp_server/unit/tools/test_discovery_tools.py](../../../tests/mcp_server/unit/tools/test_discovery_tools.py)  
@@ -47,7 +47,10 @@ None. `GetWorkContextInput` is fieldless.
 
 #### Returns (via MCP Resource Cache)
 
-`get_work_context` returns a single `TextContent` block with a compact orientation header, the TODO-discipline reminder, and a resource link. The current text presentation does not inline the phase instructions or hand-over template; callers must read the cached DTO for those fields. Issue #456 tracks making that text response actionable without replacing the cache as the structured source of truth.
+`get_work_context` returns a bounded text response containing the branch orientation,
+active phase instructions, optional hand-over template, workflow-state recovery
+guidance when applicable, the TODO-discipline reminder, and the resource link. Routine
+phase startup therefore does not require a second resource read.
 
 The complete DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `current_branch`: `string`
@@ -62,15 +65,19 @@ The complete DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run
 - `sub_role_hint`: `string`
 - `phase_instructions`: `string`
 - `handover_template`: `string | null`
-- `invalid_phase_warning`: `string | null`
+- `workflow_state_status`: `available | missing | unreadable | invalid_phase`
+- `valid_phases`: `tuple[string, ...]`
 
 #### Text Presentation
 
 ```text
 Branch: `feature/123-oauth` | Workflow: feature | Issue: #123
-Phase: implementation (confidence=high)
-Role: implementer
-Parent: main
+Phase: implementation | Role: implementer
+Parent: main | Cycle: - | Sub-phase: -
+
+<active phase instructions from contracts.yaml>
+
+<optional hand-over template from contracts.yaml>
 
 TODO discipline: create or refresh your TODO list now; keep exactly one item in progress and update it after each material step.
 
@@ -86,10 +93,10 @@ View resource: pgmcp://cache/runs/<run_id>
 #### Behavior Notes
 
 - **State Source:** Reads workflow, phase, issue number, parent branch, cycle, and sub-phase from branch-local `.pgmcp/state.json` when available.
-- **Phase Script Delivery:** Reads `sub_role_hint`, `phase_instructions`, and optional `handover_template` from `.pgmcp/config/contracts.yaml` into the cached DTO. The current text template renders only the role hint.
+- **Phase Script Delivery:** Reads `sub_role_hint`, `phase_instructions`, and optional `handover_template` from `.pgmcp/config/contracts.yaml` and renders them inline as well as preserving them in the cached DTO.
 - **No Legacy Work Queue Payload:** Does not return `open_issues`, `recent_closed`, `suggestions`, `active_issue`, `recent_commits`, or `tdd_cycle_info`.
-- **Bootstrap Degradation:** If branch state is unavailable, the tool still returns a branch-oriented DTO with an explicit fallback instruction instead of failing; the complete fallback remains available through the cache resource.
-- **Invalid Workflow-Phase Recovery:** If the workflow is known but the stored phase is invalid, the response stays non-error and records recovery guidance in `invalid_phase_warning`; the current text template does not inline that warning.
+- **Bootstrap Degradation:** If branch state is missing or unreadable, the tool returns a branch-oriented DTO with an explicit enum-selected recovery instruction instead of failing.
+- **Invalid Workflow-Phase Recovery:** If the workflow is known but the stored phase is invalid, the response stays non-error, reports `workflow_state_status=invalid_phase`, and renders the bounded `valid_phases` sequence in the configured recovery block.
 - **Context-Loaded Side Effect:** Marks the current branch context as loaded in the in-memory cache when the writer is wired, which unblocks later branch-mutating tools behind `check_context_loaded`.
 - **Gate Bootstrap Tool:** Remains callable even when `check_context_loaded` is active, because it is the tool that reloads branch context after phase, cycle, checkout, or non-noop pull changes.
 
@@ -313,6 +320,7 @@ Proxy behavior configured in [mcp_server/core/proxy.py](../../../mcp_server/core
 ## Version History
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.2 | 2026-08-22 | Agent | Align `get_work_context` inline phase contract and workflow-state enum presentation |
 | 3.1 | 2026-08-20 | Agent | Correct current `get_work_context` text/cache behavior and repair active links |
 | 3.0 | 2026-08-18 | Agent | Align discovery/admin reference with the current three-tool public surface |
 | 2.3 | 2026-07-20 | Agent | Update degraded mode section for workspace version check failures, and fix stale links |

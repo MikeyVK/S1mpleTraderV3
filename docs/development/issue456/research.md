@@ -140,8 +140,8 @@ These three are ordinary scalar template expansions. They do not justify special
 
 Implementation must delete these two brittle documentation-test modules and all 62 collected cases:
 
-- [C4 documentation alignment tests](../../../tests/documentation/test_c4_doc_alignment.py)
-- [Agent instruction search contract tests](../../../tests/documentation/test_agent_instruction_search_contract.py)
+- `tests/documentation/test_c4_doc_alignment.py`
+- `tests/documentation/test_agent_instruction_search_contract.py`
 
 They do not provide meaningful evidence for the changed documentation and must not remain part of the routine verification load.
 

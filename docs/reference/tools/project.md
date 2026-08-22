@@ -3,8 +3,8 @@
 # Project & Phase Management Tools
 
 **Status:** DEFINITIVE  
-**Version:** 3.0  
-**Last Updated:** 2026-06-15  
+**Version:** 3.1  
+**Last Updated:** 2026-08-22  
 
 **Source:** [mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py), [phase_tools.py](../../../mcp_server/tools/phase_tools.py)  
 **Tests:** [tests/mcp_server/unit/tools/test_project_tools.py](../../../tests/mcp_server/unit/tools/test_project_tools.py), [tests/mcp_server/unit/tools/test_transition_phase_tool.py](../../../tests/mcp_server/unit/tools/test_transition_phase_tool.py), [tests/mcp_server/unit/tools/test_force_phase_transition_tool.py](../../../tests/mcp_server/unit/tools/test_force_phase_transition_tool.py)  
@@ -73,19 +73,22 @@ Initialize project with phase plan selection. The configured `workflow_name` sel
 
 #### Returns (via MCP Resource Cache)
 
-`initialize_project` returns a single `TextContent` block containing a human-readable confirmation and the resource cache link pointing to the cached `InitializeProjectOutput` DTO.
+`initialize_project` presents the realized issue, workflow, branch, initial phase, parent,
+execution mode, and bounded `required_phases` and `files_created` collections. The
+complete `InitializeProjectOutput` remains available through the resource link.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `success`: `bool`
 - `error_message`: `string | null`
-- `message`: `string`
-- `project`: `ProjectDetails` containing:
-  - `issue_number`: `int`
-  - `issue_title`: `string`
-  - `workflow_name`: `string`
-  - `phases`: `list[string]`
-  - `current_phase`: `string`
-  - `parent_branch`: `string`
+- `post_tool_instruction`: `string | null`
+- `issue_number`: `int`
+- `workflow_name`: `string`
+- `branch`: `string`
+- `initial_phase`: `string`
+- `parent_branch`: `string | null`
+- `required_phases`: `list[string]`
+- `execution_mode`: `string`
+- `files_created`: `list[string]`
 
 #### Example Usage
 
@@ -132,21 +135,20 @@ Get project phase plan for issue number.
 
 #### Returns (via MCP Resource Cache)
 
-`get_project_plan` returns a single `TextContent` block containing a human-readable summary of the project plan and the resource cache link pointing to the cached `ProjectPlanOutput` DTO.
+`get_project_plan` presents the issue and workflow followed by bounded phase records.
+Each phase shows its name and status; configured child collections show task ID, title,
+and status. Phase and task order is preserved from the DTO.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `success`: `bool`
 - `error_message`: `string | null`
-- `issue_title`: `string`
+- `post_tool_instruction`: `string | null`
+- `issue_number`: `int`
 - `workflow_name`: `string`
-- `execution_mode`: `string`
-- `required_phases`: `list[string]`
-- `skip_reason`: `string | null`
-- `parent_branch`: `string`
-- `created_at`: `string`
-- `current_phase`: `string | null`
-- `phase_source`: `string | null`
-- `phase_detection_error`: `string | null`
+- `phases`: `list[PhaseDTO]`, where each phase contains:
+  - `name`: `string`
+  - `status`: `string`
+  - `tasks`: `list[PhaseTaskDTO]` with `id`, `title`, and `status`
 
 #### Example Usage
 
@@ -159,7 +161,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 #### Behavior Notes
 
 - **Read-Only:** Does not modify state
-- **Plan Access:** Reads workflow definition from `.pgmcp/deliverables.json`; current phase is read from `.pgmcp/state.json` via `WorkflowStatusResolver`. Returns plan without phase fields when state is absent or branch-mismatched.
+- **Plan Access:** Reads the configured project plan and returns every phase with its current status and planned tasks.
 - **Not Found:** Returns error if project not initialized
 
 ---
@@ -182,18 +184,10 @@ Transition branch to next phase (strict sequential validation).
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "Transitioned from 'red' to 'green'",
-  "transition": {
-    "branch": "feature/123-oauth",
-    "from_phase": "red",
-    "to_phase": "green",
-    "timestamp": "2026-02-08T12:00:00Z"
-  }
-}
-```
+The bounded text confirms `from_phase`, `to_phase`, `branch`, and passing/skipped gate
+counts. When gates were skipped, up to 20 skipped-gate identifiers are listed inline;
+the complete `passing_gates` and `skipped_gates` sequences remain in the cached
+`PhaseTransitionOutput` DTO.
 
 #### Example Usage
 
@@ -261,21 +255,9 @@ Force non-sequential phase transition (skip/jump with reason and human approval)
 
 #### Returns
 
-```json
-{
-  "success": true,
-  "message": "Forced transition from 'red' to 'merge-prep' (skipped: green, refactor, documentation)",
-  "transition": {
-    "branch": "feature/123-oauth",
-    "from_phase": "red",
-    "to_phase": "merge-prep",
-    "skipped_phases": ["green", "refactor", "documentation"],
-    "skip_reason": "Emergency hotfix approved by team lead",
-    "human_approval_message": "Team lead approval: critical security fix",
-    "timestamp": "2026-02-08T12:00:00Z"
-  }
-}
-```
+The bounded text contains the normal transition fields and gate evidence plus
+`skip_reason` and `human_approval_message`. The complete structured
+`ForcePhaseTransitionOutput` is stored in the resource cache.
 
 #### Example Usage
 
@@ -298,6 +280,22 @@ Force non-sequential phase transition (skip/jump with reason and human approval)
 
 ---
 
+### transition_cycle and force_cycle_transition
+
+`transition_cycle(to_cycle, issue_number?)` advances sequentially to the next planned
+implementation cycle. `force_cycle_transition(to_cycle, skip_reason,
+human_approval_message, issue_number?)` permits a skip or backward transition with an
+explicit audit trail.
+
+Both responses present the source and target cycle, total cycle count, cycle name,
+branch, and passing/skipped gate counts. Up to 20 skipped-gate identifiers are rendered
+when present. The force response additionally shows the reason and approval. Complete
+gate sequences remain in the cached `CycleTransitionOutput` or
+`ForceCycleTransitionOutput` DTO. A successful transition instructs the caller to reload
+`get_work_context` before another governed operation.
+
+---
+
 ## State Management
 
 ### save_planning_deliverables
@@ -317,12 +315,17 @@ Save cycle planning deliverables for an issue to deliverables.json. Validates ea
 
 #### Returns (via MCP Resource Cache)
 
-`save_planning_deliverables` returns a single `TextContent` block containing confirmation and the resource cache link pointing to the cached `PlanningDeliverablesOutput` DTO.
+`save_planning_deliverables` presents the issue, total cycles, total deliverables, and a
+bounded per-cycle deliverable count. The complete structured result remains cached.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains:
 - `success`: `bool`
 - `error_message`: `string | null`
+- `post_tool_instruction`: `string | null`
 - `issue_number`: `int`
+- `total_cycles`: `int`
+- `total_deliverables`: `int`
+- `cycles`: `list[PlannedCycleSummary]` with `cycle_number` and `deliverables_count`
 
 #### Behavior Notes
 
@@ -348,12 +351,17 @@ Merge-update cycle planning deliverables for an issue in deliverables.json. Must
 
 #### Returns (via MCP Resource Cache)
 
-`update_planning_deliverables` returns a single `TextContent` block containing confirmation and the resource cache link pointing to the cached `PlanningDeliverablesOutput` DTO.
+`update_planning_deliverables` uses the same bounded presentation and cached
+`PlanningDeliverablesOutput` contract as `save_planning_deliverables`.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains:
 - `success`: `bool`
 - `error_message`: `string | null`
+- `post_tool_instruction`: `string | null`
 - `issue_number`: `int`
+- `total_cycles`: `int`
+- `total_deliverables`: `int`
+- `cycles`: `list[PlannedCycleSummary]` with `cycle_number` and `deliverables_count`
 
 #### Behavior Notes
 
@@ -393,7 +401,6 @@ Current branch state (runtime, branch-local, neutralized before PR submission):
   "created_at": "2026-02-08T10:00:00Z",
   "transitions": []
 }
-```
 ```
 
 **Behavior:**
@@ -566,6 +573,7 @@ Phase state is **synchronized** with git branch operations:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.1 | 2026-08-22 | Agent | Align project, transition, and planning output projections with structured DTOs |
 | 3.0 | 2026-07-21 | Agent | Update state management sections with dynamic state file version validation and Clean Break strategy (#438) |
 | 2.2 | 2026-06-11 | Agent | Rename tdd_cycles to cycles in project planning deliverables schema |
 | 2.1 | 2026-05-24 | Agent | Document the required `get_work_context` follow-up note on successful phase transitions |

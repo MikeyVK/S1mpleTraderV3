@@ -3,11 +3,11 @@
 # File Editing Tools
 
 **Status:** DEFINITIVE  
-**Version:** 4.0  
-**Last Updated:** 2026-07-21  
+**Version:** 4.1  
+**Last Updated:** 2026-08-22  
 
-**Source:** [mcp_server/tools/safe_edit_tool.py](../../../../mcp_server/tools/safe_edit_tool.py)  
-**Tests:** [tests/mcp_server/unit/tools/test_safe_edit_tool.py](../../../../tests/mcp_server/unit/tools/test_safe_edit_tool.py)  
+**Source:** [mcp_server/tools/safe_edit_tool.py](../../../mcp_server/tools/safe_edit_tool.py)  
+**Tests:** [tests/mcp_server/unit/tools/test_safe_edit_tool.py](../../../tests/mcp_server/unit/tools/test_safe_edit_tool.py)  
 
 ---
 
@@ -42,7 +42,7 @@ The MCP server provides one file editing tool:
 
 **MCP Name:** `safe_edit_file`  
 **Class:** `SafeEditTool`  
-**File:** [mcp_server/tools/safe_edit_tool.py](../../../../mcp_server/tools/safe_edit_tool.py)
+**File:** [mcp_server/tools/safe_edit_tool.py](../../../mcp_server/tools/safe_edit_tool.py)
 
 #### Parameters
 
@@ -51,6 +51,16 @@ The MCP server provides one file editing tool:
 | `path` | `str` | **Yes** | Absolute path to the existing file (`must_exist=True`) |
 | `operation` | `OperationType` | **Yes** | Discriminated union of edit operations (`replace`, `append`, `rewrite`, `pattern_replace`) |
 | `mode` | `str` | No | Validation mode: `"strict"`, `"interactive"`, `"verify_only"` — default: `"strict"` |
+
+#### Presented and Cached Output
+
+The bounded response reports path, mode, validation pass status, whether a write
+occurred, and whether a diff is available. It renders at most ten canonical
+`ValidationIssue` records with severity, message, line, column, and code.
+
+`SafeEditOutput` preserves the same immutable validation records produced by
+`ValidationService`; the tool does not collapse, parse, copy, or remap them into a
+presentation-specific DTO. The complete diff remains cache-only.
 
 ---
 
@@ -172,3 +182,26 @@ The MCP server provides one file editing tool:
    Did you mean one of these lines?
      - 'def process_items():'
    ```
+
+---
+
+## Resource Guidance
+
+Use the inline validation-issue list for immediate correction. Read the cached
+`SafeEditOutput` when the complete issue sequence or generated diff is required. Do not
+parse the Markdown response back into validation records.
+
+## Related Documentation
+
+- [MCP tools navigation](README.md)
+- [Presentation architecture](../presentation_architecture.md)
+- [Architecture principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| 4.1 | 2026-08-22 | Agent | Document canonical structured validation issues and cache-only diffs |
+| 4.0 | 2026-07-21 | Agent | Document governed safe editing operations and validation modes |
