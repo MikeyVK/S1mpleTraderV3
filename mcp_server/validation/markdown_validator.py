@@ -33,13 +33,15 @@ class MarkdownValidator(BaseValidator):
         if content is None:
             if not file_path.exists():
                 return ValidationResult(
-                    passed=False, score=0.0, issues=[ValidationIssue("File not found")]
+                    passed=False, score=0.0, issues=[ValidationIssue(message="File not found")]
                 )
             try:
                 text = file_path.read_text(encoding="utf-8")
             except OSError as e:
                 return ValidationResult(
-                    passed=False, score=0.0, issues=[ValidationIssue(f"Failed to read file: {e}")]
+                    passed=False,
+                    score=0.0,
+                    issues=[ValidationIssue(message=f"Failed to read file: {e}")],
                 )
         else:
             text = content

@@ -3,11 +3,11 @@
 # Git Workflow & Analysis Tools
 
 **Status:** DEFINITIVE  
-**Version:** 3.0  
-**Last Updated:** 2026-06-15  
+**Version:** 3.1  
+**Last Updated:** 2026-08-22  
 
-**Source:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py), [git_fetch_tool.py](../../../../mcp_server/tools/git_fetch_tool.py), [git_pull_tool.py](../../../../mcp_server/tools/git_pull_tool.py), [git_analysis_tools.py](../../../../mcp_server/tools/git_analysis_tools.py)  
-**Tests:** [tests/unit/test_git_tools.py](../../../../tests/unit/test_git_tools.py)  
+**Source:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py), [git_fetch_tool.py](../../../mcp_server/tools/git_fetch_tool.py), [git_pull_tool.py](../../../mcp_server/tools/git_pull_tool.py), [git_analysis_tools.py](../../../mcp_server/tools/git_analysis_tools.py)  
+**Tests:** [tests/mcp_server/unit/tools/test_git_tools.py](../../../tests/mcp_server/unit/tools/test_git_tools.py)  
 
 ---
 
@@ -33,7 +33,11 @@ The MCP server provides **15 Git tools** across 4 functional categories:
 - ✅ Integrate with PhaseStateEngine for branch state tracking
 
 > [!NOTE]
-> **Unified DTO & MCP Resource Caching:** Every Git tool returns a single `TextContent` block containing a human-readable summary and the resource cache link (`pgmcp://cache/runs/{run_id}`). The raw JSON objects documented in the `#### Returns` sections below are stored as DTOs in the MCP Resource Cache and can be retrieved by client/caller using the cached resource URI.
+> **Bounded presentation and cache:** Every Git tool returns a configured Markdown
+> projection and a cache link (`pgmcp://cache/runs/{run_id}`). Scalar lists and model
+> collections render at most 20 items in DTO order. The complete frozen output DTO,
+> including cache-only hashes, raw output, diffs, or other diagnostics, remains in the
+> MCP Resource cache.
 
 ---
 
@@ -43,7 +47,7 @@ The MCP server provides **15 Git tools** across 4 functional categories:
 
 **MCP Name:** `create_branch`  
 **Class:** `CreateBranchTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Create a new branch from specified base branch. Automatically formats the canonical branch name as `{branch_type}/{issue_number}-{name}`.
 
@@ -79,7 +83,7 @@ Create a new branch from specified base branch. Automatically formats the canoni
 
 #### Behavior Notes
 
-- **Naming Convention:** Validates against [.pgmcp/git.yaml](../../../../.pgmcp/git.yaml) patterns
+- **Naming Convention:** Validates against [.pgmcp/config/git.yaml](../../../.pgmcp/config/git.yaml) patterns
 - **Protected Branches:** Validates `base_branch` against protected branch list
 - **Branch Exists:** Returns error if branch already exists
 - **Base Branch Validation:** Returns error if base branch doesn't exist
@@ -91,7 +95,7 @@ Create a new branch from specified base branch. Automatically formats the canoni
 
 **MCP Name:** `git_status`  
 **Class:** `GitStatusTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Check current git status (working directory and staging area).
 
@@ -133,7 +137,7 @@ None.
 
 **MCP Name:** `git_add_or_commit`  
 **Class:** `GitCommitTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Stage and commit changes with auto-generated phase prefix. Integrates with PhaseStateEngine for automatic scope generation.
 
@@ -218,7 +222,7 @@ Stage and commit changes with auto-generated phase prefix. Integrates with Phase
 
 **MCP Name:** `git_checkout`  
 **Class:** `GitCheckoutTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Switch to an existing branch (auto-syncs phase state).
 
@@ -260,7 +264,7 @@ Switch to an existing branch (auto-syncs phase state).
 
 **MCP Name:** `git_push`  
 **Class:** `GitPushTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Push current branch to origin remote.
 
@@ -312,7 +316,7 @@ Push current branch to origin remote.
 
 **MCP Name:** `git_merge`  
 **Class:** `GitMergeTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Merge a branch into the current branch.
 
@@ -353,7 +357,7 @@ Merge a branch into the current branch.
 
 **MCP Name:** `git_delete_branch`  
 **Class:** `GitDeleteBranchTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Delete a branch locally, remotely, or both (default). Protected-branch safety always applies.
 
@@ -413,7 +417,7 @@ Delete a branch locally, remotely, or both (default). Protected-branch safety al
 
 #### Behavior Notes
 
-- **Protected Branches:** Returns error if attempting to delete protected branches (`main`, `develop`, etc. from [.pgmcp/git.yaml](../../../../.pgmcp/git.yaml))
+- **Protected Branches:** Returns error if attempting to delete protected branches (`main`, `develop`, etc. from [.pgmcp/config/git.yaml](../../../.pgmcp/config/git.yaml))
 - **Unmerged Changes:** Default `force=false` returns error if local branch has unmerged commits (applies to `mode="local"` and `mode="both"`)
 - **Current Branch:** Returns error if attempting to delete the current local branch (applies to `mode="local"` and `mode="both"`; skipped for `mode="remote"`)
 - **Remote Absent:** When `mode="remote"` or `mode="both"`, a branch that is not present on the remote is treated as `absent` (not an error)
@@ -425,7 +429,7 @@ Delete a branch locally, remotely, or both (default). Protected-branch safety al
 
 **MCP Name:** `git_stash`  
 **Class:** `GitStashTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Save or restore work in progress (git stash).
 
@@ -512,7 +516,7 @@ Save or restore work in progress (git stash).
 
 **MCP Name:** `git_restore`  
 **Class:** `GitRestoreTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Restore files to a git ref (discard local changes).
 
@@ -563,7 +567,7 @@ Restore files to a git ref (discard local changes).
 
 **MCP Name:** `get_parent_branch`  
 **Class:** `GetParentBranchTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Detect parent branch for a branch (via PhaseStateEngine state).
 
@@ -611,7 +615,7 @@ Detect parent branch for a branch (via PhaseStateEngine state).
 
 **MCP Name:** `git_fetch`  
 **Class:** `GitFetchTool`  
-**File:** [mcp_server/tools/git_fetch_tool.py](../../../../mcp_server/tools/git_fetch_tool.py)
+**File:** [mcp_server/tools/git_fetch_tool.py](../../../mcp_server/tools/git_fetch_tool.py)
 
 Fetch updates from a remote (thread-safe).
 
@@ -662,7 +666,7 @@ Fetch updates from a remote (thread-safe).
 
 **MCP Name:** `git_pull`  
 **Class:** `GitPullTool`  
-**File:** [mcp_server/tools/git_pull_tool.py](../../../../mcp_server/tools/git_pull_tool.py)
+**File:** [mcp_server/tools/git_pull_tool.py](../../../mcp_server/tools/git_pull_tool.py)
 
 Pull updates from a remote with optional rebase.
 
@@ -720,7 +724,7 @@ Pull updates from a remote with optional rebase.
 
 **MCP Name:** `git_list_branches`  
 **Class:** `GitListBranchesTool`  
-**File:** [mcp_server/tools/git_analysis_tools.py](../../../../mcp_server/tools/git_analysis_tools.py)
+**File:** [mcp_server/tools/git_analysis_tools.py](../../../mcp_server/tools/git_analysis_tools.py)
 
 List git branches with optional verbose info and remotes.
 
@@ -733,40 +737,9 @@ List git branches with optional verbose info and remotes.
 
 #### Returns
 
-**Without verbose:**
-```json
-{
-  "success": true,
-  "branches": [
-    {"name": "main", "current": false},
-    {"name": "feature/123-oauth", "current": true},
-    {"name": "bug/122-login", "current": false}
-  ]
-}
-```
-
-**With verbose:**
-```json
-{
-  "success": true,
-  "branches": [
-    {
-      "name": "main",
-      "current": false,
-      "hash": "abc123d",
-      "upstream": "origin/main",
-      "status": "[ahead 2, behind 1]"
-    },
-    {
-      "name": "feature/123-oauth",
-      "current": true,
-      "hash": "def456a",
-      "upstream": "origin/feature/123-oauth",
-      "status": "[ahead 3]"
-    }
-  ]
-}
-```
+The text response reports `branches_count` and `current_branch`, followed by at most 20
+records with `name`, `is_current`, and `upstream`. The complete cached
+`GitListBranchesOutput` also retains each branch's `commit_hash`.
 
 #### Example Usage
 
@@ -794,9 +767,10 @@ List git branches with optional verbose info and remotes.
 
 #### Behavior Notes
 
-- **Current Branch:** Marked with `current: true`
-- **Verbose:** Includes commit hash, upstream branch, ahead/behind status
-- **Remote Branches:** Shows branches on remote (origin/main, origin/feature/..., etc.)
+- **Current Branch:** A local checked-out branch has `is_current=true`.
+- **Remote-only listing:** With `remote=true`, remote-tracking records cannot themselves be checked out, so every listed record has `is_current=false`; the header still identifies the current local branch.
+- **Verbose:** Populates upstream/hash details in the cached DTO; commit hashes remain cache-only in the text projection.
+- **Order:** Presentation preserves the Git manager's DTO order.
 
 ---
 
@@ -804,7 +778,7 @@ List git branches with optional verbose info and remotes.
 
 **MCP Name:** `git_diff_stat`  
 **Class:** `GitDiffTool`  
-**File:** [mcp_server/tools/git_analysis_tools.py](../../../../mcp_server/tools/git_analysis_tools.py)
+**File:** [mcp_server/tools/git_analysis_tools.py](../../../mcp_server/tools/git_analysis_tools.py)
 
 Get diff statistics between two branches.
 
@@ -863,7 +837,7 @@ Get diff statistics between two branches.
 
 **MCP Name:** `check_merge`  
 **Class:** `CheckMergeTool`  
-**File:** [mcp_server/tools/git_tools.py](../../../../mcp_server/tools/git_tools.py)
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py)
 
 Verify that a merge commit SHA is reachable from the current HEAD. Wraps `git merge-base --is-ancestor <sha> HEAD`. Use this as the reachability gate in end-issue cleanup before deleting a merged branch.
 
@@ -912,7 +886,7 @@ ExecutionError surfaced via error_handling decorator
 
 ## Configuration
 
-### .pgmcp/git.yaml
+### .pgmcp/config/git.yaml
 
 Git conventions loaded on server startup:
 
@@ -971,9 +945,9 @@ Both `git_fetch` and `git_pull` execute potentially blocking GitPython network o
 
 - [README.md](README.md) — MCP Tools navigation index
 - [project.md](project.md) — Phase management and TDD workflow
-- [.pgmcp/git.yaml](../../../../.pgmcp/git.yaml) — Git conventions configuration
+- [.pgmcp/config/git.yaml](../../../.pgmcp/config/git.yaml) — Git conventions configuration
 - [docs/reference/mcp/git_fetch_pull.md](../git_fetch_pull.md) — Thread-safe fetch/pull implementation
-- [docs/development/issue19/research.md](../../../development/issue19/research.md) — Tool inventory research (Section 1.1-1.3: Git tools)
+- [docs/development/archive/issue19/research.md](../../development/archive/issue19/research.md) — Historical tool inventory research (Section 1.1-1.3: Git tools)
 
 ---
 
@@ -981,4 +955,5 @@ Both `git_fetch` and `git_pull` execute potentially blocking GitPython network o
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.1 | 2026-08-22 | Agent | Document bounded Git projections and current-branch semantics |
 | 2.0 | 2026-02-08 | Agent | Complete reference for 14 Git tools: workflow (10), sync (2), analysis (2) |

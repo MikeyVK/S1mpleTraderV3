@@ -37,6 +37,7 @@ from mcp_server.tools.safe_edit_tool import (
     SafeEditInput,
     SafeEditTool,
 )
+from mcp_server.validation.base import ValidationIssue
 
 
 class TestSafeEditTool:
@@ -66,8 +67,10 @@ class TestSafeEditTool:
         test_file.write_text("old", encoding="utf-8")
         content = "valid code"
 
-        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
-            return True, ""
+        async def mock_validate(
+            *_: object, **__: object
+        ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+            return True, ()
 
         with (
             patch.object(tool.validation_service, "validate", side_effect=mock_validate),
@@ -94,8 +97,12 @@ class TestSafeEditTool:
         test_file.write_text("old", encoding="utf-8")
         content = "invalid code"
 
-        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
-            return False, "\n\n**Validation Issues:**\n❌ Error\n"
+        issue = ValidationIssue(message="Error")
+
+        async def mock_validate(
+            *_: object, **__: object
+        ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+            return False, (issue,)
 
         with (
             patch.object(tool.validation_service, "validate", side_effect=mock_validate),
@@ -113,6 +120,8 @@ class TestSafeEditTool:
             assert isinstance(result, SafeEditOutput)
             assert result.error_message is not None
             assert "rejected" in result.error_message.lower()
+            assert result.issues == (issue,)
+            assert result.issues[0] is issue
             mock_write.assert_not_called()
 
     @pytest.mark.asyncio
@@ -122,8 +131,12 @@ class TestSafeEditTool:
         test_file.write_text("old", encoding="utf-8")
         content = "invalid code"
 
-        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
-            return False, "\n\n**Validation Issues:**\n❌ Error\n"
+        issue = ValidationIssue(message="Error")
+
+        async def mock_validate(
+            *_: object, **__: object
+        ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+            return False, (issue,)
 
         with (
             patch.object(tool.validation_service, "validate", side_effect=mock_validate),
@@ -142,6 +155,8 @@ class TestSafeEditTool:
             assert result.success is True
             assert result.written is True
             assert result.passed is False
+            assert result.issues == (issue,)
+            assert result.issues[0] is issue
             mock_write.assert_called_once_with(Path(str(test_file)), content)
 
     @pytest.mark.asyncio
@@ -151,8 +166,10 @@ class TestSafeEditTool:
         test_file.write_text("old", encoding="utf-8")
         content = "code"
 
-        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
-            return True, ""
+        async def mock_validate(
+            *_: object, **__: object
+        ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+            return True, ()
 
         with (
             patch.object(tool.validation_service, "validate", side_effect=mock_validate),
@@ -180,8 +197,10 @@ class TestSafeEditTool:
         test_file.write_text("code", encoding="utf-8")
         content = "code"
 
-        async def mock_validate(*_: object, **__: object) -> tuple[bool, str]:
-            return True, ""
+        async def mock_validate(
+            *_: object, **__: object
+        ) -> tuple[bool, tuple[ValidationIssue, ...]]:
+            return True, ()
 
         with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             await tool.execute(
@@ -232,7 +251,8 @@ class TestSafeEditTool:
             assert isinstance(result, SafeEditOutput)
             assert result.success is False
             assert result.error_message is not None
-            assert "syntax" in result.error_message.lower()
+            assert result.issues
+            assert any("syntax" in issue.message.lower() for issue in result.issues)
 
         finally:
             Path(temp_path).unlink(missing_ok=True)

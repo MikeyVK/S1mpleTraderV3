@@ -1,8 +1,14 @@
 # MCP Tools Reference
 
+> [!IMPORTANT]
+> **Legacy consolidated overview.** The authoritative current tool reference starts at
+> [tools/README.md](tools/README.md) and its category pages. Live MCP tool schemas remain
+> authoritative for callable parameters. This page is retained for broad orientation and
+> must not be used as an independent workflow contract.
+
 ## Overview
 
-The PhaseGate MCP Server provides **50 tools** for complete git workflow automation, project management, quality assurance, and documentation scaffolding. All tools are accessed via Model Context Protocol (MCP) and integrated with VS Code.
+The PhaseGate MCP Server provides **50 tools** for git workflow automation, project management, quality assurance, and documentation scaffolding. All tools are accessed through Model Context Protocol (MCP) from supported agent harnesses.
 
 **Server Location:** `mcp_server/`
 **Configuration:** `.vscode/mcp.json` → `phase-gate-mcp`
@@ -12,7 +18,7 @@ The PhaseGate MCP Server provides **50 tools** for complete git workflow automat
 
 ### 1. Git Workflow & Analysis (15 tools)
 
-Comprehensive git flow automation with TDD phase tracking.
+Comprehensive git automation with workflow-driven phase and optional implementation-cycle tracking.
 
 | Tool | Purpose | Parameters | Example |
 |------|---------|------------|---------|
@@ -46,7 +52,7 @@ Comprehensive git flow automation with TDD phase tracking.
 10. git_delete_branch(branch="feature/my-feature")  # mode="both" (default: deletes local + remote)
 ```
 
-**Related:** [TDD_WORKFLOW.md](../../coding_standards/TDD_WORKFLOW.md)
+**Related:** [Project and Phase Management](tools/project.md) and [Agent Instructions Model](copilot-agent-instructions-model.md)
 
 ### 2. GitHub Integration (17 tools)
 
@@ -154,14 +160,14 @@ Generate new artifacts from templates (unified system).
 | **ScaffoldArtifactTool** | Generate code/docs from artifacts.yaml | `artifact_type` (dto/worker/design/etc), `name`, context fields (varies by type), `output_path` (optional) | Generated file path |
 | **ScaffoldSchemaTool** | Return JSON Schema for artifact type context | `artifact_type` | JSON Schema for the context parameter |
 
-**Artifact Types (from .pgmcp/templates/config.yaml):**
+**Representative artifact types (authoritative registry: `.pgmcp/templates/config/`):**
 - `dto` - Data Transfer Object with Pydantic
 - `worker` - Background job/processor
 - `design` - Design document
 - `adapter` - External API integration
 - `tool` - MCP tool
 
-See `.pgmcp/templates/config.yaml` for complete list and required fields per type.
+See `.pgmcp/templates/config/` for the complete registry and required context fields per type.
 
 ### 6. Quality & Validation (4 tools)
 
@@ -207,47 +213,38 @@ Work context aggregation and server administration.
 
 ### Tool Registration
 
-All tools are registered in `mcp_server/server.py`:
+Supported and active tools are assembled in `ServerBootstrapper._build_tool_assembly()`:
 
-**Always Available (33 tools):**
-- Git tools (15)
-- Project/Phase tools (8)
-- Quality tools (4)
-- File Editing (1)
-- Scaffold tools (2)
-- Discovery & Admin tools (3)
+The runtime-derived supported catalog always contains 50 name/output-model contracts.
+The active set is settings-dependent:
 
-**GitHub-Dependent (17 tools, requires GITHUB_TOKEN):**
-- Issue tools (5)
-- PR tools (4)
-- Label tools (5)
-- Milestone tools (3)
+- 33 core tools are always registered;
+- five issue tools also remain registered without a token so their schemas are visible,
+  although execution requires GitHub credentials;
+- twelve PR, label, and milestone tools become active when `GITHUB_TOKEN` is present.
 
-**Total: 50 tools** (33 always-available + 17 GitHub-dependent)
+The resulting active totals are 38 without a token and 50 with one. The complete
+supported catalog, rather than the active subset, is used to validate exact
+`presentation.yaml` coverage at startup.
 
 ### Execution Flow
 
+```mermaid
+flowchart TD
+    Client[Agent / MCP client] --> Server[MCPServer]
+    Server --> Tool[Decorated ICoreTool]
+    Tool --> Manager[Manager / domain service]
+    Manager --> Adapter[Adapter]
+    Tool --> DTO[Frozen output DTO]
+    DTO --> Cache[Complete MCP Resource cache]
+    DTO --> Presenter[Configured bounded presentation]
+    Presenter --> Response[CallToolResult]
 ```
-User Request (VS Code)
-    ↓
-MCP Client (VS Code Extension)
-    ↓
-MCP Protocol (stdio)
-    ↓
-MCPServer.execute_tool()
-    ↓
-Tool.execute(**params)
-    ↓
-Manager.operation() [business logic]
-    ↓
-Adapter.method() [external API calls]
-    ↓
-ToolResult (success/error)
-    ↓
-MCP Response
-    ↓
-VS Code Display
-```
+
+`presentation.yaml` selects scalar fields, ordered collections, wording, and per-tool
+item limits. A final universal limiter keeps composed text at or below 8,000 UTF-8 bytes
+and retains the cache URI when publication succeeds. See
+[Presentation Architecture](presentation_architecture.md).
 
 ### Error Handling
 
@@ -291,23 +288,14 @@ File: `.vscode/mcp.json`
 
 ## Usage Examples
 
-### Complete Feature Branch Workflow
+### Feature Workflow Orientation
 
-```
-1. create_branch(name="feature/add-caching", base_branch="main")
-2. (Make code changes in IDE)
-3. git_status()
-4. git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement caching logic")
-5. run_quality_gates(scope="files", files=["mcp_server/tools/cache.py"])
-6. run_tests(path="tests/unit")
-7. git_push(set_upstream=True)
-8. transition_phase(to_phase="ready")
-9. submit_pr(title="Add caching mechanism", body="...", head="feature/add-caching", base="main")
-10. (Request review, get approval)
-11. merge_pr(pr_number=123)
-12. git_checkout(branch="main")
-13. git_delete_branch(branch="feature/add-caching", force=False)  # mode="both" (default: deletes local + remote)
-```
+A feature follows the phase order in `.pgmcp/config/contracts.yaml`: Research, Design,
+Planning, Implementation, Validation, Documentation, and Ready. At each phase or cycle
+boundary, call `get_work_context` and follow the returned contract. Use strict
+RED → GREEN → REFACTOR only when the active contract and approved plan require it.
+Run focused checks during implementation, broader verification in the phase that owns it,
+and submit the PR from Ready with `submit_pr`.
 
 ### Issue Lifecycle Management
 
@@ -355,23 +343,13 @@ Labels are assembled automatically from the required and optional fields. Do not
 
 ## Best Practices
 
-### TDD Workflow Integration
+### Workflow-Driven Testing and Verification
 
-```
-RED Phase:    git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1, message="Add failing test")
-GREEN Phase:  git_add_or_commit(workflow_phase="implementation", sub_phase="green", cycle_number=1, message="Implement feature")
-REFACTOR:     git_add_or_commit(workflow_phase="implementation", sub_phase="refactor", cycle_number=1, message="Clean up code")
-DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update documentation")
-```
-
-### Quality Gates Before Push
-
-```
-1. run_quality_gates scope="files" files=[modified files]
-2. run_tests path=tests/
-3. Ensure: All active quality gates pass (Gates 0–4b)
-4. git_push
-```
+The active workflow contract and approved plan determine whether strict TDD applies.
+Treat test code as first-class code and add or adapt tests only when they provide durable
+evidence. Run the narrowest sufficient tests and gates during implementation. Run broad
+branch- or workspace-level verification only in the phase that owns it, and reuse fresh
+evidence until later changes invalidate it.
 
 ### Label Strategy
 
@@ -386,16 +364,16 @@ DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update 
 1. Use the host application's native repository search to find the related topic
 2. scaffold_artifact artifact_type="design" name="new-feature-design" context='{"issue_number":"42","title":"New Feature Design","author":"Developer"}'
 3. write content in created file
-4. validate_doc file_path=path/to/doc.md
+4. run the documentation, link, template, or parity checks required by the active phase
 5. git_add_or_commit(workflow_phase="documentation", message="Add design document")
 ```
 
 ## Related Documentation
 
-- **Git Workflow:** [../../coding_standards/TDD_WORKFLOW.md](../../coding_standards/TDD_WORKFLOW.md)
-- **Quality Standards:** [../../coding_standards/QUALITY_GATES.md](../../coding_standards/QUALITY_GATES.md)
-- **Architecture:** [../../architecture/README.md](../../architecture/README.md)
-- **Implementation Status:** [../../implementation/IMPLEMENTATION_STATUS.md](../../implementation/IMPLEMENTATION_STATUS.md)
+- **Workflow and phase tools:** [tools/project.md](tools/project.md)
+- **Agent Instructions Model:** [copilot-agent-instructions-model.md](copilot-agent-instructions-model.md)
+- **Quality Standards:** [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
+- **Architecture:** [../manuals/architecture.md](../manuals/architecture.md)
 
 ## Troubleshooting
 
@@ -436,4 +414,4 @@ DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update 
 **Issues or suggestions?**
 - Create issue with `mcp:` label
 - Search existing [MCP reference](tools/README.md)
-- Check [TDD Workflow](../../coding_standards/TDD_WORKFLOW.md) for best practices
+- Check the [Agent Instructions Model](copilot-agent-instructions-model.md) for workflow-driven testing and verification policy

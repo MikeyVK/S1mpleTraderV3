@@ -16,7 +16,7 @@ from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.schemas import WorkphasesConfig
-from mcp_server.schemas.tool_outputs import GetWorkContextOutput
+from mcp_server.schemas.tool_outputs import GetWorkContextOutput, WorkflowStateStatus
 
 if TYPE_CHECKING:
     from mcp_server.config.schemas.contracts_config import ContractsConfig
@@ -96,7 +96,8 @@ class GetWorkContextTool(ICoreTool[GetWorkContextInput, GetWorkContextOutput]):
         sub_phase = None
         phase_source = "unknown"
         phase_confidence = "unknown"
-        invalid_phase_warning = None
+        workflow_state_status = WorkflowStateStatus.MISSING
+        valid_phases: tuple[str, ...] = ()
 
         try:
             state = self._state_engine.get_state(branch)
@@ -126,9 +127,12 @@ class GetWorkContextTool(ICoreTool[GetWorkContextInput, GetWorkContextOutput]):
                         pass
             phase_source = "state.json"
             phase_confidence = "high"
-        except (StateNotFoundError, FileNotFoundError, OSError, KeyError):
-            # uninitialized branch: state.json absent or branch not yet initialized
-            pass
+            workflow_state_status = WorkflowStateStatus.AVAILABLE
+        except (StateNotFoundError, FileNotFoundError):
+            # Uninitialized branch: state.json absent or branch not yet initialized.
+            workflow_state_status = WorkflowStateStatus.MISSING
+        except (OSError, KeyError):
+            workflow_state_status = WorkflowStateStatus.UNREADABLE
 
         instructions = None
         if self._contracts_config is not None and workflow_name and phase:
@@ -137,25 +141,11 @@ class GetWorkContextTool(ICoreTool[GetWorkContextInput, GetWorkContextOutput]):
                 try:
                     instructions = workflow_entry.get_phase(phase).instructions
                 except ValueError:
-                    invalid_phase_warning = self._build_invalid_phase_warning(
-                        workflow=workflow_name,
-                        phase=phase,
-                        valid_phases=workflow_entry.get_phase_names(),
-                    )
+                    workflow_state_status = WorkflowStateStatus.INVALID_PHASE
+                    valid_phases = tuple(workflow_entry.get_phase_names())
 
         sub_role_hint = instructions.sub_role if instructions is not None else ""
-        phase_instructions = ""
-        if instructions is not None:
-            phase_instructions = instructions.phase_instructions
-        elif invalid_phase_warning:
-            phase_instructions = (
-                "(No phase instructions available until the branch is moved to a valid phase.)"
-            )
-        else:
-            phase_instructions = (
-                f"(No instructions defined for workflow: {workflow_name or 'unknown'}, "
-                f"phase: {phase or 'unknown'})"
-            )
+        phase_instructions = instructions.phase_instructions if instructions is not None else ""
 
         handover_template = instructions.handover_template if instructions is not None else None
 
@@ -176,21 +166,6 @@ class GetWorkContextTool(ICoreTool[GetWorkContextInput, GetWorkContextOutput]):
             sub_role_hint=sub_role_hint,
             phase_instructions=phase_instructions,
             handover_template=handover_template,
-            invalid_phase_warning=invalid_phase_warning,
-        )
-
-    def _build_invalid_phase_warning(
-        self,
-        *,
-        workflow: str,
-        phase: str,
-        valid_phases: list[str],
-    ) -> str:
-        """Build recovery-oriented warning text for known workflow + invalid phase state."""
-        valid_phase_text = ", ".join(valid_phases) if valid_phases else "(none)"
-        return (
-            f"Invalid workflow state: workflow '{workflow}' does not contains phase '{phase}'.\n"
-            f"Valid phases: {valid_phase_text}\n"
-            "Recovery: use force_phase_transition to move this branch to a valid phase, "
-            "then call get_work_context again."
+            workflow_state_status=workflow_state_status,
+            valid_phases=valid_phases,
         )

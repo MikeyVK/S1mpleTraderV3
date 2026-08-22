@@ -79,10 +79,10 @@ class TestValidationService:
         mock_validator = MockValidator(passed=True)
 
         with patch.object(service, "get_applicable_validators", return_value=[mock_validator]):
-            passed, issues_text = await service.validate("test.py", "valid code")
+            passed, issues = await service.validate("test.py", "valid code")
 
             assert passed is True
-            assert not issues_text
+            assert issues == ()
 
     @pytest.mark.asyncio
     async def test_validate_with_failing_validators(self, service: ValidationService) -> None:
@@ -91,11 +91,11 @@ class TestValidationService:
         mock_validator = MockValidator(passed=False, issues=[issue])
 
         with patch.object(service, "get_applicable_validators", return_value=[mock_validator]):
-            passed, issues_text = await service.validate("test.py", "invalid code")
+            passed, issues = await service.validate("test.py", "invalid code")
 
             assert passed is False
-            assert "Test error" in issues_text
-            assert "line 10" in issues_text
+            assert issues == (issue,)
+            assert issues[0] is issue
 
     @pytest.mark.asyncio
     async def test_validate_aggregates_multiple_validators(
@@ -111,11 +111,12 @@ class TestValidationService:
         with patch.object(
             service, "get_applicable_validators", return_value=[validator1, validator2]
         ):
-            passed, issues_text = await service.validate("test.py", "code")
+            passed, issues = await service.validate("test.py", "code")
 
             assert passed is False  # One failed
-            assert "Error 1" in issues_text
-            assert "Warning 1" in issues_text
+            assert issues == (issue1, issue2)
+            assert issues[0] is issue1
+            assert issues[1] is issue2
 
     def test_get_applicable_validators_for_regular_file(self, service: ValidationService) -> None:
         """Test validator retrieval for regular Python files."""
@@ -205,19 +206,18 @@ class TestValidationService:
             assert template_validator in validators
 
     @pytest.mark.asyncio
-    async def test_run_validators_returns_formatted_issues(
+    async def test_run_validators_preserves_structured_issues(
         self, service: ValidationService
     ) -> None:
-        """Test that _run_validators formats issues correctly."""
+        """Test that run_validators retains the canonical issue record."""
         issue = ValidationIssue(message="Test issue", severity="error", line=42)
         validator = MockValidator(passed=False, issues=[issue])
 
-        passed, issues_text = await service.run_validators([validator], "test.py", "code")
+        passed, issues = await service.run_validators([validator], "test.py", "code")
 
         assert passed is False
-        assert "❌" in issues_text  # Error icon
-        assert "Test issue" in issues_text
-        assert "line 42" in issues_text
+        assert issues == (issue,)
+        assert issues[0] is issue
 
     @pytest.mark.asyncio
     async def test_run_validators_handles_warnings(self, service: ValidationService) -> None:
@@ -225,8 +225,7 @@ class TestValidationService:
         issue = ValidationIssue(message="Test warning", severity="warning")
         validator = MockValidator(passed=True, issues=[issue])
 
-        passed, issues_text = await service.run_validators([validator], "test.py", "code")
+        passed, issues = await service.run_validators([validator], "test.py", "code")
 
         assert passed is True  # Still passed with warnings
-        assert "⚠️" in issues_text  # Warning icon
-        assert "Test warning" in issues_text
+        assert issues == (issue,)

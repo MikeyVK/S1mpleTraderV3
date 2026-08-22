@@ -160,14 +160,14 @@ class TestPytestRunnerRun:
     """Runner unit tests ÔÇö exercise the public run() surface only."""
 
     def test_all_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Scenario 1: all-passed stdout ÔåÆ passed=N, failed=0, summary_line non-empty."""
+        """Scenario 1: all-passed stdout exposes counts and numeric duration."""
         result = _run(monkeypatch, _PASSED_STDOUT, returncode=0)
 
         assert result.passed == 3
         assert result.failed == 0
         assert result.errors == 0
         assert result.failures == ()
-        assert result.summary_line != ""
+        assert result.duration_seconds == pytest.approx(0.12)
         assert result.exit_code == 0
         assert result.should_raise is False
         assert result.note is None
@@ -232,19 +232,19 @@ class TestPytestRunnerRun:
 
         assert result.lf_cache_was_empty is True
 
-    def test_empty_stdout_summary_line_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Scenario 7: empty/unparseable stdout -> summary_line falls back to policy; never empty.
+    def test_empty_stdout_has_no_duration(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Scenario 7: empty stdout has no synthesized presentation data."""
         result = _run(monkeypatch, _EMPTY_STDOUT, returncode=2)
 
-        assert result.summary_line != ""
+        assert result.duration_seconds is None
         assert result.should_raise is False
         assert result.is_error is True
 
     def test_exit_code_5_no_tests_collected(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Scenario 8: exit code 5 path ÔåÆ summary_line == 'no tests collected'."""
+        """Scenario 8: exit code 5 retains parsed duration and recovery note."""
         result = _run(monkeypatch, _NO_TESTS_STDOUT, returncode=5)
 
-        assert result.summary_line == "no tests collected"
+        assert result.duration_seconds == pytest.approx(0.01)
         assert result.should_raise is False
         assert isinstance(result.note, Note)
 

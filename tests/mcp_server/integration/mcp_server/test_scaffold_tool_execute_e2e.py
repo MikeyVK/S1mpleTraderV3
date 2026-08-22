@@ -58,9 +58,8 @@ async def test_tool_execute_scaffolds_design_doc(
 
     # Assert
     assert result.success
-    content_text = result.formatted_files_created
+    content_text = result.files_created[0]
     assert isinstance(content_text, str)
-    assert len(content_text) > 0
     assert "test-design" in content_text or "test_design.md" in content_text
     # Verify file on disk
     output_file = temp_workspace / output_path
@@ -104,7 +103,7 @@ async def test_tool_execute_scaffolds_dto(
 
     # Assert
     assert result.success
-    content_text = result.formatted_files_created
+    content_text = result.files_created[0]
     assert isinstance(content_text, str)
     assert "TestDTO" in content_text or "test_dto.py" in content_text
     # Verify file on disk

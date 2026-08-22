@@ -254,7 +254,7 @@ class RunTestsTool(ICoreTool[RunTestsInput, RunTestsOutput]):
             failed_count=result.failed,
             skipped_count=result.skipped,
             errors_count=result.errors,
-            summary_line=result.summary_line,
+            duration_seconds=result.duration_seconds,
             failures=failures_list,
             coverage_pct=result.coverage_pct,
             lf_cache_was_empty=result.lf_cache_was_empty,

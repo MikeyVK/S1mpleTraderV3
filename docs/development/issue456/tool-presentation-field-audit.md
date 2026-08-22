@@ -1,0 +1,233 @@
+<!-- docs/development/issue456/tool-presentation-field-audit.md -->
+<!-- template=generic_doc version=ad8498ef created=2026-08-21 updated=2026-08-21 -->
+# Tool Presentation Field Audit
+
+**Status:** APPROVED  
+**Version:** 1.4  
+**Last Updated:** 2026-08-21
+
+---
+
+## Purpose
+
+Provide a complete field-level target audit for every registered MCP tool before issue #456 implementation.
+
+## Scope
+
+**In Scope:** All 50 tool names in presentation.yaml, their registered output models, inherited tool-specific DTO fields, current templates, and the human-approved issue #456 target presentation.
+
+**Out of Scope:** DTO or cache-payload changes outside the approved workflow-state, SafeEdit-validation, pytest-duration, and duplicate-field clean breaks; failure DTO internals outside the common output envelope; and the deferred design of structured quality-gate findings.
+
+## Interpretation
+
+This is the approved normal-success presentation target for issue #456, not a claim about code already implemented. Every row is an implementation deliverable because all five functional review batches have explicit human approval.
+
+- **Inline fields** names every tool-specific DTO field intended to appear in chat. Nested paths use collection[].field notation.
+- **Mechanism** identifies ordinary scalar interpolation, inline bounded scalar sequences, configured collections, or the resource-only exception.
+- **Cache-only fields** remain present in the complete DTO resource but are not included in the normal success text.
+- Every result still receives the universal 8,000 UTF-8-byte ceiling and cache reference.
+- A dash means that no tool-specific DTO field remains cache-only.
+- Presentation headings, emojis, fixed prose, omission notices, and cache URIs are not DTO fields and therefore do not appear in the field columns.
+
+### Common Output Envelope
+
+Every listed output model inherits these fields; they are not repeated in each row:
+
+| Field | Presentation behavior |
+|---|---|
+| success | Selects success/failure presentation; not normally interpolated as a success field. |
+| error_message | Shown through configured failure presentation when relevant; normally null/cache-only on success. |
+| post_tool_instruction | Remains cache-only unless a template explicitly adopts it; no target template currently does. |
+
+---
+
+## Server and Workflow Tools
+
+| Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
+|---|---|---|---|
+| health_check | status, version, pid, platform, uptime_seconds | Scalar template, unchanged | reason |
+| restart_server | reason, pid | Expanded scalar mutation confirmation | timestamp, iso_time |
+| transition_cycle | from_cycle, to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+| force_cycle_transition | from_cycle, to_cycle, total_cycles, cycle_name, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty, skip_reason, human_approval_message | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+| get_work_context | current_branch, workflow_name, issue_number, phase, sub_role_hint, parent_branch, current_cycle, sub_phase, phase_instructions, handover_template, workflow_state_status; valid_phases for invalid_phase | Scalar orientation plus enum-selected warning/recovery block; valid_phases use bounded inline scalar-sequence formatting | phase_source, phase_confidence |
+| initialize_project | issue_number, workflow_name, branch, initial_phase, parent_branch, required_phases[], execution_mode, files_created[] | Expanded scalar template plus bounded phase/file collections | — |
+| get_project_plan | issue_number, workflow_name, phases[].name, phases[].status, phases[].tasks[].id, phases[].tasks[].title, phases[].tasks[].status | Scalar header plus configured nested model collections | — |
+| save_planning_deliverables | issue_number, total_cycles, total_deliverables, cycles[].cycle_number, cycles[].deliverables_count | Scalar summary plus bounded cycle collection | — |
+| update_planning_deliverables | issue_number, total_cycles, total_deliverables, cycles[].cycle_number, cycles[].deliverables_count | Scalar summary plus bounded cycle collection | — |
+| transition_phase | from_phase, to_phase, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+| force_phase_transition | from_phase, to_phase, branch, passing_gates_count, skipped_gates_count, skipped_gates[] when non-empty, skip_reason, human_approval_message | Expanded scalar template plus bounded skipped-gate collection | passing_gates[] |
+
+### Batch 1 — Server and Workflow Tools
+
+| Decision | Disposition | Rationale |
+|---|---|---|
+| `health_check.reason` remains absent from the normal healthy-server template. | APPROVED | The normal presenter path produces `None`. In degraded mode the server has `presenter=None` and no cache publisher, so `str(HealthCheckOutput)` already exposes `status=unhealthy` and the populated reason directly; adding `Reason: -` to the healthy template provides no failure-path value. |
+| Complete `passing_gates[]` remains cache-only; `passing_gates_count` stays inline. | APPROVED | Successful gate identities are diagnostic/audit detail, not routine next-action data. |
+| Bounded `skipped_gates[]` is inline when non-empty. | APPROVED | Skipped gates identify deliberately bypassed blockers and require attention; configured collection rendering already omits empty collections. |
+| `phase_source` remains cache-only. | APPROVED | Normal initialized state always reports `state.json`; the value is diagnostic provenance rather than action data. |
+| `phase_confidence` remains cache-only after explicit state status is implemented. | APPROVED | `workflow_state_status` becomes the actionable inline contract; confidence is redundant diagnostic metadata on both normal and abnormal paths. |
+| `get_work_context` emits `WorkflowStateStatus` plus structured supporting data; presentation.yaml owns all warning and recovery text. | APPROVED | Explicit human decision aligned with the Presentation Boundary; OperationNotes and tool-owned human text are excluded. |
+
+Batch 1 is CLOSED by explicit human approval. The four-value `WorkflowStateStatus` contract (`available`, `missing`, `unreadable`, `invalid_phase`) is confirmed; remaining server/workflow row decisions follow the approved matrix and are no longer delegated to Implementation.
+
+## Git Tools
+
+| Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
+|---|---|---|---|
+| git_list_branches | branches_count, current_branch, branches[].name, branches[].is_current, branches[].upstream | Scalar header plus bounded model collection | branches[].commit_hash |
+| git_diff_stat | source_branch, target_branch, files_changed, insertions, deletions | Scalar template, unchanged | stats |
+| get_parent_branch | branch, parent_branch | Scalar template, unchanged | — |
+| check_merge | merge_sha | Scalar success/failure template, unchanged | is_ancestor |
+| git_status | branch, is_clean, modified_count, untracked_count, modified_files[], untracked_files[] | Scalar header plus two bounded scalar collections | — |
+| create_branch | branch_name, branch_type, base_branch | Scalar template, unchanged | — |
+| git_add_or_commit | branch, commit_hash, workflow_phase, sub_phase, cycle_number, commit_type, files[] | Expanded scalar template plus bounded scalar file collection | — |
+| git_restore | files_count, source, files[] | Scalar confirmation plus bounded scalar file collection | — |
+| git_checkout | previous_branch, branch, current_phase, parent_branch | Expanded scalar orientation template | — |
+| git_push | branch, new_upstream_created | Scalar template, unchanged | set_upstream |
+| git_merge | source_branch, target_branch | Scalar template, unchanged | — |
+| git_delete_branch | branch, local_status, remote_status | Scalar template, unchanged | — |
+| git_stash | action, stashes[] | Scalar header plus bounded scalar collection | message |
+| git_fetch | remote | Scalar template, unchanged | raw_output, prune |
+| git_pull | remote | Scalar template, unchanged | raw_output, rebase |
+
+### Batch 2 — Git Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- All fifteen Git rows above are approved as the implementation target.
+- `git_add_or_commit.files[]`, commit sub-phase/cycle, `git_restore.files[]`, and `git_checkout.parent_branch` are promoted inline for direct mutation verification and orientation.
+- `git_diff_stat.stats`, fetch/pull raw output, and redundant caller-input flags remain cache-only because they are unstructured diagnostics or repeat requested inputs.
+- Collection projections remain bounded and preserve Git/DTO order.
+
+## GitHub Tools
+
+| Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
+|---|---|---|---|
+| create_issue | number, title, state, html_url, milestone_title, assignees_summary, labels[] | Expanded scalar template; labels use bounded inline scalar-sequence formatting | body, created_at, updated_at, closed_at, author |
+| update_issue | number, title, state, html_url, milestone_title, assignees_summary, labels[] | Expanded scalar template; labels use bounded inline scalar-sequence formatting | body, created_at, updated_at, closed_at, author |
+| get_issue | number, title, state, milestone_title, assignees_summary, html_url, body, labels[], created_at, updated_at, closed_at | Expanded scalar template; labels use bounded inline scalar-sequence formatting | author |
+| close_issue | issue_number | Scalar template, unchanged | — |
+| list_issues | issues_count, issues[].number, issues[].title, issues[].state, issues[].html_url, issues[].labels[], issues[].assignees_summary, issues[].created_at | Scalar header plus bounded model collection with compact one-line metadata; labels use bounded inline scalar-sequence formatting per item | — |
+| get_pr | number, title, html_url, state, base_ref, head_ref, body, merged_at, merge_sha | Expanded scalar template; absent merge fields render the configured None value | — |
+| submit_pr | number, title, html_url, state, base_ref, head_ref | Expanded scalar mutation confirmation | merged_at, merge_sha, body |
+| merge_pr | pr_number, merge_method, merge_sha | Scalar template, unchanged | — |
+| list_prs | prs_count, pull_requests[].number, pull_requests[].title, pull_requests[].state, pull_requests[].html_url, pull_requests[].base_ref, pull_requests[].head_ref | Scalar header plus bounded model collection | — |
+| list_labels | total_labels, labels[].name, labels[].color, labels[].description | Scalar header plus bounded model collection | — |
+| create_label | label_name, color | Scalar template, unchanged | — |
+| delete_label | label_name | Scalar template, unchanged | — |
+| add_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | — (`formatted_labels` removed) |
+| remove_labels | labels[], issue_number | Scalar template with bounded inline scalar-sequence formatting | — (`formatted_labels` removed) |
+| list_milestones | total_milestones, milestones[].number, milestones[].title, milestones[].state | Scalar header plus bounded model collection | — |
+| create_milestone | number, title, state | Expanded scalar mutation confirmation | — |
+| close_milestone | number, title, state | Expanded scalar mutation confirmation | — |
+
+### Batch 3 — GitHub Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- All seventeen GitHub rows above are approved as the implementation target.
+- `get_issue` includes created, updated, and closed timestamps; author remains cache-only.
+- `list_issues` includes `created_at` in a compact metadata line alongside state and assignee.
+- Mutation responses expose realized state and metadata while caller-supplied bodies and low-value audit metadata remain cache-only.
+- Structured `labels[]` replaces preformatted `formatted_labels` as the presentation source for add/remove operations.
+
+## Scaffolding Tools
+
+| Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
+|---|---|---|---|
+| scaffold_artifact | Success: artifact_type, name, files_created[]. Validation failure: artifact_type, name, error_message, missing_fields[], provided_fields[]. Other failure: artifact_type, name, error_message. | Path-specific scalar template plus bounded structured collections | validation_schema (`formatted_files_created` and `schema_info` removed) |
+| scaffold_schema | artifact_type | Scalar locator; schema remains deliberately resource-only | schema_data |
+
+### Batch 4 — Scaffolding Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- `scaffold_artifact` has distinct success, validation-failure, and other-failure projections.
+- Structured `files_created[]`, `missing_fields[]`, and `provided_fields[]` replace preformatted convenience text as presentation sources.
+- Full validation schemas remain resource/cache-only; `scaffold_schema` remains the deliberate resource-oriented exception.
+- Empty/default schema and field sections are not rendered.
+
+## Quality, Testing, and Editing Tools
+
+| Tool | Inline DTO fields after #456 | Presentation mechanism | Tool-specific cache-only fields |
+|---|---|---|---|
+| auto_fix | gates_executed_count, gates_executed[], modified_files_count, modified_files[] | Scalar header plus two bounded scalar collections | — (`formatted_modified_files` removed) |
+| run_quality_gates | overall_pass, scope, file_count, gates[].name, gates[].passed, gates[].status, gates[].score | Outcome-neutral scalar header plus bounded model collection | gates[].details |
+| run_tests | exit_code, passed_count, failed_count, skipped_count, errors_count, duration_seconds, coverage_pct, failures[].test_id, failures[].location, failures[].short_reason, failures[].is_collection_error | Structured scalar summary plus bounded failure collection | failures[].traceback, lf_cache_was_empty, stderr (`summary_line` removed) |
+| safe_edit_file | path, mode, passed, written, has_diff, issues[].message, issues[].severity, issues[].line, issues[].column, issues[].code | Expanded scalar template plus bounded structured validation-issue collection | diff |
+| validate_template | passed, errors_count, errors[].severity, errors[].message | Outcome-neutral scalar header plus bounded model collection | — |
+
+### Batch 5 — Quality, Testing, and Editing Tools
+
+**Disposition:** CLOSED by explicit human approval.
+
+- All five rows are approved as the implementation target.
+- Test presentation uses structured exit code/counts, numeric duration, coverage, and bounded failures; `summary_line` is removed.
+- SafeEdit preserves validation issues as structured records through service, manager, and tool DTO boundaries.
+- All seven proven duplicate presentation fields are removed in an approved clean break.
+- Diagnostic evidence such as tracebacks, stderr, raw output, short reasons, and gate details is retained according to the cache/inline matrix.
+
+## Full-Optimization Decision
+
+The field audit disproves the earlier shorthand that the 32 compact templates have no additional cached data. They often do. All 50 rows are approved implementation scope. Their inline/cache-only splits and the structured DTO clean breaks are binding after five completed interactive review batches.
+
+A cache-only classification is intentional only under one of these actionability rules:
+
+| Rationale | Representative fields |
+|---|---|
+| Redundant confirmation or caller-supplied input | create/update issue bodies, fetch/pull request flags, and complete passing-gate lists after a successful transition |
+| Internal or low-value operational metadata | timestamps, process identifiers, author metadata, prior phase/cycle values |
+| Raw or deep inspection evidence | raw Git output, diffs, tracebacks, stderr, validation schemas, opaque gate details |
+| Duplicate convenience representation | formatted file or label strings when the underlying bounded collection is inline |
+| Semantically unreliable without a richer DTO contract | `gates[].details` until structured findings exist |
+
+Optimization requires implementing and reviewing every row, not forcing every DTO field inline. The current compact scalar result remains optimal where extra fields are redundant, operational metadata, or deep-inspection evidence. The complete cache continues to expose all omitted fields.
+
+The deferred quality-gate gap remains unchanged: `gates[].details` is an opaque string. Showing bounded concrete diagnostics requires a future structured finding contract rather than gate-specific presentation parsing.
+
+## Evidence and Reproducibility
+
+The inventory was derived from:
+
+- all 50 keys in [presentation.yaml](../../../.pgmcp/config/presentation.yaml);
+- the tool classes assembled by [ServerBootstrapper](../../../mcp_server/bootstrap.py);
+- their ICoreTool output model type arguments or explicit output_model declarations;
+- Pydantic model fields in [tool outputs](../../../mcp_server/schemas/tool_outputs.py);
+- current scalar placeholders parsed from [presentation.yaml](../../../.pgmcp/config/presentation.yaml);
+- the approved target behavior in [Research](research.md) and [Design](design.md).
+
+## Audit Completion
+
+- [x] Exactly 50 unique tools are present.
+- [x] Every tool maps to a registered output model.
+- [x] Every tool-specific DTO field is classified as inline or cache-only.
+- [x] Nested DTO fields use explicit path notation.
+- [x] Every functional batch has an explicit human disposition.
+- [x] Every row has an approved inline/cache-only target before Implementation.
+
+## Implementation Validation Checklist
+
+- [ ] Startup enforcement proves exact bidirectional parity between registered public tool names and presentation keys.
+- [ ] Runtime output matches every approved inline/cache-only row.
+- [ ] Any implementation-driven change to the approved split is reflected in Research, Design, Planning, and structured deliverables before work continues.
+
+## Related Documentation
+
+- [Research](research.md)
+- [Design](design.md)
+- [Planning](planning.md)
+- [Presentation configuration](../../../.pgmcp/config/presentation.yaml)
+- [Tool output DTOs](../../../mcp_server/schemas/tool_outputs.py)
+- [TextPresenter](../../../mcp_server/presenters/text_presenter.py)
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| 1.0 | 2026-08-21 | Agent | Complete 50-tool target presentation and cache-field audit |
+| 1.1 | 2026-08-21 | Agent | Approve the 50-tool implementation target and explicit cache-only rationale categories |
+| 1.2 | 2026-08-21 | Agent | Reopen the matrix for mandatory interactive human review before Planning |
+| 1.3 | 2026-08-21 | Agent | Close all five human review batches and approve structured DTO cleanup plus the complete 50-tool target |
+| 1.4 | 2026-08-21 | Agent | Normalize functional-batch structure and align cache-only rationale with the approved field matrix |

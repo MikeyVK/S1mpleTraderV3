@@ -1,15 +1,22 @@
 # PhaseGate MCP Server: Vision & Architecture Reference
 
 **Document Type:** Vision & Architecture Reference  
-**Status:** DEFINITIVE  
-**Version:** 1.1  
+**Status:** HISTORICAL ARCHITECTURE CONTEXT  
+**Version:** 1.3  
 **Created:** 2026-01-16  
-**Last Updated:** 2026-01-19  
-**Purpose:** Comprehensive reference for understanding MCP server vision, architecture, and roadmap  
+**Last Updated:** 2026-08-22  
+**Purpose:** Preserve the foundational vision and historical roadmap; current operational contracts live in the active references below  
 **Audience:** New agents, developers, maintainers  
 **Context:** Created during Issue #56 research to establish foundational understanding
 
 ---
+
+> [!IMPORTANT]
+> This document preserves Issue #56-era architectural context and its January 2026
+> roadmap. It is not the operational workflow source of truth. Current workflow behavior
+> is defined by `.pgmcp/config/contracts.yaml`; current agent and verification ownership
+> is described in [Agent Instructions Model](copilot-agent-instructions-model.md); current
+> tool details start at [MCP Tools Reference](tools/README.md).
 
 ## Executive Summary
 
@@ -18,7 +25,7 @@
 The **PhaseGate MCP Server** is an intelligent development orchestration platform that acts as an **AI-native development partner** for the phase-gate-mcp project. It transforms software development from ad-hoc execution to a **structured, enforced, configuration-driven workflow**.
 
 **In One Sentence:**  
-*An MCP server that enforces architectural patterns, TDD principles, and quality standards through intelligent tooling and configuration-driven workflows, enabling AI agents to develop software with human-level discipline and consistency.*
+*An MCP server that enforces architectural patterns, workflow-specific development contracts, and quality standards through configuration-driven tooling, enabling consistent collaboration between humans and AI agents.*
 
 ### Why Does It Exist?
 
@@ -31,7 +38,7 @@ Traditional development workflows suffer from three fundamental problems:
 **The PhaseGate MCP Server solves these by:**
 - **Encoding standards as enforced policies** (not just documentation)
 - **Automating ceremony** (scaffolding, validation, transitions)
-- **Making quality gates mandatory** (fail-fast on violations)
+- **Applying workflow-owned tests and quality gates** at the scope and phase defined by the active contract
 
 ### Core Value Proposition
 
@@ -39,7 +46,7 @@ Traditional development workflows suffer from three fundamental problems:
 |------------------------|-------------------------|
 | Standards in docs (unenforced) | Standards as executable policies |
 | Manual boilerplate | Template-driven scaffolding |
-| Quality checks optional | Quality gates mandatory |
+| Quality checks optional | Workflow-owned verification enforced |
 | Workflow guidance | Workflow enforcement |
 | Static documentation | Dynamic context |
 | Developer discipline | System constraints |
@@ -68,10 +75,10 @@ The platform is a **plugin-driven, event-driven trading platform** with strict a
 **Transform implicit knowledge into executable constraints.**
 
 Instead of:
-> "Please follow TDD principles and write tests first"
+> "Use the same development ritual for every change"
 
 We have:
-> `git_add_or_commit(workflow_phase="implementation", sub_phase="red", cycle_number=1)` → **Blocks if non-test files are staged**
+> `get_work_context()` → **Returns the active workflow-phase contract, including whether strict TDD applies**
 
 Instead of:
 > "DTOs should be immutable Pydantic models"
@@ -80,10 +87,10 @@ We have:
 > `scaffold_artifact(artifact_type='dto')` → **Generates validated, frozen BaseModel**
 
 Instead of:
-> "Check quality before merging"
+> "Run every quality check at every step"
 
 We have:
-> `transition_phase(to='integration')` → **Blocks if quality gates fail**
+> the active workflow contract → **Assigns proportional checks and broad verification to the phase that owns them**
 
 ---
 
@@ -155,19 +162,23 @@ graph TB
 
 **Consequence**: Can directly use Pydantic models from backend in MCP tools
 
-#### Decision 2: Configuration-Driven Everything
+#### Decision 2: Configuration-Driven Policy and Presentation
 
 **Context**: Traditional MCP servers hardcode workflow logic
 
-**Decision**: All behavior controlled by YAML configs
+**Decision**: Shared workflow policy and user-facing presentation choices are controlled
+by validated YAML configuration; generic execution and rendering mechanics remain in
+Python.
 
 **Rationale**:
-- Mirrors the project's "Configuration-Driven" principle
-- Workflows customizable without code changes
-- Policies enforceable at config level
-- Extensible without modifying Python code
+- Mirrors the project's Config-First and Presentation Boundary principles
+- Keeps workflow contracts and presentation wording outside domain services
+- Validates configuration against runtime contracts at startup
+- Extends supported content through configuration where the generic mechanism already exists
 
-**Consequence**: 7 YAML files control all server behavior
+**Consequence**: `presentation.yaml` exactly covers the runtime-derived 50-tool supported
+catalog. It owns field selection, wording, order, and item limits; generic renderers own
+ordered-sequence mechanics and the universal 8,000-byte ceiling.
 
 #### Decision 3: Strict Separation of Tooling vs Enforcement
 
@@ -260,7 +271,7 @@ docs/
 
 **Configuration Files**:
 ```yaml
-.pgmcp/
+.pgmcp/config/
 ├── workflows.yaml           # Workflow metadata: name, description, execution_mode (no phases — see contracts.yaml)
 ├── contracts.yaml           # SSOT for workflow-phase membership, ordering, and exit gates (Issue #271)
 ├── workphases.yaml          # Phase/sub-phase definitions for commits
@@ -506,7 +517,7 @@ artifact_types:
 
 ---
 
-## Epic Roadmap & Critical Path
+## Historical Epic Roadmap & Critical Path (January 2026)
 
 ```mermaid
 graph LR
@@ -694,7 +705,7 @@ artifact_types:
 
 ---
 
-## Current Architecture Status (January 2026)
+## Historical Architecture Status (January 2026)
 
 ### What's Complete ✅
 
@@ -719,7 +730,7 @@ artifact_types:
 - Integration with validation system
 
 **Git Workflow**:
-- TDD phase enforcement (red/green/refactor)
+- Workflow-defined implementation cycles, including RED/GREEN/REFACTOR where the selected contract requires them
 - Branch naming conventions
 - Commit message format enforcement
 - Phase transition validation

@@ -232,10 +232,7 @@ class ArtifactManager:
                 field_type = field_type | None
                 default_val = field_def.default
             else:
-                if field_def.default is not None:
-                    default_val = field_def.default
-                else:
-                    default_val = ...
+                default_val = field_def.default if field_def.default is not None else ...
 
             # Build Field(...)
             field_kwargs: dict[str, Any] = {
@@ -487,12 +484,12 @@ class ArtifactManager:
         if not passed:
             if artifact.strict_validation:
                 raise ValidationError(
-                    f"Generated {artifact_type} artifact failed validation:\n{issues}",
+                    f"Generated {artifact_type} artifact failed validation",
                     error_code="artifact_validation_failed",
                     params={"artifact_type": artifact_type, "issues": issues},
                 )
             logger.warning(
-                "Validation issues in %s artifact (type=%s), writing anyway:\n%s",
+                "Validation issues in %s artifact (type=%s), writing anyway: %r",
                 artifact_type,
                 artifact.type,
                 issues,
@@ -608,7 +605,7 @@ class ArtifactManager:
                 params={"artifact_type": artifact_type, "error_details": str(e)},
             )
             val_err.missing = missing_fields
-            val_err.provided = [k for k in context.keys() if k not in missing_fields]
+            val_err.provided = [k for k in context if k not in missing_fields]
             raise val_err from e
 
         # 2. Enrich to RenderContext (adds lifecycle fields)

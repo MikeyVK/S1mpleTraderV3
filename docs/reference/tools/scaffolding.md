@@ -3,22 +3,22 @@
 # Scaffolding Tools
 
 **Status:** DEFINITIVE  
-**Version:** 3.1  
-**Last Updated:** 2026-07-08  
+**Version:** 3.3  
+**Last Updated:** 2026-08-22  
 
-**Source:** [mcp_server/tools/scaffold_artifact.py](../../../../mcp_server/tools/scaffold_artifact.py) | [mcp_server/tools/scaffold_schema_tool.py](../../../../mcp_server/tools/scaffold_schema_tool.py)  
-**Tests:** [tests/mcp_server/unit/tools/test_scaffold_schema_tool.py](../../../../tests/mcp_server/unit/tools/test_scaffold_schema_tool.py)
+**Source:** [mcp_server/tools/scaffold_artifact.py](../../../mcp_server/tools/scaffold_artifact.py) | [mcp_server/tools/scaffold_schema_tool.py](../../../mcp_server/tools/scaffold_schema_tool.py)  
+**Tests:** [tests/mcp_server/unit/tools/test_scaffold_schema_tool.py](../../../tests/mcp_server/unit/tools/test_scaffold_schema_tool.py)
 
 ---
 
 ## Purpose
 
-Complete reference documentation for the two MCP scaffolding tools: `scaffold_artifact` (artifact generation from templates) and `scaffold_schema` (proactive context schema discovery). Both tools use the same modular artifact registry defined under [.pgmcp/templates/config/](../../../../.pgmcp/templates/config/).
+Complete reference documentation for the two MCP scaffolding tools: `scaffold_artifact` (artifact generation from templates) and `scaffold_schema` (proactive context schema discovery). Both tools use the same modular artifact registry defined under [.pgmcp/templates/config/](../../../.pgmcp/templates/config/).
 
 The scaffolding system provides:
 - **Unified tool** for code and documentation generation (replaces separate tools)
 - **Template composition** via Jinja2 includes and inheritance
-- **Automatic directory resolution** from [.pgmcp/config/project_structure.yaml](../../../../.pgmcp/config/project_structure.yaml)
+- **Automatic directory resolution** from [.pgmcp/config/project_structure.yaml](../../../.pgmcp/config/project_structure.yaml)
 - **SCAFFOLD header injection** for template provenance tracking
 - **Context-driven customization** via template variables
 - **Proactive schema exposure** via `scaffold_schema` — inspect context requirements before scaffolding
@@ -49,7 +49,7 @@ The MCP server provides **2 scaffolding tools**:
 
 **MCP Name:** `scaffold_artifact`  
 **Class:** `ScaffoldArtifactTool`  
-**File:** [mcp_server/tools/scaffold_artifact.py](../../../../mcp_server/tools/scaffold_artifact.py)
+**File:** [mcp_server/tools/scaffold_artifact.py](../../../mcp_server/tools/scaffold_artifact.py)
 
 Generate any artifact type (code or document) from unified registry.
 
@@ -64,18 +64,24 @@ Generate any artifact type (code or document) from unified registry.
 
 #### Returns (via MCP Resource Cache)
 
-`scaffold_artifact` returns a single `TextContent` block containing confirmation and the resource cache link pointing to the cached `ScaffoldArtifactOutput` DTO.
+On success, `scaffold_artifact` presents the artifact type and name plus up to 20 paths
+from `files_created`. On context-validation failure, it presents the error and bounded
+`missing_fields` and `provided_fields` collections. Other failures use the configured
+scalar failure template.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains the following fields:
 - `success`: `bool`
 - `error_message`: `string | null`
-- `message`: `string`
-- `artifact`: `ScaffoldedArtifactDetails` containing:
-  - `type`: `string`
-  - `name`: `string`
-  - `path`: `string`
-  - `template`: `string`
-  - `context`: `dict`
+- `post_tool_instruction`: `string | null`
+- `artifact_type`: `string`
+- `name`: `string`
+- `files_created`: `list[string]`
+- `validation_schema`: `dict | null`
+- `missing_fields`: `list[string]`
+- `provided_fields`: `list[string]`
+
+The complete validation schema remains cache-only. No duplicate preformatted file or
+schema summary fields exist.
 
 #### Example Usage
 
@@ -146,7 +152,7 @@ The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and
 
 **MCP Name:** `scaffold_schema`  
 **Class:** `ScaffoldSchemaTool`  
-**File:** [mcp_server/tools/scaffold_schema_tool.py](../../../../mcp_server/tools/scaffold_schema_tool.py)  
+**File:** [mcp_server/tools/scaffold_schema_tool.py](../../../mcp_server/tools/scaffold_schema_tool.py)  
 **Implements:** `ICoreTool` (read-only — no branch mutation)
 
 Return the JSON Schema for the `context` parameter of an artifact type. Use this before calling `scaffold_artifact` to discover exactly which fields are required and optional for a given type.
@@ -159,11 +165,14 @@ Return the JSON Schema for the `context` parameter of an artifact type. Use this
 
 #### Returns (via MCP Resource Cache)
 
-`scaffold_schema` returns a single `TextContent` block pointing to the resource cache link of the cached `ScaffoldSchemaOutput` DTO.
+`scaffold_schema` deliberately presents only the successful artifact-type lookup and the
+cache link. The nested schema is resource-oriented and is not flattened into chat text.
 
 The DTO is stored in the MCP Resource cache at `pgmcp://cache/runs/{run_id}` and contains:
 - `success`: `bool`
 - `error_message`: `string | null`
+- `post_tool_instruction`: `string | null`
+- `artifact_type`: `string`
 - `schema_data`: `dict` (the JSON Schema describing the `context` parameter)
 #### Error Handling
 
@@ -188,14 +197,14 @@ This eliminates trial-and-error context validation failures.
 ## Artifact Registry
 
 
-The unified artifact registry is defined by modular YAML configuration files under [.pgmcp/templates/config/](../../../../.pgmcp/templates/config/).
+The unified artifact registry is defined by modular YAML configuration files under [.pgmcp/templates/config/](../../../.pgmcp/templates/config/).
 
 
 ### Registry Structure
 
 The registry is loaded from individual `.yaml` files under `.pgmcp/templates/config/`. Each file defines at minimum: `type_id`, `name`, `description`, `template_path`, `file_extension`, `strict_validation`, and the `context_schema`.
 
-**See:** [.pgmcp/templates/config/](../../../../.pgmcp/templates/config/) for the configuration files.
+**See:** [.pgmcp/templates/config/](../../../.pgmcp/templates/config/) for the configuration files.
 
 ### Supported Artifact Types
 
@@ -380,7 +389,7 @@ Tier information is stored in the modular configurations and `template_registry.
 
 Complete modular artifact registry with template mappings, context schemas, and tier information.
 
-**See:** [.pgmcp/templates/config/](../../../../.pgmcp/templates/config/) for the configuration files.
+**See:** [.pgmcp/templates/config/](../../../.pgmcp/templates/config/) for the configuration files.
 
 ---
 
@@ -388,7 +397,7 @@ Complete modular artifact registry with template mappings, context schemas, and 
 
 Directory resolution rules for artifact types.
 
-**See:** [.pgmcp/config/project_structure.yaml](../../../../.pgmcp/config/project_structure.yaml) for full structure.
+**See:** [.pgmcp/config/project_structure.yaml](../../../.pgmcp/config/project_structure.yaml) for full structure.
 
 ---
 
@@ -396,7 +405,7 @@ Directory resolution rules for artifact types.
 
 SCAFFOLD header format specification (comment patterns for different file types).
 
-**See:** [.pgmcp/config/scaffold_metadata.yaml](../../../../.pgmcp/config/scaffold_metadata.yaml) for header specs.
+**See:** [.pgmcp/config/scaffold_metadata.yaml](../../../.pgmcp/config/scaffold_metadata.yaml) for header specs.
 
 ---
 
@@ -404,7 +413,7 @@ SCAFFOLD header format specification (comment patterns for different file types)
 
 Template provenance tracking (version hashes → tier chains).
 
-**See:** [.pgmcp/template_registry.json](../../../../.pgmcp/template_registry.json) for version history.
+**See:** [.pgmcp/template_registry.json](../../../.pgmcp/template_registry.json) for version history.
 
 ---
 
@@ -501,9 +510,9 @@ When templates are updated:
 - [README.md](README.md) — MCP Tools navigation index
 - [editing.md](editing.md) — safe_edit_file for manual edits
 - [quality.md](quality.md) — validate_template for conformance checking
-- [.pgmcp/templates/config/](../../../../.pgmcp/templates/config/) — Modular configuration directory
-- [.pgmcp/config/project_structure.yaml](../../../../.pgmcp/config/project_structure.yaml) — Directory resolution
-- [.pgmcp/config/scaffold_metadata.yaml](../../../../.pgmcp/config/scaffold_metadata.yaml) — SCAFFOLD header specs
+- [.pgmcp/templates/config/](../../../.pgmcp/templates/config/) — Modular configuration directory
+- [.pgmcp/config/project_structure.yaml](../../../.pgmcp/config/project_structure.yaml) — Directory resolution
+- [.pgmcp/config/scaffold_metadata.yaml](../../../.pgmcp/config/scaffold_metadata.yaml) — SCAFFOLD header specs
 - [.pgmcp/templates/](../../../.pgmcp/templates/) — Template library
 - [docs/manuals/architecture.md](../../manuals/architecture.md) — Three-layer architecture reference
 
@@ -513,6 +522,7 @@ When templates are updated:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.3 | 2026-08-22 | Agent | Align bounded scaffold results and resource-oriented schema presentation |
 | 3.2 | 2026-07-16 | Agent | Updated for modular YAML configuration loading, dynamic validation model, and added typescript_dto. |
 | 3.1 | 2026-07-08 | Agent | Update template locations to Git-tracked `.pgmcp/templates` and correct broken architecture link (#420) |
 | 2.2 | 2026-06-04 | Agent | Remove legacy error example; fix artifact type tables (17 registered types); fix template paths; replaced fake context schema YAML with registry reference; removed stale links (#286) |

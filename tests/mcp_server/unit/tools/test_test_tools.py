@@ -29,7 +29,7 @@ def injected_settings() -> Settings:
 def _make_pytest_result(
     *,
     exit_code: int = 0,
-    summary_line: str = "1 passed in 0.10s",
+    duration_seconds: float | None = 0.1,
     passed: int = 1,
     failed: int = 0,
     skipped: int = 0,
@@ -44,7 +44,7 @@ def _make_pytest_result(
 ) -> PytestResult:
     return PytestResult(
         exit_code=exit_code,
-        summary_line=summary_line,
+        duration_seconds=duration_seconds,
         passed=passed,
         failed=failed,
         skipped=skipped,
@@ -95,7 +95,7 @@ async def _wrapped_execute(
             "skipped": dto_result.skipped_count,
             "errors": dto_result.errors_count,
         },
-        "summary_line": dto_result.summary_line,
+        "duration_seconds": dto_result.duration_seconds,
         "failures": [
             {
                 "test_id": f.test_id,
@@ -119,7 +119,7 @@ async def _wrapped_execute(
             failure_lines_list.append(f"FAILED {f.test_id} — {f.short_reason}")
     failure_lines = "\n".join(failure_lines_list)
 
-    text = dto_result.summary_line
+    text = f"exit={dto_result.exit_code}; duration={dto_result.duration_seconds}"
     if failure_lines:
         text += "\n" + failure_lines
     elif dto_result.stderr:
@@ -148,9 +148,7 @@ async def _execute_unwrapped(
 
 @pytest.mark.asyncio
 async def test_run_tests_tool_returns_dto(injected_settings: Settings) -> None:
-    runner = FakePytestRunner(
-        result=_make_pytest_result(summary_line="2 passed in 0.45s", passed=2)
-    )
+    runner = FakePytestRunner(result=_make_pytest_result(duration_seconds=0.45, passed=2))
     tool = RunTestsTool(runner=runner, settings=injected_settings)
     context = NoteContext()
 
@@ -162,16 +160,15 @@ async def test_run_tests_tool_returns_dto(injected_settings: Settings) -> None:
 
 @pytest.mark.asyncio
 async def test_c4_run_tests_all_passed_via_injected_runner(injected_settings: Settings) -> None:
-    runner = FakePytestRunner(
-        result=_make_pytest_result(summary_line="2 passed in 0.45s", passed=2)
-    )
+    runner = FakePytestRunner(result=_make_pytest_result(duration_seconds=0.45, passed=2))
     tool = RunTestsTool(runner=runner, settings=injected_settings)
     context = NoteContext()
 
     result = await tool.execute(RunTestsInput(path="tests/unit"), context)
 
-    assert result.content[1]["text"] == "2 passed in 0.45s"
     assert result.content[0]["json"]["summary"]["passed"] == 2
+    assert result.content[0]["json"]["duration_seconds"] == pytest.approx(0.45)
+    assert "summary_line" not in result.content[0]["json"]
     assert len(context.entries) == 0
 
 
@@ -186,7 +183,7 @@ async def test_c4_run_tests_failed_result_contains_failures(injected_settings: S
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=1,
-            summary_line="1 failed, 2 passed in 0.20s",
+            duration_seconds=0.2,
             passed=2,
             failed=1,
             failures=(failure,),
@@ -208,7 +205,7 @@ async def test_c4_run_tests_interrupted_raises_execution_error(
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=2,
-            summary_line="pytest interrupted (exit 2)",
+            duration_seconds=None,
             is_error=True,
             note=Note(key="pytest_interrupted_recovery", params={}),
         )
@@ -229,7 +226,7 @@ async def test_c4_run_tests_internal_error_raises_execution_error(
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=3,
-            summary_line="pytest internal error (exit 3)",
+            duration_seconds=None,
             is_error=True,
             note=Note(key="pytest_internal_error_recovery", params={}),
         )
@@ -250,7 +247,7 @@ async def test_c4_run_tests_usage_error_raises_execution_error(
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=4,
-            summary_line="pytest usage error (exit 4)",
+            duration_seconds=None,
             is_error=True,
             note=Note(key="pytest_usage_error_recovery", params={}),
         )
@@ -271,7 +268,7 @@ async def test_c4_run_tests_no_tests_collected_returns_suggestion_note(
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=5,
-            summary_line="no tests collected",
+            duration_seconds=0.01,
             passed=0,
             failed=0,
             note=Note(key="pytest_no_tests_collected_suggestion", params={}),
@@ -282,7 +279,7 @@ async def test_c4_run_tests_no_tests_collected_returns_suggestion_note(
 
     result = await tool.execute(RunTestsInput(path="tests/unit"), context)
 
-    assert result.content[1]["text"] == "no tests collected"
+    assert result.content[1]["text"] == "exit=5; duration=0.01"
     assert (
         len([n for n in context.of_type(Note) if n.key == "pytest_no_tests_collected_suggestion"])
         == 1
@@ -296,7 +293,7 @@ async def test_c4_run_tests_unknown_exit_code_raises_execution_error(
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=99,
-            summary_line="pytest exited with unexpected code",
+            duration_seconds=None,
             should_raise=True,
             note=Note(key="pytest_unexpected_code_recovery", params={"exit_code": 99}),
         )
@@ -372,17 +369,16 @@ async def test_c4_run_tests_coverage_false_roundtrips_none(injected_settings: Se
 
 
 @pytest.mark.asyncio
-async def test_c4_run_tests_text_and_json_summary_stay_in_sync(
+async def test_c4_run_tests_duration_roundtrips_as_numeric_data(
     injected_settings: Settings,
 ) -> None:
-    runner = FakePytestRunner(
-        result=_make_pytest_result(summary_line="3 passed in 0.30s", passed=3)
-    )
+    runner = FakePytestRunner(result=_make_pytest_result(duration_seconds=0.3, passed=3))
     tool = RunTestsTool(runner=runner, settings=injected_settings)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
-    assert result.content[1]["text"] == result.content[0]["json"]["summary_line"]
+    assert result.content[0]["json"]["duration_seconds"] == pytest.approx(0.3)
+    assert "summary_line" not in result.content[0]["json"]
 
 
 @pytest.mark.asyncio
@@ -474,7 +470,7 @@ class TestC3ToToolResultRouting:
         runner = FakePytestRunner(
             result=_make_pytest_result(
                 exit_code=1,
-                summary_line="1 failed in 0.10s",
+                duration_seconds=0.1,
                 failed=1,
                 failures=(failure,),
                 is_error=False,
@@ -500,7 +496,7 @@ class TestC3ToToolResultRouting:
         runner = FakePytestRunner(
             result=_make_pytest_result(
                 exit_code=1,
-                summary_line="1 failed in 0.10s",
+                duration_seconds=None,
                 failed=1,
                 failures=(failure,),
                 is_error=False,
@@ -521,7 +517,7 @@ class TestC3ToToolResultRouting:
         runner = FakePytestRunner(
             result=_make_pytest_result(
                 exit_code=2,
-                summary_line="pytest interrupted (exit 2)",
+                duration_seconds=None,
                 is_error=True,
                 note=Note(
                     key="pytest_interrupted_recovery",
@@ -536,14 +532,14 @@ class TestC3ToToolResultRouting:
         assert result.is_error is True
 
     @pytest.mark.asyncio
-    async def test_c3_to_tool_result_exit2_text_includes_summary_line(
+    async def test_c3_to_tool_result_exit2_text_includes_stderr_context(
         self, injected_settings: Settings
     ) -> None:
-        """Exit 2 + non-empty stderr → content[0] text starts with summary_line."""
+        """Exit 2 plus stderr retains a concise diagnostic first line."""
         runner = FakePytestRunner(
             result=_make_pytest_result(
                 exit_code=2,
-                summary_line="pytest interrupted (exit 2)",
+                duration_seconds=None,
                 is_error=True,
                 stderr="INTERNALERROR> some traceback\nmore lines",
             )
@@ -552,7 +548,7 @@ class TestC3ToToolResultRouting:
 
         result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
-        assert result.content[1]["text"].startswith("pytest interrupted (exit 2)")
+        assert result.content[1]["text"].startswith("exit=2")
         assert "INTERNALERROR" in result.content[1]["text"]
 
     @pytest.mark.asyncio
@@ -563,7 +559,7 @@ class TestC3ToToolResultRouting:
         runner = FakePytestRunner(
             result=_make_pytest_result(
                 exit_code=0,
-                summary_line="1 passed in 0.10s",
+                duration_seconds=0.1,
                 stderr="",
             )
         )
@@ -574,14 +570,14 @@ class TestC3ToToolResultRouting:
         assert "stderr" in result.content[0]["json"]
 
     @pytest.mark.asyncio
-    async def test_c3_to_tool_result_exit0_no_failures_text_is_summary_line(
+    async def test_c3_to_tool_result_exit0_retains_structured_counts_and_duration(
         self, injected_settings: Settings
     ) -> None:
-        """Exit 0, no failures → content[1] text == summary_line exactly."""
+        """Exit 0 retains counts and numeric duration in structured output."""
         runner = FakePytestRunner(
             result=_make_pytest_result(
                 exit_code=0,
-                summary_line="3 passed in 0.30s",
+                duration_seconds=0.3,
                 passed=3,
                 is_error=False,
             )
@@ -590,7 +586,8 @@ class TestC3ToToolResultRouting:
 
         result = await tool.execute(RunTestsInput(path="tests/unit"), NoteContext())
 
-        assert result.content[1]["text"] == "3 passed in 0.30s"
+        assert result.content[0]["json"]["summary"]["passed"] == 3
+        assert result.content[0]["json"]["duration_seconds"] == pytest.approx(0.3)
 
 
 def test_c2_run_tests_input_verbose_validation() -> None:
@@ -729,7 +726,7 @@ async def test_c4_run_tests_recovery_note_on_failure(injected_settings: Settings
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=1,
-            summary_line="2 failed in 0.10s",
+            duration_seconds=0.1,
             passed=0,
             failed=2,
             failures=(failure_1, failure_2),
@@ -765,7 +762,7 @@ async def test_c4_run_tests_no_recovery_note_when_verbose_true(
     runner = FakePytestRunner(
         result=_make_pytest_result(
             exit_code=1,
-            summary_line="1 failed in 0.10s",
+            duration_seconds=None,
             passed=0,
             failed=1,
             failures=(failure,),

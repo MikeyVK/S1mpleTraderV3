@@ -15,8 +15,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import BaseModel
 
-from mcp_server.bootstrap import ConfigLayer, ManagerGraph, ServerBootstrapper
+from mcp_server.bootstrap import (
+    ConfigLayer,
+    ManagerGraph,
+    ServerBootstrapper,
+    SupportedToolContract,
+    ToolAssembly,
+)
 from mcp_server.config.schemas import (
     ArtifactRegistryConfig,
     ContractsConfig,
@@ -35,7 +42,8 @@ from mcp_server.config.schemas import (
     WorkphasesConfig,
 )
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.core.interfaces import IToolResponsePublisher
+from mcp_server.core.interfaces import ICoreTool, IToolResponsePublisher
+from mcp_server.core.operation_notes import NoteContext
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.managers.enforcement_runner import EnforcementRunner
 from mcp_server.managers.git_manager import GitManager
@@ -54,6 +62,109 @@ from mcp_server.server import MCPServer
 from mcp_server.state.context_loaded_cache import ContextLoadedCache
 from mcp_server.state.pr_status_cache import PRStatusCache
 from tests.mcp_server.test_support import get_default_server_root
+
+
+class _AssemblyInput(BaseModel):
+    """Synthetic core-tool input for assembly contract tests."""
+
+
+class _AssemblyOutput(BaseModel):
+    """Synthetic core-tool output for assembly contract tests."""
+
+
+class _AlternativeAssemblyOutput(BaseModel):
+    """Conflicting synthetic output model."""
+
+
+class _GenericAssemblyTool(ICoreTool[_AssemblyInput, _AssemblyOutput]):
+    """Concrete generic specialization without explicit output_model metadata."""
+
+    def __init__(self, name: str = "generic_tool") -> None:
+        self._name = name
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return "Synthetic assembly tool"
+
+    @property
+    def args_model(self) -> type[BaseModel]:
+        return _AssemblyInput
+
+    async def execute(self, params: _AssemblyInput, context: NoteContext) -> _AssemblyOutput:
+        del params, context
+        return _AssemblyOutput()
+
+
+class _ConflictingAssemblyTool(_GenericAssemblyTool):
+    """Tool whose explicit output metadata conflicts with its generic contract."""
+
+    output_model = _AlternativeAssemblyOutput
+
+
+class _UnresolvedAssemblyTool:
+    """Tool-shaped object without output-model metadata."""
+
+    name = "unresolved_tool"
+
+
+class TestToolAssembly:
+    """Durable public-contract tests for supported and active tool assembly."""
+
+    def test_derives_frozen_supported_contracts_from_generic_specialization(self) -> None:
+        tool = _GenericAssemblyTool()
+
+        assembly = ToolAssembly.create(
+            supported_tools=(tool,),
+            active_tools=(tool,),
+        )
+
+        assert assembly.supported_contracts == (
+            SupportedToolContract(name="generic_tool", output_model=_AssemblyOutput),
+        )
+        assert assembly.supported_tools == (tool,)
+        assert assembly.active_tools == (tool,)
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            assembly.active_tools = ()  # type: ignore[misc]
+
+    @pytest.mark.parametrize(
+        ("supported_tools", "expected_message"),
+        [
+            ((_GenericAssemblyTool(""),), "non-empty"),
+            (
+                (
+                    _GenericAssemblyTool("duplicate"),
+                    _GenericAssemblyTool("duplicate"),
+                ),
+                "duplicate",
+            ),
+            ((_UnresolvedAssemblyTool(),), "output model"),
+            ((_ConflictingAssemblyTool(),), "Conflicting"),
+        ],
+    )
+    def test_rejects_invalid_supported_contracts(
+        self,
+        supported_tools: tuple[object, ...],
+        expected_message: str,
+    ) -> None:
+        with pytest.raises(ConfigError, match=expected_message):
+            ToolAssembly.create(
+                supported_tools=supported_tools,
+                active_tools=(),
+            )
+
+    def test_rejects_active_tool_outside_supported_object_set(self) -> None:
+        supported = _GenericAssemblyTool("supported")
+        unrelated = _GenericAssemblyTool("unrelated")
+
+        with pytest.raises(ConfigError, match="active"):
+            ToolAssembly.create(
+                supported_tools=(supported,),
+                active_tools=(unrelated,),
+            )
 
 
 class TestBootstrap:
@@ -152,7 +263,19 @@ def _setup_mock_config_loader(mock_config_loader_cls: MagicMock) -> MagicMock:
     mock_contracts.merge_policy = MagicMock()
     mock_contracts.merge_policy.branch_local_artifacts = []
     mock_loader.load_contracts_config.return_value = mock_contracts
-    mock_pres = PresentationConfig.model_validate({"global": {}, "tools": {}})
+    mock_pres = PresentationConfig.model_validate(
+        {
+            "global": {
+                "formatting": {
+                    "inline_sequence_omission_template": "… {omitted_count} more",
+                    "collection_omission_template": "- … {omitted_count} more {field}",
+                    "truncation_notice": "Output truncated.",
+                    "cache_unavailable_truncation_notice": "Output unavailable.",
+                }
+            },
+            "tools": {},
+        }
+    )
     mock_loader.load_presentation_config.return_value = mock_pres
     return mock_loader
 
@@ -176,6 +299,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -202,6 +326,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry") as mock_template_registry_cls,
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator") as mock_config_validator_cls,
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -281,6 +406,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -301,6 +427,7 @@ class TestServerBootstrapperConfigsAndManagers:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
             patch("mcp_server.bootstrap.MCPServer") as mock_mcp_server_cls,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
@@ -328,6 +455,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment") as mock_alignment,
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -337,6 +465,36 @@ class TestServerBootstrapperToolsAndResources:
             assert "create_issue" in tool_names
             assert "get_pr" not in tool_names
             assert "git_status" in tool_names
+
+            supported_contracts = mock_alignment.call_args.args[1]
+            supported_names = {contract.name for contract in supported_contracts}
+            assert "get_pr" in supported_names
+            assert tool_names < supported_names
+
+    def test_supported_inactive_tools_keep_github_adapter_lazy(self) -> None:
+        """Constructing the complete tokenless catalog must not create an adapter."""
+        mock_settings = MagicMock()
+        mock_settings.github.token = None
+        mock_settings.server.name = "test-server"
+        mock_settings.server.workspace_root = "/fake/root"
+        mock_settings.server.server_root_dir = get_default_server_root()
+        mock_settings.server.logs_dir = "logs"
+        mock_settings.logging.level = "WARNING"
+        mock_settings.logging.audit_log = "/fake/root/.pgmcp/logs/mcp_audit.log"
+
+        with (
+            patch("mcp_server.bootstrap.setup_logging"),
+            patch("mcp_server.bootstrap.TemplateRegistry"),
+            patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
+            patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
+            patch("mcp_server.managers.github_manager.GitHubAdapter") as adapter_cls,
+        ):
+            _setup_mock_config_loader(mock_config_loader_cls)
+
+            ServerBootstrapper(mock_settings).bootstrap()
+
+            adapter_cls.assert_not_called()
 
     def test_build_tools_with_github_token(self) -> None:
         """Verify bootstrap returns GitHub tools when token is present."""
@@ -354,6 +512,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -379,6 +538,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 
@@ -404,6 +564,7 @@ class TestServerBootstrapperToolsAndResources:
             patch("mcp_server.bootstrap.TemplateRegistry"),
             patch("mcp_server.bootstrap.ConfigLoader") as mock_config_loader_cls,
             patch("mcp_server.bootstrap.ConfigValidator"),
+            patch("mcp_server.bootstrap.validate_presentation_alignment"),
         ):
             _setup_mock_config_loader(mock_config_loader_cls)
 

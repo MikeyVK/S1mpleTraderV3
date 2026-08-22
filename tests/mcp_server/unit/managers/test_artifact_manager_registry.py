@@ -63,7 +63,7 @@ class TestArtifactManagerRegistryIntegration:
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
-        mock_validation_service.validate = AsyncMock(return_value=(True, []))
+        mock_validation_service.validate = AsyncMock(return_value=(True, ()))
 
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
@@ -118,7 +118,7 @@ class TestArtifactManagerRegistryIntegration:
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
-        mock_validation_service.validate = AsyncMock(return_value=(True, []))
+        mock_validation_service.validate = AsyncMock(return_value=(True, ()))
 
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
@@ -174,7 +174,7 @@ class TestArtifactManagerRegistryIntegration:
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
-        mock_validation_service.validate = AsyncMock(return_value=(True, []))
+        mock_validation_service.validate = AsyncMock(return_value=(True, ()))
 
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
@@ -230,7 +230,7 @@ class TestArtifactManagerRegistryIntegration:
         mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
-        mock_validation_service.validate = AsyncMock(return_value=(True, []))
+        mock_validation_service.validate = AsyncMock(return_value=(True, ()))
 
         with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(

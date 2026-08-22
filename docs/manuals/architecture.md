@@ -1,8 +1,8 @@
 # PhaseGate MCP Server — Architecture
 
 **Status:** Current  
-**Version:** 3.1  
-**Last Updated:** 2026-06-24
+**Version:** 3.4  
+**Last Updated:** 2026-08-22
 
 ---
 
@@ -55,7 +55,7 @@ The server supports multiple workflow types, each with its own phase sequence de
 | `chore` | research → implementation → validation → documentation → ready | Lightweight maintenance and housekeeping |
 | `epic` | See `contracts.yaml` for the full epic phase order | Multi-issue features |
 
-> **Detailed phases and transitions:** See [PHASE_WORKFLOWS.md](./PHASE_WORKFLOWS.md).
+> **Detailed phases and transitions:** See [phase-workflows.md](phase-workflows.md).
 
 ---
 
@@ -154,6 +154,8 @@ graph TD
     Cache["ResponseCacheManager (Cache)"]
     Presenter["ResponsePresenter (IPresenter)"]
     TextPresenter["TextPresenter (ITextPresenter)"]
+    CollectionRenderer["CollectionTextRenderer"]
+    BudgetLimiter["TextBudgetLimiter (8,000 UTF-8 bytes)"]
     ResPresenter["ValidationResourcePresenter (IResourcePresenter)"]
     Result["CallToolResult (Markdown + Resources)"]
 
@@ -170,6 +172,8 @@ graph TD
     Tool -->|"4. return DTO"| Cache
     Cache -->|"5. publish & return CachePub"| Presenter
     Presenter -->|"delegates text"| TextPresenter
+    TextPresenter -->|"configured ordered sequences"| CollectionRenderer
+    TextPresenter -->|"final composed text"| BudgetLimiter
     Presenter -->|"delegates resources"| ResPresenter
     Presenter -->|"6. present & return PresentedOutput"| Result
 ```
@@ -397,7 +401,8 @@ sequenceDiagram
         CV-->>BS: validated
         BS->>BS: 5. build ConfigLayer (frozen)
         BS->>BS: 6. build ManagerGraph (frozen)
-        BS->>BS: 7. build Tools + Resources
+        BS->>BS: 7. build supported/active ToolAssembly + Resources
+        BS->>BS: 8. validate presentation against supported contracts
         BS->>Server: MCPServer(settings, tools, resources, presenter, publisher)
         Server->>Server: setup_handlers()
         Server->>Server: asyncio.run(server.run())
@@ -430,7 +435,7 @@ sequenceDiagram
 | `project_structure_config` | `project_structure.yaml` | Directory policies |
 | `operation_policies_config` | `policies.yaml` | Phase-based operation restrictions |
 | `enforcement_config` | `enforcement.yaml` | Tool enforcement rules |
-| `presentation_config` | `presentation.yaml` | Note presentation templates, recovery hints, and link formats |
+| `presentation_config` | `presentation.yaml` | Per-tool scalar/collection projections, item limits, notes, recovery hints, cache links, and final text budget |
 
 ### 5.4 ManagerGraph (Frozen Dataclass)
 
@@ -531,6 +536,8 @@ sequenceDiagram
     
     Server->>Presenter: present(tool_name, data, notes, cache_pub, success)
     Presenter->>TextPres: present_text(tool_name, data, notes, ...)
+    TextPres->>TextPres: render scalar templates, enum cases, and bounded ordered collections
+    TextPres->>TextPres: append notes and cache reference; enforce final 8,000-byte ceiling
     TextPres-->>Presenter: markdown_text (str)
     Presenter->>ResPres: present_resources(tool_name, data)
     ResPres-->>Presenter: resources (list[PresentationResource])
@@ -558,10 +565,12 @@ sequenceDiagram
 
 ### 6.4 Tool Registration
 
-Tools are **not** auto-discovered. They are explicitly instantiated in
-`ServerBootstrapper._build_tools()` with all dependencies injected via constructors.
-GitHub-dependent tools (PRs, labels, milestones) are conditionally registered
-only when `settings.github.token` is set.
+Tools are **not** imported through filesystem auto-discovery. They are explicitly
+constructed in `ServerBootstrapper._build_tool_assembly()` with dependencies injected.
+That one assembly derives a minimal runtime catalog of all 50 supported name/output-model
+contracts and selects the active subset. With a token all 50 are active; without one,
+38 remain active and the twelve PR, label, and milestone tools are omitted. Startup
+validates `presentation.yaml` against the complete supported catalog in either mode.
 
 ### 6.5 Enforcement System
 
@@ -753,8 +762,9 @@ Entry point: `python -m mcp_server.core.proxy`
 1. Create a new class implementing `ICoreTool[MyToolInput, MyToolOutput]` where `MyToolInput` is a Pydantic model and `MyToolOutput` is a DTO inheriting from `BaseToolOutput`.
 2. Define `name`, `description`, `args_model` (pointing to `MyToolInput`), and optionally `tool_category` (for enforcement).
 3. Implement `execute(self, params: MyToolInput, context: NoteContext) -> MyToolOutput`.
-4. Register the core tool in `ServerBootstrapper._build_tools()`. It will be automatically decorated and wrapped at runtime by the `ToolFactory` composition root.
-5. Optionally add enforcement rules in `enforcement.yaml`.
+4. Register the core tool in `ServerBootstrapper._build_tool_assembly()`. It will be automatically decorated and wrapped at runtime by the `ToolFactory` composition root, and its name/output-model contract will join the supported catalog.
+5. Add the same tool name to `presentation.yaml` with templates and only the scalar/ordered-sequence fields needed for the inline response. Startup rejects missing, unknown, or non-executable declarations.
+6. Optionally add enforcement rules in `enforcement.yaml`.
 
 ```python
 # mcp_server/tools/my_tool.py
@@ -861,10 +871,11 @@ pip install phase_gate_mcp-1.0.0-py3-none-any.whl
 
 - **[ARCHITECTURE_PRINCIPLES.md](../coding_standards/ARCHITECTURE_PRINCIPLES.md)** — Binding architecture contract
 - **[config-loading-architecture.md](../reference/config-loading-architecture.md)** — Config loading, Settings, DI map
-- **[TOOLS.md](./TOOLS.md)** — All 50 MCP tools with parameters
-- **[RESOURCES.md](./RESOURCES.md)** — MCP resource specifications
-- **[PHASE_WORKFLOWS.md](./PHASE_WORKFLOWS.md)** — Workflow phase definitions
-- **[GITHUB_SETUP.md](./GITHUB_SETUP.md)** — GitHub configuration
+- **[presentation_architecture.md](../reference/presentation_architecture.md)** — Runtime catalog, declarative projections, cache boundary, and byte limiting
+- **[MCP tools reference](../reference/tools/README.md)** — All 50 MCP tools with parameters
+- **[resources.md](../reference/resources.md)** — MCP resource specifications
+- **[phase-workflows.md](phase-workflows.md)** — Workflow phase definitions
+- **[github-setup.md](github-setup.md)** — GitHub configuration
 
 ---
 
@@ -872,6 +883,7 @@ pip install phase_gate_mcp-1.0.0-py3-none-any.whl
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.4 | 2026-08-22 | Align runtime tool assembly and bounded presentation architecture |
 | 3.3 | 2026-07-20 | Updated config-loading-architecture.md paths to fix stale reference/mcp/ links |
 | 3.2 | 2026-07-16 | Updated for modular YAML configuration loading and dynamic template validation. Removed Python context class creation step. |
 | 3.1 | 2026-06-24 | Separated ICoreTool/ILegacyTool interfaces, removed retired tools, corrected architectural diagrams, and documented cache run resource and validation schema URIs |

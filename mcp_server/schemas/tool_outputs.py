@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from mcp_server.validation.base import ValidationIssue
+
 
 class BaseToolOutput(BaseModel):
     """Base class for all structured tool outputs."""
@@ -29,9 +31,6 @@ class AutoFixOutput(BaseToolOutput):
         default_factory=list, description="List of files modified by the tool"
     )
     modified_files_count: int = Field(default=0, description="Count of modified files")
-    formatted_modified_files: str = Field(
-        default="", description="Pre-formatted bullet list of modified files"
-    )
     gates_executed: list[str] = Field(
         default_factory=list, description="List of quality gates executed"
     )
@@ -81,6 +80,15 @@ class ForceCycleTransitionOutput(CycleTransitionOutput):
     human_approval_message: str
 
 
+class WorkflowStateStatus(StrEnum):
+    """Availability and validity of persisted workflow state."""
+
+    AVAILABLE = "available"
+    MISSING = "missing"
+    UNREADABLE = "unreadable"
+    INVALID_PHASE = "invalid_phase"
+
+
 class GetWorkContextOutput(BaseToolOutput):
     current_branch: str
     workflow_name: str
@@ -94,7 +102,8 @@ class GetWorkContextOutput(BaseToolOutput):
     sub_role_hint: str
     phase_instructions: str
     handover_template: str | None = None
-    invalid_phase_warning: str | None = None
+    workflow_state_status: WorkflowStateStatus
+    valid_phases: tuple[str, ...] = ()
 
 
 class InitializeProjectOutput(BaseToolOutput):
@@ -411,7 +420,6 @@ class LabelOperationOutput(BaseToolOutput):
 
     issue_number: int
     labels: list[str] = Field(default_factory=list)
-    formatted_labels: str = ""
 
 
 class MilestoneSummaryDTO(BaseModel):
@@ -442,8 +450,6 @@ class PhaseTransitionOutput(GateTransitionOutput):
 
     from_phase: str
     to_phase: str
-    skipped_gates_warning: str = ""
-    passing_gates_info: str = ""
 
 
 class ForcePhaseTransitionOutput(PhaseTransitionOutput):
@@ -459,8 +465,6 @@ class ScaffoldArtifactOutput(BaseToolOutput):
     artifact_type: str
     name: str
     files_created: list[str] = Field(default_factory=list)
-    formatted_files_created: str = ""
-    schema_info: str = ""
     validation_schema: dict[str, Any] | None = None
     missing_fields: list[str] = Field(default_factory=list)
     provided_fields: list[str] = Field(default_factory=list)
@@ -512,7 +516,7 @@ class RunTestsOutput(BaseToolOutput):
     failed_count: int
     skipped_count: int
     errors_count: int
-    summary_line: str
+    duration_seconds: float | None = None
     failures: list[TestFailureDTO] = Field(default_factory=list)
     coverage_pct: float | None = None
     lf_cache_was_empty: bool = False
@@ -524,7 +528,7 @@ class SafeEditOutput(BaseToolOutput):
 
     path: str
     passed: bool
-    issues: str | None = None
+    issues: tuple[ValidationIssue, ...] = ()
     mode: str
     written: bool
     diff: str | None = None

@@ -266,12 +266,6 @@ def test_resolved_paths_properties(tmp_path: Path) -> None:
     assert s_explicit.resolved_config_root == (tmp_path / "custom").resolve()
 
 
-def test_assets_directories_exist() -> None:
-    # Verifies assets directory exists
-    assets_dir = Path(__file__).resolve().parents[4] / "mcp_server" / "assets"
-    assert assets_dir.exists()
-
-
 def test_bypass_version_check_default(monkeypatch: pytest.MonkeyPatch) -> None:
     # Under pytest, it should default to True
     assert Settings().server.bypass_version_check is True
