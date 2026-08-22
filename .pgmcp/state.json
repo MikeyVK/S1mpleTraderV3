@@ -3,7 +3,7 @@
   "branch": "feature/459-structured-quality-gate-findings",
   "issue_number": 459,
   "workflow_name": "feature",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -21,7 +21,16 @@
   "issue_title": "Expose structured quality-gate findings for bounded presentation",
   "parent_branch": "main",
   "created_at": "2026-08-22T07:44:54.671600+00:00",
-  "transitions": [],
+  "transitions": [
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-22T07:59:12.892740+00:00",
+      "human_approval_message": "User explicitly approved the Research strategy and requested autonomous execution through Validation.",
+      "forced": false,
+      "skip_reason": null
+    }
+  ],
   "reconstructed": false,
   "current_sub_phase": null
 }
