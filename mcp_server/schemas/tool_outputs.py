@@ -477,6 +477,21 @@ class ScaffoldSchemaOutput(BaseToolOutput):
     schema_data: dict[str, Any]
 
 
+class GateFindingDTO(BaseModel):
+    """Structured finding produced by a single quality gate."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    gate: str
+    message: str
+    file: str | None = None
+    line: int | None = None
+    column: int | None = None
+    code: str | None = None
+    severity: str | None = None
+    fixable: bool = False
+    details: str | None = None
+
+
 class GateResultDTO(BaseModel):
     """Single gate run result."""
 
@@ -486,6 +501,7 @@ class GateResultDTO(BaseModel):
     status: str
     score: str | None = None
     details: str = ""
+    findings: list[GateFindingDTO] = Field(default_factory=list)
 
 
 class RunQualityGatesOutput(BaseToolOutput):

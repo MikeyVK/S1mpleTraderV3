@@ -3,7 +3,7 @@
 # Quality and Validation Tools
 
 **Status:** DEFINITIVE  
-**Version:** 5.0  
+**Version:** 5.1  
 **Last Updated:** 2026-08-22
 
 **Source:** [quality_tools.py](../../../mcp_server/tools/quality_tools.py),
@@ -57,28 +57,55 @@ scopes do not mutate those lifecycle fields.
 ### Presented Output
 
 The text always reports execution completion, effective scope, file count, and
-`overall_pass`. It then renders at most ten gate records with name, status, passed flag,
-and score. The wording is outcome-neutral: callers must evaluate `overall_pass` and gate
-records rather than infer success from the heading.
+`overall_pass`. It renders at most ten gate records with name, status, passed flag, and
+score. Beneath each gate it renders at most ten ordered findings with location, code,
+message, severity, and fixability. Missing optional values use the global `-`
+placeholder. Generic omission lines report additional gates or findings.
+
+The wording is outcome-neutral: callers must evaluate `overall_pass`, gate records, and
+findings rather than infer success from the heading. The final response remains subject
+to the universal 8,000 UTF-8-byte ceiling.
 
 The cached `RunQualityGatesOutput` contains:
 
 - `overall_pass: bool`;
 - `scope: string`;
 - `file_count: int`;
-- `gates: list[GateResultDTO]`, with `name`, `passed`, `status`, `score`, and `details`;
+- `gates: list[GateResultDTO]`;
 - the common `success`, `error_message`, and `post_tool_instruction` envelope.
 
-`GateResultDTO.details` is an opaque string and remains cache-only. With
-`verbose=true`, it can contain raw checker output for failing gates.
+Each `GateResultDTO` contains `name`, `passed`, `status`, `score`, `details`,
+and `findings: list[GateFindingDTO]`. Existing fields remain compatible and
+`findings` defaults to an independent empty list.
 
-### Deferred Finding Contract
+### Structured Finding Contract
 
-The current quality DTO does not expose individual linter/type-checker findings as
-structured records. Consequently, the bounded text can identify failing gates but cannot
-reliably list a limited number of concrete diagnostics. A generic structured finding DTO
-and configurable inline finding limit are deferred work; presentation code must not parse
-gate-specific `details` strings.
+`GateFindingDTO` is frozen, serializable, and rejects extra fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `gate` | `string` | Required self-identifying gate name |
+| `message` | `string` | Required actionable diagnostic or operational failure |
+| `file` | `string` \| `null` | Optional affected path |
+| `line` | `int` \| `null` | Optional normalized source line when supplied by the checker |
+| `column` | `int` \| `null` | Optional source column |
+| `code` | `string` \| `null` | Optional checker rule or diagnostic code |
+| `severity` | `string` \| `null` | Optional normalized severity |
+| `fixable` | `bool` | Whether the source marked the finding automatically fixable; defaults to `false` |
+| `details` | `string` \| `null` | Optional cache-only diagnostic evidence |
+
+`QAManager` and `ViolationParser` remain normalization authorities.
+`RunQualityGatesTool` only maps their structured records into the public DTO:
+`col -> column`, `rule -> code`, and the enclosing gate name into `gate`. It does
+not parse messages or raw process output, infer fields, sort, or deduplicate. Missing
+required `message` data fails explicitly instead of receiving fabricated text.
+
+Gate order and finding order match the manager result. The configured
+`max_items=10` applies independently to the gate collection and to each nested finding
+collection. Inline omission never mutates the DTO: every finding, finding `details`,
+and gate `details` remains in the cached resource. With `verbose=true`, gate
+`details` can additionally contain raw checker stdout/stderr; neither gate nor finding
+`details` is rendered inline.
 
 ### Examples
 
@@ -185,7 +212,8 @@ and links require documentation-specific checks.
   branch- or workspace-wide checks run.
 - Do not pass `files` unless `scope="files"`.
 - Do not use `path` and `scope` together for `run_tests`.
-- Use the presented response for routine counts and bounded failure/gate summaries.
+- Use the presented response for routine counts, bounded failures, gate summaries, and
+  actionable findings.
 - Read the cached resource for complete collections, tracebacks, stderr, raw checker
   output, or other cache-only fields.
 - Do not parse presented Markdown into structured evidence.
@@ -205,5 +233,6 @@ and links require documentation-specific checks.
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 5.1 | 2026-08-22 | Agent | Document structured quality-gate findings, nested bounds, ordering, and cache authority |
 | 5.0 | 2026-08-22 | Agent | Align bounded quality/test presentation, structured DTO fields, and deferred finding boundary |
 | 4.0 | 2026-06-15 | Agent | Document scoped quality and test execution contracts |
