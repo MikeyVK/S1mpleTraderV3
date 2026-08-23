@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
-**Status:** APPROVED  
-**Version:** 1.17  
+**Status:** REVIEW  
+**Version:** 1.23  
 **Last Updated:** 2026-08-23  
 **Issue:** 460  
 **Research Mode:** Standalone, non-destructive, pre-initialization research
@@ -19,8 +19,10 @@ This research began without an implementation strategy. It identifies affected b
 ### In scope
 
 - Every artifact type currently exposed through scaffold_schema: 22 types.
-- Every Jinja template in the active template suite: 57 files.
-- The resolved template graph, including concrete templates, inherited tiers, imported macros, and runtime template selection.
+- Every file in the active packaged template suite: 22 artifact configuration files and 57 Jinja files.
+- Every configured or embedded example surface in the suite.
+- The resolved template graph, including concrete templates, inherited tiers, imported macros, unreachable files, and runtime template selection.
+- Runtime, setup, test, fixture/helper, agent-instruction, and active-documentation consumers that can be affected by the contract refactor.
 - Whether scaffold_schema lets a human or LLM discover every value shape needed by the renderer.
 - Whether schema-valid values render content that is syntactically usable, semantically complete, and unambiguous.
 - Links, issue references, checklists, nested collections, optional values, hidden fields, and unused fields.
@@ -35,8 +37,8 @@ This research began without an implementation strategy. It identifies affected b
 - Commits, branch changes, or changes to issue state.
 - A server-owned matrix of template-specific expected outputs.
 - Snapshot tests or prose-output assertions that duplicate template-suite content inside pgmcp.
-- Detailed implementation design or planning.
-- Testability as the primary proof of correctness.
+- Detailed implementation design or planning, including concrete parser APIs, class topology, provider containers, staging paths, and digest serialization.
+- Testability as the primary proof of correctness; behavioral test blast radius and durable regression obligations remain in scope.
 
 ## Problem Statement
 
@@ -65,7 +67,7 @@ First-time-right scaffolding is impossible when the introspection contract is le
 
 ### Primary caller evidence
 
-On 2026-08-22, scaffold_schema was invoked for all 22 exposed artifact types:
+The original 2026-08-22 survey was repeated on 2026-08-23 for all 22 exposed artifact types. Each type received one minimal required-field probe and one property-complete probe:
 
 - adapter
 - architecture
@@ -119,6 +121,27 @@ Each artifact was evaluated against seven content properties:
 7. **Portability** — the content contract can be maintained with the template suite without duplicating its meaning in server code or server tests.
 
 Render probes were used as diagnostic observations of content behavior, not as test-based proof and not as a proposed server regression matrix.
+
+The durable evidence authorities for the reopened audit are:
+
+- [Template Suite Work Catalog](template-suite-catalog.md) — complete inventory of all 22 public artifacts, all 79 suite files, example surfaces, runtime/setup consumers, and 103 candidate test/helper files.
+- [Probe Evidence](probe-evidence.yaml) — exact minimal and property-complete contexts plus normalized schema, render, output-validation, and error outcomes for all 44 calls.
+
+Cached MCP resources and ignored files below `.pgmcp/temp/issue460/` are supplementary diagnostics only. Research claims must remain reproducible from the committed evidence and live public tools without relying on a machine-local temporary path.
+
+### Known deployment and migration context
+
+Repository search found no durable external payload or caller contract that could prove a supported compatibility dependency. Absence from this repository does not prove absence in the field, so Research does not claim zero external-consumer risk.
+
+The human owner is currently the sole pgmcp-server user, across two machines and approximately four repository workspaces, and confirmed that the pgmcp workspace contains the most complete current suite. The owner accepts manual migration of those workspaces. The approved compatibility posture is therefore a deliberate clean break for the defective context dialects and runtime contract:
+
+- no primitive/object, implicit-V2, or silently-filtered compatibility bridge;
+- clean installations receive the coherent packaged suite;
+- upgrades preserve customized, legacy-unknown, and explicitly external active roots rather than overwriting them;
+- an active preserved suite that is incompatible with the new runtime contract fails explicitly and remains inactive until the owner migrates or replaces it;
+- release notes and actionable startup evidence carry the bounded migration burden.
+
+This deployment fact reduces current migration cost but does not weaken the generic package boundary or license future silent breakage.
 
 ## Live Scaffolding Probe
 
@@ -482,7 +505,7 @@ Real Jinja syntax analysis can identify statically referenced templates and top-
 - Replace regex-based dependency discovery with real Jinja syntax analysis.
 - Resolve every static extends, import, from-import, and include edge used by the selected renderer.
 - Include every resolved semantic contributor in startup validation, version identity, and provenance.
-- Resolve the complete suite once during server startup into an immutable artifact catalog shared by scaffold_schema and scaffold_artifact.
+- Resolve the complete suite once during server startup into one coherent, restart-stable suite view shared by scaffold_schema and scaffold_artifact. Research requires one authority and restart semantics; Design chooses its concrete representation.
 - Require a server restart after any template or suite-contract addition, modification, or removal; do not add file watching, hot reload, or per-call graph analysis.
 - Fail fast on missing dependencies, dynamic references that cannot be resolved deterministically, and dependency cycles.
 - Do not duplicate statically discoverable edges in manually maintained metadata.
@@ -491,7 +514,7 @@ Real Jinja syntax analysis can identify statically referenced templates and top-
 
 #### Design hand-off
 
-Design must choose the Jinja AST/dependency APIs, graph value objects, deterministic traversal and hash ordering, immutable resolved-catalog boundary, and actionable startup failure format. It must define how graph evidence is checked against the suite-owned schema while preserving their separate responsibilities. Runtime tool calls must consume the startup-resolved catalog without rereading or reanalyzing suite files.
+Design must choose the parser-supported Jinja dependency API, resolved-graph value model, deterministic traversal and identity ordering, restart-stable suite-view boundary, and actionable startup failure format. It must define how graph evidence is checked against the suite-owned schema while preserving their separate responsibilities. Runtime tool calls must consume the startup-resolved view without rereading or reanalyzing suite files.
 
 ### F-06 — link values do not have one canonical representation
 
@@ -560,6 +583,13 @@ The artifact context exposed by scaffold_schema contains only caller-owned value
 | Issue/PR title | Remove from body context; downstream tool envelope owns the external title |
 | Issue labels, milestone, assignees and comparable PR/GitHub metadata | Remove from body context; downstream tool schemas own them |
 
+#### Approved tracking-artifact behavior (2026-08-23)
+
+- Commit scaffolding retains responsibility for conventional-commit content. Its caller contract must distinguish the subject, optional scope and body, breaking-change intent, free-form footer content, and referenced issue identities without making callers supply presentation punctuation.
+- Issue scaffolding produces body content only. Reproduction steps are an optional ordered sequence and render as numbered steps. External title, labels, milestone, and assignees remain downstream issue-tool envelope data. Internal and external document references retain their approved explicit link semantics.
+- PR scaffolding produces body content only. Deferred work is never silently omitted: the body states either that none was found or describes the work identified within the current change. The implementation agent reports potential follow-up work; the coordination agent exclusively owns triage, deduplication, prioritization, issue creation or reuse, and cross-issue linkage. Research requires no `tracking_issue` field or equivalent coupling.
+- The exact nested properties, conditional constraints, and rendering forms belong to Design. Research fixes the observable responsibilities and ownership boundary only.
+
 No compatibility bridge is required because the agent is the only relevant runtime caller and rediscovers both scaffold and downstream tool schemas before use.
 
 #### Startup coherence
@@ -599,7 +629,7 @@ Extension-only selection is also too coarse. A complete Markdown document may re
 | Artifact configuration | Must declare the required output-validation capability and distinguish validation policy from output validity |
 | Portable template suite | May contain many dormant language templates without carrying or activating every language toolchain |
 | Startup catalog | Validates template syntax, graph integrity, schema coherence, and configuration combinations without requiring providers for every dormant artifact |
-| Validator discovery | Resolves an opaque configured capability through an injected registry; language and output-profile dispatch must not be hardcoded in the scaffold pipeline |
+| Validator discovery | Resolves a configured capability through an extensible injected boundary; language and output-profile dispatch must not be hardcoded in the scaffold pipeline, while the concrete registry/container shape remains Design-owned |
 | scaffold_artifact | Resolves the selected capability before mutation, renders in memory, validates the concrete result, and persists only according to the declared policy |
 | Validation result | Must distinguish passed, failed, and unavailable/not executed evidence without converting one state into another through strictness |
 | Human and agent caller | Receives an actionable missing-capability or output-validation result for the selected artifact |
@@ -629,7 +659,7 @@ Extension-only selection is also too coarse. A complete Markdown document may re
 
 #### Design hand-off
 
-Design must define the declarative capability/profile shape, provider discovery and injection boundary, result states for passed, failed, and unavailable validation, and the exact pre-persistence sequence. It must reuse strict_validation as enforcement policy rather than duplicate it, validate inconsistent configuration combinations at startup, and keep dormant-provider absence out of global startup failure. It must also audit current Markdown, Python, TypeScript, tracking, text, and document profiles so the default change does not apply irrelevant rules.
+Design must define the declarative capability/profile shape, provider discovery and injection mechanism, result states for passed, failed, and unavailable validation, and the exact pre-persistence sequence. It must reuse strict_validation as enforcement policy rather than duplicate it, validate inconsistent configuration combinations at startup, and keep dormant-provider absence out of global startup failure. It must also audit current Markdown, Python, TypeScript, tracking, text, and document profiles so the default change does not apply irrelevant rules.
 
 ### F-09 — documentation competes with scaffold_schema
 
@@ -887,6 +917,58 @@ The original opinionated templates may return when their source project is activ
 
 **Status:** approved for package portability and consumer-local specialization.
 
+#### Confirmed source-project ownership
+
+The six affected patterns are owned by [S1mpleTrader](https://github.com/MikeyVK/S1mpleTrader), whose workspace already contains its own active `.pgmcp/templates` copies:
+
+- `tier3_pattern_python_di.jinja2`
+- `tier3_pattern_python_error.jinja2`
+- `tier3_pattern_python_lifecycle.jinja2`
+- `tier3_pattern_python_log_enricher.jinja2`
+- `tier3_pattern_python_translator.jinja2`
+- `tier3_pattern_python_typed_id.jinja2`
+
+Historical S1mpleTraderV2 evidence confirms that LogEnricher and Translator were concrete service infrastructure. Current S1mpleTrader evidence shows that lifecycle, dependency requirements, and WorkerInitializationError belong to its worker protocol, while typed-ID generators are consumed across execution, state, and strategy DTOs. The error pattern is therefore worker-initialization behavior, not an error-DTO pattern; typed_id is a DTO/event-traceability pattern.
+
+The official pgmcp suite must remove all six imports and files. Their optimized successors belong only in S1mpleTrader's complete active template root. That workspace already owns copies and will migrate them in a separate repository-local issue only after adopting the new pgmcp server and packaged template contract. Issue 460 performs no cross-repository edits, carries no duplicate migration assets, and is not blocked by that later consumer work. Activation of the upgraded server in S1mpleTrader remains blocked until its preserved local suite satisfies the new extension contract.
+
+### F-14A — Agent hints are obsolete duplicate guidance
+
+Agent hints predate declarative artifact schemas, `scaffold_schema`, and schema-field descriptions. At that time, Jinja introspection was the only way to give an agent usage guidance. That historical need no longer exists: schema descriptions explain caller-owned artifact content, while `contracts.yaml` remains authoritative for workflow behavior.
+
+The shared `tier3_pattern_markdown_agent_hints.jinja2` macro is imported by research, design, and planning but never invoked. All 22 concrete templates also carry plural `agent_hints` metadata inside Jinja comments; these blocks are not rendered, are not part of the public scaffold contract, and include stale phase order, TDD, status, and approval assumptions. Retaining them creates hidden guidance debt without observable product value.
+
+**Approved Strategy (2026-08-23):** remove the shared pattern, its unused imports, and all concrete commented `agent_hints` blocks. The later engine/consumer audit must confirm and remove any dormant hint-extraction path that has no retained public consumer; exact code edits remain a Design and Planning concern. No compatibility bridge is required because no generated artifact or supported caller contract consumes the hints.
+
+**Status:** approved for suite-wide removal; engine blast radius remains scheduled for the engine audit.
+
+### Deferred Work — Complete YAML artifact package subset
+
+The unreachable `tier1_base_config.jinja2` and `tier2_base_yaml.jinja2` files are incomplete seeds, not supported behavior. They have no public artifact registration, concrete renderer, complete schema, output-profile contract, or behavioral consumer. Issue 460 removes them from the official suite instead of carrying an unreachable partial tier.
+
+The first PGMCP issue after issue 460 merges should build a complete YAML configuration artifact subset on its own branch. That issue must treat the work as a real public/extensibility capability rather than restore the two files verbatim. Its research and design should cover:
+
+- a public YAML/config artifact registration and complete portable context contract;
+- tier-one config, tier-two YAML, and concrete renderer responsibilities;
+- bounded acyclic structured entries and sections rather than an unrestricted recursive YAML DSL;
+- strict-by-default YAML output-profile validation;
+- startup discovery, complete graph identity, and `scaffold_schema` exposure without artifact-specific Python registration;
+- minimal and property-complete rendering whose parsed YAML data proves semantic behavior without full-text snapshots;
+- a temporary complete active-root fixture that proves a new artifact can be added through suite files alone;
+- packaging, documentation, and extension-boundary evidence.
+
+The current files remain recoverable through Git history and this durable specification; keeping dead package files is not required to preserve the idea.
+
+**Deferred Strategy (human-approved 2026-08-23):** remove both incomplete files in issue 460. Hand the complete YAML artifact package subset to coordination as the explicitly recommended first follow-up PGMCP issue on its own branch.
+
+### F-14B — Unreachable test-pattern placeholders
+
+The `tier3_pattern_python_assertions.jinja2` file intentionally provides no macros or output, while `tier3_pattern_python_test_fixtures.jinja2` exposes an unused decorator macro whose name argument is ignored and whose scope, autouse, and params options cannot be combined. Neither file is reachable from the unit-test or integration-test artifact graphs, and their public contracts expose no corresponding generic fixture model.
+
+**Approved Strategy (2026-08-23):** remove both placeholders without a compatibility bridge. Assertions remain test-body behavior. Any future reusable fixture scaffolding must be introduced through an explicit structured unit/integration-test contract, a reachable renderer, and durable behavior tests rather than by reviving the orphan macro.
+
+**Status:** approved for removal.
+
 ### F-15 — Provenance presentation embeds the caller’s host path
 
 Every successful probe starts with the absolute output path, including drive letter and workspace layout. This was a deliberate first-generation development aid: in a traditional IDE with many open files and previews, the first line made the current file location immediately visible. It was useful transient feedback for that source-project workflow, but tier-zero inheritance turned it into persistent production content for every artifact.
@@ -1068,7 +1150,7 @@ The following boundary decisions were approved interactively during Research and
 | B. Declare dependencies explicitly in suite metadata | Deterministic and parser-independent | Manual dependency declarations can drift |
 | C. Keep inheritance-only best-effort analysis | Low effort | Cannot identify the actual rendered contract |
 
-**Approved Strategy (2026-08-23):** choose A. Use Jinja syntax analysis to resolve and hash every static semantic contributor. Use explicit metadata only for dependencies that syntax cannot reveal, and reject missing, dynamic-unresolvable, or cyclic graph edges fail-fast.
+**Approved Strategy (2026-08-23):** choose A. Use parser-supported Jinja semantics rather than regular-expression heuristics to discover every static semantic contributor. Use explicit metadata only for dependencies that syntax cannot reveal, and reject missing, dynamic-unresolvable, or cyclic graph edges fail-fast. Design owns the exact parser API, graph model, traversal, and identity serialization.
 
 **Status:** approved.
 
@@ -1132,7 +1214,7 @@ The following boundary decisions were approved interactively during Research and
 | C. Run whichever extension validator happens to be registered and treat none as pass | Minimal configuration | Produces false passes, applies rules at the wrong output granularity, and hides unsupported languages |
 | D. Require permanent example contexts and validate all rendered examples at startup | Exercises concrete outputs before use | Adds partial, duplicative content and cannot prove all schema-valid combinations |
 
-**Approved Strategy (2026-08-23):** choose B. Default strict_validation to true, declare output-validation capabilities or profiles in the portable artifact contract, resolve providers through an injected extensible registry only when the artifact is selected, and validate rendered content before persistence. Strictness controls enforcement only; it never changes passed, failed, or unavailable evidence. Startup remains responsible for language-agnostic template/schema/graph coherence, and permanent example contexts are not required.
+**Approved Strategy (2026-08-23):** choose B. Default strict_validation to true, declare output-validation capabilities or profiles in the portable artifact contract, resolve them through an extensible injected capability boundary only when the artifact is selected, and validate rendered content before persistence. Strictness controls enforcement only; it never changes passed, failed, or unavailable evidence. Startup remains responsible for language-agnostic template/schema/graph coherence, and permanent example contexts are not required. Design chooses the concrete provider registry or container mechanism.
 
 **Status:** approved for the F-08 rendered-output boundary.
 
@@ -1217,7 +1299,7 @@ Issue 460 should be considered substantively resolved only when:
 The Approved Strategy closes the compatibility and ownership decisions. Design must still select concrete mechanics without reopening them:
 
 1. Which standard JSON Schema draft, authoring layout, and internal composition form produce one fully resolved, reference-free public contract?
-2. How are acyclic schema references and Jinja dependency edges resolved, ordered, validated, and fingerprinted in the immutable startup catalog?
+2. How are acyclic schema references and Jinja dependency edges resolved, ordered, validated, and identified in the coherent restart-stable suite view?
 3. Which portable metadata representation replaces or normalizes the inconsistent current tier-three forms without making pgmcp own template-specific semantics?
 4. What minimal generic worker and service contracts preserve useful scaffolding while excluding source-project assumptions?
 5. Which result DTO fields report output target, validation evidence, resolved suite identity, and graph fingerprint without injecting them into caller content?
@@ -1227,11 +1309,13 @@ The Approved Strategy closes the compatibility and ownership decisions. Design m
 This research provides:
 
 - A complete scaffold_schema-first audit of all public artifact types.
-- A resolved-template-graph assessment that respects the tiered architecture.
+- A durable [Template Suite Work Catalog](template-suite-catalog.md) covering all 79 suite files, example surfaces, runtime/setup consumers, and candidate tests/helpers.
+- Reproducible [Probe Evidence](probe-evidence.yaml) for 44 exact minimal and property-complete calls.
+- A resolved-template-graph assessment that respects the tiered architecture and identifies four unreachable files.
 - A suite-wide classification of content contract defects.
-- Explicit strategy options, costs, consumers, and risks per affected boundary.
+- Explicit strategy options, costs, consumers, migration risks, and accepted clean-break posture per affected boundary.
 - A portability boundary that keeps template-specific truth outside pgmcp-server.
-- A human decision point before design.
+- A per-component human disposition gate before design.
 
 ## References
 
@@ -1260,7 +1344,7 @@ Implementation evidence:
 
 ## Decision Status
 
-**Approved Strategy:** Complete.
+**Approved Strategy:** Reopened after independent QA; existing decisions remain provisionally binding except where preserved behavior or phase purity is incomplete.
 
 | Boundary | Status | Decision |
 |---|---|---|
@@ -1270,26 +1354,35 @@ Implementation evidence:
 | F-02 / S-03 optionality and nullability | Approved 2026-08-23 | Optional permits omission, null is explicit, empty typed values remain distinct, and defaults have deterministic behavior |
 | F-03 caller context and render-envelope ownership | Approved 2026-08-23 | Validate caller context unchanged against the selected artifact schema; add validated tool-envelope and server metadata only afterward |
 | F-04 / S-08 DTO runtime selection | Approved 2026-08-23 | One declaratively selected richer DTO contract drives schema, rendering, graph identity, and provenance; remove implicit V2 override without a bridge |
-| F-05 / S-09 resolved template graph | Approved 2026-08-23 | Server startup resolves one immutable catalog through Jinja syntax analysis; runtime tools share it, suite mutations require restart, and JSON Schema remains the data-shape authority |
+| F-05 / S-09 resolved template graph | Approved 2026-08-23 | Server startup resolves one coherent restart-stable suite view through parser-supported Jinja semantics; runtime tools share it, suite mutations require restart, and JSON Schema remains the data-shape authority; concrete APIs and topology remain Design-owned |
 | F-06 / S-04 link semantics | Approved 2026-08-23 | Required label and target form one presentation-neutral link object; concrete artifacts choose inline or complete reference-style rendering |
 | F-07 / S-07 input ownership and consumption | Approved 2026-08-23 | Artifact context contains only rendered content; scaffold/server inputs are separate, downstream tool envelopes never tunnel through bodies, hidden routing and unconsumed values are removed |
-| F-08 / S-14 output validation and strictness | Approved 2026-08-23 | Strict validation defaults true; selected capabilities resolve on use, output profiles own applicable rules, validation evidence remains independent of persistence policy, and dormant templates impose no provider dependencies |
+| F-08 / S-14 output validation and strictness | Approved 2026-08-23 | Strict validation defaults true; selected capabilities resolve through an extensible boundary on use, output profiles own applicable rules, validation evidence remains independent of persistence policy, dormant templates impose no provider dependencies, and the concrete provider mechanism remains Design-owned |
 | F-09 / S-15 documentation authority | Approved 2026-08-23 | Live schema and catalog own exact facts; handwritten docs explain semantics and discovery, duplicate inventories are removed, and generation remains YAGNI-driven |
-| F-10 / S-10 distribution and customization | Approved 2026-08-23 | Unchanged official targets fast-forward atomically; customized, legacy-unknown, and external targets remain active while a complete non-authoritative candidate is staged with targeted difference evidence |
+| F-10 / S-10 distribution and customization | Approved 2026-08-23 | Unchanged official targets fast-forward atomically; customized, legacy-unknown, and external roots are never overwritten, receive a complete non-authoritative candidate plus targeted difference evidence, and must be manually migrated if the selected preserved suite is incompatible with the new runtime contract |
 | F-11 / S-16 source provenance | Approved 2026-08-23 | Current resolved contract and Jinja graph produce a verifiable suite-scoped fingerprint; historical registry state is removed and adopted artifacts remain independent content |
 | F-12 / S-05 issue references | Approved 2026-08-23 | Positive integers carry issue identity; renderers own # and other presentation syntax |
 | F-12 / S-06 checklist items | Approved 2026-08-23 | Required text and explicit checked state form one structured item; primitive strings and bridges are rejected |
 | F-12 original-issue coverage | Covered 2026-08-23 | All four PR defects map to approved suite-wide boundaries; no PR-only strategy remains |
 | F-13 success semantics | Approved 2026-08-23 | Objective contract, render, output-profile, and persistence evidence define success; no subjective artifact-quality engine is introduced |
-| F-14 / S-12 package portability | Approved 2026-08-23 | Generic package types become portable through a clean break; specialized source-project patterns remain consumer-owned local templates unless a future supported package use case is evidenced |
+| F-14 / S-12 package portability | Approved 2026-08-23 | Generic package types become portable through a clean break; six confirmed S1mpleTrader patterns are removed from PGMCP and migrated only in that owning workspace after its upgrade |
+| F-14A agent hints | Approved 2026-08-23 | Remove the unused pattern, three dead imports, and stale commented workflow guidance; contracts.yaml remains workflow authority |
+| Deferred YAML artifact subset | Deferred 2026-08-23 | Remove the two incomplete unreachable bases now; coordination should create the complete package subset as the first post-460 PGMCP issue on its own branch |
+| F-14B unreachable test patterns | Approved 2026-08-23 | Remove the empty assertions placeholder and unreachable incomplete fixture decorator; future fixture support must be first-class test-artifact behavior |
 | F-15 / S-13 output path semantics | Approved 2026-08-23 | Persistence targets remain tool-envelope and result evidence; generic artifact bodies contain no absolute or relative filesystem path by default |
+| Deployment compatibility | Approved 2026-08-23 | Sole current owner accepts manual migration across two machines and approximately four workspaces; repository evidence cannot prove absence of future external consumers, so the clean break is explicit and documented rather than silently generalized |
 
-All identified compatibility, migration, ownership, portability, and strictness boundaries have an explicit human-approved strategy. Design must treat the F-01 through F-15 decisions as binding input and keep the remaining mechanics within the Design Questions above.
+Independent QA identified incomplete durable evidence, preserved-behavior decisions, test/helper/consumer blast-radius coverage, and phase separation. Research remains open while those gaps are resolved. Previously approved human decisions remain recorded; no Design transition is authorized until the catalog closes every affected component and a new independent QA review returns GO.
 
 ## Version History
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.22 | 2026-08-23 | Approve removal of the two unreachable test-pattern placeholders and close all four orphan-template dispositions |
+| 1.21 | 2026-08-23 | Defer a complete YAML artifact package subset as the first post-460 PGMCP issue and classify its two incomplete bases for removal now |
+| 1.20 | 2026-08-23 | Approve removal of seven patterns, assign six workspace-specific patterns to S1mpleTrader, and keep their later migration outside issue 460 |
+| 1.19 | 2026-08-23 | Add durable 79-file work catalog, exact 44-probe evidence, test/helper/consumer blast radius, deployment migration posture, and Research/Design mechanism separation |
+| 1.18 | 2026-08-23 | Reopen Research after independent QA found incomplete durable evidence, preserved behavior, blast radius, and phase separation |
 | 1.17 | 2026-08-23 | Reconcile all approved strategies, close stale research questions, and hand concrete schema, catalog, portability, and result-shape mechanics to Design |
 | 1.16 | 2026-08-23 | Approve removal of development-only filesystem paths from generic artifact bodies while retaining target resolution and result evidence |
 | 1.15 | 2026-08-23 | Approve portable generic package types and consumer-owned local specialization for residual source-project worker and service patterns |

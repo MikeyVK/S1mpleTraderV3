@@ -1,0 +1,358 @@
+# Template Suite Work Catalog
+
+**Status:** REVIEW  
+**Version:** 1.0  
+**Last Updated:** 2026-08-23  
+**Issue:** #460  
+**Purpose:** Durable, omission-resistant work catalog for the complete packaged template suite, its runtime engine, behavioral tests, helpers, and active consumers.
+
+## Authority and Use
+
+This catalog is the Research work inventory. It is not a second runtime registry and does not prescribe the Design mechanism. Every row must receive an explicit disposition before Planning can claim complete coverage. The live schema and probe baseline is recorded in [probe-evidence.yaml](probe-evidence.yaml).
+
+The catalog covers:
+
+- all 22 public artifact types;
+- all 79 files below `.pgmcp/templates/`;
+- every configured or embedded example surface found in that tree;
+- the runtime engine and setup boundaries that load, validate, render, persist, or upgrade the suite;
+- 103 candidate behavioral test/helper files found by broad template/scaffolding signals;
+- active agent instructions and references that describe the public contract.
+
+## Census
+
+| Surface | Count | Completion rule |
+|---|---:|---|
+| Public artifact types | 22 | Minimal and property-complete probe plus explicit preserved/changed/removed disposition |
+| Template configuration files | 22 | Schema language, root, validation profile, and graph participation audited |
+| Jinja templates | 57 | Reachability, responsibilities, dependencies, and retained behavior audited |
+| Total suite files | 79 | No unclassified file remains |
+| Reachable Jinja templates | 53 | Audited through at least one public artifact graph |
+| Unreachable Jinja templates | 4 | Explicit retain/connect/remove decision required |
+| Probe calls | 44 | 34 PASS, 10 FAIL; exact inputs and outcomes in durable evidence |
+| Candidate tests/helpers | 103 | 89 direct-review and 14 adjacent-review candidates; behavior value decided explicitly |
+| Active consumers/references | 59 | Runtime impact or synchronization need decided explicitly |
+
+## Public Artifact Ledger
+
+A PASS means only that the current tool call completed. It does not approve prose quality or preserve the current implementation. A FAIL is an observed baseline defect, not a Design decision.
+
+| Artifact | Config | Configured root | Static contributors | Public context fields | Minimal | Property-complete | Disposition |
+|---|---|---|---:|---|---|---|---|
+| adapter | [.pgmcp/templates/config/adapter.yaml](../../../.pgmcp/templates/config/adapter.yaml) | [.pgmcp/templates/concrete/adapter.py.jinja2](../../../.pgmcp/templates/concrete/adapter.py.jinja2) | 5 | `name`, `description`, `target_interface`, `methods` | PASS | FAIL — UndefinedError: 'str object' has no attribute 'name' | Pending joint disposition |
+| architecture | [.pgmcp/templates/config/architecture.yaml](../../../.pgmcp/templates/config/architecture.yaml) | [.pgmcp/templates/concrete/architecture.md.jinja2](../../../.pgmcp/templates/concrete/architecture.md.jinja2) | 9 | `title`, `status`, `version`, `last_updated`, `concepts`, `purpose`, `scope_in`, `scope_out`, `prerequisites`, `related_docs`, `constraints`, `decisions` | PASS | PASS | Pending joint disposition |
+| commit | [.pgmcp/templates/config/commit.yaml](../../../.pgmcp/templates/config/commit.yaml) | [.pgmcp/templates/concrete/commit.txt.jinja2](../../../.pgmcp/templates/concrete/commit.txt.jinja2) | 4 | `type`, `message`, `scope`, `body`, `breaking_change`, `breaking_description`, `footer`, `refs` | PASS | PASS | **Retain/adapt** — preserve conventional-commit content responsibility; exact schema and renderer constraints belong to Design |
+| design | [.pgmcp/templates/config/design.yaml](../../../.pgmcp/templates/config/design.yaml) | [.pgmcp/templates/concrete/design.md.jinja2](../../../.pgmcp/templates/concrete/design.md.jinja2) | 12 | `title`, `status`, `version`, `last_updated`, `problem_statement`, `requirements_functional`, `requirements_nonfunctional`, `decision`, `rationale`, `purpose`, `scope_in`, `scope_out`, `prerequisites`, `related_docs`, `constraints`, `options`, `key_decisions`, `open_questions` | PASS | PASS | Pending joint disposition |
+| dto | [.pgmcp/templates/config/dto.yaml](../../../.pgmcp/templates/config/dto.yaml) | [.pgmcp/templates/concrete/dto.py.jinja2](../../../.pgmcp/templates/concrete/dto.py.jinja2)<br>Observed override: [.pgmcp/templates/concrete/dto_v2.py.jinja2](../../../.pgmcp/templates/concrete/dto_v2.py.jinja2) | 6 + override graph 5 | `dto_name`, `fields`, `description` | FAIL — Generated dto artifact failed validation | PASS | Pending joint disposition |
+| generic | [.pgmcp/templates/config/generic.yaml](../../../.pgmcp/templates/config/generic.yaml) | [.pgmcp/templates/concrete/generic.py.jinja2](../../../.pgmcp/templates/concrete/generic.py.jinja2) | 5 | `name`, `description`, `layer`, `methods`, `responsibilities` | PASS | FAIL — UndefinedError: 'str object' has no attribute 'name' | Pending joint disposition |
+| generic_doc | [.pgmcp/templates/config/generic_doc.yaml](../../../.pgmcp/templates/config/generic_doc.yaml) | [.pgmcp/templates/concrete/generic.md.jinja2](../../../.pgmcp/templates/concrete/generic.md.jinja2) | 10 | `title`, `status`, `version`, `last_updated`, `purpose`, `summary`, `scope_in`, `scope_out`, `prerequisites`, `related_docs`, `key_changes`, `migration_steps`, `validation_checklist`, `faq`, `custom_sections` | PASS | PASS | Pending joint disposition |
+| integration_test | [.pgmcp/templates/config/integration_test.yaml](../../../.pgmcp/templates/config/integration_test.yaml) | [.pgmcp/templates/concrete/test_integration.py.jinja2](../../../.pgmcp/templates/concrete/test_integration.py.jinja2) | 7 | `test_scenario`, `test_class_name`, `test_description`, `managers_needed`, `workspace_fixture`, `test_methods` | PASS | FAIL — UndefinedError: 'str object' has no attribute 'name' | Pending joint disposition |
+| interface | [.pgmcp/templates/config/interface.yaml](../../../.pgmcp/templates/config/interface.yaml) | [.pgmcp/templates/concrete/interface.py.jinja2](../../../.pgmcp/templates/concrete/interface.py.jinja2) | 4 | `name`, `description`, `methods` | PASS | FAIL — UndefinedError: 'str object' has no attribute 'name' | Pending joint disposition |
+| issue | [.pgmcp/templates/config/issue.yaml](../../../.pgmcp/templates/config/issue.yaml) | [.pgmcp/templates/concrete/issue.md.jinja2](../../../.pgmcp/templates/concrete/issue.md.jinja2) | 5 | `title`, `problem`, `summary`, `expected`, `actual`, `context`, `steps_to_reproduce`, `related_docs`, `labels`, `milestone`, `assignees` | PASS | PASS | **Retain/adapt** — body-only contract, ordered reproduction steps, and no downstream issue-envelope fields; exact shape belongs to Design |
+| planning | [.pgmcp/templates/config/planning.yaml](../../../.pgmcp/templates/config/planning.yaml) | [.pgmcp/templates/concrete/planning.md.jinja2](../../../.pgmcp/templates/concrete/planning.md.jinja2) | 10 | `title`, `status`, `version`, `last_updated`, `summary`, `cycles`, `purpose`, `scope_in`, `scope_out`, `prerequisites`, `dependencies`, `risks`, `milestones`, `related_docs` | PASS | PASS | Pending joint disposition |
+| pr | [.pgmcp/templates/config/pr.yaml](../../../.pgmcp/templates/config/pr.yaml) | [.pgmcp/templates/concrete/pr.md.jinja2](../../../.pgmcp/templates/concrete/pr.md.jinja2) | 5 | `title`, `changes`, `summary`, `testing`, `checklist_items`, `related_docs`, `closes_issues`, `breaking_changes`, `deferred_work`, `tracking_state` | PASS | PASS | **Retain/adapt** — body-only contract with explicit deferred-work declaration; `@co` owns triage and issue linkage; exact shape belongs to Design |
+| reference | [.pgmcp/templates/config/reference.yaml](../../../.pgmcp/templates/config/reference.yaml) | [.pgmcp/templates/concrete/reference.md.jinja2](../../../.pgmcp/templates/concrete/reference.md.jinja2) | 4 | `title`, `status`, `version`, `last_updated`, `source_file`, `test_file`, `api_reference`, `usage_examples`, `test_count` | PASS | PASS | Pending joint disposition |
+| research | [.pgmcp/templates/config/research.yaml](../../../.pgmcp/templates/config/research.yaml) | [.pgmcp/templates/concrete/research.md.jinja2](../../../.pgmcp/templates/concrete/research.md.jinja2) | 11 | `title`, `status`, `version`, `last_updated`, `problem_statement`, `goals`, `purpose`, `scope_in`, `scope_out`, `prerequisites`, `background`, `findings`, `questions_list`, `references`, `related_docs`, `approved_strategy`, `expected_results` | PASS | PASS | Pending joint disposition |
+| resource | [.pgmcp/templates/config/resource.yaml](../../../.pgmcp/templates/config/resource.yaml) | [.pgmcp/templates/concrete/resource.py.jinja2](../../../.pgmcp/templates/concrete/resource.py.jinja2) | 5 | `name`, `description`, `resource_type`, `methods` | PASS | FAIL — UndefinedError: 'str object' has no attribute 'name' | Pending joint disposition |
+| schema | [.pgmcp/templates/config/schema.yaml](../../../.pgmcp/templates/config/schema.yaml) | [.pgmcp/templates/concrete/config_schema.py.jinja2](../../../.pgmcp/templates/concrete/config_schema.py.jinja2) | 6 | `name`, `description`, `layer`, `fields`, `frozen`, `examples` | PASS | FAIL — Generated schema artifact failed validation | Pending joint disposition |
+| service | [.pgmcp/templates/config/service.yaml](../../../.pgmcp/templates/config/service.yaml) | [.pgmcp/templates/concrete/service_command.py.jinja2](../../../.pgmcp/templates/concrete/service_command.py.jinja2) | 9 | `name`, `description`, `layer`, `responsibilities`, `parameters`, `return_type` | PASS | FAIL — Generated service artifact failed validation | Pending joint disposition |
+| tool | [.pgmcp/templates/config/tool.yaml](../../../.pgmcp/templates/config/tool.yaml) | [.pgmcp/templates/concrete/tool.py.jinja2](../../../.pgmcp/templates/concrete/tool.py.jinja2) | 6 | `name`, `description`, `layer`, `responsibilities` | PASS | PASS | Pending joint disposition |
+| typescript_dto | [.pgmcp/templates/config/typescript_dto.yaml](../../../.pgmcp/templates/config/typescript_dto.yaml) | [.pgmcp/templates/concrete/typescript_dto.ts.jinja2](../../../.pgmcp/templates/concrete/typescript_dto.ts.jinja2) | 5 | `fields`, `implements` | PASS | PASS | Pending joint disposition |
+| unit_test | [.pgmcp/templates/config/unit_test.yaml](../../../.pgmcp/templates/config/unit_test.yaml) | [.pgmcp/templates/concrete/test_unit.py.jinja2](../../../.pgmcp/templates/concrete/test_unit.py.jinja2) | 8 | `module_under_test`, `test_class_name`, `test_description`, `test_focus`, `additional_responsibility`, `imported_classes`, `has_mocks`, `has_async_tests`, `has_pydantic`, `test_methods` | FAIL — TypeError: 'NoneType' object is not iterable | FAIL — UndefinedError: 'str object' has no attribute 'name' | Pending joint disposition |
+| validation_report | [.pgmcp/templates/config/validation_report.yaml](../../../.pgmcp/templates/config/validation_report.yaml) | [.pgmcp/templates/concrete/validation_report.md.jinja2](../../../.pgmcp/templates/concrete/validation_report.md.jinja2) | 4 | `title`, `status`, `version`, `last_updated`, `issue_number`, `cycle`, `validation_status`, `scope` | PASS | PASS | Pending joint disposition |
+| worker | [.pgmcp/templates/config/worker.yaml](../../../.pgmcp/templates/config/worker.yaml) | [.pgmcp/templates/concrete/worker.py.jinja2](../../../.pgmcp/templates/concrete/worker.py.jinja2) | 11 | `name`, `layer`, `module_description`, `worker_scope`, `responsibilities`, `capabilities`, `use_async` | PASS | PASS | Pending joint disposition |
+
+## Example Surfaces
+
+No permanent example is assumed necessary merely because it exists today. Each surface must be judged on retained consumer value and must not become an alternative schema authority.
+
+| Surface | Location | Current role | Required decision |
+|---|---|---|---|
+| Commit `example_context` | [.pgmcp/templates/concrete/commit.txt.jinja2](../../../.pgmcp/templates/concrete/commit.txt.jinja2) | Embedded metadata example | Retain as derived/checkable evidence or remove |
+| Issue `example_context` | [.pgmcp/templates/concrete/issue.md.jinja2](../../../.pgmcp/templates/concrete/issue.md.jinja2) | Embedded metadata example | Retain as derived/checkable evidence or remove |
+| PR `example_context` | [.pgmcp/templates/concrete/pr.md.jinja2](../../../.pgmcp/templates/concrete/pr.md.jinja2) | Embedded metadata example | Retain as derived/checkable evidence or remove |
+| Schema `examples` | [.pgmcp/templates/config/schema.yaml](../../../.pgmcp/templates/config/schema.yaml) | Public artifact context field | Define rich structure and render semantics |
+| Reference `usage_examples` | [.pgmcp/templates/config/reference.yaml](../../../.pgmcp/templates/config/reference.yaml) | Public artifact context field; current string/list mismatch | Define structured representation and render semantics |
+
+## Complete Suite File Ledger
+
+“Reachable by” is derived from configured static roots plus the observed DTO runtime override. “Unreachable” means no current public artifact graph reaches the file; it does not decide removal.
+
+| File | Kind | Reachable by | Audit state | Disposition |
+|---|---|---|---|---|
+| [.pgmcp/templates/concrete/adapter.py.jinja2](../../../.pgmcp/templates/concrete/adapter.py.jinja2) | concrete Jinja | adapter | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/architecture.md.jinja2](../../../.pgmcp/templates/concrete/architecture.md.jinja2) | concrete Jinja | architecture | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/commit.txt.jinja2](../../../.pgmcp/templates/concrete/commit.txt.jinja2) | concrete Jinja | commit | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/config_schema.py.jinja2](../../../.pgmcp/templates/concrete/config_schema.py.jinja2) | concrete Jinja | schema | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/design.md.jinja2](../../../.pgmcp/templates/concrete/design.md.jinja2) | concrete Jinja | design | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/dto.py.jinja2](../../../.pgmcp/templates/concrete/dto.py.jinja2) | concrete Jinja | dto | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/dto_v2.py.jinja2](../../../.pgmcp/templates/concrete/dto_v2.py.jinja2) | concrete Jinja | dto (runtime override) | Catalogued; runtime override outside configured root identified | Pending joint disposition |
+| [.pgmcp/templates/concrete/generic.md.jinja2](../../../.pgmcp/templates/concrete/generic.md.jinja2) | concrete Jinja | generic_doc | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/generic.py.jinja2](../../../.pgmcp/templates/concrete/generic.py.jinja2) | concrete Jinja | generic | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/interface.py.jinja2](../../../.pgmcp/templates/concrete/interface.py.jinja2) | concrete Jinja | interface | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/issue.md.jinja2](../../../.pgmcp/templates/concrete/issue.md.jinja2) | concrete Jinja | issue | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/planning.md.jinja2](../../../.pgmcp/templates/concrete/planning.md.jinja2) | concrete Jinja | planning | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/pr.md.jinja2](../../../.pgmcp/templates/concrete/pr.md.jinja2) | concrete Jinja | pr | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/reference.md.jinja2](../../../.pgmcp/templates/concrete/reference.md.jinja2) | concrete Jinja | reference | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/research.md.jinja2](../../../.pgmcp/templates/concrete/research.md.jinja2) | concrete Jinja | research | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/resource.py.jinja2](../../../.pgmcp/templates/concrete/resource.py.jinja2) | concrete Jinja | resource | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/service_command.py.jinja2](../../../.pgmcp/templates/concrete/service_command.py.jinja2) | concrete Jinja | service | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/test_integration.py.jinja2](../../../.pgmcp/templates/concrete/test_integration.py.jinja2) | concrete Jinja | integration_test | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/test_unit.py.jinja2](../../../.pgmcp/templates/concrete/test_unit.py.jinja2) | concrete Jinja | unit_test | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/tool.py.jinja2](../../../.pgmcp/templates/concrete/tool.py.jinja2) | concrete Jinja | tool | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/typescript_dto.ts.jinja2](../../../.pgmcp/templates/concrete/typescript_dto.ts.jinja2) | concrete Jinja | typescript_dto | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/validation_report.md.jinja2](../../../.pgmcp/templates/concrete/validation_report.md.jinja2) | concrete Jinja | validation_report | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/concrete/worker.py.jinja2](../../../.pgmcp/templates/concrete/worker.py.jinja2) | concrete Jinja | worker | Catalogued; F-14 project-specific behavior review required | Pending joint disposition |
+| [.pgmcp/templates/config/adapter.yaml](../../../.pgmcp/templates/config/adapter.yaml) | artifact config | adapter | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/architecture.yaml](../../../.pgmcp/templates/config/architecture.yaml) | artifact config | architecture | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/commit.yaml](../../../.pgmcp/templates/config/commit.yaml) | artifact config | commit | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/design.yaml](../../../.pgmcp/templates/config/design.yaml) | artifact config | design | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/dto.yaml](../../../.pgmcp/templates/config/dto.yaml) | artifact config | dto | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/generic.yaml](../../../.pgmcp/templates/config/generic.yaml) | artifact config | generic | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/generic_doc.yaml](../../../.pgmcp/templates/config/generic_doc.yaml) | artifact config | generic_doc | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/integration_test.yaml](../../../.pgmcp/templates/config/integration_test.yaml) | artifact config | integration_test | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/interface.yaml](../../../.pgmcp/templates/config/interface.yaml) | artifact config | interface | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/issue.yaml](../../../.pgmcp/templates/config/issue.yaml) | artifact config | issue | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/planning.yaml](../../../.pgmcp/templates/config/planning.yaml) | artifact config | planning | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/pr.yaml](../../../.pgmcp/templates/config/pr.yaml) | artifact config | pr | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/reference.yaml](../../../.pgmcp/templates/config/reference.yaml) | artifact config | reference | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/research.yaml](../../../.pgmcp/templates/config/research.yaml) | artifact config | research | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/resource.yaml](../../../.pgmcp/templates/config/resource.yaml) | artifact config | resource | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/schema.yaml](../../../.pgmcp/templates/config/schema.yaml) | artifact config | schema | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/service.yaml](../../../.pgmcp/templates/config/service.yaml) | artifact config | service | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/tool.yaml](../../../.pgmcp/templates/config/tool.yaml) | artifact config | tool | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/typescript_dto.yaml](../../../.pgmcp/templates/config/typescript_dto.yaml) | artifact config | typescript_dto | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/unit_test.yaml](../../../.pgmcp/templates/config/unit_test.yaml) | artifact config | unit_test | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/validation_report.yaml](../../../.pgmcp/templates/config/validation_report.yaml) | artifact config | validation_report | Catalogued; semantic audit pending | Pending joint disposition |
+| [.pgmcp/templates/config/worker.yaml](../../../.pgmcp/templates/config/worker.yaml) | artifact config | worker | Catalogued; F-14 project-specific behavior review required | Pending joint disposition |
+| [.pgmcp/templates/tier0_base_artifact.jinja2](../../../.pgmcp/templates/tier0_base_artifact.jinja2) | tier 0 Jinja | adapter, architecture, commit, design, dto, dto (runtime override), generic, generic_doc, integration_test, interface, issue, planning, pr, reference, research, resource, schema, service, tool, typescript_dto, unit_test, validation_report, worker | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier1_base_code.jinja2](../../../.pgmcp/templates/tier1_base_code.jinja2) | tier 1 Jinja | adapter, dto, dto (runtime override), generic, integration_test, interface, resource, schema, service, tool, typescript_dto, unit_test, worker | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier1_base_config.jinja2](../../../.pgmcp/templates/tier1_base_config.jinja2) | tier 1 Jinja | Unreachable | Incomplete unreachable seed; no public artifact consumer | **Remove in issue 460** — recreate coherently in the first deferred YAML-subset issue |
+| [.pgmcp/templates/tier1_base_document.jinja2](../../../.pgmcp/templates/tier1_base_document.jinja2) | tier 1 Jinja | architecture, design, generic_doc, planning, reference, research, validation_report | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier1_base_tracking.jinja2](../../../.pgmcp/templates/tier1_base_tracking.jinja2) | tier 1 Jinja | commit, issue, pr | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier2_base_markdown.jinja2](../../../.pgmcp/templates/tier2_base_markdown.jinja2) | tier 2 Jinja | architecture, design, generic_doc, planning, reference, research, validation_report | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier2_base_python.jinja2](../../../.pgmcp/templates/tier2_base_python.jinja2) | tier 2 Jinja | adapter, dto, dto (runtime override), generic, integration_test, interface, resource, schema, service, tool, unit_test, worker | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier2_base_typescript.jinja2](../../../.pgmcp/templates/tier2_base_typescript.jinja2) | tier 2 Jinja | typescript_dto | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier2_base_yaml.jinja2](../../../.pgmcp/templates/tier2_base_yaml.jinja2) | tier 2 Jinja | Unreachable | Incomplete unreachable seed; no concrete root or output-profile contract | **Remove in issue 460** — recreate coherently in the first deferred YAML-subset issue |
+| [.pgmcp/templates/tier2_tracking_markdown.jinja2](../../../.pgmcp/templates/tier2_tracking_markdown.jinja2) | tier 2 Jinja | issue, pr | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier2_tracking_text.jinja2](../../../.pgmcp/templates/tier2_tracking_text.jinja2) | tier 2 Jinja | commit | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_agent_hints.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_agent_hints.jinja2) | tier 3 Jinja | Imported by design, planning, and research but macro never invoked | Dead import plus stale workflow guidance | **Remove** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_dividers.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_dividers.jinja2) | tier 3 Jinja | design, generic_doc | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_open_questions.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_open_questions.jinja2) | tier 3 Jinja | design, research | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_prerequisites.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_prerequisites.jinja2) | tier 3 Jinja | architecture, design, generic_doc, planning, research | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_purpose_scope.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_purpose_scope.jinja2) | tier 3 Jinja | architecture, design, generic_doc, planning, research | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_related_docs.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_related_docs.jinja2) | tier 3 Jinja | architecture, design, generic_doc, issue, planning, pr, research | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_status_header.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_status_header.jinja2) | tier 3 Jinja | architecture, design, generic_doc, planning, research | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_markdown_version_history.jinja2](../../../.pgmcp/templates/tier3_pattern_markdown_version_history.jinja2) | tier 3 Jinja | architecture, design, generic_doc, planning, research | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_assertions.jinja2](../../../.pgmcp/templates/tier3_pattern_python_assertions.jinja2) | tier 3 Jinja | Unreachable | Empty placeholder with no macros or output | **Remove** — assertions remain inline test behavior — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_async.jinja2](../../../.pgmcp/templates/tier3_pattern_python_async.jinja2) | tier 3 Jinja | integration_test, service, unit_test, worker | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_di.jinja2](../../../.pgmcp/templates/tier3_pattern_python_di.jinja2) | tier 3 Jinja | service, worker | S1mpleTrader-owned extension pattern; excluded from the official package suite | **Remove from PGMCP** — migrate separately in the owning workspace after upgrade |
+| [.pgmcp/templates/tier3_pattern_python_error.jinja2](../../../.pgmcp/templates/tier3_pattern_python_error.jinja2) | tier 3 Jinja | service, tool, worker | S1mpleTrader-owned extension pattern; excluded from the official package suite | **Remove from PGMCP** — migrate separately in the owning workspace after upgrade |
+| [.pgmcp/templates/tier3_pattern_python_lifecycle.jinja2](../../../.pgmcp/templates/tier3_pattern_python_lifecycle.jinja2) | tier 3 Jinja | worker | S1mpleTrader-owned extension pattern; excluded from the official package suite | **Remove from PGMCP** — migrate separately in the owning workspace after upgrade |
+| [.pgmcp/templates/tier3_pattern_python_log_enricher.jinja2](../../../.pgmcp/templates/tier3_pattern_python_log_enricher.jinja2) | tier 3 Jinja | worker | S1mpleTrader-owned extension pattern; excluded from the official package suite | **Remove from PGMCP** — migrate separately in the owning workspace after upgrade |
+| [.pgmcp/templates/tier3_pattern_python_logging.jinja2](../../../.pgmcp/templates/tier3_pattern_python_logging.jinja2) | tier 3 Jinja | adapter, generic, resource, service, tool, worker | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_mocking.jinja2](../../../.pgmcp/templates/tier3_pattern_python_mocking.jinja2) | tier 3 Jinja | unit_test | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_pydantic.jinja2](../../../.pgmcp/templates/tier3_pattern_python_pydantic.jinja2) | tier 3 Jinja | dto, dto (runtime override), schema | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_pytest.jinja2](../../../.pgmcp/templates/tier3_pattern_python_pytest.jinja2) | tier 3 Jinja | integration_test, unit_test | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_test_fixtures.jinja2](../../../.pgmcp/templates/tier3_pattern_python_test_fixtures.jinja2) | tier 3 Jinja | Unreachable | Unreachable incomplete decorator; no public fixture contract | **Remove** — future fixture support must be first-class in test artifacts — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_test_structure.jinja2](../../../.pgmcp/templates/tier3_pattern_python_test_structure.jinja2) | tier 3 Jinja | integration_test, unit_test | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+| [.pgmcp/templates/tier3_pattern_python_translator.jinja2](../../../.pgmcp/templates/tier3_pattern_python_translator.jinja2) | tier 3 Jinja | service, worker | S1mpleTrader-owned extension pattern; excluded from the official package suite | **Remove from PGMCP** — migrate separately in the owning workspace after upgrade |
+| [.pgmcp/templates/tier3_pattern_python_typed_id.jinja2](../../../.pgmcp/templates/tier3_pattern_python_typed_id.jinja2) | tier 3 Jinja | dto, schema | S1mpleTrader-owned extension pattern; excluded from the official package suite | **Remove from PGMCP** — migrate separately in the owning workspace after upgrade |
+| [.pgmcp/templates/tier3_pattern_typescript_dto.jinja2](../../../.pgmcp/templates/tier3_pattern_typescript_dto.jinja2) | tier 3 Jinja | typescript_dto | Portable shared responsibility retained; contract and metadata adaptation required | **Retain and adapt** — human-approved 2026-08-23 |
+
+## Runtime and Active Consumer Ledger
+
+Candidate status is intentionally broad: Research must not omit a consumer merely because Design may later prove it unaffected.
+
+| Path | Category | Research obligation |
+|---|---|---|
+| [.agents/AGENTS.md](../../../.agents/AGENTS.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [.agents/reboot.md](../../../.agents/reboot.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [.agents/rules/research.agent.md](../../../.agents/rules/research.agent.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [.agents/workflows/create-issue.md](../../../.agents/workflows/create-issue.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [.github/agents/co.agent.md](../../../.github/agents/co.agent.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [.github/prompts/create-issue.prompt.md](../../../.github/prompts/create-issue.prompt.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [AGENTS.md](../../../AGENTS.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/antigravity/AGENTS.md](../../../docs/agents/antigravity/AGENTS.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/antigravity/workflows/create-issue.md](../../../docs/agents/antigravity/workflows/create-issue.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/codex/AGENTS.md](../../../docs/agents/codex/AGENTS.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/codex/reboot.md](../../../docs/agents/codex/reboot.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/codex/rules/research.agent.md](../../../docs/agents/codex/rules/research.agent.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/codex/workflows/create-issue.md](../../../docs/agents/codex/workflows/create-issue.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/agents/vscode/copilot/AGENTS.md](../../../docs/agents/vscode/copilot/AGENTS.md) | agent/instruction | Synchronize only durable public usage rules; no duplicated schema inventory |
+| [docs/manuals/architectural_diagrams/01_module_decomposition.md](../../../docs/manuals/architectural_diagrams/01_module_decomposition.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/architectural_diagrams/03_tool_layer.md](../../../docs/manuals/architectural_diagrams/03_tool_layer.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/architectural_diagrams/05_config_layer.md](../../../docs/manuals/architectural_diagrams/05_config_layer.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/architectural_diagrams/08_naming_landscape.md](../../../docs/manuals/architectural_diagrams/08_naming_landscape.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/architectural_diagrams/09_scaffolding_subsystem.md](../../../docs/manuals/architectural_diagrams/09_scaffolding_subsystem.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/architectural_diagrams/10_config_consumers.md](../../../docs/manuals/architectural_diagrams/10_config_consumers.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/architecture.md](../../../docs/manuals/architecture.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/phase-workflows.md](../../../docs/manuals/phase-workflows.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/manuals/README.md](../../../docs/manuals/README.md) | manual | Verify whether final public behavior makes this reference stale |
+| [docs/reference/config-loading-architecture.md](../../../docs/reference/config-loading-architecture.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/MCP_TOOLS.md](../../../docs/reference/MCP_TOOLS.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/mcp_vision_reference.md](../../../docs/reference/mcp_vision_reference.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/migration_v2.0.md](../../../docs/reference/migration_v2.0.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/presentation_architecture.md](../../../docs/reference/presentation_architecture.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/README.md](../../../docs/reference/README.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/TEMPLATE_LIBRARY_QUICK_REFERENCE.md](../../../docs/reference/TEMPLATE_LIBRARY_QUICK_REFERENCE.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/TEMPLATE_LIBRARY_USAGE.md](../../../docs/reference/TEMPLATE_LIBRARY_USAGE.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/template_metadata_format.md](../../../docs/reference/template_metadata_format.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/tools/editing.md](../../../docs/reference/tools/editing.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/tools/github.md](../../../docs/reference/tools/github.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/tools/project.md](../../../docs/reference/tools/project.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/tools/README.md](../../../docs/reference/tools/README.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/tools/scaffolding.md](../../../docs/reference/tools/scaffolding.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/reference/validation_api.md](../../../docs/reference/validation_api.md) | active reference | Verify whether final public behavior makes this reference stale |
+| [docs/setup/workspace-upgrade.md](../../../docs/setup/workspace-upgrade.md) | setup | Inspect clean install and upgrade semantics |
+| [mcp_server/bootstrap.py](../../../mcp_server/bootstrap.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/cli.py](../../../mcp_server/cli.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/config/loader.py](../../../mcp_server/config/loader.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/config/schemas/artifact_registry_config.py](../../../mcp_server/config/schemas/artifact_registry_config.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/config/settings.py](../../../mcp_server/config/settings.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/managers/artifact_manager.py](../../../mcp_server/managers/artifact_manager.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/scaffolders/template_scaffolder.py](../../../mcp_server/scaffolders/template_scaffolder.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/scaffolding/template_introspector.py](../../../mcp_server/scaffolding/template_introspector.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/scaffolding/template_registry.py](../../../mcp_server/scaffolding/template_registry.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/scaffolding/version_hash.py](../../../mcp_server/scaffolding/version_hash.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/schemas/base.py](../../../mcp_server/schemas/base.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/services/template_engine.py](../../../mcp_server/services/template_engine.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/services/workspace_upgrader.py](../../../mcp_server/services/workspace_upgrader.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/tools/issue_tools.py](../../../mcp_server/tools/issue_tools.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/tools/safe_edit_tool.py](../../../mcp_server/tools/safe_edit_tool.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/tools/scaffold_artifact.py](../../../mcp_server/tools/scaffold_artifact.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/tools/scaffold_schema_tool.py](../../../mcp_server/tools/scaffold_schema_tool.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/validation/layered_template_validator.py](../../../mcp_server/validation/layered_template_validator.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/validation/template_analyzer.py](../../../mcp_server/validation/template_analyzer.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+| [mcp_server/validation/validation_service.py](../../../mcp_server/validation/validation_service.py) | runtime | Inspect ownership, input/output contract, startup behavior, and migration impact |
+
+## Behavioral Test and Helper Ledger
+
+This is a broad candidate inventory, not a mandate to preserve every test. Direct-review candidates contain template source, exact prose, path/header, registry/provenance, project-specific, or clearly named scaffolding coupling. Adjacent candidates were found through broader imports/fixtures and must be checked before exclusion.
+
+Tests must protect durable public behavior: closed context validation, generic structured rendering, deterministic dependency resolution, fail-fast startup/on-use boundaries, validator selection, persistence policy, install/upgrade decisions, and actionable failures. Exact template prose, manual version history, concrete import strings, filesystem headers, and implementation-shaped fixture graphs are not durable behavior by themselves.
+
+| Path | Layer | Signals | Review class | Required disposition |
+|---|---|---|---|---|
+| [tests/mcp_server/acceptance/test_issue56_acceptance.py](../../../tests/mcp_server/acceptance/test_issue56_acceptance.py) | other | raw, path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/config/test_component_registry.py](../../../tests/mcp_server/config/test_component_registry.py) | other | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/config/test_project_structure.py](../../../tests/mcp_server/config/test_project_structure.py) | other | path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/fixtures/artifact_test_harness.py](../../../tests/mcp_server/fixtures/artifact_test_harness.py) | fixture/helper | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/mcp_server/test_scaffold_tool_execute_e2e.py](../../../tests/mcp_server/integration/mcp_server/test_scaffold_tool_execute_e2e.py) | integration | raw, path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/mcp_server/test_server_tool_registration.py](../../../tests/mcp_server/integration/mcp_server/test_server_tool_registration.py) | integration | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/mcp_server/validation/test_safe_edit_validation_integration.py](../../../tests/mcp_server/integration/mcp_server/validation/test_safe_edit_validation_integration.py) | integration | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_artifact_e2e.py](../../../tests/mcp_server/integration/test_artifact_e2e.py) | integration | raw, path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_concrete_templates.py](../../../tests/mcp_server/integration/test_concrete_templates.py) | integration | raw, prose, project | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_config_error_e2e.py](../../../tests/mcp_server/integration/test_config_error_e2e.py) | integration | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_document_templates.py](../../../tests/mcp_server/integration/test_document_templates.py) | integration | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_exception_propagation.py](../../../tests/mcp_server/integration/test_exception_propagation.py) | integration | path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_metadata_e2e.py](../../../tests/mcp_server/integration/test_metadata_e2e.py) | integration | raw, path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_pr_status_lockdown.py](../../../tests/mcp_server/integration/test_pr_status_lockdown.py) | integration | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_provenance_e2e.py](../../../tests/mcp_server/integration/test_provenance_e2e.py) | integration | raw, path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_scaffold_validation_e2e.py](../../../tests/mcp_server/integration/test_scaffold_validation_e2e.py) | integration | path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_smoke_all_types.py](../../../tests/mcp_server/integration/test_smoke_all_types.py) | integration | raw, path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_strict_input_validation_response.py](../../../tests/mcp_server/integration/test_strict_input_validation_response.py) | integration | registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_template_missing_e2e.py](../../../tests/mcp_server/integration/test_template_missing_e2e.py) | integration | raw, path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_tool_error_contract_e2e.py](../../../tests/mcp_server/integration/test_tool_error_contract_e2e.py) | integration | path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_tool_error_e2e.py](../../../tests/mcp_server/integration/test_tool_error_e2e.py) | integration | path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/integration/test_validation_policy_e2e.py](../../../tests/mcp_server/integration/test_validation_policy_e2e.py) | integration | raw, path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_concrete_code_templates.py](../../../tests/mcp_server/scaffolding/test_concrete_code_templates.py) | scaffolding | raw | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_concrete_test_integration.py](../../../tests/mcp_server/scaffolding/test_concrete_test_integration.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_concrete_test_unit.py](../../../tests/mcp_server/scaffolding/test_concrete_test_unit.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_doc_template_pattern_imports.py](../../../tests/mcp_server/scaffolding/test_doc_template_pattern_imports.py) | scaffolding | raw | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_doc_template_rendering.py](../../../tests/mcp_server/scaffolding/test_doc_template_rendering.py) | scaffolding | prose, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier1_base_document.py](../../../tests/mcp_server/scaffolding/test_tier1_base_document.py) | scaffolding | raw, prose, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_document_patterns.py](../../../tests/mcp_server/scaffolding/test_tier3_document_patterns.py) | scaffolding | broad dependency match | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_assertions.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_assertions.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_async.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_async.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_di.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_di.py) | scaffolding | raw, project, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_error.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_error.py) | scaffolding | raw, project, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_lifecycle.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_lifecycle.py) | scaffolding | raw, project, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_log_enricher.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_log_enricher.py) | scaffolding | raw, project, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_logging.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_logging.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_mocking.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_mocking.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_pydantic.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_pydantic.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_pytest.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_pytest.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_test_fixtures.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_test_fixtures.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_test_structure.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_test_structure.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_translator.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_translator.py) | scaffolding | raw, project, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tier3_pattern_python_typed_id.py](../../../tests/mcp_server/scaffolding/test_tier3_pattern_python_typed_id.py) | scaffolding | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/scaffolding/test_tracking_templates.py](../../../tests/mcp_server/scaffolding/test_tracking_templates.py) | scaffolding | raw, prose, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_design_e2e.py](../../../tests/mcp_server/test_design_e2e.py) | other | prose, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_design_template.py](../../../tests/mcp_server/test_design_template.py) | other | raw, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_scaffolder_output_path_validation.py](../../../tests/mcp_server/test_scaffolder_output_path_validation.py) | other | path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_support.py](../../../tests/mcp_server/test_support.py) | other | raw | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_template_registry.py](../../../tests/mcp_server/test_template_registry.py) | other | raw, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier0_conditional_header.py](../../../tests/mcp_server/test_tier0_conditional_header.py) | other | path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier0_template.py](../../../tests/mcp_server/test_tier0_template.py) | other | raw, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier0_two_line_format.py](../../../tests/mcp_server/test_tier0_two_line_format.py) | other | path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier1_document.py](../../../tests/mcp_server/test_tier1_document.py) | other | prose, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier1_templates.py](../../../tests/mcp_server/test_tier1_templates.py) | other | raw, prose, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier2_markdown.py](../../../tests/mcp_server/test_tier2_markdown.py) | other | prose, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_tier2_templates.py](../../../tests/mcp_server/test_tier2_templates.py) | other | raw, prose, path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_validation_enforcement.py](../../../tests/mcp_server/test_validation_enforcement.py) | other | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_validation_metadata.py](../../../tests/mcp_server/test_validation_metadata.py) | other | raw | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/test_version_hash.py](../../../tests/mcp_server/test_version_hash.py) | other | registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/tools/test_a4_schema_overrides.py](../../../tests/mcp_server/tools/test_a4_schema_overrides.py) | other | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_artifact_definition_no_version.py](../../../tests/mcp_server/unit/config/test_artifact_definition_no_version.py) | unit | registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_artifact_registry_config.py](../../../tests/mcp_server/unit/config/test_artifact_registry_config.py) | unit | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_artifacts_type_field.py](../../../tests/mcp_server/unit/config/test_artifacts_type_field.py) | unit | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_c_loader_schema_structural.py](../../../tests/mcp_server/unit/config/test_c_loader_schema_structural.py) | unit | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_contracts_loader.py](../../../tests/mcp_server/unit/config/test_contracts_loader.py) | unit | prose, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_label_startup.py](../../../tests/mcp_server/unit/config/test_label_startup.py) | unit | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_loader_behaviors.py](../../../tests/mcp_server/unit/config/test_loader_behaviors.py) | unit | path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_modular_loader.py](../../../tests/mcp_server/unit/config/test_modular_loader.py) | unit | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_settings.py](../../../tests/mcp_server/unit/config/test_settings.py) | unit | fixtures | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_template_path_resolution.py](../../../tests/mcp_server/unit/config/test_template_path_resolution.py) | unit | broad dependency match | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_tool_presentation_rollout.py](../../../tests/mcp_server/unit/config/test_tool_presentation_rollout.py) | unit | raw | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_validator_c3.py](../../../tests/mcp_server/unit/config/test_validator_c3.py) | unit | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/config/test_workflow_config_c6.py](../../../tests/mcp_server/unit/config/test_workflow_config_c6.py) | unit | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/integration/test_all_tools.py](../../../tests/mcp_server/unit/integration/test_all_tools.py) | integration | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/managers/test_artifact_manager_metadata.py](../../../tests/mcp_server/unit/managers/test_artifact_manager_metadata.py) | unit | raw, path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/managers/test_artifact_manager_registry.py](../../../tests/mcp_server/unit/managers/test_artifact_manager_registry.py) | unit | path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/managers/test_artifact_manager.py](../../../tests/mcp_server/unit/managers/test_artifact_manager.py) | unit | path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/managers/test_c3_note_context_scaffold_chain.py](../../../tests/mcp_server/unit/managers/test_c3_note_context_scaffold_chain.py) | unit | path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/managers/test_directory_resolution.py](../../../tests/mcp_server/unit/managers/test_directory_resolution.py) | unit | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/managers/test_typescript_dto_scaffold.py](../../../tests/mcp_server/unit/managers/test_typescript_dto_scaffold.py) | unit | raw, path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolders/test_filesystem_integration.py](../../../tests/mcp_server/unit/scaffolders/test_filesystem_integration.py) | unit | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolders/test_template_registry.py](../../../tests/mcp_server/unit/scaffolders/test_template_registry.py) | unit | registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolders/test_template_scaffolder_introspection.py](../../../tests/mcp_server/unit/scaffolders/test_template_scaffolder_introspection.py) | unit | path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolders/test_template_scaffolder_no_hardcoded_fallback.py](../../../tests/mcp_server/unit/scaffolders/test_template_scaffolder_no_hardcoded_fallback.py) | unit | path | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolders/test_template_scaffolder.py](../../../tests/mcp_server/unit/scaffolders/test_template_scaffolder.py) | unit | path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolding/test_components.py](../../../tests/mcp_server/unit/scaffolding/test_components.py) | unit | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolding/test_metadata_parser.py](../../../tests/mcp_server/unit/scaffolding/test_metadata_parser.py) | unit | broad dependency match | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/scaffolding/test_template_introspector.py](../../../tests/mcp_server/unit/scaffolding/test_template_introspector.py) | unit | path, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/schemas/test_lifecycle.py](../../../tests/mcp_server/unit/schemas/test_lifecycle.py) | unit | path, registry | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/server/test_bootstrap.py](../../../tests/mcp_server/unit/server/test_bootstrap.py) | unit | registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/services/test_template_engine.py](../../../tests/mcp_server/unit/services/test_template_engine.py) | unit | raw, path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/services/test_workspace_upgrader.py](../../../tests/mcp_server/unit/services/test_workspace_upgrader.py) | unit | raw, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/templates/test_generic_doc_template.py](../../../tests/mcp_server/unit/templates/test_generic_doc_template.py) | unit | prose, path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/test_c260_c2_state_root_injection.py](../../../tests/mcp_server/unit/test_c260_c2_state_root_injection.py) | unit | registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/test_cli.py](../../../tests/mcp_server/unit/test_cli.py) | unit | raw, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/test_server.py](../../../tests/mcp_server/unit/test_server.py) | unit | raw, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/tools/test_cycle_tools.py](../../../tests/mcp_server/unit/tools/test_cycle_tools.py) | unit | registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/tools/test_extra_forbid.py](../../../tests/mcp_server/unit/tools/test_extra_forbid.py) | unit | broad dependency match | Adjacent | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/tools/test_issue_template_h1.py](../../../tests/mcp_server/unit/tools/test_issue_template_h1.py) | unit | path, registry, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/tools/test_safe_edit_tool.py](../../../tests/mcp_server/unit/tools/test_safe_edit_tool.py) | unit | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/tools/test_scaffold_artifact.py](../../../tests/mcp_server/unit/tools/test_scaffold_artifact.py) | unit | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/tools/test_scaffold_schema_tool.py](../../../tests/mcp_server/unit/tools/test_scaffold_schema_tool.py) | unit | fixtures | Direct | Keep/adapt/remove after behavior-value review |
+| [tests/mcp_server/unit/validation/test_template_analyzer.py](../../../tests/mcp_server/unit/validation/test_template_analyzer.py) | unit | raw, fixtures | Direct | Keep/adapt/remove after behavior-value review |
+
+## Completion Invariants
+
+Research is complete only when:
+
+1. Every public artifact has an explicit retained behavior and change disposition.
+2. Every suite file is retained, connected, replaced, or removed deliberately.
+3. Every example surface is derived/checkable, demonstrably useful, or removed.
+4. Every direct test/helper candidate has a keep/adapt/remove decision; adjacent candidates are confirmed affected or excluded with a reason.
+5. Runtime, setup, agent, and active documentation consumers have a recorded impact decision.
+6. Minimal and property-complete evidence remains reproducible from the exact contexts in [probe-evidence.yaml](probe-evidence.yaml).
+7. Design freedom is preserved: Research states observable constraints and ownership, while parser APIs, catalog classes, registries, staging topology, and digest algorithms remain Design decisions.
+
+## Current Gate
+
+Inventory and baseline probes are complete. Semantic preserved-behavior and file/test dispositions remain open for joint human review; therefore this catalog does not yet authorize Design or Planning.
+
+
+

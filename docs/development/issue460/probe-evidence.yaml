@@ -1,0 +1,792 @@
+version: "1.0"
+generated_on: "2026-08-23"
+issue: 460
+phase: research
+authority: "Durable baseline for the issue-460 template-suite audit; cached resources and temporary output paths are supplementary evidence only."
+method:
+  schema_source: "Live scaffold_schema response for every public artifact type."
+  minimal_probe: "Exactly the live required context fields, populated with deterministic values."
+  coverage_probe: "Every live public context property populated with a deterministic non-null value or one representative collection item."
+  output_location: "Ignored .pgmcp/temp/issue460/recovery-v1 paths; never used as durable evidence."
+summary:
+  artifact_types: 22
+  probes: 44
+  successful: 34
+  failed: 10
+artifacts:
+  adapter:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "target_interface": "string|null"
+      "methods": "array<string>|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: undefined
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/adapter/minimal/probe_adapter.py"
+        cache_resource_uri: "pgmcp://cache/runs/51fa82fd9a5c4e23b542d837bc631b87"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","target_interface":"ExampleProtocol","methods":["run"]}
+        schema_result: "accepted"
+        render_result: "failed"
+        output_validation: undefined
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "UndefinedError: 'str object' has no attribute 'name'"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/adapter/coverage/probe_adapter.py"
+        cache_resource_uri: "pgmcp://cache/runs/85b4d640470547cd83a9e7cb2efd2bfe"
+  architecture:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated","concepts"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "concepts": "array<string>"
+      "purpose": "string|null"
+      "scope_in": "string|null"
+      "scope_out": "string|null"
+      "prerequisites": "array<string>|null"
+      "related_docs": "array<string>|null"
+      "constraints": "array<string>|null"
+      "decisions": "array<string>|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","concepts":["Core concept"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/architecture/minimal/probe_architecture.md"
+        cache_resource_uri: "pgmcp://cache/runs/0cddbddf4af1436fa3976bff8897d450"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","concepts":["Core concept"],"purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"related_docs":["docs/reference/example.md"],"constraints":["Portable"],"decisions":["Decision record"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/architecture/coverage/probe_architecture.md"
+        cache_resource_uri: "pgmcp://cache/runs/084832b9c86b419883b9207651f57af3"
+  commit:
+    schema_result: "success"
+    additional_properties: false
+    required: ["type","message"]
+    strict_validation: "implicit"
+    properties:
+      "type": "string"
+      "message": "string"
+      "scope": "string|null"
+      "body": "string|null"
+      "breaking_change": "boolean|null"
+      "breaking_description": "string|null"
+      "footer": "string|null"
+      "refs": "array<string>|null"
+    probes:
+      minimal:
+        context: {"type":"refactor","message":"stabilize template contracts"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/commit/minimal/probe_commit.txt"
+        cache_resource_uri: "pgmcp://cache/runs/e4aa5f47134241a894c8c1f839b493c4"
+      coverage:
+        context: {"type":"refactor","message":"stabilize template contracts","scope":"scaffolding","body":"Coverage body","breaking_change":true,"breaking_description":"Breaking details","footer":"Refs #460","refs":["460"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/commit/coverage/probe_commit.txt"
+        cache_resource_uri: "pgmcp://cache/runs/bdc8c790368a43d1930e9d0b01b607ca"
+  design:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated","problem_statement","requirements_functional","requirements_nonfunctional","decision","rationale","options","key_decisions"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "problem_statement": "string"
+      "requirements_functional": "array<string>"
+      "requirements_nonfunctional": "array<string>"
+      "decision": "string"
+      "rationale": "string"
+      "purpose": "string|null"
+      "scope_in": "string|null"
+      "scope_out": "string|null"
+      "prerequisites": "array<string>|null"
+      "related_docs": "array<string>|null"
+      "constraints": "array<string>|null"
+      "options": "array<any>"
+      "key_decisions": "array<any>"
+      "open_questions": "array<string>|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","problem_statement":"Template contracts diverge from renderers.","requirements_functional":["Render declared content"],"requirements_nonfunctional":["Remain portable"],"decision":"Use the approved boundary.","rationale":"The boundary preserves one authority.","options":[{"name":"Option A","description":"Coverage option","pros":["Pro"],"cons":["Con"]}],"key_decisions":[{"decision":"Keep one authority","rationale":"Avoid drift"}]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/design/minimal/probe_design.md"
+        cache_resource_uri: "pgmcp://cache/runs/54f01c88c67447718ec6ffc35a86abed"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","problem_statement":"Template contracts diverge from renderers.","requirements_functional":["Render declared content"],"requirements_nonfunctional":["Remain portable"],"decision":"Use the approved boundary.","rationale":"The boundary preserves one authority.","purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"related_docs":["docs/reference/example.md"],"constraints":["Portable"],"options":[{"name":"Option A","description":"Coverage option","pros":["Pro"],"cons":["Con"]}],"key_decisions":[{"decision":"Keep one authority","rationale":"Avoid drift"}],"open_questions":["Which mechanism?"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/design/coverage/probe_design.md"
+        cache_resource_uri: "pgmcp://cache/runs/b2d3dadde7e943b39bff92b397d5377c"
+  dto:
+    schema_result: "success"
+    additional_properties: false
+    required: ["dto_name"]
+    strict_validation: true
+    properties:
+      "dto_name": "string"
+      "fields": "array<string>|null"
+      "description": "string|null"
+    probes:
+      minimal:
+        context: {"dto_name":"ProbeDTO"}
+        schema_result: "accepted"
+        render_result: "not_completed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: null
+        error_message: "Generated dto artifact failed validation"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/dto/minimal/probe_dto.py"
+        cache_resource_uri: "pgmcp://cache/runs/b3bf7c460f4648d3afa44112db24b47c"
+      coverage:
+        context: {"dto_name":"ProbeDTO","fields":["identifier: str"],"description":"Coverage description"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/dto/coverage/probe_dto.py"
+        cache_resource_uri: "pgmcp://cache/runs/35512759972a49c399b1c0168edaf320"
+  generic:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "layer": "string|null"
+      "methods": "array<string>|null"
+      "responsibilities": "array<string>|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic/minimal/probe_generic.py"
+        cache_resource_uri: "pgmcp://cache/runs/8201dff7c9f24be6af2048cb2f4e9484"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","methods":["run"],"responsibilities":["Render portable behavior"]}
+        schema_result: "accepted"
+        render_result: "failed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "UndefinedError: 'str object' has no attribute 'name'"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic/coverage/probe_generic.py"
+        cache_resource_uri: "pgmcp://cache/runs/7df8006c0c8140c0a89ad4206a7e92e8"
+  generic_doc:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated","purpose","summary"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "purpose": "string"
+      "summary": "string"
+      "scope_in": "string|null"
+      "scope_out": "string|null"
+      "prerequisites": "array<string>|null"
+      "related_docs": "array<string>|null"
+      "key_changes": "array<string>|null"
+      "migration_steps": "array<string>|null"
+      "validation_checklist": "array<string>|null"
+      "faq": "array<string>|null"
+      "custom_sections": "array<string>|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","purpose":"Exercise every declared property.","summary":"Coverage summary."}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic_doc/minimal/probe_generic_doc.md"
+        cache_resource_uri: "pgmcp://cache/runs/f277e071a1734f3a8a27b3a7681ec90d"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","purpose":"Exercise every declared property.","summary":"Coverage summary.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"related_docs":["docs/reference/example.md"],"key_changes":["Contract corrected"],"migration_steps":["Rediscover schema"],"validation_checklist":["Validate behavior"],"faq":["How? Use scaffold_schema."],"custom_sections":["Coverage section"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic_doc/coverage/probe_generic_doc.md"
+        cache_resource_uri: "pgmcp://cache/runs/bc1411128de94fc69aa0f503c50e4e41"
+  integration_test:
+    schema_result: "success"
+    additional_properties: false
+    required: ["test_scenario","test_class_name"]
+    strict_validation: true
+    properties:
+      "test_scenario": "string"
+      "test_class_name": "string"
+      "test_description": "string|null"
+      "managers_needed": "array<string>|null"
+      "workspace_fixture": "boolean|null"
+      "test_methods": "array<string>|null"
+    probes:
+      minimal:
+        context: {"test_scenario":"scaffolding pipeline","test_class_name":"TestProbeScaffolding"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/integration_test/minimal/probe_integration_test.py"
+        cache_resource_uri: "pgmcp://cache/runs/6c4fe302190349b39288d465078c8b25"
+      coverage:
+        context: {"test_scenario":"scaffolding pipeline","test_class_name":"TestProbeScaffolding","test_description":"Coverage test","managers_needed":["artifact_manager"],"workspace_fixture":true,"test_methods":["test_behavior"]}
+        schema_result: "accepted"
+        render_result: "failed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "UndefinedError: 'str object' has no attribute 'name'"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/integration_test/coverage/probe_integration_test.py"
+        cache_resource_uri: "pgmcp://cache/runs/07f984eb22ad4f7f9beacb3b6eefc939"
+  interface:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "methods": "array<string>|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/interface/minimal/probe_interface.py"
+        cache_resource_uri: "pgmcp://cache/runs/c3b16db8e02348369bea8238ce28c13c"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","methods":["run"]}
+        schema_result: "accepted"
+        render_result: "failed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "UndefinedError: 'str object' has no attribute 'name'"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/interface/coverage/probe_interface.py"
+        cache_resource_uri: "pgmcp://cache/runs/ed228f1f31f34fb08b9b2c6c8f9d83be"
+  issue:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","problem"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "problem": "string"
+      "summary": "string|null"
+      "expected": "string|null"
+      "actual": "string|null"
+      "context": "string|null"
+      "steps_to_reproduce": "string|null"
+      "related_docs": "array<string>|null"
+      "labels": "array<string>|null"
+      "milestone": "string|null"
+      "assignees": "array<string>|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","problem":"The generated artifact contract is inconsistent."}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/issue/minimal/probe_issue.md"
+        cache_resource_uri: "pgmcp://cache/runs/412786339d2045af8213bc33d47fe6d6"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","problem":"The generated artifact contract is inconsistent.","summary":"Coverage summary.","expected":"Valid portable output.","actual":"Current behavior diverges.","context":"Issue 460 research probe.","steps_to_reproduce":"1. Invoke scaffolding with coverage context.","related_docs":["docs/reference/example.md"],"labels":["refactor"],"milestone":"Issue 460","assignees":["maintainer"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/issue/coverage/probe_issue.md"
+        cache_resource_uri: "pgmcp://cache/runs/f07112f3274e4774a058b760847b8799"
+  planning:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated","summary","cycles"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "summary": "string"
+      "cycles": "array<any>"
+      "purpose": "string|null"
+      "scope_in": "string|null"
+      "scope_out": "string|null"
+      "prerequisites": "array<string>|null"
+      "dependencies": "array<string>|null"
+      "risks": "array<any>|null"
+      "milestones": "array<string>|null"
+      "related_docs": "array<string>|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","summary":"Coverage summary.","cycles":[{"cycle":"C1","goal":"Stabilize","tests":["contract"],"criteria":["passes"],"dependencies":[]}]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/planning/minimal/probe_planning.md"
+        cache_resource_uri: "pgmcp://cache/runs/012e03f71e94425f8c8a111460d756ed"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","summary":"Coverage summary.","cycles":[{"cycle":"C1","goal":"Stabilize","tests":["contract"],"criteria":["passes"],"dependencies":[]}],"purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"dependencies":["pydantic"],"risks":[{"risk":"Contract drift","impact":"high","mitigation":"single authority"}],"milestones":["Research complete"],"related_docs":["docs/reference/example.md"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/planning/coverage/probe_planning.md"
+        cache_resource_uri: "pgmcp://cache/runs/662a311e5f904bd48d626eab1e4cdfbd"
+  pr:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","changes"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "changes": "string"
+      "summary": "string|null"
+      "testing": "string|null"
+      "checklist_items": "array<string>|null"
+      "related_docs": "array<string>|null"
+      "closes_issues": "array<string>|null"
+      "breaking_changes": "string|null"
+      "deferred_work": "string|null"
+      "tracking_state": "string|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","changes":"Stabilize the complete suite."}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/pr/minimal/probe_pr.md"
+        cache_resource_uri: "pgmcp://cache/runs/35c14b8524d144e198f6227daaf24131"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","changes":"Stabilize the complete suite.","summary":"Coverage summary.","testing":"Run contract and output validation.","checklist_items":["Verify behavior"],"related_docs":["docs/reference/example.md"],"closes_issues":["460"],"breaking_changes":"Context schemas change.","deferred_work":"None.","tracking_state":"research"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/pr/coverage/probe_pr.md"
+        cache_resource_uri: "pgmcp://cache/runs/bfc44485f2044c23a256b9c9849d2a72"
+  reference:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated","source_file","test_file","api_reference"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "source_file": "string"
+      "test_file": "string"
+      "api_reference": "array<any>"
+      "usage_examples": "string|null"
+      "test_count": "integer|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","source_file":"mcp_server/example.py","test_file":"tests/test_example.py","api_reference":[{"name":"ExampleAPI","type":"class","description":"Coverage API","methods":[{"name":"run","signature":"run() -> None","description":"Run"}]}]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/reference/minimal/probe_reference.md"
+        cache_resource_uri: "pgmcp://cache/runs/8c9042809720474cb703fa010af234b9"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","source_file":"mcp_server/example.py","test_file":"tests/test_example.py","api_reference":[{"name":"ExampleAPI","type":"class","description":"Coverage API","methods":[{"name":"run","signature":"run() -> None","description":"Run"}]}],"usage_examples":"print('coverage')","test_count":1}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/reference/coverage/probe_reference.md"
+        cache_resource_uri: "pgmcp://cache/runs/fa182cb4ff2240dc88a542c43cddc7b5"
+  research:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated","problem_statement","goals"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "problem_statement": "string"
+      "goals": "array<string>"
+      "purpose": "string|null"
+      "scope_in": "string|null"
+      "scope_out": "string|null"
+      "prerequisites": "array<string>|null"
+      "background": "string|null"
+      "findings": "string|null"
+      "questions_list": "array<string>|null"
+      "references": "array<string>|null"
+      "related_docs": "array<string>|null"
+      "approved_strategy": "string|null"
+      "expected_results": "string|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","problem_statement":"Template contracts diverge from renderers.","goals":["Stabilize the suite"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/research/minimal/probe_research.md"
+        cache_resource_uri: "pgmcp://cache/runs/782a85b000fd4c0687bbe571f2d2a4bf"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","problem_statement":"Template contracts diverge from renderers.","goals":["Stabilize the suite"],"purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"background":"Existing template suite.","findings":"Coverage findings.","questions_list":["What is preserved?"],"references":["docs/reference/example.md"],"related_docs":["docs/reference/example.md"],"approved_strategy":"Use the approved clean break.","expected_results":"Stable suite."}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/research/coverage/probe_research.md"
+        cache_resource_uri: "pgmcp://cache/runs/1ece7c890abb4d7192a6f0e2a54eb221"
+  resource:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "resource_type": "string|null"
+      "methods": "array<string>|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/resource/minimal/probe_resource.py"
+        cache_resource_uri: "pgmcp://cache/runs/dfd3e5758837473a8b1e933435aae64c"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","resource_type":"generic","methods":["run"]}
+        schema_result: "accepted"
+        render_result: "failed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "UndefinedError: 'str object' has no attribute 'name'"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/resource/coverage/probe_resource.py"
+        cache_resource_uri: "pgmcp://cache/runs/d7404f879c414156a27856ade5d7ab44"
+  schema:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "layer": "string|null"
+      "fields": "array<string>|null"
+      "frozen": "boolean|null"
+      "examples": "array<string>|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/schema/minimal/probe_schema.py"
+        cache_resource_uri: "pgmcp://cache/runs/a675aecb537d40e8939973d93a9fd62f"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","fields":["identifier: str"],"frozen":true,"examples":["example"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "failed"
+        tool_success: false
+        error_type: null
+        error_message: "Generated schema artifact failed validation"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/schema/coverage/probe_schema.py"
+        cache_resource_uri: "pgmcp://cache/runs/6941f2454db64d569c49acd72c812419"
+  service:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "layer": "string|null"
+      "responsibilities": "array<string>|null"
+      "parameters": "array<string>|null"
+      "return_type": "string|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/service/minimal/probe_service.py"
+        cache_resource_uri: "pgmcp://cache/runs/ca26ff8bc0ca4a36b87e4938ecca2b97"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","responsibilities":["Render portable behavior"],"parameters":["parameters item"],"return_type":"str"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "failed"
+        tool_success: false
+        error_type: null
+        error_message: "Generated service artifact failed validation"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/service/coverage/probe_service.py"
+        cache_resource_uri: "pgmcp://cache/runs/6f03a4c170584536abfc14ee877b7fad"
+  tool:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "description": "string|null"
+      "layer": "string|null"
+      "responsibilities": "array<string>|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/tool/minimal/probe_tool.py"
+        cache_resource_uri: "pgmcp://cache/runs/18e5f30bb37f448b969a47a6cf0a2f1d"
+      coverage:
+        context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","responsibilities":["Render portable behavior"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/tool/coverage/probe_tool.py"
+        cache_resource_uri: "pgmcp://cache/runs/43c6b50db7d1402ea9e1d28c3d96a210"
+  typescript_dto:
+    schema_result: "success"
+    additional_properties: false
+    required: ["fields"]
+    strict_validation: true
+    properties:
+      "fields": "array<string>"
+      "implements": "string|null"
+    probes:
+      minimal:
+        context: {"fields":["identifier: str"]}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/typescript_dto/minimal/probe_typescript_dto.ts"
+        cache_resource_uri: "pgmcp://cache/runs/71c7ee2cb1164a889d53a940eef5e87a"
+      coverage:
+        context: {"fields":["identifier: str"],"implements":"ExampleProtocol"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/typescript_dto/coverage/probe_typescript_dto.ts"
+        cache_resource_uri: "pgmcp://cache/runs/4e67806837a841dabc2d6f9bd4deffb4"
+  unit_test:
+    schema_result: "success"
+    additional_properties: false
+    required: ["module_under_test","test_class_name"]
+    strict_validation: true
+    properties:
+      "module_under_test": "string"
+      "test_class_name": "string"
+      "test_description": "string|null"
+      "test_focus": "string|null"
+      "additional_responsibility": "string|null"
+      "imported_classes": "array<string>|null"
+      "has_mocks": "boolean|null"
+      "has_async_tests": "boolean|null"
+      "has_pydantic": "boolean|null"
+      "test_methods": "array<string>|null"
+    probes:
+      minimal:
+        context: {"module_under_test":"mcp_server.example","test_class_name":"TestProbeScaffolding"}
+        schema_result: "accepted"
+        render_result: "not_completed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "TypeError: 'NoneType' object is not iterable"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/unit_test/minimal/probe_unit_test.py"
+        cache_resource_uri: "pgmcp://cache/runs/8dc3d5f503504d93833d1bc810441956"
+      coverage:
+        context: {"module_under_test":"mcp_server.example","test_class_name":"TestProbeScaffolding","test_description":"Coverage test","test_focus":"observable behavior","additional_responsibility":"edge cases","imported_classes":["ExampleClass"],"has_mocks":true,"has_async_tests":true,"has_pydantic":true,"test_methods":["test_behavior"]}
+        schema_result: "accepted"
+        render_result: "failed"
+        output_validation: "not_reached"
+        tool_success: false
+        error_type: "ExecutionError"
+        error_message: "UndefinedError: 'str object' has no attribute 'name'"
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/unit_test/coverage/probe_unit_test.py"
+        cache_resource_uri: "pgmcp://cache/runs/ca5801929c884bb29a4be226a8cec076"
+  validation_report:
+    schema_result: "success"
+    additional_properties: false
+    required: ["title","status","version","last_updated"]
+    strict_validation: "implicit"
+    properties:
+      "title": "string"
+      "status": "string"
+      "version": "string"
+      "last_updated": "string"
+      "issue_number": "integer|null"
+      "cycle": "string|null"
+      "validation_status": "string|null"
+      "scope": "string|null"
+    probes:
+      minimal:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/validation_report/minimal/probe_validation_report.md"
+        cache_resource_uri: "pgmcp://cache/runs/a64388416d30404cb2378335988f4a9c"
+      coverage:
+        context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","issue_number":460,"cycle":"research","validation_status":"PASS","scope":"scaffolding"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/validation_report/coverage/probe_validation_report.md"
+        cache_resource_uri: "pgmcp://cache/runs/164a0fcd0f7146e1ba58eeecf1b2ce6c"
+  worker:
+    schema_result: "success"
+    additional_properties: false
+    required: ["name","layer"]
+    strict_validation: true
+    properties:
+      "name": "string"
+      "layer": "string"
+      "module_description": "string|null"
+      "worker_scope": "string|null"
+      "responsibilities": "array<string>|null"
+      "capabilities": "array<string>|null"
+      "use_async": "boolean|null"
+    probes:
+      minimal:
+        context: {"name":"ProbeComponent","layer":"domain"}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/worker/minimal/probe_worker.py"
+        cache_resource_uri: "pgmcp://cache/runs/a970154271b444ad8193b8da6db6afbc"
+      coverage:
+        context: {"name":"ProbeComponent","layer":"domain","module_description":"Portable worker module.","worker_scope":"platform","responsibilities":["Render portable behavior"],"capabilities":["logging"],"use_async":true}
+        schema_result: "accepted"
+        render_result: "success"
+        output_validation: "passed_or_not_separately_exposed"
+        tool_success: true
+        error_type: null
+        error_message: null
+        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/worker/coverage/probe_worker.py"
+        cache_resource_uri: "pgmcp://cache/runs/5fd056fde36a4fbebe30449fd308a9a4"
