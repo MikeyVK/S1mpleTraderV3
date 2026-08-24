@@ -1,18 +1,23 @@
-version: "1.0"
-generated_on: "2026-08-23"
+version: "1.1"
+generated_on: "2026-08-24"
 issue: 460
 phase: research
-authority: "Durable baseline for the issue-460 template-suite audit; cached resources and temporary output paths are supplementary evidence only."
+authority: "Durable baseline for the issue-460 template-suite audit; exact contexts and observable outcomes are authoritative."
 method:
   schema_source: "Live scaffold_schema response for every public artifact type."
   minimal_probe: "Exactly the live required context fields, populated with deterministic values."
   coverage_probe: "Every live public context property populated with a deterministic non-null value or one representative collection item."
-  output_location: "Ignored .pgmcp/temp/issue460/recovery-v1 paths; never used as durable evidence."
+  excluded_diagnostics: "Machine-local output paths and cache resource URIs are intentionally omitted."
 summary:
   artifact_types: 22
   probes: 44
   successful: 34
   failed: 10
+  supplemental_f02_cases: 8
+  supplemental_f02_attempted: 7
+  supplemental_f02_successful: 6
+  supplemental_f02_failed: 1
+  supplemental_f02_unavailable: 1
 artifacts:
   adapter:
     schema_result: "success"
@@ -33,8 +38,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/adapter/minimal/probe_adapter.py"
-        cache_resource_uri: "pgmcp://cache/runs/51fa82fd9a5c4e23b542d837bc631b87"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","target_interface":"ExampleProtocol","methods":["run"]}
         schema_result: "accepted"
@@ -43,8 +46,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "UndefinedError: 'str object' has no attribute 'name'"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/adapter/coverage/probe_adapter.py"
-        cache_resource_uri: "pgmcp://cache/runs/85b4d640470547cd83a9e7cb2efd2bfe"
   architecture:
     schema_result: "success"
     additional_properties: false
@@ -72,8 +73,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/architecture/minimal/probe_architecture.md"
-        cache_resource_uri: "pgmcp://cache/runs/0cddbddf4af1436fa3976bff8897d450"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","concepts":["Core concept"],"purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"related_docs":["docs/reference/example.md"],"constraints":["Portable"],"decisions":["Decision record"]}
         schema_result: "accepted"
@@ -82,8 +81,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/architecture/coverage/probe_architecture.md"
-        cache_resource_uri: "pgmcp://cache/runs/084832b9c86b419883b9207651f57af3"
   commit:
     schema_result: "success"
     additional_properties: false
@@ -107,8 +104,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/commit/minimal/probe_commit.txt"
-        cache_resource_uri: "pgmcp://cache/runs/e4aa5f47134241a894c8c1f839b493c4"
       coverage:
         context: {"type":"refactor","message":"stabilize template contracts","scope":"scaffolding","body":"Coverage body","breaking_change":true,"breaking_description":"Breaking details","footer":"Refs #460","refs":["460"]}
         schema_result: "accepted"
@@ -117,8 +112,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/commit/coverage/probe_commit.txt"
-        cache_resource_uri: "pgmcp://cache/runs/bdc8c790368a43d1930e9d0b01b607ca"
   design:
     schema_result: "success"
     additional_properties: false
@@ -152,8 +145,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/design/minimal/probe_design.md"
-        cache_resource_uri: "pgmcp://cache/runs/54f01c88c67447718ec6ffc35a86abed"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","problem_statement":"Template contracts diverge from renderers.","requirements_functional":["Render declared content"],"requirements_nonfunctional":["Remain portable"],"decision":"Use the approved boundary.","rationale":"The boundary preserves one authority.","purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"related_docs":["docs/reference/example.md"],"constraints":["Portable"],"options":[{"name":"Option A","description":"Coverage option","pros":["Pro"],"cons":["Con"]}],"key_decisions":[{"decision":"Keep one authority","rationale":"Avoid drift"}],"open_questions":["Which mechanism?"]}
         schema_result: "accepted"
@@ -162,8 +153,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/design/coverage/probe_design.md"
-        cache_resource_uri: "pgmcp://cache/runs/b2d3dadde7e943b39bff92b397d5377c"
   dto:
     schema_result: "success"
     additional_properties: false
@@ -182,18 +171,14 @@ artifacts:
         tool_success: false
         error_type: null
         error_message: "Generated dto artifact failed validation"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/dto/minimal/probe_dto.py"
-        cache_resource_uri: "pgmcp://cache/runs/b3bf7c460f4648d3afa44112db24b47c"
       coverage:
         context: {"dto_name":"ProbeDTO","fields":["identifier: str"],"description":"Coverage description"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/dto/coverage/probe_dto.py"
-        cache_resource_uri: "pgmcp://cache/runs/35512759972a49c399b1c0168edaf320"
   generic:
     schema_result: "success"
     additional_properties: false
@@ -210,12 +195,10 @@ artifacts:
         context: {"name":"ProbeComponent"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic/minimal/probe_generic.py"
-        cache_resource_uri: "pgmcp://cache/runs/8201dff7c9f24be6af2048cb2f4e9484"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","methods":["run"],"responsibilities":["Render portable behavior"]}
         schema_result: "accepted"
@@ -224,8 +207,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "UndefinedError: 'str object' has no attribute 'name'"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic/coverage/probe_generic.py"
-        cache_resource_uri: "pgmcp://cache/runs/7df8006c0c8140c0a89ad4206a7e92e8"
   generic_doc:
     schema_result: "success"
     additional_properties: false
@@ -256,8 +237,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic_doc/minimal/probe_generic_doc.md"
-        cache_resource_uri: "pgmcp://cache/runs/f277e071a1734f3a8a27b3a7681ec90d"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","purpose":"Exercise every declared property.","summary":"Coverage summary.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"related_docs":["docs/reference/example.md"],"key_changes":["Contract corrected"],"migration_steps":["Rediscover schema"],"validation_checklist":["Validate behavior"],"faq":["How? Use scaffold_schema."],"custom_sections":["Coverage section"]}
         schema_result: "accepted"
@@ -266,8 +245,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/generic_doc/coverage/probe_generic_doc.md"
-        cache_resource_uri: "pgmcp://cache/runs/bc1411128de94fc69aa0f503c50e4e41"
   integration_test:
     schema_result: "success"
     additional_properties: false
@@ -285,12 +262,10 @@ artifacts:
         context: {"test_scenario":"scaffolding pipeline","test_class_name":"TestProbeScaffolding"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/integration_test/minimal/probe_integration_test.py"
-        cache_resource_uri: "pgmcp://cache/runs/6c4fe302190349b39288d465078c8b25"
       coverage:
         context: {"test_scenario":"scaffolding pipeline","test_class_name":"TestProbeScaffolding","test_description":"Coverage test","managers_needed":["artifact_manager"],"workspace_fixture":true,"test_methods":["test_behavior"]}
         schema_result: "accepted"
@@ -299,8 +274,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "UndefinedError: 'str object' has no attribute 'name'"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/integration_test/coverage/probe_integration_test.py"
-        cache_resource_uri: "pgmcp://cache/runs/07f984eb22ad4f7f9beacb3b6eefc939"
   interface:
     schema_result: "success"
     additional_properties: false
@@ -315,12 +288,10 @@ artifacts:
         context: {"name":"ProbeComponent"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/interface/minimal/probe_interface.py"
-        cache_resource_uri: "pgmcp://cache/runs/c3b16db8e02348369bea8238ce28c13c"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","methods":["run"]}
         schema_result: "accepted"
@@ -329,8 +300,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "UndefinedError: 'str object' has no attribute 'name'"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/interface/coverage/probe_interface.py"
-        cache_resource_uri: "pgmcp://cache/runs/ed228f1f31f34fb08b9b2c6c8f9d83be"
   issue:
     schema_result: "success"
     additional_properties: false
@@ -357,8 +326,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/issue/minimal/probe_issue.md"
-        cache_resource_uri: "pgmcp://cache/runs/412786339d2045af8213bc33d47fe6d6"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","problem":"The generated artifact contract is inconsistent.","summary":"Coverage summary.","expected":"Valid portable output.","actual":"Current behavior diverges.","context":"Issue 460 research probe.","steps_to_reproduce":"1. Invoke scaffolding with coverage context.","related_docs":["docs/reference/example.md"],"labels":["refactor"],"milestone":"Issue 460","assignees":["maintainer"]}
         schema_result: "accepted"
@@ -367,8 +334,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/issue/coverage/probe_issue.md"
-        cache_resource_uri: "pgmcp://cache/runs/f07112f3274e4774a058b760847b8799"
   planning:
     schema_result: "success"
     additional_properties: false
@@ -398,8 +363,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/planning/minimal/probe_planning.md"
-        cache_resource_uri: "pgmcp://cache/runs/012e03f71e94425f8c8a111460d756ed"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","summary":"Coverage summary.","cycles":[{"cycle":"C1","goal":"Stabilize","tests":["contract"],"criteria":["passes"],"dependencies":[]}],"purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"dependencies":["pydantic"],"risks":[{"risk":"Contract drift","impact":"high","mitigation":"single authority"}],"milestones":["Research complete"],"related_docs":["docs/reference/example.md"]}
         schema_result: "accepted"
@@ -408,8 +371,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/planning/coverage/probe_planning.md"
-        cache_resource_uri: "pgmcp://cache/runs/662a311e5f904bd48d626eab1e4cdfbd"
   pr:
     schema_result: "success"
     additional_properties: false
@@ -435,8 +396,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/pr/minimal/probe_pr.md"
-        cache_resource_uri: "pgmcp://cache/runs/35c14b8524d144e198f6227daaf24131"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","changes":"Stabilize the complete suite.","summary":"Coverage summary.","testing":"Run contract and output validation.","checklist_items":["Verify behavior"],"related_docs":["docs/reference/example.md"],"closes_issues":["460"],"breaking_changes":"Context schemas change.","deferred_work":"None.","tracking_state":"research"}
         schema_result: "accepted"
@@ -445,8 +404,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/pr/coverage/probe_pr.md"
-        cache_resource_uri: "pgmcp://cache/runs/bfc44485f2044c23a256b9c9849d2a72"
   reference:
     schema_result: "success"
     additional_properties: false
@@ -471,8 +428,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/reference/minimal/probe_reference.md"
-        cache_resource_uri: "pgmcp://cache/runs/8c9042809720474cb703fa010af234b9"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","source_file":"mcp_server/example.py","test_file":"tests/test_example.py","api_reference":[{"name":"ExampleAPI","type":"class","description":"Coverage API","methods":[{"name":"run","signature":"run() -> None","description":"Run"}]}],"usage_examples":"print('coverage')","test_count":1}
         schema_result: "accepted"
@@ -481,8 +436,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/reference/coverage/probe_reference.md"
-        cache_resource_uri: "pgmcp://cache/runs/fa182cb4ff2240dc88a542c43cddc7b5"
   research:
     schema_result: "success"
     additional_properties: false
@@ -515,8 +468,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/research/minimal/probe_research.md"
-        cache_resource_uri: "pgmcp://cache/runs/782a85b000fd4c0687bbe571f2d2a4bf"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","problem_statement":"Template contracts diverge from renderers.","goals":["Stabilize the suite"],"purpose":"Exercise every declared property.","scope_in":"Template suite","scope_out":"Unrelated runtime behavior","prerequisites":["Read the contract"],"background":"Existing template suite.","findings":"Coverage findings.","questions_list":["What is preserved?"],"references":["docs/reference/example.md"],"related_docs":["docs/reference/example.md"],"approved_strategy":"Use the approved clean break.","expected_results":"Stable suite."}
         schema_result: "accepted"
@@ -525,8 +476,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/research/coverage/probe_research.md"
-        cache_resource_uri: "pgmcp://cache/runs/1ece7c890abb4d7192a6f0e2a54eb221"
   resource:
     schema_result: "success"
     additional_properties: false
@@ -542,12 +491,10 @@ artifacts:
         context: {"name":"ProbeComponent"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/resource/minimal/probe_resource.py"
-        cache_resource_uri: "pgmcp://cache/runs/dfd3e5758837473a8b1e933435aae64c"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","resource_type":"generic","methods":["run"]}
         schema_result: "accepted"
@@ -556,8 +503,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "UndefinedError: 'str object' has no attribute 'name'"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/resource/coverage/probe_resource.py"
-        cache_resource_uri: "pgmcp://cache/runs/d7404f879c414156a27856ade5d7ab44"
   schema:
     schema_result: "success"
     additional_properties: false
@@ -575,12 +520,10 @@ artifacts:
         context: {"name":"ProbeComponent"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/schema/minimal/probe_schema.py"
-        cache_resource_uri: "pgmcp://cache/runs/a675aecb537d40e8939973d93a9fd62f"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","fields":["identifier: str"],"frozen":true,"examples":["example"]}
         schema_result: "accepted"
@@ -589,8 +532,6 @@ artifacts:
         tool_success: false
         error_type: null
         error_message: "Generated schema artifact failed validation"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/schema/coverage/probe_schema.py"
-        cache_resource_uri: "pgmcp://cache/runs/6941f2454db64d569c49acd72c812419"
   service:
     schema_result: "success"
     additional_properties: false
@@ -608,12 +549,10 @@ artifacts:
         context: {"name":"ProbeComponent"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/service/minimal/probe_service.py"
-        cache_resource_uri: "pgmcp://cache/runs/ca26ff8bc0ca4a36b87e4938ecca2b97"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","responsibilities":["Render portable behavior"],"parameters":["parameters item"],"return_type":"str"}
         schema_result: "accepted"
@@ -622,8 +561,6 @@ artifacts:
         tool_success: false
         error_type: null
         error_message: "Generated service artifact failed validation"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/service/coverage/probe_service.py"
-        cache_resource_uri: "pgmcp://cache/runs/6f03a4c170584536abfc14ee877b7fad"
   tool:
     schema_result: "success"
     additional_properties: false
@@ -639,22 +576,18 @@ artifacts:
         context: {"name":"ProbeComponent"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/tool/minimal/probe_tool.py"
-        cache_resource_uri: "pgmcp://cache/runs/18e5f30bb37f448b969a47a6cf0a2f1d"
       coverage:
         context: {"name":"ProbeComponent","description":"Coverage description","layer":"domain","responsibilities":["Render portable behavior"]}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/tool/coverage/probe_tool.py"
-        cache_resource_uri: "pgmcp://cache/runs/43c6b50db7d1402ea9e1d28c3d96a210"
   typescript_dto:
     schema_result: "success"
     additional_properties: false
@@ -668,22 +601,18 @@ artifacts:
         context: {"fields":["identifier: str"]}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/typescript_dto/minimal/probe_typescript_dto.ts"
-        cache_resource_uri: "pgmcp://cache/runs/71c7ee2cb1164a889d53a940eef5e87a"
       coverage:
         context: {"fields":["identifier: str"],"implements":"ExampleProtocol"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/typescript_dto/coverage/probe_typescript_dto.ts"
-        cache_resource_uri: "pgmcp://cache/runs/4e67806837a841dabc2d6f9bd4deffb4"
   unit_test:
     schema_result: "success"
     additional_properties: false
@@ -709,8 +638,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "TypeError: 'NoneType' object is not iterable"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/unit_test/minimal/probe_unit_test.py"
-        cache_resource_uri: "pgmcp://cache/runs/8dc3d5f503504d93833d1bc810441956"
       coverage:
         context: {"module_under_test":"mcp_server.example","test_class_name":"TestProbeScaffolding","test_description":"Coverage test","test_focus":"observable behavior","additional_responsibility":"edge cases","imported_classes":["ExampleClass"],"has_mocks":true,"has_async_tests":true,"has_pydantic":true,"test_methods":["test_behavior"]}
         schema_result: "accepted"
@@ -719,8 +646,6 @@ artifacts:
         tool_success: false
         error_type: "ExecutionError"
         error_message: "UndefinedError: 'str object' has no attribute 'name'"
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/unit_test/coverage/probe_unit_test.py"
-        cache_resource_uri: "pgmcp://cache/runs/ca5801929c884bb29a4be226a8cec076"
   validation_report:
     schema_result: "success"
     additional_properties: false
@@ -744,8 +669,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/validation_report/minimal/probe_validation_report.md"
-        cache_resource_uri: "pgmcp://cache/runs/a64388416d30404cb2378335988f4a9c"
       coverage:
         context: {"title":"Issue 460 Probe Artifact","status":"DRAFT","version":"1.0","last_updated":"2026-08-23","issue_number":460,"cycle":"research","validation_status":"PASS","scope":"scaffolding"}
         schema_result: "accepted"
@@ -754,8 +677,6 @@ artifacts:
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/validation_report/coverage/probe_validation_report.md"
-        cache_resource_uri: "pgmcp://cache/runs/164a0fcd0f7146e1ba58eeecf1b2ce6c"
   worker:
     schema_result: "success"
     additional_properties: false
@@ -774,19 +695,177 @@ artifacts:
         context: {"name":"ProbeComponent","layer":"domain"}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/worker/minimal/probe_worker.py"
-        cache_resource_uri: "pgmcp://cache/runs/a970154271b444ad8193b8da6db6afbc"
       coverage:
         context: {"name":"ProbeComponent","layer":"domain","module_description":"Portable worker module.","worker_scope":"platform","responsibilities":["Render portable behavior"],"capabilities":["logging"],"use_async":true}
         schema_result: "accepted"
         render_result: "success"
-        output_validation: "passed_or_not_separately_exposed"
+        output_validation: "not_separately_exposed"
         tool_success: true
         error_type: null
         error_message: null
-        temporary_output_path: ".pgmcp/temp/issue460/recovery-v1/worker/coverage/probe_worker.py"
-        cache_resource_uri: "pgmcp://cache/runs/5fd056fde36a4fbebe30449fd308a9a4"
+
+
+semantic_observation_contract:
+  scope: "Every successful baseline probe is indexed below. Unmentioned dimensions use these explicit defaults; overrides record inspected behavior."
+  defaults:
+    caller_field_consumed: "not_determined"
+    expected_section_or_value: "not_determined"
+    links_use_definition_closure: "not_applicable"
+    issue_prefix: "not_applicable"
+    checklist_text_and_state: "not_applicable"
+    source_parse: "not_applicable"
+    absolute_path_leak: true
+    null_visible: "not_determined"
+    collection_rendering: "not_applicable"
+    output_profile_evidence: "not_exposed"
+  enums:
+    caller_field_consumed: ["yes", "partial", "no", "not_determined"]
+    expected_section_or_value: ["present", "partial", "missing", "malformed", "not_determined"]
+    links_use_definition_closure: ["closed", "unresolved", "not_applicable", "not_determined"]
+    issue_prefix: ["correct", "double_prefixed", "not_applicable", "not_determined"]
+    checklist_text_and_state: ["preserved", "changed", "missing", "not_applicable", "not_determined"]
+    source_parse: ["passed", "failed", "not_applicable", "not_exposed"]
+    null_visible: ["yes", "no", "not_determined"]
+    collection_rendering: ["structural", "character_by_character", "not_applicable", "not_determined"]
+    output_profile_evidence: ["passed", "failed", "unavailable", "not_exposed"]
+
+semantic_observations:
+  "adapter.minimal": {context_ref: "artifacts.adapter.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "architecture.minimal": {context_ref: "artifacts.architecture.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", collection_rendering: "structural"}
+  "architecture.coverage": {context_ref: "artifacts.architecture.probes.coverage.context", caller_field_consumed: "partial", expected_section_or_value: "partial", null_visible: "yes", collection_rendering: "structural", note: "The supplied constraint was absent from the rendered artifact."}
+  "commit.minimal": {context_ref: "artifacts.commit.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "no"}
+  "commit.coverage": {context_ref: "artifacts.commit.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "no", collection_rendering: "structural"}
+  "design.minimal": {context_ref: "artifacts.design.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", collection_rendering: "structural"}
+  "design.coverage": {context_ref: "artifacts.design.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", collection_rendering: "structural"}
+  "dto.coverage": {context_ref: "artifacts.dto.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "no", collection_rendering: "structural", source_parse: "not_exposed"}
+  "generic.minimal": {context_ref: "artifacts.generic.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "generic_doc.minimal": {context_ref: "artifacts.generic_doc.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes"}
+  "generic_doc.coverage": {context_ref: "artifacts.generic_doc.probes.coverage.context", caller_field_consumed: "partial", expected_section_or_value: "partial", checklist_text_and_state: "preserved", null_visible: "yes", collection_rendering: "structural", note: "FAQ and custom-section values were accepted but rendered as blank content."}
+  "integration_test.minimal": {context_ref: "artifacts.integration_test.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "interface.minimal": {context_ref: "artifacts.interface.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "issue.minimal": {context_ref: "artifacts.issue.probes.minimal.context", caller_field_consumed: "partial", expected_section_or_value: "partial", null_visible: "yes", note: "The caller-supplied title was accepted but absent from the issue body."}
+  "issue.coverage": {context_ref: "artifacts.issue.probes.coverage.context", caller_field_consumed: "partial", expected_section_or_value: "partial", links_use_definition_closure: "unresolved", null_visible: "yes", collection_rendering: "structural", note: "The caller-supplied title was accepted but absent from the issue body."}
+  "planning.minimal": {context_ref: "artifacts.planning.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", collection_rendering: "structural"}
+  "planning.coverage": {context_ref: "artifacts.planning.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "present", links_use_definition_closure: "not_determined", null_visible: "yes", collection_rendering: "structural"}
+  "pr.minimal": {context_ref: "artifacts.pr.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes"}
+  "pr.coverage": {context_ref: "artifacts.pr.probes.coverage.context", caller_field_consumed: "partial", expected_section_or_value: "partial", links_use_definition_closure: "unresolved", issue_prefix: "double_prefixed", checklist_text_and_state: "preserved", null_visible: "yes", collection_rendering: "structural", note: "tracking_state was absent; issue value 460 became #460 while pre-prefixed values can become ##N."}
+  "reference.minimal": {context_ref: "artifacts.reference.probes.minimal.context", caller_field_consumed: "partial", expected_section_or_value: "partial", links_use_definition_closure: "unresolved", null_visible: "yes", collection_rendering: "structural", note: "Source and test link uses had no closing definitions."}
+  "reference.coverage": {context_ref: "artifacts.reference.probes.coverage.context", caller_field_consumed: "partial", expected_section_or_value: "malformed", links_use_definition_closure: "unresolved", null_visible: "yes", collection_rendering: "character_by_character", note: "usage_examples rendered one block per character; source and test definitions remained unresolved."}
+  "research.minimal": {context_ref: "artifacts.research.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", collection_rendering: "structural"}
+  "research.coverage": {context_ref: "artifacts.research.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "present", links_use_definition_closure: "not_determined", null_visible: "yes", collection_rendering: "structural"}
+  "resource.minimal": {context_ref: "artifacts.resource.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "schema.minimal": {context_ref: "artifacts.schema.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "service.minimal": {context_ref: "artifacts.service.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "tool.minimal": {context_ref: "artifacts.tool.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "yes", source_parse: "not_exposed"}
+  "tool.coverage": {context_ref: "artifacts.tool.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "present", null_visible: "no", collection_rendering: "structural", source_parse: "not_exposed"}
+  "typescript_dto.minimal": {context_ref: "artifacts.typescript_dto.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "malformed", null_visible: "no", collection_rendering: "structural", source_parse: "not_exposed", note: "The emitted JSDoc contained a malformed-looking line; no TypeScript parser result was exposed."}
+  "typescript_dto.coverage": {context_ref: "artifacts.typescript_dto.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "malformed", null_visible: "no", collection_rendering: "structural", source_parse: "not_exposed", note: "The emitted JSDoc contained a malformed-looking line; no TypeScript parser result was exposed."}
+  "validation_report.minimal": {context_ref: "artifacts.validation_report.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "partial", null_visible: "yes", note: "Omitted optional values rendered visibly as None and adjacent sections were concatenated."}
+  "validation_report.coverage": {context_ref: "artifacts.validation_report.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "partial", issue_prefix: "correct", null_visible: "yes", note: "Populated values rendered, but inherited optional metadata still exposed None and adjacent sections were concatenated."}
+  "worker.minimal": {context_ref: "artifacts.worker.probes.minimal.context", caller_field_consumed: "yes", expected_section_or_value: "partial", null_visible: "yes", source_parse: "not_exposed", note: "The output introduced backend-specific imports and behavior not supplied by the caller."}
+  "worker.coverage": {context_ref: "artifacts.worker.probes.coverage.context", caller_field_consumed: "yes", expected_section_or_value: "partial", null_visible: "yes", collection_rendering: "structural", source_parse: "not_exposed", note: "The output introduced backend-specific imports and behavior not supplied by the caller."}
+
+f02_representative_cases:
+  purpose: "Distinguish schema acceptance, render semantics, and output evidence for representative optional-value forms."
+  evidence_date: "2026-08-24"
+  output_paths_and_cache_uris: "Intentionally omitted as machine-local diagnostics."
+  cases:
+    omitted:
+      artifact_type: "validation_report"
+      field: "scope"
+      context: {"title":"F02 Omitted","status":"DRAFT","version":"1.0","last_updated":"2026-08-24"}
+      schema_result: "accepted"
+      render_result: "success"
+      caller_field_consumed: "not_applicable"
+      expected_section_or_value: "malformed"
+      observed_value: "None"
+      null_visible: "yes"
+      absolute_path_leak: true
+      output_profile_evidence: "not_exposed"
+    explicit_null:
+      artifact_type: "validation_report"
+      field: "scope"
+      context: {"title":"F02 Explicit Null","status":"DRAFT","version":"1.0","last_updated":"2026-08-24","scope":null}
+      schema_result: "accepted"
+      render_result: "success"
+      caller_field_consumed: "yes"
+      expected_section_or_value: "malformed"
+      observed_value: "None"
+      null_visible: "yes"
+      absolute_path_leak: true
+      output_profile_evidence: "not_exposed"
+    empty_string:
+      artifact_type: "validation_report"
+      field: "scope"
+      context: {"title":"F02 Empty String","status":"DRAFT","version":"1.0","last_updated":"2026-08-24","scope":""}
+      schema_result: "accepted"
+      render_result: "success"
+      caller_field_consumed: "yes"
+      expected_section_or_value: "present"
+      observed_value: "Empty Scope body"
+      null_visible: "no"
+      absolute_path_leak: true
+      output_profile_evidence: "not_exposed"
+    empty_collection:
+      artifact_type: "unit_test"
+      fields: ["imported_classes", "test_methods"]
+      context: {"module_under_test":"mcp_server.schemas.contexts.dto","test_class_name":"TestF02EmptyCollection","imported_classes":[],"test_methods":[],"has_mocks":false,"has_async_tests":false,"has_pydantic":false}
+      schema_result: "accepted"
+      render_result: "failed"
+      caller_field_consumed: "not_determined"
+      expected_section_or_value: "not_determined"
+      collection_rendering: "not_determined"
+      source_parse: "failed"
+      persisted: false
+      output_profile_evidence: "failed"
+      note: "The tool reported that the generated unit_test artifact failed validation; it exposed no validated file or parser detail."
+    false:
+      artifact_type: "worker"
+      field: "use_async"
+      context: {"name":"F02False","layer":"strategy","use_async":false}
+      schema_result: "accepted"
+      render_result: "success"
+      caller_field_consumed: "yes"
+      expected_section_or_value: "present"
+      observed_value: "No async method or await expression emitted"
+      null_visible: "yes"
+      source_parse: "not_exposed"
+      absolute_path_leak: true
+      output_profile_evidence: "not_exposed"
+    zero:
+      artifact_type: "reference"
+      field: "test_count"
+      context: {"title":"F02 Zero","status":"DRAFT","version":"1.0","last_updated":"2026-08-24","source_file":"src/example.py","test_file":"tests/test_example.py","api_reference":[{"name":"Example","description":"Example API"}],"test_count":0}
+      schema_result: "accepted"
+      render_result: "success"
+      caller_field_consumed: "no"
+      expected_section_or_value: "missing"
+      observed_value: "Test count omitted by a truthiness guard"
+      links_use_definition_closure: "unresolved"
+      null_visible: "yes"
+      absolute_path_leak: true
+      output_profile_evidence: "not_exposed"
+    declared_default:
+      artifact_type: null
+      field: null
+      context: null
+      schema_result: "unavailable"
+      render_result: "not_attempted"
+      output_profile_evidence: "unavailable"
+      note: "A registry-wide scan found no default key in any current public artifact context schema, so no declared schema default can be probed without inventing a contract."
+    populated_typed_value:
+      artifact_type: "validation_report"
+      field: "scope"
+      context: {"title":"F02 Populated Typed","status":"DRAFT","version":"1.0","last_updated":"2026-08-24","scope":"Scaffolding contract validation"}
+      schema_result: "accepted"
+      render_result: "success"
+      caller_field_consumed: "yes"
+      expected_section_or_value: "present"
+      observed_value: "Scaffolding contract validation"
+      null_visible: "yes"
+      absolute_path_leak: true
+      output_profile_evidence: "not_exposed"
