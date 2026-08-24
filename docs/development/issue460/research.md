@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW  
-**Version:** 1.23  
+**Version:** 1.33  
 **Last Updated:** 2026-08-23  
 **Issue:** 460  
 **Research Mode:** Standalone, non-destructive, pre-initialization research
@@ -301,6 +301,9 @@ These graph facts matter because scaffold_schema should describe the resolved re
 | F-13 | Successful scaffolding can still emit visibly null, blank, concatenated, or machine-specific content. | Callers receive artifacts that require immediate manual repair despite tool success. | cross-cutting acceptance, output profiles, concrete templates |
 | F-14 | Some code templates embed project-specific imports and architecture assumptions absent from scaffold_schema. | The advertised generic template suite is not independently reusable in other environments. | template-suite portability |
 | F-15 | Absolute host paths are embedded in every generated artifact header. | Output is machine-specific, noisy in review, and can disclose local directory structure. | provenance presentation |
+| F-16 | Suite-owned artifact purpose descriptions are dropped by `scaffold_schema`. | Callers see field mechanics but must infer why and when the artifact type is useful. | artifact registry, schema introspection |
+| F-17 | Eleven Python- or framework-specific contracts use language-agnostic public IDs. | Callers infer the wrong construct semantics and future language extensions cannot occupy an unambiguous namespace. | public artifact identity, configs, docs, consumers |
+| F-18 | Runtime tool schemas enumerate artifact IDs but expose no runtime ID-to-purpose discovery surface. | Agents can see available names but still depend on static docs or guesswork to select the right contract. | MCP discovery, active registry, harness instructions |
 
 ## Cross-Cutting Analysis
 
@@ -364,9 +367,50 @@ This history constrains the public boundary rather than prohibiting internal reu
 - scaffold_schema and every MCP client-facing schema expose only a fully resolved, self-contained representation without $defs or $ref.
 - Recursive context schemas are out of scope because no current template performs recursive rendering.
 
+#### Schema meaning versus workflow completeness
+
+Artifact-schema guidance and workflow instructions have different authority:
+
+- schema and property descriptions explain the stable, workflow-neutral meaning of caller-owned content, including what a valid value represents;
+- the active `contracts.yaml` phase instructions explain which evidence and level of completeness the current workflow and phase require;
+- the resolved template graph controls presentation only and does not redefine either authority.
+
+Phase artifacts such as research, design, planning, and validation reports are normally scaffolded during their corresponding active phases. The server already forces callers to load the active work context after phase and cycle transitions. `scaffold_schema` should therefore make the workflow-specific authority discoverable by an unambiguous reference instead of copying phase instructions into template configuration or field descriptions. The artifact schema must remain understandable outside an active workflow, and the reference must not hard-code one workflow's phase order or turn the template suite into a second workflow authority.
+
+#### Approved workflow-artifact responsibilities
+
+- **Research — Retain/adapt.** Preserve the carrier for problem, goals, structural evidence, open questions, internal and external references, expected outcomes, and conditional Approved Strategy. Stable field meaning is discoverable through the schema; active Research instructions own workflow-specific completeness.
+- **Design — Retain/adapt.** Preserve the technical decision record for problem boundary, requirements, constraints, alternatives, chosen direction, rationale, key decisions, and open questions. It must also be capable of carrying production and test design as first-class content, relevant interfaces/contracts, data/control flow, failure/state behavior, preservation or migration obligations, validation obligations, planning consequences, and source links. Active Design instructions select the workflow-specific emphasis. Requirements must not acquire completion-state semantics merely through incidental checkbox presentation. The exact fields, nested shapes, section layout, and rendering belong to Design.
+- **Planning — Retain/adapt.** Replace the universal TDD framing with a dependency-ordered executable plan: bounded work units, exclusions, deliverables, risks, dependencies, stop/go conditions, and proportionate exit evidence. Active Planning instructions determine whether units are implementation cycles, correction or migration steps, documentation tasks, or child issues, and whether RED/TDD is justified. Test work remains first-class but is not universally mandatory. Where workflows persist a structured project plan, the document and `save_planning_deliverables` payload must remain semantically identical; exact ownership and representation belong to Design.
+- **Validation Report — Retain/adapt.** Replace the placeholder scope/outcome shell with a compact, navigable evidence index that can record scope/exclusions, obligation-to-evidence mapping, exact and fresh test/gate/targeted outcomes, behavior/correction/containment/preservation proof as applicable, demonstration or fallback, failures, caveats, residual risks, and explicit deferred work. Producer-reported evidence status must remain distinct from independent QA authority. Raw logs remain in their authoritative resources rather than being copied into prose.
+
+#### Mandatory phase-instruction alignment for issue 460
+
+The four workflow-document artifacts and the workflow contracts are one cooperating toolchain. Design must compare every active Research, Design, Planning, and Validation `phase_instructions` variant with the corresponding final schema and renderer.
+
+- Every instruction that requires persisted phase content must have an obvious, semantically suitable artifact carrier.
+- Every stable artifact concept must be explained by schema guidance and used coherently by applicable phase instructions, or be justified as reusable outside workflow execution.
+- Action instructions, authority boundaries, tool calls, and workflow-specific completeness remain in `contracts.yaml`; templates and schemas do not copy them.
+- Templates own presentation and stable document structure; they do not redefine workflow behavior.
+- Phase instructions may be edited within issue 460 when alignment removes contradiction, missing artifact capacity, obsolete terminology, or inefficient workaround authoring. Such edits must preserve the approved workflow responsibilities rather than silently redesign them.
+- The alignment should minimize agent repair work and duplicate context: the phase instruction tells the agent what outcome is required, `scaffold_schema` explains how artifact content is supplied, and the renderer produces a fitting first draft.
+
+This makes [.pgmcp/config/contracts.yaml](../../../.pgmcp/config/contracts.yaml), its loader/validation tests, and active workflow-instruction documentation explicit members of the issue-460 blast radius. The exact comparison matrix, edits, and verification mechanism belong to Design and Planning.
+
+#### Approved general-document responsibilities
+
+- **Architecture — Retain/adapt.** Preserve durable system concepts, component boundaries and relationships, architectural constraints, system-level decisions and rationale, rejected alternatives, source/document relationships, and optional diagrams/subsections. Make every nested shape introspectable, render constraints explicitly, and distinguish long-lived architecture from issue-specific Design. Diagram support must not force unavailable validators into workspaces that do not use that capability.
+- **Generic Document — Retain/adapt.** Preserve a bounded structured fallback for guides, migration, operational, standards, and other documents without a specialized artifact contract. Retain purpose, summary, scope, prerequisites, links, key changes, ordered migration steps, validation checklists, FAQ, and flat custom sections. FAQ and section shapes must be fully introspectable; extension remains flat and finite rather than becoming a recursive document DSL. Its purpose description must direct callers toward specialized artifact types when applicable.
+- **Reference — Retain/adapt.** Preserve technical reference documentation for implemented public interfaces/components, including purpose, API semantics, signatures, parameters, returns, relevant error behavior, language-aware usage examples, and complete links to authoritative implementation sources. Support optional repeatable test/evidence links, remove volatile test counts, and never hard-code Python as the example language. Reference-style links remain first-class but must always include their definitions.
+
+#### Approved code-artifact responsibilities
+
+- **Interface — Retain/adapt.** Preserve the Python `Protocol` contract under the language-qualified identity required by F-17. Public methods are explicitly caller-owned through an introspectable method contract; the scaffold tool envelope owns the rendered class name. Omitted methods must not fabricate an `execute()` contract. Design decides whether an empty marker protocol is valid or at least one method is required. Remove hard-coded Backend/layer assumptions. Test creation remains workflow/plan/risk-owned; the currently unconsumed `generate_test` flag receives a suite-wide disposition during the engine/config audit rather than becoming automatic behavior.
+- **Adapter — Retain/adapt.** Preserve a portable Python boundary adapter under a language-qualified identity. Its local contract relationship, dependencies/imports, translation and failure behavior, and concrete methods must be caller-owned and introspectable. Do not fabricate `adapt()`, hard-code Backend layers, force unused logging, or let the artifact type create tests. Common signature definitions may be composed with Interface without collapsing abstract and concrete method semantics. S1mpleTrader-specific logging/Translator boilerplate is deferred preserved specialization, not package behavior.
+
 #### Design hand-off
 
-Design must choose the JSON Schema draft, authoring layout, local versus suite-shared composition mechanism, standards-compliant validation/resolution implementation, and lifecycle of resolved schemas. It must also separate suite-owned context from server-owned scaffold metadata. These choices may not weaken the Approved Strategy or reintroduce artifact-specific context models in pgmcp.
+Design must choose the JSON Schema draft, authoring layout, local versus suite-shared composition mechanism, standards-compliant validation/resolution implementation, and lifecycle of resolved schemas. It must also separate suite-owned context from server-owned scaffold metadata. For schema guidance, Design must define how schema-level and property-level descriptions reach `scaffold_schema`, and how phase-oriented artifacts refer callers to the already-loaded active phase instructions without duplicating their text. The exact reference carrier and resolution mechanism are Design decisions. These choices may not weaken the Approved Strategy, create a parallel workflow contract, or reintroduce artifact-specific context models in pgmcp.
 
 ### F-02 — optionality has inconsistent meaning
 
@@ -932,6 +976,14 @@ Historical S1mpleTraderV2 evidence confirms that LogEnricher and Translator were
 
 The official pgmcp suite must remove all six imports and files. Their optimized successors belong only in S1mpleTrader's complete active template root. That workspace already owns copies and will migrate them in a separate repository-local issue only after adopting the new pgmcp server and packaged template contract. Issue 460 performs no cross-repository edits, carries no duplicate migration assets, and is not blocked by that later consumer work. Activation of the upgraded server in S1mpleTrader remains blocked until its preserved local suite satisfies the new extension contract.
 
+### Deferred Work — S1mpleTrader-local template specialization
+
+Portable PGMCP code templates must remove unconditional logging, translator, Backend-layer, and other S1mpleTrader-specific boilerplate. Those details are not valueless: they are precisely what can make a workspace-owned suite substantially more productive than the portable baseline.
+
+The later S1mpleTrader repository-local migration issue must therefore treat the six preserved patterns and the adapter/service boilerplate as one deliberate specialization set. It must assess and, where still valid, recompose project logging, LogEnricher, Translator, lifecycle, dependency, error, and typed-ID conventions on top of the new PGMCP extension contract. In particular, removing unconditional logging/translation behavior from the package adapter is not a decision to discard it from S1mpleTrader. The distinction is ownership: generic behavior in PGMCP, project conventions in S1mpleTrader.
+
+Issue 460 records this preservation obligation but does not design or implement the S1mpleTrader-local successor suite.
+
 ### F-14A — Agent hints are obsolete duplicate guidance
 
 Agent hints predate declarative artifact schemas, `scaffold_schema`, and schema-field descriptions. At that time, Jinja introspection was the only way to give an agent usage guidance. That historical need no longer exists: schema descriptions explain caller-owned artifact content, while `contracts.yaml` remains authoritative for workflow behavior.
@@ -986,6 +1038,36 @@ A concrete artifact may render a path only when that path has domain meaning and
 **Approved Strategy (2026-08-23):** omit filesystem paths from generic artifact bodies. Retain output_path for target resolution and result evidence only; retain source provenance independently through the F-11 suite/type/graph identity. No compatibility bridge is required for the development-only header convention.
 
 **Status:** approved for portable, reproducible artifact content.
+
+### F-16 — scaffold_schema drops artifact-level purpose
+
+All 22 artifact configurations already declare one concise root `description`, but live `scaffold_schema(artifact_type='architecture')` evidence returns only the generated model title and property schemas. The suite-owned description `System architecture documentation` is absent. Field descriptions explain valid parts; they do not tell a human or LLM the artifact's overall purpose, boundary, or intended use.
+
+The public introspection response must expose a short, stable, workflow-neutral artifact purpose separately from property descriptions. For phase artifacts it may also carry the approved reference to active phase instructions for workflow-specific completeness, but it must not copy those instructions. The purpose remains useful when scaffolding outside an active workflow.
+
+**Approved Strategy (2026-08-24):** preserve the existing suite-owned root description as caller-visible artifact guidance through `scaffold_schema`. Keep the surface YAGNI-bounded: issue 460 requires the concise purpose and the already-required context contract, not an expanding catalog of speculative metadata. Exact JSON Schema placement, response DTO representation, and phase-authority reference belong to Design.
+
+**Status:** approved for all 22 public artifact types.
+
+### F-17 — language-specific contracts have generic identities
+
+Eleven public IDs — `adapter`, `dto`, `generic`, `integration_test`, `interface`, `resource`, `schema`, `service`, `tool`, `unit_test`, and `worker` — resolve exclusively to Python templates. Several are more specific still: the interface is a `typing.Protocol`, DTO and schema contracts are Pydantic-based, and tool/resource templates implement MCP concepts in Python. Only `typescript_dto` currently makes its language explicit.
+
+Language is not a presentation option for these contracts. A Python Protocol, Rust trait, and TypeScript interface require materially different fields, validation, rendering, and output profiles. A shared generic ID plus caller-supplied `language` would create conditional schemas, irrelevant optional fields, and data-driven template dispatch, defeating one-ID/one-contract introspection.
+
+**Approved Strategy (2026-08-24):** when language or framework determines context semantics, it forms part of the public artifact identity rather than caller context. Apply a clean break without aliases to the eleven implicit-Python IDs; exact language/technology-qualified names and naming convention belong to Design. Update configs, active docs/instructions, tests/fixtures, and current PGMCP consumers in issue 460. Other owned workspaces migrate manually; S1mpleTrader combines the identity migration with its deferred local specialization work.
+
+**Status:** approved; no generic `language` selector or compatibility aliases.
+
+### F-18 — artifact selection lacks purpose-aware runtime discovery
+
+Both scaffolding tools populate the `artifact_type` enum dynamically from the active validated registry at server startup. This exposes which IDs exist, but not why a caller should select one. Workflow phase instructions name their fixed document artifacts, while free code/document selection still depends on static AGENTS/examples, reference tables, or inference from ambiguous IDs. `scaffold_schema` is useful only after an ID has already been selected.
+
+**Approved Strategy (2026-08-24):** add one harness-agnostic MCP discovery tool backed by the same restart-stable active registry. Its caller-facing result is intentionally minimal: artifact `type_id` and the concise suite-owned purpose from F-16. It introduces no separately maintained inventory. A caller discovers type and purpose, selects one, calls `scaffold_schema` for the exact context contract, then calls `scaffold_artifact`.
+
+Harness-specific skills or commands may describe this reusable sequence, but remain thin consumers of the MCP tool and contain no artifact inventory. Fixed workflow instructions may continue naming known phase artifacts directly. Exact tool name, input/output DTO, cache/presentation behavior, and optional derived skill updates belong to Design; speculative catalog metadata remains out of scope.
+
+**Status:** approved as an issue-460 implementation boundary.
 
 ## Per-Artifact Semantic Audit
 
@@ -1370,6 +1452,9 @@ Implementation evidence:
 | Deferred YAML artifact subset | Deferred 2026-08-23 | Remove the two incomplete unreachable bases now; coordination should create the complete package subset as the first post-460 PGMCP issue on its own branch |
 | F-14B unreachable test patterns | Approved 2026-08-23 | Remove the empty assertions placeholder and unreachable incomplete fixture decorator; future fixture support must be first-class test-artifact behavior |
 | F-15 / S-13 output path semantics | Approved 2026-08-23 | Persistence targets remain tool-envelope and result evidence; generic artifact bodies contain no absolute or relative filesystem path by default |
+| F-16 artifact-purpose introspection | Approved 2026-08-24 | Expose the suite-owned concise artifact description through scaffold_schema; exact carrier is Design-owned and speculative catalog metadata remains out of scope |
+| F-17 language/technology-qualified identity | Approved 2026-08-24 | Language/framework semantics belong to artifact identity, not caller context; rename eleven implicit-Python IDs through a clean break without aliases |
+| F-18 runtime artifact discovery | Approved 2026-08-24 | Add one MCP discovery tool sourced from the active registry and expose only type ID plus F-16 purpose; optional skills remain inventory-free consumers |
 | Deployment compatibility | Approved 2026-08-23 | Sole current owner accepts manual migration across two machines and approximately four workspaces; repository evidence cannot prove absence of future external consumers, so the clean break is explicit and documented rather than silently generalized |
 
 Independent QA identified incomplete durable evidence, preserved-behavior decisions, test/helper/consumer blast-radius coverage, and phase separation. Research remains open while those gaps are resolved. Previously approved human decisions remain recorded; no Design transition is authorized until the catalog closes every affected component and a new independent QA review returns GO.
