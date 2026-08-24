@@ -3,7 +3,7 @@
 # Issue 460 Deferred Work
 
 **Status:** PRELIMINARY  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-08-24  
 **Originating Issue:** 460
 
@@ -13,7 +13,7 @@ Preserve all work explicitly deferred from issue 460 in one durable, non-authori
 
 ## Status and Authority
 
-The four deferrals below were approved during issue-460 Research. Their inventories and preliminary priorities are inputs to future Research, not future Design or implementation authorization.
+The five deferrals below were approved during issue-460 Research. Their inventories and preliminary priorities are inputs to future Research, not future Design or implementation authorization.
 
 The Generic Python class responsibility is approved in [Research](research.md) as a bounded body-free plain-class skeleton. That artifact-local boundary does not decide method-content policy for specialized Python templates.
 
@@ -23,6 +23,7 @@ The Generic Python class responsibility is approved in [Research](research.md) a
 | Complete YAML artifact subset | Remove two incomplete unreachable seeds now; do not restore them piecemeal | A future PGMCP issue |
 | Portable Python artifact coverage | Add no new Python artifact types in issue 460 | A future PGMCP issue with fresh consumer validation |
 | Purpose-aware runtime artifact discovery | Add no new MCP tool or overloaded introspection mode in issue 460 | A future PGMCP feature issue |
+| Command/query service artifact family | Remove broad Service and hidden subtype routing; add no replacement in issue 460 | A future PGMCP issue after concrete consumer validation |
 
 ---
 
@@ -175,6 +176,25 @@ Those responsibilities remain workspace or framework specializations unless mult
 
 The approved Generic plain-class artifact may not absorb these deferred responsibilities. Its body-free contract is artifact-local and creates no blanket prohibition for specialized Python templates considered by future Research.
 
+## Command/Query Service Artifact Family
+
+Issue 460 confirms that the current universal `service` artifact is not a stable package contract. It renders one S1mpleTrader-derived asynchronous command implementation, while hidden engine routing names command, query, and orchestrator variants that are not publicly representable and mostly do not exist.
+
+The current Service config, command renderer, legacy scaffolder, and hidden subtype routing are removed in issue 460. No compatibility alias or replacement artifact is retained.
+
+Command and Query may justify explicit future templates because they can represent distinct side-effect and return-value contracts. That possibility is deferred to a dedicated issue rather than designed inside the already broad issue-460 refactor.
+
+Future Research must establish:
+
+- concrete repeated consumers inside supported workspaces;
+- whether Command and Query are separate artifact responsibilities rather than variants behind one type;
+- their side-effect, input, output, error, dependency, sync/async, and naming boundaries;
+- language/framework qualification and relationship to Generic, Tool, DTO, and test artifacts;
+- whether an Orchestrator responsibility has independent evidence or is merely an application-specific class role;
+- which S1mpleTrader-specific logging, translation, result/error, and DI conventions belong only in that workspace.
+
+No exact IDs, schemas, inheritance structure, or renderer topology are approved here.
+
 ## Related Documentation
 
 - [Issue 460 Research](research.md)
@@ -189,5 +209,6 @@ The approved Generic plain-class artifact may not absorb these deferred responsi
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2 | 2026-08-24 | Defer any explicit command/query service artifact family after approving removal of the current broad Service and hidden subtype routing |
 | 1.1 | 2026-08-24 | Add deferred F-18 runtime discovery, reconcile the approved Generic boundary, and remove any implied suite-wide method-body rule |
 | 1.0 | 2026-08-24 | Consolidate all issue-460 deferred work and preserve the Generic Python approval boundary |

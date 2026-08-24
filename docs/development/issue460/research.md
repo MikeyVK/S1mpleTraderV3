@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
-**Status:** REVIEW — RESEARCH OPEN  
-**Version:** 2.2  
+**Status:** REVIEW — INDEPENDENT QA REQUESTED  
+**Version:** 3.4  
 **Last Updated:** 2026-08-24  
 **Issue:** 460  
 **Workflow:** Refactor / Research
@@ -16,13 +16,13 @@ This document is the sole authority for issue-460 decision status, Approved Stra
 
 ## Current Status and Gate
 
-Research is open. Inventory and baseline probes are complete, but the catalog has not closed every component disposition.
+Research content is complete and awaits independent QA. Inventory, baseline probes, strategy approval, all component dispositions, phase/template alignment, active-consumer impact, test architecture, and centralized deferred-work ownership are closed.
 
-- Seven public artifact types still require a joint disposition.
-- Thirty-eight suite files still carry a pending joint disposition.
-- The 103 test/helper candidates still require keep/adapt/remove review.
-- Runtime, setup, documentation, and agent consumers require final impact dispositions.
-- The Generic Python class responsibility was explicitly approved on 2026-08-24 with an artifact-local body-free boundary.
+- All 22 public artifact types have an approved retain/adapt or removal disposition.
+- All 79 packaged suite files have an explicit retain/adapt or removal disposition.
+- All 105 test/helper candidates have explicit behavior-value and Architecture Principles dispositions; the original census omitted two obsolete legacy-validation test modules, which the completed consumer sweep added.
+- All 94 active runtime, setup, agent, standards, manual, and reference consumers have explicit retain/adapt/remove dispositions; two binding source rows remain separate from that census.
+- Generic, Python/pytest unit and integration tests, Python/Pydantic configuration model, and TypeScript DTO class have approved responsibilities; Resource, Service, and Tool are approved for removal without generic framework replacements.
 - No transition to Design is authorized until these obligations close and a new independent QA review returns GO.
 
 ## Scope
@@ -142,6 +142,10 @@ This matrix classifies the primary nature and issue-460 disposition of every fin
 8. Suite-owned content truth does not migrate into artifact-specific pgmcp Python code or prose snapshots.
 9. Generated content is portable across machines and does not embed persistence targets by default.
 10. Compatibility and migration strategy is explicit per affected boundary.
+11. Generic runtime code contains no hardcoded artifact IDs, template field names, workflow/phase names, template paths, output-profile choices, provider mappings, or install policy that belongs to suite or workflow configuration.
+12. Every active Research, Design, Planning, and Validation phase-instruction variant has a semantically suitable persisted carrier in the corresponding artifact schema and renderer, without templates duplicating workflow action or authority.
+13. First-time-right scaffolding means one valid call produces a truthful, structurally coherent, persistable artifact basis without schema/render repair; it does not promise final phase completeness or replace normal content development through `safe_edit_file`.
+14. Template and scaffolding tests are first-class code: each retained test proves durable public behavior or an architectural invariant and itself complies with every applicable Architecture Principle; passing tests do not justify private-boundary coupling, duplicated config truth, hidden dependency construction, global mutable state, or implementation-shaped harnesses.
 
 ## Approved Strategy and Decision Status
 
@@ -153,7 +157,7 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-01 / S-02 nested collections | Approved 2026-08-23 | Structured items replace primitive and opaque forms through a clean break; no compatibility bridge |
 | F-01 client compatibility | Approved 2026-08-23 | Client-facing schemas remain self-contained and reference-free; internal composition is acyclic and fail-fast |
 | F-02 / S-03 optionality and nullability | Approved 2026-08-23 | Optional permits omission, null is explicit, empty typed values remain distinct, and defaults have deterministic behavior |
-| F-03 caller context and render-envelope ownership | Approved 2026-08-23 | Validate caller context unchanged against the selected artifact schema; add validated tool-envelope and server metadata only afterward |
+| F-03 caller context and render-envelope ownership | Approved 2026-08-24 | Validate caller context unchanged against the selected artifact schema; add validated tool-envelope and server metadata only afterward. Envelope identity may supply template names only through deterministic artifact/language naming profiles such as case conversion or a declared prefix/suffix; semantically distinct or non-trivially composed names remain explicit artifact-content fields even when labels coincide |
 | F-04 / S-08 DTO runtime selection | Approved 2026-08-23 | One declaratively selected richer DTO contract drives schema, rendering, graph identity, and provenance; remove implicit V2 override without a bridge |
 | F-05 / S-09 resolved template graph | Approved 2026-08-23 | Server startup resolves one coherent restart-stable suite view through parser-supported Jinja semantics; runtime tools share it, suite mutations require restart, and JSON Schema remains the data-shape authority; concrete APIs and topology remain Design-owned |
 | F-06 / S-04 link semantics | Approved 2026-08-23 | Required label and target form one presentation-neutral link object; concrete artifacts choose inline or complete reference-style rendering |
@@ -168,6 +172,11 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-13 success semantics | Approved 2026-08-23 | Objective contract, render, output-profile, and persistence evidence define success; no subjective artifact-quality engine is introduced |
 | F-14 / S-12 package portability | Approved 2026-08-23 | Generic package types become portable through a clean break; six confirmed S1mpleTrader patterns are removed from PGMCP and migrated only in that owning workspace after its upgrade |
 | F-14A agent hints | Approved 2026-08-23 | Remove the unused pattern, three dead imports, and stale commented workflow guidance; contracts.yaml remains workflow authority |
+| Runtime architecture compliance | Approved 2026-08-24 | Audit every affected runtime/setup component against the complete Architecture Principles, with explicit emphasis on Config-First/DRY/OCP hardcoding, fail-fast startup, SRP/DIP/ISP, composition-root ownership, no import-time I/O, CQS, Law of Demeter, presentation separation, and YAGNI; artifact-specific knowledge remains in the packaged suite |
+| Legacy parallel scaffolding and validation surfaces | Approved 2026-08-24 | Remove the artifact-specific component-scaffolder stack, duplicate renderer/result/base utilities, source-header metadata parser/config/lifecycle exports, and the public always-pass `validate_template` tool with its dedicated DTOs/tests/instruction references. Retained behavior is owned by one resolved generic scaffold path, fail-fast startup graph validation, and declared output-profile validation; no compatibility shell is justified |
+| Workflow/template semantic alignment | Approved 2026-08-24 | Compare every active Research, Design, Planning, and Validation `phase_instructions` variant with its final artifact schema and renderer; required persisted outcomes need an obvious carrier, while actions, authority, tool calls, and workflow-specific completeness remain solely in contracts.yaml. Explicitly reject wording that conflates a first-time-right scaffold call with a final complete artifact or obscures normal `safe_edit_file` refinement |
+
+| Test-suite architecture compliance | Approved 2026-08-24 | Audit every affected test and helper twice: first for durable public behavior/invariant value, then against every applicable Architecture Principle. Retained coverage must use public boundaries, explicit dependencies, isolated state, config-derived facts, proportionate helpers, and production-equivalent typing/quality; valuable intent does not excuse architectural coupling, and clean structure does not justify behaviorless tests |
 | Deferred YAML artifact subset | Deferred 2026-08-23 | Remove the two incomplete unreachable bases now; coordination should create the complete package subset as the first post-460 PGMCP issue on its own branch |
 | [Portable Python artifact coverage](deferred-work.md) | Deferred 2026-08-24 | Add no new Python artifact types in issue 460; preserve the inventory centrally; the approved Generic plain-class artifact remains bounded and may not absorb those deferred responsibilities |
 | F-14B unreachable test patterns | Approved 2026-08-23 | Remove the empty assertions placeholder and unreachable incomplete fixture decorator; future fixture support must be first-class test-artifact behavior |
@@ -177,6 +186,14 @@ The table below is the canonical strategy and status register. Supporting ration
 | [F-18 purpose-aware runtime artifact discovery](deferred-work.md#purpose-aware-runtime-artifact-discovery) | Deferred 2026-08-24 | Classify as a feature request and add no new runtime capability in issue 460; future Research must compare a new discovery tool, extension of an existing introspection surface, and improved existing/static discovery |
 | DTO artifact responsibility | Approved 2026-08-24 | Retain/adapt one language-qualified immutable Python/Pydantic DTO; preserve valid empty skeletons, require descriptions, and conditionally require at least one JSON-compatible example whenever concrete fields exist; one semantic identity resolves explicit representations |
 | Generic Python class responsibility | Approved 2026-08-24 | Retain/adapt a bounded language-qualified plain-class skeleton with required self-documentation, valid empty classes, optional structured imports, bases, and body-free method signatures; remove hidden routing, forced project behavior, and specialized fallbacks through a clean break. Caller-supplied method bodies are excluded only from Generic and this creates no suite-wide rule for specialized Python artifacts |
+| Python/pytest integration-test responsibility | Approved 2026-08-24 | Retain/adapt a language- and framework-qualified integration-test module for observable collaboration across concrete components or boundaries; do not equate integration with E2E, infer project imports, force async/classes/filesystem fixtures, or fabricate passing tests. Exact structured test-case and honest incomplete-test mechanics remain Design-owned |
+| Resource artifact responsibility | Approved 2026-08-24 | Remove through a clean break: Python has no general resource code construct, the current artifact duplicates Generic without durable semantics, no real scaffold consumer is evidenced, and its output does not implement the pgmcp `BaseResource` boundary. Existing runtime resource code remains unchanged |
+| Python/Pydantic configuration-model responsibility | Approved 2026-08-24 | Retain/adapt a language- and framework-qualified model for declarative external configuration, distinct from DTO and Generic; expose structured described fields, explicit defaults/factories/constraints/imports, strict extra handling, explicit immutability, and optional valid examples without building a complete Pydantic DSL. Exact ID and finite schema remain Design-owned |
+| Service artifact responsibility | Approved 2026-08-24 | Remove the over-broad Service artifact, concrete command renderer, legacy scaffolder, and hidden command/query/orchestrator routing through a clean break; service is an architectural agreement rather than one defensible Python structure, and retained portable behavior is covered by Generic. Existing generated production files remain unchanged |
+| [Command/query service artifact family](deferred-work.md#commandquery-service-artifact-family) | Deferred 2026-08-24 | Add no replacement service templates in issue 460; a future issue may independently research explicit command and query responsibilities, consumer demand, and whether separate artifact contracts are justified |
+| Tool artifact responsibility | Approved 2026-08-24 | Remove through a clean break without a replacement or deferred pgmcp/MCP tool artifact: pgmcp `ICoreTool` is repository-specific, MCP SDK forms are framework-specific, and a framework-neutral Python tool has no structure beyond Generic. Existing production tools remain unchanged |
+| TypeScript DTO-class responsibility | Approved 2026-08-24 | Retain/adapt one framework-neutral TypeScript data-carrier class with structured typed properties, explicit optionality and immutability, constructor initialization, and optional explicit interface implementation; remove string mini-language parsing, hidden project architecture, and undeclared inherited values. Exact finite schema and rendering mechanics remain Design-owned |
+| Python/pytest unit-test responsibility | Approved 2026-08-24 | Retain/adapt a language- and framework-qualified unit-test module that requires at least one explicit concrete behavior case; make imports, fixtures, markers, sync/async, and test doubles explicit, and never fabricate placeholders, passing assertions, project dependencies, class grouping, or a universal TDD phase. Exact structured case representation remains Design-owned |
 | Deployment compatibility | Approved 2026-08-23 | Sole current owner accepts manual migration across two machines and approximately four workspaces; repository evidence cannot prove absence of future external consumers, so the clean break is explicit and documented rather than silently generalized |
 
 ## Expected Results
@@ -196,6 +213,10 @@ Issue 460 should be considered substantively resolved only when:
 11. Generated content is reproducible across host machines and does not embed absolute local paths by default.
 12. Compatibility choices are approved per affected boundary before design.
 13. Output validity, validator availability, and strict persistence policy remain distinct observable states.
+14. Runtime and setup implementation passes an explicit Architecture Principles sweep and contains no template/workflow hardcoding outside its authoritative configuration boundary.
+15. A workflow-by-phase alignment record proves that active Research, Design, Planning, and Validation instructions can persist their required outcomes through the corresponding schemas/renderers without duplicated workflow authority.
+16. Phase instructions and schema guidance distinguish a valid first scaffold from the completed phase deliverable, so agents can scaffold once and refine normally without repair calls, false completeness assumptions, or avoidable reasoning/token churn.
+17. Every retained template/scaffolding test protects durable public behavior or an architectural invariant and itself passes the applicable Architecture Principles; obsolete claims and architecturally coupled test implementations are removed or replaced rather than carried forward.
 
 ## Deferred Work
 
@@ -206,18 +227,14 @@ Detailed deferred evidence is centralized in [Deferred Work](deferred-work.md).
 | S1mpleTrader-local specialization | Remove consumer-specific behavior from the portable suite; perform no cross-repository implementation |
 | Complete YAML artifact subset | Remove the two incomplete unreachable seeds; create the capability only through a future full Research/Design cycle |
 | Portable Python artifact coverage | Introduce no new Python artifact types; preserve the non-exhaustive inventory for future Research |
+| Command/query service artifact family | Remove the current broad Service artifact and hidden subtype routing; create no replacement until a future issue proves distinct command/query consumers and contracts |
 | Purpose-aware runtime artifact discovery | Add no new discovery tool or overloaded introspection mode; preserve the option comparison for a future issue |
 
 The approved Generic Python class responsibility remains bounded to a body-free plain-class skeleton and may not absorb the deferred Python artifact responsibilities. Its artifact-local body exclusion does not constrain the independently researched contracts of specialized Python templates.
 
 ## Open Research Work
 
-1. Close the remaining seven public artifact dispositions in the catalog.
-2. Close all remaining suite-file dispositions.
-3. Review the 103 test/helper candidates for durable behavior value.
-4. Record final impact dispositions for runtime, setup, agent, and active-documentation consumers.
-5. Confirm that every deferred statement is owned only by `deferred-work.md`.
-6. Request a new independent QA review after the catalog and evidence set are complete.
+1. Request a new independent QA review of the completed Research authority, work catalog, probe evidence, and centralized deferred-work notice.
 
 ## Design-Owned Questions After Research Closes
 
@@ -255,6 +272,18 @@ These are navigation inputs, not selected Design mechanisms.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.3 | 2026-08-24 | Separate first-time-right scaffold validity from final artifact completeness and require the contracts alignment audit to protect normal safe-edit refinement and LLM efficiency |
+| 3.2 | 2026-08-24 | Make the complete Architecture Principles/hardcoding sweep and workflow-phase/template alignment record explicit Research completion obligations |
+| 3.1 | 2026-08-24 | Close artifact-specific config and concrete-renderer audit in two controlled batches; all 79 suite files now have explicit dispositions |
+| 3.0 | 2026-08-24 | Clarify envelope/content naming ownership: deterministic representation derivation is valid, semantic inference or non-trivial composition requires an explicit artifact field |
+| 2.9 | 2026-08-24 | Approve an explicit behavior-oriented Python/pytest unit-test responsibility and close all 22 public artifact dispositions |
+| 2.8 | 2026-08-24 | Approve a structured framework-neutral TypeScript DTO-class responsibility and reject the current string mini-language and hidden project metadata |
+| 3.4 | 2026-08-24 | Complete the 94-consumer/105-test audit, add the legacy parallel-stack clean break, reconcile deferred ownership, and request independent QA |
+| 2.7 | 2026-08-24 | Approve clean-break removal of Tool without a pgmcp/MCP replacement or deferred tool capability |
+| 2.6 | 2026-08-24 | Approve clean-break removal of broad Service scaffolding and defer any explicit command/query artifact family to separate Research |
+| 2.5 | 2026-08-24 | Approve the bounded Python/Pydantic configuration-model responsibility and reduce the remaining dispositions |
+| 2.4 | 2026-08-24 | Approve clean-break removal of the semantically redundant Resource artifact and reduce the remaining dispositions |
+| 2.3 | 2026-08-24 | Approve the portable Python/pytest integration-test responsibility and reduce the remaining public and suite-file dispositions |
 | 2.2 | 2026-08-24 | Add the canonical F-01–F-18 classification matrix and defer F-18 purpose-aware runtime discovery as an explicitly approved feature request outside issue 460 |
 | 2.1 | 2026-08-24 | Record explicit approval of the bounded Generic Python plain-class responsibility and clarify that its body-free contract creates no suite-wide rule for specialized Python artifacts |
 | 2.0 | 2026-08-24 | Reconcile Research into one decision authority with separate findings, catalog, probe, and deferred-work responsibilities; restore Generic to pending human approval |

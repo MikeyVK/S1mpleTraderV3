@@ -20,7 +20,7 @@ This document is an evidence companion, not a decision authority.
 - [Probe Evidence](probe-evidence.yaml) owns exact durable probe contexts and outcomes.
 - [Deferred Work](deferred-work.md) owns all follow-up work outside issue 460.
 
-Any decision wording retained below is historical rationale only. If it differs from `research.md`, the primary Research artifact governs. The Generic Python class responsibility remains pending explicit human approval.
+Any decision wording retained below is historical rationale only. If it differs from `research.md`, the primary Research artifact governs. The Generic Python class and Python/pytest integration-test responsibilities are approved in `research.md`; any older proposal wording below is retained only as supporting rationale.
 
 ---
 
@@ -85,7 +85,7 @@ Render probes were used as diagnostic observations of content behavior, not as t
 
 The durable evidence authorities for the reopened audit are:
 
-- [Template Suite Work Catalog](template-suite-catalog.md) — complete inventory of all 22 public artifacts, all 79 suite files, example surfaces, runtime/setup consumers, and 103 candidate test/helper files.
+- [Template Suite Work Catalog](template-suite-catalog.md) — complete inventory of all 22 public artifacts, all 79 suite files, example surfaces, runtime/setup consumers, and 105 candidate test/helper files.
 - [Probe Evidence](probe-evidence.yaml) — exact minimal and property-complete contexts plus normalized schema, render, output-validation, and error outcomes for all 44 calls.
 
 Cached MCP resources and ignored files below `.pgmcp/temp/issue460/` are supplementary diagnostics only. Research claims must remain reproducible from the committed evidence and live public tools without relying on a machine-local temporary path.
@@ -334,6 +334,85 @@ Phase artifacts such as research, design, planning, and validation reports are n
 - **Planning — Retain/adapt.** Replace the universal TDD framing with a dependency-ordered executable plan: bounded work units, exclusions, deliverables, risks, dependencies, stop/go conditions, and proportionate exit evidence. Active Planning instructions determine whether units are implementation cycles, correction or migration steps, documentation tasks, or child issues, and whether RED/TDD is justified. Test work remains first-class but is not universally mandatory. Where workflows persist a structured project plan, the document and `save_planning_deliverables` payload must remain semantically identical; exact ownership and representation belong to Design.
 - **Validation Report — Retain/adapt.** Replace the placeholder scope/outcome shell with a compact, navigable evidence index that can record scope/exclusions, obligation-to-evidence mapping, exact and fresh test/gate/targeted outcomes, behavior/correction/containment/preservation proof as applicable, demonstration or fallback, failures, caveats, residual risks, and explicit deferred work. Producer-reported evidence status must remain distinct from independent QA authority. Raw logs remain in their authoritative resources rather than being copied into prose.
 
+#### Mandatory runtime architecture and hardcoding sweep for issue 460
+
+The template engine refactor crosses configuration, discovery, validation, rendering, persistence, provenance, and upgrade boundaries. Direct-import inspection alone is therefore insufficient. Every runtime and setup candidate in the work catalog must be checked against the complete binding [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md).
+
+The sweep must explicitly identify generic Python that hardcodes artifact IDs, context field names, workflow or phase names, template filenames/paths, output-profile or validator-provider choices, package/install policy, or user-facing presentation. Such knowledge belongs in the packaged suite, workflow configuration, or presentation boundary unless a documented generic structural invariant proves otherwise. It must also record SRP/OCP/ISP/DIP, DRY/SSOT and single-reader ownership, Config-First, fail-fast startup, CQS/frozen query results, Law of Demeter, constructor injection/composition-root ownership, import-time side effects, Explicit-over-Implicit, YAGNI, and template-package cohesion impacts.
+
+Research records the violated or preserved boundary and consumer effect per component. It does not select replacement classes, parser APIs, registries, or call topology; those remain Design-owned. A green test or quality gate is not architecture evidence.
+
+
+#### Runtime sweep evidence recorded on 2026-08-24
+
+The completed architecture and direct-consumer pass confirms that the dominant problem is not merely incomplete template data. The initial 20-file runtime census was incomplete: tracing imports and public tool registration exposed a parallel legacy scaffolding stack, source-header metadata infrastructure, and an always-pass validation tool. These are now explicit work-catalog entries rather than hidden implementation discoveries. Several generic runtime components currently reinterpret, supplement, or silently repair suite-owned meaning:
+
+- `ArtifactManager` rebuilds a restricted Pydantic model from only string, integer, boolean, and shallow-array declarations; filters unknown context fields; copies `name` into `dto_name`; searches for an undeclared `_v2` sibling; special-cases Generic output paths; inspects renderer internals to recover the template root; and constructs scaffolding, validation, filesystem, and registry collaborators when injection is absent.
+- `TemplateScaffolder` special-cases Service variants and Generic routing, accepts hidden template overrides, derives output format from a fixed extension map, and treats Jinja variable inference as the validation contract.
+- `ValidationService` registers process-global validators, selects them through filename regexes and hardcoded artifact IDs/extensions, applies Python and Markdown rules in the universal path, silently accepts unknown output types, and creates its own settings/analyzer when not injected.
+- `LayeredTemplateValidator` and `TemplateAnalyzer` turn embedded metadata and regex matches into a second validation language. They can select the first filename match, ignore missing metadata, stop inheritance traversal on missing/cyclic parents, or return an empty variable set after parser failure.
+- `TemplateRegistry` and `version_hash.py` persist mutable historical state with no evidenced runtime decision consumer. Malformed registry state becomes an empty registry; unreadable or unversioned templates become version `1.0.0`; incomplete inheritance becomes a best-effort hash. This contradicts Fail-Fast and does not provide trustworthy provenance.
+- `WorkspaceUpgrader` preserves YAML by path category, overwrites other existing assets, and treats `template_registry.json` as dynamic state. That behavior cannot implement the approved managed-baseline/staged-candidate policy or distinguish an unchanged installed suite from user customization.
+- `ConfigLoader` is the correct single-reader seam, but its optional template-root path falls back through `Settings.from_env()` and then a broad-exception inferred directory. The refactored suite path must receive an explicit root and reject an incoherent graph during startup.
+- `bootstrap.py` is the valid composition root, but currently constructs and exports the obsolete TemplateRegistry while `ArtifactManager` still constructs other collaborators internally. The new restart-stable resolved suite and validation capabilities belong in composition, not in tool execution.
+- `TemplateEngine` provides the useful generic Jinja render boundary, but its compatibility constructor alias and Python-identifier filter show that language/profile capabilities are currently mixed into the universal engine.
+- `BaseContext`, `BaseRenderContext`, and `LifecycleMixin` preserve an obsolete context-inheritance dialect and inject path/timestamp/template/hash data into render content. They are not a neutral carrier for the approved complete standard JSON Schema and separate scaffold envelope.
+- `mcp_server/scaffolding/base.py`, its eight component scaffolders, `utils.py`, and `renderer.py` form a parallel legacy stack. They hardcode artifact identities, template paths, PascalCase, command/query/orchestrator fallback, extension behavior, and a package-relative/CWD authority while duplicating the active scaffolder, result, and renderer abstractions.
+- `scaffold_metadata.yaml`, `ScaffoldMetadataConfig`, and `ScaffoldMetadataParser` preserve generated source-header provenance through a global extension/comment registry. That responsibility has no retained decision consumer and conflicts with output-profile ownership.
+- The public `validate_template` tool hardcodes five artifact families, constructs its validator inside `execute()`, and delegates to a deprecated validator that always succeeds. Its registration, DTOs, documentation, agent allowlists, and tests must be removed together; it cannot serve as evidence for the retained startup-graph or output-profile boundaries.
+- `ConfigValidator` remains the correct fail-fast cross-config boundary. It should consume the resolved suite to check graph and profile/capability coherence, while exports and loader methods for removed metadata/context types are cleaned up rather than retained as compatibility surfaces.
+
+The public scaffold tools themselves are comparatively sound seams: both derive the artifact enum from the loaded registry and delegate to the manager. Their fixed example text is documentation debt, not dispatch logic. `SafeEditTool` is a legitimate post-scaffold consumer and evidence that first-time-right scaffolding is not synonymous with final phase completion; only its environment-derived default validation dependency conflicts with the new injected profile boundary. `issue_tools.py` consumes pre-rendered tracking Markdown and does not need to understand template context.
+
+Pre-existing settings concerns outside the template path—test-environment-driven defaults, silent package-version fallback, and repository-specific GitHub defaults—are recorded as architecture debt but do not expand issue 460 into a general Settings refactor. Design must avoid depending on or reproducing them.
+
+
+#### Mandatory test-suite architecture sweep for issue 460
+
+The behavioral test/helper ledger is not only a coverage-retention exercise. Every affected test module, fixture, factory, fake, and shared harness is production-quality code under the applicable Architecture Principles. The audit therefore produces two separate answers per candidate:
+
+- **Does it protect a durable public behavior or architectural invariant?** Exact prose, incidental import order, current type counts, private call sequences, obsolete registry history, and scaffold metadata snapshots are not automatically durable.
+- **Is the test implementation itself architecturally sound?** A valuable claim may still be implemented through the wrong boundary and require adaptation or replacement.
+
+The applicable architecture evidence is concrete:
+
+| Principle boundary | Test-suite interpretation |
+|---|---|
+| Public API / Explicit over Implicit | Exercise observable tool, manager, loader, renderer, validator-capability, or upgrade decisions. Avoid asserting private helper calls, internal collection shape, arbitrary invocation order, or source text where public behavior can prove the obligation |
+| DIP and constructor injection | Build the subject with explicit collaborators or through the real composition boundary. Do not rely on production fallbacks that call `Settings.from_env()`, process CWD, package assets, or hidden registries |
+| Config-First / DRY / OCP | Derive artifact IDs, schemas, paths, workflow names, output profiles, and provider availability from the fixture config or runtime catalog. A test matrix may enumerate approved behavior cases, but it may not become a manually synchronized second registry |
+| SRP / ISP / Law of Demeter | Fixtures and harnesses provide the narrow setup required by the behavior. Avoid omniscient factories that reach through private renderer/manager state, patch multi-hop internals, or assemble unrelated system concerns |
+| CQS and isolated state | Query assertions do not mutate persistent state. Registry, validator, cache, filesystem, environment, and clock state are isolated and restored; order-dependent tests and process-global registrations are rejected |
+| Fail-Fast | Negative tests prove invalid schema graphs, unresolved references/dependencies, unavailable required capabilities, invalid profiles, and incoherent install state fail at the owning boundary with actionable context. They do not preserve silent fallback as compatibility |
+| No import-time I/O | Importing test helpers or production subjects must not read workspace/config/template state or mutate global registries |
+| Test code as first-class code | Retained tests and helpers meet the same typing, naming, maintainability, and quality standards as production code. Mocks represent owned interfaces, not arbitrary implementation objects |
+| YAGNI | Do not preserve a helper abstraction, fixture hierarchy, generated example, or snapshot merely because it exists. Keep the smallest evidence set that protects the approved contract and meaningful failure paths |
+
+The architecture sweep is proportional rather than ritualistic: principles irrelevant to a test's responsibility need no fabricated compliance mechanism. For example, a pure frozen config-model test does not require a dependency-injection harness, while an end-to-end upgrade test does require explicit roots and isolated filesystem state. Design and Planning must preserve both disposition axes so that implementation does not mechanically port architecturally invalid tests into the new engine.
+
+
+##### Completed test/helper audit outcome
+
+All 105 candidates now have an explicit behavior-value and architecture disposition in the work catalog. The original broad-signal census contained 103 files; direct consumer tracing added `test_template_validation_tool.py` and `test_scaffold_metadata_config.py`, preventing obsolete public-validation and metadata-config coverage from escaping the migration:
+
+- 9 adjacent modules are excluded from semantic issue-460 changes; only shared fixture wiring may move.
+- 24 modules/helpers are removed outright because their source responsibility, historical registry/provenance behavior, placeholder pattern, or duplicate claim is gone.
+- 14 duplicate suites are removed after any unique durable evidence is consolidated into the new central acceptance/config/graph/profile coverage.
+- 21 modules are replaced wholly or through consolidation because their intent remains useful but their current boundary is wrong.
+- 37 modules are adapted, consolidated, renamed, split, or fixture-adjusted around retained public behavior.
+
+The counts are implementation workload evidence, not prescribed file arithmetic: Design may combine replacement coverage differently as long as every row's durable claim and architecture constraint remains traceable.
+
+Five systemic test-architecture findings explain the breadth:
+
+1. **Second configuration authority.** The all-types smoke matrix, production-config copies, locally assembled YAML strings, and hardcoded artifact examples repeat IDs, context shapes, paths, and defaults outside the suite. They become stale on every suite change and can pass while the runtime catalog differs.
+2. **Implicit process state.** Shared harnesses and several integration tests set template/config environment variables, change CWD, or call `Settings.from_env()`. This masks missing dependency injection and makes execution order, host state, and parallelism relevant.
+3. **Implementation-shaped assertions.** Numerous files assert tier inheritance, macro names/import counts, exact comment headers, manager private methods, patched call sequences, or renderer internals. These tests impede an OCP-compliant refactor without protecting caller-visible outcomes.
+4. **Prose and historical-state snapshots.** Document-section wording, version histories, scaffold headers, mutable TemplateRegistry entries, and best-effort hashes are treated as contracts even though Research explicitly retires or permits those representations to evolve.
+5. **Duplicated integration proof.** Acceptance, E2E, smoke, concrete-template, document-template, and tool-error suites repeatedly exercise the same narrow Design/DTO examples through different fixture graphs, increasing runtime and maintenance without complete catalog coverage.
+
+The replacement evidence must close the material gaps these suites currently obscure: one complete resolved-catalog acceptance path; standard JSON Schema composition and nested validation; Jinja dependency/import resolution including missing edges and cycles; one caller-context/envelope boundary; declared output-profile pass/fail/unavailable behavior; strict pre-persistence enforcement; public error/schema recovery; and clean-install plus managed-baseline/staged-candidate upgrade decisions. Artifact-specific syntax or semantic cases remain explicit where the artifact contract genuinely differs, but they are not a second inventory of the installed suite.
+
 #### Mandatory phase-instruction alignment for issue 460
 
 The four workflow-document artifacts and the workflow contracts are one cooperating toolchain. Design must compare every active Research, Design, Planning, and Validation `phase_instructions` variant with the corresponding final schema and renderer.
@@ -344,8 +423,33 @@ The four workflow-document artifacts and the workflow contracts are one cooperat
 - Templates own presentation and stable document structure; they do not redefine workflow behavior.
 - Phase instructions may be edited within issue 460 when alignment removes contradiction, missing artifact capacity, obsolete terminology, or inefficient workaround authoring. Such edits must preserve the approved workflow responsibilities rather than silently redesign them.
 - The alignment should minimize agent repair work and duplicate context: the phase instruction tells the agent what outcome is required, `scaffold_schema` explains how artifact content is supplied, and the renderer produces a fitting first draft.
+- First-time-right describes call correctness: one schema-valid invocation renders and persists a truthful, structurally coherent basis without a failed discovery/repair loop. It does not mean the scaffolded content is the final complete phase deliverable.
+- Normal substantive refinement through `safe_edit_file` remains expected. Contract wording must not pressure an LLM to invent all final content inside the initial scaffold context, nor cause it to reinterpret ordinary editing as scaffolding failure.
+- The comparison record must flag both error classes: instructions that demand content the artifact cannot carry, and instructions/schema descriptions that imply scaffold completion eliminates necessary reasoning, evidence gathering, or later editing.
 
 This makes [.pgmcp/config/contracts.yaml](../../../.pgmcp/config/contracts.yaml), its loader/validation tests, and active workflow-instruction documentation explicit members of the issue-460 blast radius. The exact comparison matrix, edits, and verification mechanism belong to Design and Planning.
+
+
+#### Workflow × phase × artifact alignment record
+
+The active contract set contains five Research variants (Feature, Bug, Refactor, Chore, Epic), four Design variants (Feature, Bug, Refactor, Epic), five Planning variants (Feature, Bug, Refactor, Docs, Epic), and five Validation variants (Feature, Bug, Refactor, Hotfix, Chore). The comparison below records semantic carrier obligations, not a target field layout.
+
+| Artifact | Workflow-specific persisted outcomes required by active instructions | Current carrier assessment | Binding Design obligation |
+|---|---|---|---|
+| Research | Feature: evidence, options, risks, expected outcomes, and strategy boundaries. Bug: observed/expected behavior, reproduction, causal evidence/root cause, occurrence conditions, corrected behavior, regression boundary, and strategy. Refactor: responsibilities, coupling/duplication, invariants, supported behavior, candidate seams, coverage gaps, and preservation strategy. Chore when persistence is warranted: objective, exclusions/mechanical boundary, proportional blast radius, risks, and approved boundary. Epic: initiative framing, candidate workstreams, dependencies/ownership, shared proof obligations, assumptions/risks, and shared strategy | Scope, goals, findings, questions, links, strategy, and expected results provide partial generic capacity. One free-form `findings` field is the only carrier for most evidence, blast-radius, causal, structural, consumer, and shared-obligation concepts, so `scaffold_schema` cannot make expected content obvious and the renderer cannot give each concept a stable navigable role | Provide a finite workflow-neutral evidence/strategy carrier broad enough for every variant, with semantically named capacity for scope/exclusions, evidence and sources, blast radius/consumers, findings, risks/unknowns, expected outcomes, and approved decisions. Workflow instructions retain variant-specific emphasis such as root cause or candidate workstreams |
+| Design | Feature: architecture, interfaces, data/control flow, state/failures, dependencies, alternatives, production/test design, validation, migration, and planning consequences. Bug: smallest root-cause correction, preservation, regression design, failure behavior, alternatives, and validation. Refactor: target responsibilities/dependencies, transitions/cutover/deletion, invariant preservation, test architecture/cleanup, and alternatives. Epic: cross-workstream responsibilities, shared interfaces/contracts, flow/failure/cutover, child ownership, integration, sequencing constraints, and shared test architecture | Problem, requirements, decision/rationale, constraints, opaque options/key decisions, and open questions are insufficient. There is no discoverable carrier for production and test design, interfaces/contracts, flows/state/failures, preservation/migration, validation obligations, cleanup, ownership, or planning consequences; opaque object arrays are not executable contracts | Expose the stable design-decision vocabulary and fully describe every nested option/decision/source shape. Provide obvious capacity for production and test design plus contracts, flow/state/failure, preservation/transition, validation, risks, and planning consequences without embedding workflow-specific instructions |
+| Planning | Feature: dependency-ordered implementation cycles. Bug: minimal correction/regression/cleanup cycles. Refactor: characterization/seam/migration/cutover/deletion cycles. Docs: documentation tasks with authoritative sources, files, current-state outcome, review proof, and consistency risk. Epic: child-work outcomes, ownership, prerequisites, shared obligations, integration, acceptance, cleanup, and coordination gates | The artifact labels every work unit a TDD cycle and documents an incomplete opaque object mini-schema. It cannot first-time-right express docs tasks or epic child work, and it lacks explicit exclusions, deliverables, strategy obligations, stop/go conditions, exact evidence, ownership, and structured risks. It can also drift from `save_planning_deliverables` because the two representations are not one declared semantic contract | Define a finite dependency-ordered work-unit carrier usable as cycles, documentation tasks, or child work according to the active workflow. Each unit must be able to carry scope/exclusions, dependencies, owned deliverables, obligations, verification/acceptance evidence, risks, and stop/go criteria. Preserve semantic identity with the structured planning payload; exact representation/ownership is Design-owned |
+| Validation Report | Feature: deliverable/design/strategy mapping, exact suite/gate evidence, demonstration/fallback, failures, caveats, risk, and deferred work. Bug: root-cause/reproduction/corrected-behavior and regression proof plus preservation. Refactor: structural completion, deletion/cleanup, invariant/behavior preservation, remnants/coupling. Hotfix: correction, containment/rollback, regression, and operational risk. Chore when persisted: objective/consumer coverage, full-suite/gate/diff evidence, freshness, risks, and deferred-work triage data | The current contract carries only metadata, optional issue/cycle/status, and one scope string. It cannot represent any exact check result, obligation mapping, evidence link, failure, risk, demonstration, preservation/containment proof, or deferred item required by the phase contracts | Provide a compact evidence-index carrier for scope/exclusions, obligation-to-evidence mappings, exact checks and freshness, targeted/demonstration evidence, failures/caveats/risks, and deferred work. Producer status remains evidence reporting and must not impersonate independent QA authority |
+
+The comparison also exposes instruction-side friction:
+
+- Feature, Bug, and Refactor directly show `scaffold_artifact(... context={...})` without making schema discovery locally explicit; Docs and Epic explicitly call `scaffold_schema`. The final contract set must use one coherent discovery convention and may rely on the global scaffolding rule only when that reliance is unambiguous across harnesses.
+- Docs Planning and all three Epic document phases ask for “schema-complete evidence” in the initial scaffold call. That phrase can be read as “construct the final artifact before scaffolding” and defeats the intended scaffold-then-refine workflow.
+- Chore correctly permits a direct Research outcome and optional persistence. Its Research schema must not become mandatory merely because the richer artifact exists.
+- Validation variants correctly allow creation followed by updating, which already models scaffold-as-basis. The other document phases should communicate the same lifecycle without implying that a schema-valid first render is phase-complete.
+- No phase instruction may require a generic catch-all field to smuggle in a concept the schema does not name. Conversely, schema descriptions must not copy root-cause, preservation, epic-decomposition, TDD, or other workflow-specific obligations.
+
+The Design acceptance test for this boundary is therefore semantic, not textual: for each of the nineteen variants, an agent can discover an appropriate carrier, make one valid scaffold call without guessing hidden shapes, then use normal evidence gathering and `safe_edit_file` refinement to reach the phase outcome. The initial scaffold must be truthful and structurally valid; only the reviewed and refined artifact may be called phase-complete.
 
 #### Recorded general-document responsibilities
 
@@ -357,6 +461,134 @@ This makes [.pgmcp/config/contracts.yaml](../../../.pgmcp/config/contracts.yaml)
 
 - **Interface — Retain/adapt.** Preserve the Python `Protocol` contract under the language-qualified identity required by F-17. Public methods are explicitly caller-owned through an introspectable method contract; the scaffold tool envelope owns the rendered class name. Omitted methods must not fabricate an `execute()` contract. Design decides whether an empty marker protocol is valid or at least one method is required. Remove hard-coded Backend/layer assumptions. Test creation remains workflow/plan/risk-owned; the currently unconsumed `generate_test` flag receives a suite-wide disposition during the engine/config audit rather than becoming automatic behavior.
 - **Adapter — Retain/adapt.** Preserve a portable Python boundary adapter under a language-qualified identity. Its local contract relationship, dependencies/imports, translation and failure behavior, and concrete methods must be caller-owned and introspectable. Do not fabricate `adapt()`, hard-code Backend layers, force unused logging, or let the artifact type create tests. Common signature definitions may be composed with Interface without collapsing abstract and concrete method semantics. S1mpleTrader-specific logging/Translator boilerplate is deferred preserved specialization, not package behavior.
+
+#### Approved Python/pytest integration-test responsibility (2026-08-24)
+
+The current public contract accepts primitive test-method strings while the renderer consumes structured members for names, markers, async state, fixtures, return types, descriptions, and Arrange/Act/Assert bodies. The property-complete schema-valid probe therefore fails with `UndefinedError: 'str object' has no attribute 'name'`. Its minimal success is not reliable evidence: omitted options silently enable async imports, a temporary-workspace fixture, and a fabricated filesystem test that passes without proving the requested scenario. Setting `workspace_fixture=false` can leave that fallback referring to a fixture that was not rendered.
+
+The renderer also conflates integration testing with E2E/full-stack testing, requires a pytest class, guesses imports from manager class names under `mcp_server.managers`, and emits unused or unconditional Python dependencies. These are consumer-project and style assumptions rather than portable integration-test semantics. Existing generated pgmcp tests show that useful tests require substantial editing beyond this scaffold; generated metadata survives, but real imports, doubles, fixtures, boundaries, and assertions are scenario-specific.
+
+**Recorded responsibility summary:** retain and adapt one language- and framework-qualified Python/pytest integration-test module for observable behavior that requires collaboration across multiple concrete components or boundaries.
+
+- Integration and E2E remain distinct. The artifact owns integration-test structure and does not claim a complete user/system flow unless caller content explicitly describes one.
+- Imports, dependencies, fixtures, markers, sync/async intent, grouping, and test cases are caller-owned and introspectable. The renderer does not infer project module locations or force classes, async execution, filesystem interaction, or a temporary workspace.
+- Every generated test targets observable behavior through public boundaries in accordance with the architecture contract. Template structure must not encourage private-API coupling or tests of implementation prose.
+- Omitted test content must never produce a fabricated passing test. Design owns the exact honest incomplete-test behavior and the structured representation of test cases and bodies.
+- The schema and renderer must produce syntactically valid Python for every accepted context. First-time-right means a truthful, coherent test basis, not an application-complete or automatically passing suite.
+- F-17 requires a Python/pytest-qualified public identity through a clean break. The exact ID, class-versus-function representation, fixture/import objects, source-body boundary, and validation profile remain Design-owned.
+- Shared pytest, async, and test-structure patterns remain reusable only where their output is explicitly selected and needed; they may not inject unconditional imports or a universal Arrange/Act/Assert style.
+
+Direct blast radius includes the [integration-test config](../../../.pgmcp/templates/config/integration_test.yaml), [integration-test renderer](../../../.pgmcp/templates/concrete/test_integration.py.jinja2), shared [Python base](../../../.pgmcp/templates/tier2_base_python.jinja2), [pytest](../../../.pgmcp/templates/tier3_pattern_python_pytest.jinja2), [async](../../../.pgmcp/templates/tier3_pattern_python_async.jinja2), and [test-structure](../../../.pgmcp/templates/tier3_pattern_python_test_structure.jinja2) patterns, output validation, active scaffolding references, all-type smoke/probe evidence, and generated tests that retain scaffold provenance. Durable verification must protect schema/render parity, syntactic validity, explicit optional behavior, and absence of fabricated passing assertions without snapshotting complete test prose.
+
+#### Approved Resource artifact removal (2026-08-24)
+
+The public Resource artifact claims an MCP resource but renders a generic logged Python class. It exposes a `resource_type` value only in a module comment, accepts primitive method strings while reading structured method members, and fabricates a synchronous `read()` returning `None`. It does not inherit [BaseResource](../../../mcp_server/resources/base.py), declare a URI pattern or MIME type, implement `async read(uri: str) -> str`, or participate in resource composition. The property-complete valid probe fails on the primitive/structured method mismatch.
+
+Repository evidence establishes no real scaffold consumer. Existing pgmcp resource providers are hand-written architectural implementations, while the only historical scaffold requirement found in issue 286 was an end-to-end registry smoke call. That issue added Adapter, Resource, and Interface together to complete a previously missing pipeline and gave them the same generic method vocabulary; it did not establish a distinct Resource responsibility or recurring use case.
+
+Python itself has no general resource code construct. Files, connections, package data, HTTP resources, cloud resources, domain resources, and MCP providers have unrelated structures. Once forced logging, the inert `resource_type`, and the fabricated `read()` are removed, this artifact is equivalent to the approved Generic Python class skeleton. A pgmcp-specific resource-provider artifact could be designed later, but current usage does not justify retaining or rebuilding one.
+
+**Recorded disposition:** remove the Resource artifact, its public config, and its concrete renderer through a clean break.
+
+- Existing [BaseResource](../../../mcp_server/resources/base.py), concrete runtime resources, and resource composition remain production behavior and are not removed.
+- Existing generated files remain ordinary independent source files.
+- Active registry inventories, documentation, schema enumeration, and tests that assume Resource solely for type-count completeness must be updated.
+- No alias, compatibility bridge, replacement artifact, or deferred feature is created without a concrete future consumer.
+- Generic remains the suitable scaffold for an otherwise unspecialized Python class; a framework-specific resource provider requires its own future evidence and strategy rather than a misleading universal name.
+
+Direct removal blast radius includes the [Resource config](../../../.pgmcp/templates/config/resource.yaml), [Resource renderer](../../../.pgmcp/templates/concrete/resource.py.jinja2), runtime catalog/type enumeration, all-type smoke and schema tests, and active template/scaffolding inventories. Tests must preserve behavior of the remaining registry and runtime resources rather than preserve an obsolete count or prose list.
+
+#### Approved Python/Pydantic configuration-model responsibility (2026-08-24)
+
+The current public Schema identity is ambiguous, but its config name, concrete template, metadata, and recurring pgmcp consumers consistently indicate a Python/Pydantic model for validating declarative configuration. Unlike the removed Resource artifact, this responsibility is structurally distinct from Generic: it defines accepted external input, defaults, constraints, extra-field policy, conversion, and invalid combinations. It is also distinct from DTO, whose primary responsibility is behavior-free data transfer across a boundary.
+
+The current contract remains unusable when populated. It accepts primitive `"name: type"` field strings while the renderer reads structured field members; undefined members render malformed declarations that fail Python output validation. The renderer couples every `default_factory` to the S1mpleTrader-owned typed-ID pattern, permits unstructured string examples for object-shaped models, duplicates class identity in caller context, exposes project-oriented layer prose, and advertises automatic test creation.
+
+**Recorded responsibility summary:** retain and adapt one language- and framework-qualified Python/Pydantic configuration model for declarative external configuration.
+
+- The model owns a bounded, introspectable vocabulary for described fields, types, required/default/factory semantics, declarative constraints, explicit imports, strict extra handling, and explicit immutability.
+- Optional examples are JSON-compatible configuration instances, are never invented, and are validated where the selected output capability can do so. They are not universally required merely because fields exist.
+- The artifact remains separate from DTO and Generic even though all can render Python classes. Historical use of Schema provenance on output DTOs does not redefine the new responsibility or require rewriting independent production files.
+- Typed-ID generation, architecture-layer headers, automatic tests, and project-specific imports are not package behavior.
+- Complex validators, computed behavior, and the entire Pydantic API are not modeled as an unrestricted YAML programming language. Editing a valid scaffold remains normal.
+- F-17 requires a language/framework-qualified identity through a clean break. The exact ID, finite field/constraint/factory representation, validation provider, and renderer composition remain Design-owned.
+
+Direct blast radius includes the [Schema config](../../../.pgmcp/templates/config/schema.yaml), [Pydantic config renderer](../../../.pgmcp/templates/concrete/config_schema.py.jinja2), shared [Pydantic pattern](../../../.pgmcp/templates/tier3_pattern_python_pydantic.jinja2), removal of the [typed-ID pattern](../../../.pgmcp/templates/tier3_pattern_python_typed_id.jinja2), output validation, active scaffolding references, registry/type tests, and generated files carrying historical Schema provenance. Durable tests must verify structured contract/render parity and valid configuration-model output without asserting complete generated prose or preserving a stale artifact count.
+
+#### Approved Service artifact removal and deferred command/query family (2026-08-24)
+
+The public Service artifact combines a broad “orchestration or business logic” identity with one S1mpleTrader-derived asynchronous Service Command renderer. It forces Backend-layer prose, Translator/message-key infrastructure, module logging, capabilities-style DI, `Any`, broad exception translation, an `execute()` operation, and an async placeholder. Its public parameter strings contradict the structured members read by the renderer, so the property-complete schema-valid probe produces Python that fails output validation.
+
+Historical issue-72 evidence shows that Service Command was selected as one of five minimal concrete templates to unblock scaffolding tests and was enriched from S1mpleTrader V2 pattern assumptions. Active files carrying Service provenance—presenters, a text limiter, a collection renderer, and a state validator—do not share the generated command structure. They are independent cohesive classes for which the approved Generic artifact is the portable scaffold responsibility.
+
+The engine also contains hidden subtype routing in [TemplateScaffolder](../../../mcp_server/scaffolders/template_scaffolder.py): `service_type` selects command, query, or orchestrator paths even though the public schema does not expose that field and only the command concrete template exists. The legacy [ServiceScaffolder](../../../mcp_server/scaffolding/components/service.py) repeats the hardcoded map, silently defaults differently, and falls back to Generic when missing templates fail. These paths are structural debt, not dormant supported variants.
+
+**Recorded disposition:** remove the broad Service artifact, its concrete command renderer, legacy scaffolder, and all service-specific hidden routing through a clean break.
+
+- Existing generated production classes remain independent code and are not rewritten.
+- Generic owns the portable scaffold need for ordinary cohesive Python classes, including classes named “service” by a workspace.
+- Registry, active documentation, schema/tool enumeration, and tests must stop requiring Service or the command template solely for historical type completeness.
+- Issue 460 does not create command, query, or orchestrator templates and does not preserve hidden routing as a temporary bridge.
+- S1mpleTrader-specific command boilerplate remains covered by that workspace's deferred specialization boundary.
+
+Command and Query can be more defensible responsibilities than a universal Service because they describe different behavioral contracts. They are nevertheless not approved package artifacts here. A future dedicated issue must establish concrete consumers, command/query semantics, input/output and side-effect boundaries, language/framework identity, relationship to Generic and Tool, and whether separate public types are justified. Orchestrator is not included automatically merely because the obsolete router named it.
+
+#### Approved Tool artifact removal (2026-08-24)
+
+The current Tool artifact claims an MCP tool but renders an untyped logged Python class with `async execute(**params: Any) -> Any`, a fabricated empty mapping result, and broad exception replacement. Its public context exposes no input/output contract, dependencies, protocol metadata, or consumer boundary. Syntax probes pass, but the generated class implements neither pgmcp's internal `ICoreTool` contract nor a declared external MCP SDK contract.
+
+PGMCP's typed tool architecture is real and heavily used, but it is repository-specific. Encoding `ICoreTool`, `NoteContext`, wrapper, caching, presentation, or enforcement conventions in the distributed package suite would export stable workspace internals as a universal artifact. Conversely, MCP Python SDKs and harnesses choose different decorator, function, registration, and schema forms. A framework-neutral “Python tool” has no language-level structure beyond a described callable class or function and is therefore covered by Generic or future independently justified Python constructs.
+
+**Recorded disposition:** remove the Tool artifact, public config, and concrete renderer through a clean break.
+
+- Existing pgmcp tool implementations and internal tool architecture remain production behavior and are not rewritten.
+- No pgmcp-specific or MCP-SDK-specific replacement is introduced.
+- No deferred pgmcp/MCP tool artifact is recorded.
+- Generic remains the portable scaffold for a plain Python class whose workspace assigns it a tool role.
+- Active inventories, examples, agent instructions, schema enumeration, and tests must stop advertising or requiring the removed type.
+- Forced logging, `Any`, broad exception mapping, fabricated results, layer prose, and automatic test intent are removed with the artifact rather than generalized.
+
+Direct blast radius includes the [Tool config](../../../.pgmcp/templates/config/tool.yaml), [Tool renderer](../../../.pgmcp/templates/concrete/tool.py.jinja2), registry/type enumeration, active scaffolding documentation and agent examples, all-type smoke and template-content tests, and files that retain historical Tool provenance. Those generated files remain independent source and their provenance does not preserve the obsolete scaffold contract.
+
+#### Approved Python/pytest unit-test responsibility (2026-08-24)
+
+The Unit Test artifact has a durable responsibility distinct from Generic and Integration Test: express observable behavior of one bounded unit while keeping its collaborators controlled explicitly. The current public schema and renderer do not implement that responsibility coherently. `test_methods` is exposed as primitive strings but rendered as structured objects; optional `imported_classes` can normalize to a non-iterable value; broad booleans infer mocks, asyncio, Pydantic, and imports; and a test class is mandatory even where ordinary pytest functions are the clearer form.
+
+More seriously, absent test intent produces a fabricated `test_placeholder`, while absent assertions produce `assert True`. The template therefore creates tests that can pass without proving behavior. Its embedded metadata also declares every unit test a RED/TDD-phase artifact and prescribes mocks, AAA comments, edge cases, and workflow sequencing regardless of the active workflow contract. That directly conflicts with the approved workflow-driven test strategy and encourages test explosion and maintenance ballast.
+
+**Recorded responsibility summary:** retain and adapt one language- and framework-qualified Python/pytest unit-test artifact for explicit behavior cases.
+
+- At least one concrete behavior case is required; callers that cannot state behavior must not scaffold a unit-test artifact yet.
+- Cases, imports, fixtures, markers, sync/async execution, and test doubles are explicit contract data rather than inferred from broad booleans.
+- The renderer never invents a placeholder, `assert True`, empty act/result, project import, error scenario, mock, or passing outcome.
+- Function-based pytest tests remain valid; class grouping is optional rather than mandatory.
+- Tests target observable behavior, not template prose, implementation structure, or workflow compliance.
+- The artifact does not prescribe TDD or a RED phase; the active workflow and approved plan own test timing.
+- Generated test code remains first-class code under the same architecture, typing, and quality standards as production code.
+
+The exact structured case vocabulary, representation of executable arrange/act/assert behavior, grouping model, import/reference schema, incomplete-case rejection, and output-validation profile belong to Design. Design must preserve the minimum-one-case boundary and may not reintroduce fabricated passing evidence.
+
+Direct blast radius includes the [Unit Test config](../../../.pgmcp/templates/config/unit_test.yaml), [renderer](../../../.pgmcp/templates/concrete/test_unit.py.jinja2), shared [pytest](../../../.pgmcp/templates/tier3_pattern_python_pytest.jinja2) and [test-structure](../../../.pgmcp/templates/tier3_pattern_python_test_structure.jinja2) patterns, async/mocking imports, registry/schema discovery, active testing/scaffolding guidance, all-type probes, and template/scaffolding tests. Existing tests that assert tier imports, metadata text, AAA comments, or placeholders require durable behavior-value review rather than mechanical preservation.
+
+#### Approved TypeScript DTO-class responsibility (2026-08-24)
+
+The public TypeScript DTO identity is already language-qualified and its generated framework-neutral data-carrier class has a defensible structure beyond a generic class: typed properties, explicit `readonly` intent, constructor initialization, and optional interface implementation. Current repository use is limited to scaffolding coverage, but absence of a local TypeScript application is not itself a removal criterion for a portable package artifact with an independently useful contract.
+
+The current implementation nevertheless exposes `fields` as strings in the undocumented form `[readonly] name: type` and parses that mini-language inside Jinja. Splitting on `:` cannot safely represent ordinary TypeScript object and function types, malformed values silently default to `string`, and the same parsing is duplicated for declarations, constructor input, and assignments. The inherited TypeScript base also reads `module_title`, `module_description`, `layer`, `dependencies`, `responsibilities`, and structured imports that the artifact contract does not own. Its fixed `src/dtos/` base path assumes a consumer layout. The dedicated unit test reconstructs simplified templates rather than exercising the packaged graph, so it proves the manager can write a `.ts` file but not that the distributed contract and renderer remain coherent.
+
+**Recorded responsibility summary:** retain and adapt one framework-neutral TypeScript DTO-class artifact.
+
+- Structured typed properties replace the field-string mini-language through the approved clean-break schema strategy.
+- Property optionality and immutability are explicit data, not syntax encoded in a field name.
+- Constructor initialization remains part of the artifact's distinguishing behavior.
+- Optional interface implementation remains explicit; dependencies or imports must not be inferred.
+- Project layer, responsibilities, fixed directory layout, hidden metadata, and framework-specific validation/serialization behavior are excluded.
+- No local TypeScript consumer is invented as justification, and the artifact is not retained merely as an engine demonstration.
+- Durable coverage must exercise the real resolved package graph and observable TypeScript output/profile behavior rather than copy template content into the test.
+
+The exact finite field schema, supported type-expression boundary, handling of defaults, comments/descriptions, constructor parameter representation, interface-reference shape, output-validation profile, and renderer organization belong to Design.
+
+Direct blast radius includes the [TypeScript DTO config](../../../.pgmcp/templates/config/typescript_dto.yaml), [concrete root](../../../.pgmcp/templates/concrete/typescript_dto.ts.jinja2), [TypeScript DTO pattern](../../../.pgmcp/templates/tier3_pattern_typescript_dto.jinja2), [TypeScript base](../../../.pgmcp/templates/tier2_base_typescript.jinja2), shared code bases, output validation, registry/schema discovery, active documentation, and [dedicated scaffolding test](../../../tests/mcp_server/unit/managers/test_typescript_dto_scaffold.py).
 
 #### Approved DTO responsibility (2026-08-24)
 
@@ -384,7 +616,7 @@ Direct production blast radius includes the [DTO config](../../../.pgmcp/templat
 
 The exact language-qualified type ID, naming-profile representation, conditional JSON Schema, structured field/default/constraint vocabulary, docstring layout, example-validation provider, and renderer organization belong to Design. Design may not weaken the approved empty-skeleton behavior, conditional example obligation, self-documentation baseline, immutability, or one-identity invariant.
 
-#### Proposed Generic Python class responsibility — pending human approval
+#### Approved Generic Python class responsibility (2026-08-24)
 
 The public `generic` type currently combines two responsibilities that must be separated before its artifact disposition can close:
 
@@ -405,7 +637,7 @@ Several outcomes are already constrained by approved cross-cutting strategies:
 - Under F-14, the portable package type cannot force project layers, responsibilities, or logging. Logging remains an available shared pattern for artifact types whose own contract selects it; it is not a generic-class default.
 - Under F-17, any retained type receives a language-qualified identity. The scaffold-envelope naming and representation warning approved for DTO applies equally to a Python class symbol and file target.
 
-**Proposed responsibility (pending human approval):** retain and adapt a bounded, language-qualified plain Python class skeleton for concrete classes that do not match a more specialized artifact contract.
+**Recorded responsibility summary:** retain and adapt a bounded, language-qualified plain Python class skeleton for concrete classes that do not match a more specialized artifact contract.
 
 - Callers choose this artifact deliberately after purpose-aware discovery. It is not an automatic catch-all, a fallback for a failed specialized artifact, or a custom-template router.
 - A required description, a valid Python module docstring, and a concise class docstring form the portable self-documentation baseline.
@@ -498,11 +730,14 @@ The first-time-right contract requires error visibility. Silent loss is not supp
 - Closed schema objects reject undeclared properties with actionable path context. Deliberately open maps remain possible only when the suite-owned schema explicitly defines that openness.
 - Keep validated tool-envelope values such as name and output_path, and server-owned provenance or timestamp values, outside caller-owned artifact context during artifact validation.
 - Add those values only after artifact-context validation through an explicit render-context boundary.
+- Treat ownership semantically rather than lexically: a content field is not redundant merely because it is also called `name` or `title` elsewhere.
+- A renderer may derive a symbol, file stem, display form, or other name representation from envelope identity only through a deterministic artifact/language naming profile, such as case conversion, normalization, or a declared artifact-specific prefix/suffix.
+- If the required value needs business interpretation, combines independently meaningful inputs, loses caller intent, or cannot be validated as one deterministic representation, expose it as an explicit suite-owned artifact-content field. Do not force inference merely to avoid similarly named values.
 - Do not introduce a compatibility bridge for silently ignored keys; silent acceptance was not a reliable contract.
 
 #### Design hand-off
 
-Design must define the typed boundary and deterministic merge rules between caller-owned artifact context, validated tool-envelope input, and server-owned render metadata. It must also specify collision handling and which values are visible to templates. The exact classes and pipeline arrangement belong to Design; template-specific field names must not leak into generic pgmcp code.
+Design must define the typed boundary and deterministic merge rules between caller-owned artifact context, validated tool-envelope input, and server-owned render metadata. It must specify collision handling, which values are visible to templates, and the finite naming profiles that may derive artifact/language representations from envelope identity. Each artifact schema audit must distinguish a pure representation from a semantically independent name or title; the latter remains explicit context. The exact classes and pipeline arrangement belong to Design; template-specific field names and composition rules must not leak into generic pgmcp code.
 
 ### F-04 — DTO introspection and DTO runtime selection are split
 
@@ -620,7 +855,7 @@ The current artifact schemas mix body or file content with values belonging to t
 
 The artifact context exposed by scaffold_schema contains only caller-owned values intentionally rendered as artifact content. It is not a transport for a later tool's envelope.
 
-- The scaffold tool envelope validates values such as name and output_path separately. A resolved renderer may receive them only after artifact-context validation where they have a legitimate render use.
+- The scaffold tool envelope validates values such as name and output_path separately. A resolved renderer may receive them only after artifact-context validation where they have a legitimate render use. Name representations may be derived only through an explicit deterministic naming profile; semantically independent titles, subjects, labels, or symbols remain artifact content.
 - Server-owned artifact type, timestamps, version identity, and provenance are injected separately.
 - Downstream GitHub title, labels, milestone, assignees, branch, base, draft, and similar operation inputs remain governed by their own tool schemas and do not travel through an issue or PR body context.
 - If a concept genuinely belongs in the body, its concrete template defines a content field and renders an explicit section. It does not reuse an identically named downstream API field as implicit metadata.
