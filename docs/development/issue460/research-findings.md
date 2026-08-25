@@ -417,9 +417,9 @@ The replacement evidence must close the material gaps these suites currently obs
 
 The four workflow-document artifacts and the workflow contracts are one cooperating toolchain. Design must compare every active Research, Design, Planning, and Validation `phase_instructions` variant with the corresponding final schema and renderer.
 
-- Every instruction that requires persisted phase content must have an obvious, semantically suitable artifact carrier.
-- Every stable artifact concept must be explained by schema guidance and used coherently by applicable phase instructions, or be justified as reusable outside workflow execution.
-- Action instructions, authority boundaries, tool calls, and workflow-specific completeness remain in `contracts.yaml`; templates and schemas do not copy them.
+- Every instruction that requires persisted phase content must map to a semantically named schema section. The shared artifact schema contains a common core plus optional sections; the active workflow instruction determines which optional sections its outcome requires.
+- Every stable artifact concept must be explained by schema guidance and used coherently by applicable phase instructions, or be justified as reusable outside workflow execution. Optionality in the scaffold contract does not make a workflow-required outcome optional at the phase boundary.
+- Substantive actions, authority boundaries, workflow-specific completeness, and enforcement of the correct MCP tool, timing, and evidence scope remain in `contracts.yaml`; templates and schemas do not copy them. Phase instructions name required tools when enforcement matters but never embed complete invocations or duplicate input parameters.
 - Templates own presentation and stable document structure; they do not redefine workflow behavior.
 - Phase instructions may be edited within issue 460 when alignment removes contradiction, missing artifact capacity, obsolete terminology, or inefficient workaround authoring. Such edits must preserve the approved workflow responsibilities rather than silently redesign them.
 - The alignment should minimize agent repair work and duplicate context: the phase instruction tells the agent what outcome is required, `scaffold_schema` explains how artifact content is supplied, and the renderer produces a fitting first draft.
@@ -443,13 +443,13 @@ The active contract set contains five Research variants (Feature, Bug, Refactor,
 
 The comparison also exposes instruction-side friction:
 
-- Feature, Bug, and Refactor directly show `scaffold_artifact(... context={...})` without making schema discovery locally explicit; Docs and Epic explicitly call `scaffold_schema`. The final contract set must use one coherent discovery convention and may rely on the global scaffolding rule only when that reliance is unambiguous across harnesses.
+- All embedded pseudo-invocations such as `scaffold_artifact(... context={...})`, `run_tests(scope=...)`, and `git_add_or_commit(...)` duplicate MCP input contracts and will drift when parameters evolve. Phase instructions may still require `scaffold_artifact`, `run_tests`, `run_quality_gates`, or another authoritative tool by name and purpose. `scaffold_schema` is not an unconditional phase step: an agent with the current schema may scaffold directly, while the global scaffolding rule requires discovery when the schema is absent or stale.
 - Docs Planning and all three Epic document phases ask for “schema-complete evidence” in the initial scaffold call. That phrase can be read as “construct the final artifact before scaffolding” and defeats the intended scaffold-then-refine workflow.
 - Chore correctly permits a direct Research outcome and optional persistence. Its Research schema must not become mandatory merely because the richer artifact exists.
 - Validation variants correctly allow creation followed by updating, which already models scaffold-as-basis. The other document phases should communicate the same lifecycle without implying that a schema-valid first render is phase-complete.
 - No phase instruction may require a generic catch-all field to smuggle in a concept the schema does not name. Conversely, schema descriptions must not copy root-cause, preservation, epic-decomposition, TDD, or other workflow-specific obligations.
 
-The Design acceptance test for this boundary is therefore semantic, not textual: for each of the nineteen variants, an agent can discover an appropriate carrier, make one valid scaffold call without guessing hidden shapes, then use normal evidence gathering and `safe_edit_file` refinement to reach the phase outcome. The initial scaffold must be truthful and structurally valid; only the reviewed and refined artifact may be called phase-complete.
+The Design acceptance test for this boundary is therefore semantic, not textual: for each of the nineteen variants, the shared schema exposes a common core and clearly named optional sections capable of carrying the workflow-required outcome. An agent that already holds the current schema may invoke `scaffold_artifact` directly; an agent without that knowledge can discover it without the phase instruction prescribing the call. One valid scaffold produces a truthful structural basis, after which normal evidence gathering and `safe_edit_file` refinement reach the phase outcome. Only the reviewed and refined artifact may be called phase-complete. Across all phase instructions, required tool choice, timing, and evidence scope remain enforceable while complete invocation syntax and parameters are absent.
 
 #### Recorded general-document responsibilities
 

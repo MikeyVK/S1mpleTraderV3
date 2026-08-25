@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.5  
+**Version:** 3.6  
 **Last Updated:** 2026-08-24  
 **Issue:** 460  
 **Workflow:** Refactor / Research
@@ -146,6 +146,7 @@ This matrix classifies the primary nature and issue-460 disposition of every fin
 12. Every active Research, Design, Planning, and Validation phase-instruction variant has a semantically suitable persisted carrier in the corresponding artifact schema and renderer, without templates duplicating workflow action or authority.
 13. First-time-right scaffolding means one valid call produces a truthful, structurally coherent, persistable artifact basis without schema/render repair; it does not promise final phase completeness or replace normal content development through `safe_edit_file`.
 14. Template and scaffolding tests are first-class code: each retained test proves durable public behavior or an architectural invariant and itself complies with every applicable Architecture Principle; passing tests do not justify private-boundary coupling, duplicated config truth, hidden dependency construction, global mutable state, or implementation-shaped harnesses.
+15. Phase instructions may enforce the correct MCP tool, timing, and evidence scope, but never duplicate a complete invocation or its input parameters; `scaffold_schema` is conditional on the agent not already holding the current artifact schema.
 
 ## Approved Strategy and Decision Status
 
@@ -175,7 +176,7 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-14A agent hints | Approved 2026-08-23 | Remove the unused pattern, three dead imports, and stale commented workflow guidance; contracts.yaml remains workflow authority |
 | Runtime architecture compliance | Approved 2026-08-24 | Audit every affected runtime/setup component against the complete Architecture Principles, with explicit emphasis on Config-First/DRY/OCP hardcoding, fail-fast startup, SRP/DIP/ISP, composition-root ownership, no import-time I/O, CQS, Law of Demeter, presentation separation, and YAGNI; artifact-specific knowledge remains in the packaged suite |
 | Legacy parallel scaffolding and validation surfaces | Approved 2026-08-24 | Remove the artifact-specific component-scaffolder stack, duplicate renderer/result/base utilities, source-header metadata parser/config/lifecycle exports, and the public always-pass `validate_template` tool with its dedicated DTOs/tests/instruction references. Retained behavior is owned by one resolved generic scaffold path, fail-fast startup graph validation, and declared output-profile validation; no compatibility shell is justified |
-| Workflow/template semantic alignment | Approved 2026-08-24 | Compare every active Research, Design, Planning, and Validation `phase_instructions` variant with its final artifact schema and renderer; required persisted outcomes need an obvious carrier, while actions, authority, tool calls, and workflow-specific completeness remain solely in contracts.yaml. Explicitly reject wording that conflates a first-time-right scaffold call with a final complete artifact or obscures normal `safe_edit_file` refinement |
+| Workflow/template semantic alignment | Approved 2026-08-25 | Compare every active Research, Design, Planning, and Validation `phase_instructions` variant with its final artifact schema and renderer. The shared schema provides a common core plus semantically named optional sections; each workflow instruction determines which sections its outcome requires. Phase instructions retain substantive actions, authority, workflow-specific completeness, and enforcement of the correct MCP tool, timing, and evidence scope, but never embed full invocations or duplicate tool-input parameters. `scaffold_schema` is required only when the agent does not already hold the current schema. Explicitly reject wording that conflates a valid first scaffold with a final complete artifact or obscures normal `safe_edit_file` refinement |
 
 | Test-suite architecture compliance | Approved 2026-08-24 | Audit every affected test and helper twice: first for durable public behavior/invariant value, then against every applicable Architecture Principle. Retained coverage must use public boundaries, explicit dependencies, isolated state, config-derived facts, proportionate helpers, and production-equivalent typing/quality; valuable intent does not excuse architectural coupling, and clean structure does not justify behaviorless tests |
 | Deferred YAML artifact subset | Deferred 2026-08-23 | Remove the two incomplete unreachable bases now; coordination should create the complete package subset as the first post-460 PGMCP issue on its own branch |
@@ -219,6 +220,7 @@ Issue 460 should be considered substantively resolved only when:
 16. Phase instructions and schema guidance distinguish a valid first scaffold from the completed phase deliverable, so agents can scaffold once and refine normally without repair calls, false completeness assumptions, or avoidable reasoning/token churn.
 17. Every retained template/scaffolding test protects durable public behavior or an architectural invariant and itself passes the applicable Architecture Principles; obsolete claims and architecturally coupled test implementations are removed or replaced rather than carried forward.
 18. A `safe_edit_file` operation validates the complete proposed result: strict mode cannot leave a partially or invalidly modified file when required validation fails or is unavailable, while interactive mode returns structured findings for any persisted invalid result.
+19. Phase instructions enforce required tool choice, timing, and evidence scope by name and intent without copying complete MCP invocations or parameters; an agent with the current artifact schema may call `scaffold_artifact` directly, while schema discovery remains available when that knowledge is absent or stale.
 
 ## Deferred Work
 
@@ -280,6 +282,7 @@ These are navigation inputs, not selected Design mechanisms.
 | 3.0 | 2026-08-24 | Clarify envelope/content naming ownership: deterministic representation derivation is valid, semantic inference or non-trivial composition requires an explicit artifact field |
 | 2.9 | 2026-08-24 | Approve an explicit behavior-oriented Python/pytest unit-test responsibility and close all 22 public artifact dispositions |
 | 2.8 | 2026-08-24 | Approve a structured framework-neutral TypeScript DTO-class responsibility and reject the current string mini-language and hidden project metadata |
+| 3.6 | 2026-08-25 | Define optional workflow-selected artifact sections and preserve named tool enforcement while removing full invocation/parameter duplication from phase instructions |
 | 3.5 | 2026-08-25 | Make post-edit output-profile validation and strict no-write behavior an explicit safe-edit strategy and expected result |
 | 3.4 | 2026-08-24 | Complete the 94-consumer/105-test audit, add the legacy parallel-stack clean break, reconcile deferred ownership, and request independent QA |
 | 2.7 | 2026-08-24 | Approve clean-break removal of Tool without a pgmcp/MCP replacement or deferred tool capability |
