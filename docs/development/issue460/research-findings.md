@@ -254,6 +254,7 @@ These graph facts matter because scaffold_schema should describe the resolved re
 | F-16 | Suite-owned artifact purpose descriptions are dropped by `scaffold_schema`. | Callers see field mechanics but must infer why and when the artifact type is useful. | artifact registry, schema introspection |
 | F-17 | Eleven Python- or framework-specific contracts use language-agnostic public IDs. | Callers infer the wrong construct semantics and future language extensions cannot occupy an unambiguous namespace. | public artifact identity, configs, docs, consumers |
 | F-18 | Runtime tool schemas enumerate artifact IDs but expose no runtime ID-to-purpose discovery surface. | Agents can see available names but still depend on static docs or guesswork to select the right contract. | MCP discovery, active registry, harness instructions |
+| F-19 | Rendered-output validation and quality gates define overlapping executable capabilities and outcomes through separately composed authorities. | Identical checks can drift in provider, command, availability, parsing, or result meaning; scaffold/edit evidence can disagree with quality-gate evidence. | output profiles, validation runtime, quality configuration and orchestration, safe edit, composition root |
 
 ## Cross-Cutting Analysis
 
@@ -948,20 +949,6 @@ Extension-only selection is also too coarse. A complete Markdown document may re
 
 Research selects the observable policy—declared applicable evidence, distinct passed/failed/unavailable states, and strict pre-persistence enforcement—not a concrete provider container, registry API, or call topology. On-use injected resolution remains the leading Design hypothesis because it satisfies those constraints without hardcoded language dispatch.
 
-#### Quality-gate consolidation boundary (approved 2026-08-25)
-
-The current runtime implements two overlapping routes. `ValidationService` owns artifact and extension dispatch plus canonical issue aggregation, while `QAManager` owns configured quality-gate execution. `PythonSyntaxValidator` already delegates its full-QA path to `QAManager`, but does so through a temporary file and then translates a manager-specific dictionary. At the same time, `ArtifactManager` and `SafeEditTool` construct validation services independently, and bootstrap constructs the quality manager separately. This is evidence of duplicated authority and dependency wiring, not evidence that either current top-level class should become the universal validator.
-
-The approved boundary is one injected, config-first catalog of executable check capabilities plus one normalized execution/result boundary:
-
-- a capability's provider, command, availability semantics, and result parsing are defined once;
-- artifact output profiles and quality gate sets are selectors over that same catalog rather than parallel validator definitions;
-- scaffolding and safe edit run applicable checks against the complete proposed content before mutation and do not acquire quality-state, baseline, logging, or autofix side effects;
-- `run_quality_gates` may add requested file/branch/project scope, quality-state lifecycle, diagnostics/presentation, and optional fixing around the shared execution boundary;
-- strictness determines whether a proposed mutation may persist, never whether evidence is reported as passed, failed, unavailable, or not executed.
-
-“Quality” qualifies the gates. A workspace is only one possible execution scope and therefore must not become a second semantic owner or configuration authority. Input JSON Schema validation, startup graph/coherence validation, workflow-gate enforcement, and behavioral test execution remain separate because they prove different contracts. Design owns the exact configuration layout, interfaces, adapters, and composition-root topology; it may not introduce a third output-profile provider/command authority while reconciling the two current paths.
-
 #### Historical Decision Rationale (2026-08-23)
 
 - Change strict_validation to default true. Omission means validation is blocking by default; false is an explicit per-artifact opt-out.
@@ -976,7 +963,7 @@ The approved boundary is one injected, config-first catalog of executable check 
 
 #### Design hand-off
 
-Design must define the declarative capability/profile and quality-gate selector shapes, the single shared capability catalog and normalized execution/result boundary, provider discovery and injection, result states for passed, failed, unavailable, and not-executed validation, and the exact pre-persistence sequence. It must reuse strict_validation as enforcement policy rather than duplicate it, preserve quality-gate scope and lifecycle behavior outside side-effect-free pre-mutation validation, validate inconsistent configuration combinations at startup, and keep dormant-provider absence out of global startup failure. It must also audit current Markdown, Python, TypeScript, tracking, text, and document profiles so the default change does not apply irrelevant rules.
+Design must define each artifact output profile's applicable evidence, the strict versus interactive persistence policy, and the exact pre-persistence sequence. It must audit current Markdown, Python, TypeScript, tracking, text, and document profiles so stricter persistence never applies irrelevant rules, while dormant-provider absence remains an on-use outcome rather than unrelated startup failure. F-19 owns the shared executable-capability authority, normalized factual-result seam, quality-gate reconciliation, and migration obligations that realize this policy without creating a parallel provider path.
 
 ### F-09 — documentation competes with scaffold_schema
 
@@ -1349,6 +1336,79 @@ The [central deferred-work notice](deferred-work.md#purpose-aware-runtime-artifa
 **Historical decision rationale (2026-08-24):** add one harness-agnostic MCP discovery tool backed by the same restart-stable active registry. Its caller-facing result is intentionally minimal: artifact `type_id` and the concise suite-owned purpose from F-16. It introduces no separately maintained inventory. A caller discovers type and purpose, selects one, calls `scaffold_schema` for the exact context contract, then calls `scaffold_artifact`.
 
 Harness-specific skills or commands may describe this reusable sequence, but remain thin consumers of the MCP tool and contain no artifact inventory. Fixed workflow instructions may continue naming known phase artifacts directly. Exact tool name, input/output DTO, cache/presentation behavior, and optional derived skill updates belong to Design; speculative catalog metadata remains out of scope.
+
+**Canonical decision/status:** see the [Research decision register](research.md#approved-strategy-and-decision-status).
+
+### F-19 — output validation and quality gates duplicate executable authority
+
+Issue 460 originally treated rendered-output validation as part of first-time-right scaffolding. The consumer audit then established a wider architecture defect: the current validation route and quality-gate route can execute overlapping checks while defining executable facts, composition, and result meanings through separate authorities.
+
+`ValidationService` owns artifact/extension dispatch and issue aggregation through a mutable validator registry. `QAManager` owns configured gate execution, parsing, scopes, lifecycle state, diagnostics, and optional fixing. `PythonSyntaxValidator` already delegates its full-QA route to `QAManager`, but only by writing proposed content to a temporary file and translating a manager-specific dictionary. `ArtifactManager` and `SafeEditTool` construct validation dependencies separately while bootstrap composes the quality manager elsewhere. These observations prove duplicated authority and wiring; they do not make either current top-level class the preferred universal service.
+
+#### Responsibility boundary
+
+The reconciliation applies only where the two paths share executable facts and factual outcomes. It does not collapse every validation-like responsibility.
+
+| Responsibility | Research boundary |
+|---|---|
+| Executable capability facts | One config-first authority owns stable capability identity, provider/executable requirements, command semantics, availability, accepted exit behavior, and result parsing |
+| Artifact output profiles | Select the capabilities applicable to complete proposed artifact content and retain artifact-specific persistence policy |
+| Quality gate sets | Select capabilities for a requested quality operation and retain scope, lifecycle state, diagnostics, presentation, and optional fixing |
+| Normalized execution result | Reports factual passed, failed, unavailable, or not-executed evidence without deciding persistence, workflow progression, or presentation |
+| Caller-context JSON Schema validation | Remains the distinct pre-render contract check established by F-01 through F-03 |
+| Startup graph/coherence validation | Remains a language-agnostic configuration and template-graph responsibility; dormant provider absence does not invalidate unrelated startup |
+| Behavioral tests | Remain under `run_tests` and prove executable behavior rather than becoming ordinary static capabilities |
+| Workflow-gate enforcement | Continues to consume evidence and state without becoming a compiler, validator, or test runner |
+
+A workspace is an execution scope, not a second qualification or authority for a quality gate.
+
+#### Affected boundary and consumers
+
+The complete per-component disposition remains authoritative in the [Template Suite Work Catalog](template-suite-catalog.md#runtime-and-active-consumer-ledger). This finding added eight direct consumers to that catalog—`quality.yaml`, its Pydantic config models, `QAManager`, `quality_tools.py`, and four validation modules—and also materially affects the existing rows for `ValidationService`, `ArtifactManager`, `SafeEditTool`, bootstrap composition, artifact/output-profile configuration, public result DTOs, active quality/scaffolding/editing references, and behavioral tests.
+
+The blast radius is therefore code, configuration, public tool results, tests, and active documentation. It is not a template-only implementation detail.
+
+#### Reconciliation option analysis
+
+| Option | Cost, risk, consumer impact, and migration consequence |
+|---|---|
+| Keep validation and quality gates fully independent | Appears locally smaller, but preserves duplicate provider, command, availability, parsing, and outcome truth and permits permanent drift |
+| Promote current `ValidationService` to universal authority | Preserves a familiar scaffold boundary, but also preserves environment construction, global mutable registration, extension/filename authority, artifact assumptions, and silent-pass behavior |
+| Promote current `QAManager` to universal authority | Reuses configured execution, but leaks scope resolution, baseline/failed-file mutation, logging, presentation dictionaries, and autofix into side-effect-free pre-mutation checks |
+| Add a third output-profile provider configuration | Models artifact profiles independently, but formalizes the DRY/SSOT defect and creates another migration target |
+| Share one capability authority and factual execution seam while retaining separate selectors and policies | Removes duplicate executable truth without creating a validation god service; requires an explicit migration of established configuration/result consumers and independent evidence |
+
+Research selects the last option.
+
+#### Approved strategy and scope decision
+
+On 2026-08-25 the human owner explicitly retained this reconciliation inside issue 460 as a scope expansion rather than deferring it:
+
+- rendered-output validation and quality gates share one injected, config-first executable-capability authority and one side-effect-free normalized factual-result seam;
+- output profiles and quality gate sets remain separate selectors and policy consumers;
+- scaffolding and safe edit validate complete proposed content before mutation without acquiring quality-state, baseline, diagnostics/presentation, scope lifecycle, or autofix side effects;
+- `run_quality_gates` remains a distinct public operation and retains those quality-specific responsibilities;
+- strictness changes only whether proposed content may persist; it never rewrites failed, unavailable, or not-executed evidence as passed;
+- no third provider, command, parsing, or availability authority may be introduced as an interim issue-460 implementation;
+- exact config decomposition, Pydantic models, interfaces, adapters, path/staging mechanics, and composition topology remain Design-owned.
+
+The compatibility strategy is a clean architecture break with explicit migration of affected configuration and public result consumers. It is not permission to silently rename statuses, drop fields, reinterpret `skipped`, or alter failure envelopes. Design must inventory and decide each observable migration before implementation.
+
+#### Independent and self-hosting evidence
+
+Because issue 460 changes infrastructure that may be used to certify the same branch, the migrated quality path cannot be the sole evidence of its own correctness. Design and Planning must provide an independently auditable verification strategy that:
+
+- compares preserved behavior or outcomes across the migration boundary where compatibility is intended;
+- directly exercises normalized factual states, including unavailable and not-executed paths, without mocking away the boundary being certified;
+- separates startup/configuration proof, output-profile proof, and quality-operation proof;
+- uses independent compiler/parser or other external evidence where proportionate;
+- prevents a green result produced only by the newly changed orchestration from authorizing its own migration.
+
+This is a binding evidence obligation, not a selected dual-run, bootstrap, or temporary-file mechanism.
+
+#### Design hand-off
+
+Design must treat F-19 as one coherent package, whether or not it later chooses to subdivide implementation work. It must define the single loaded capability authority, selectors, normalized factual result contract, dependency injection and composition ownership, pre-mutation sequence, public-result and status migration, incompatible-configuration startup failures, on-use provider unavailability, and independent/self-hosting evidence. It must preserve the distinct consumer policies above and demonstrate that no artifact-, extension-, language-, or workspace-specific dispatch becomes a new generic-code authority.
 
 **Canonical decision/status:** see the [Research decision register](research.md#approved-strategy-and-decision-status).
 

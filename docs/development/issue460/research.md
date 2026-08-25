@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.7  
+**Version:** 3.8  
 **Last Updated:** 2026-08-25  
 **Issue:** 460  
 **Workflow:** Refactor / Research
@@ -36,6 +36,7 @@ Research content is complete and awaits independent QA. Inventory, baseline prob
 - Runtime, setup, packaging, renewal, test/helper, agent-instruction, and active-documentation consumers.
 - Compatibility and migration strategy per affected public boundary.
 - Observable responsibilities that must be retained, adapted, or removed.
+- The human-approved issue-460 scope expansion that reconciles rendered-output validation and quality gates at one executable-capability and normalized-result boundary, including safe-edit pre-mutation validation and independent migration evidence.
 
 ### Out of scope
 
@@ -66,6 +67,7 @@ The audit established that these are suite-level contract failures. Some schema-
 5. Does the resolved graph include every inherited and imported contract contributor?
 6. Can the suite own and evolve its content contract independently from pgmcp-server?
 7. Which compatibility, migration, and preservation decisions require human approval before Design?
+8. Which executable validation facts and factual result semantics must rendered-output validation and quality gates share without collapsing their distinct policies, scopes, side effects, or evidence responsibilities?
 
 ## Evidence Authority
 
@@ -102,6 +104,7 @@ Cached tool resources and ignored temporary outputs are supplementary diagnostic
 | F-16 | Suite-owned artifact purpose descriptions are dropped by `scaffold_schema`. | Callers see field mechanics but must infer why and when the artifact type is useful. | artifact registry, schema introspection |
 | F-17 | Eleven Python- or framework-specific contracts use language-agnostic public IDs. | Callers infer the wrong construct semantics and future language extensions cannot occupy an unambiguous namespace. | public artifact identity, configs, docs, consumers |
 | F-18 | Runtime tool schemas enumerate artifact IDs but expose no runtime ID-to-purpose discovery surface. | Agents can see available names but still depend on static docs or guesswork to select the right contract. | MCP discovery, active registry, harness instructions |
+| F-19 | Rendered-output validation and quality gates define overlapping executable capabilities and outcomes through separately composed authorities. | Identical checks can drift in provider, command, availability, parsing, or result meaning; scaffold/edit evidence can disagree with quality-gate evidence. | output profiles, validation runtime, quality configuration and orchestration, safe edit, composition root |
 
 ## Canonical Finding Classification
 
@@ -129,6 +132,7 @@ This matrix classifies the primary nature and issue-460 disposition of every fin
 | F-16 | Structural debt | Enabling correction | Existing suite-owned artifact purpose remains visible through selected-artifact introspection | Preserve existing semantic data | Carry the registered root description through the current introspection response |
 | F-17 | Structural debt | Enabling correction | Public identity states language/framework semantics that materially determine the contract | Clean break | Language/technology-qualified IDs; exact names remain Design-owned |
 | F-18 | Feature request | Deferred / out of scope | Issue 460 adds no new purpose-aware runtime discovery capability | Deferred decision | Future Research compares a new tool, extension of existing introspection, and documentation-only discovery |
+| F-19 | Architecture defect and approved scope expansion | Retained in issue 460 by human decision | Output profiles and quality gate sets share one executable-capability authority and factual result seam while their policies and side effects remain separate | Clean break with explicit public-result migration | Config-first capability catalog and side-effect-free normalized executor; exact topology remains Design-owned |
 
 ## Core Invariants
 
@@ -165,7 +169,7 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-06 / S-04 link semantics | Approved 2026-08-23 | Required label and target form one presentation-neutral link object; concrete artifacts choose inline or complete reference-style rendering |
 | F-07 / S-07 input ownership and consumption | Approved 2026-08-23 | Artifact context contains only rendered content; scaffold/server inputs are separate, downstream tool envelopes never tunnel through bodies, hidden routing and unconsumed values are removed |
 | F-08 / S-14 output validation and strictness | Approved 2026-08-23 | Applicable output evidence is declared per artifact/profile; passed, failed, and unavailable remain distinct; strict persistence requires executed passing evidence; dormant artifacts impose no provider availability requirement. Provider discovery, injection, and call topology remain Design-owned |
-| Shared output-validation and quality-gate authority | Approved 2026-08-25 | Rendered-output validation and quality gates share one injected, config-first catalog of executable check capabilities and one normalized execution/result boundary. Artifact output profiles and quality gate sets select from that catalog and never duplicate provider, command, or parsing definitions. Scaffolding and safe edit execute applicable checks against complete proposed content before mutation without quality-state or autofix side effects; `run_quality_gates` adds requested scope, quality-state lifecycle, diagnostics/presentation, and optional fixing. Strictness controls persistence only. Input-schema, startup-graph, workflow-gate, and behavioral-test validation remain separate responsibilities. Exact config layout, interfaces, and composition topology remain Design-owned |
+| F-19 shared output-validation and quality-gate authority | Approved scope expansion 2026-08-25 | Retain this reconciliation inside issue 460. Rendered-output validation and quality gates share one injected, config-first authority for executable capability facts and one side-effect-free normalized factual-result seam; output profiles and quality gate sets remain separate selectors and policy consumers. Scaffolding and safe edit validate complete proposed content before mutation without quality-state or autofix side effects; `run_quality_gates` retains requested scope, quality-state lifecycle, diagnostics/presentation, and optional fixing. Passed, failed, unavailable, and not-executed evidence remain distinct, and strictness controls persistence only. Input-schema, startup-graph, workflow-gate, and behavioral-test validation remain separate responsibilities. Design must govern the compatibility and migration of existing public results and provide independent/self-hosting evidence so the changed quality path is not the sole authority certifying its own migration. Exact config layout, interfaces, adapters, transaction mechanics, and composition topology remain Design-owned |
 | Safe-edit post-edit validation | Approved 2026-08-25 | Every `safe_edit_file` operation validates the complete resulting artifact content through the same injected, configured output-profile boundary used by scaffolding. In strict mode, failed or unavailable required validation leaves the original file unchanged; interactive mode may persist but returns structured findings. Exact staging, atomic-write, or rollback mechanics remain Design-owned |
 | F-09 / S-15 documentation authority | Approved 2026-08-23 | Live schema and catalog own exact facts; handwritten docs explain semantics and discovery, duplicate inventories are removed, and generation remains YAGNI-driven |
 | F-10 / S-10 distribution and customization | Approved 2026-08-23 | Renewal never creates a mixed suite: proven unchanged official roots may fast-forward completely, while customized, legacy-unknown, and external roots are preserved completely and receive an inspectable non-authoritative candidate. Baseline evidence, comparison, staging, and adoption mechanics remain Design-owned |
@@ -223,7 +227,7 @@ Issue 460 should be considered substantively resolved only when:
 17. Every retained template/scaffolding test protects durable public behavior or an architectural invariant and itself passes the applicable Architecture Principles; obsolete claims and architecturally coupled test implementations are removed or replaced rather than carried forward.
 18. A `safe_edit_file` operation validates the complete proposed result: strict mode cannot leave a partially or invalidly modified file when required validation fails or is unavailable, while interactive mode returns structured findings for any persisted invalid result.
 19. Phase instructions enforce required tool choice, timing, and evidence scope by name and intent without copying complete MCP invocations or parameters; an agent with the current artifact schema may call `scaffold_artifact` directly, while schema discovery remains available when that knowledge is absent or stale.
-20. Artifact output profiles and quality gate sets resolve through one configured executable-capability authority and one normalized result model; pre-mutation consumers remain free of quality-state and autofix side effects, while `run_quality_gates` may add the requested scope and quality lifecycle behavior.
+20. Artifact output profiles and quality gate sets resolve through one configured executable-capability authority and one normalized factual-result model; pre-mutation consumers remain free of quality-state and autofix side effects, while `run_quality_gates` may add the requested scope and quality lifecycle behavior. Compatibility and migration of existing results are explicit, and independent/self-hosting evidence prevents the changed quality path from being the sole evidence for its own correctness.
 
 ## Deferred Work
 
@@ -252,6 +256,7 @@ Design may answer these questions only after every required strategy is approved
 3. Which portable metadata form replaces inconsistent current tier-three representations?
 4. How do result DTOs report target, validation evidence, suite identity, and graph fingerprint outside caller content?
 5. Which concrete interfaces realize the approved boundaries without introducing artifact-specific server knowledge?
+6. How does the F-19 package migrate existing validation and quality result consumers, preserve distinct policy ownership, and establish independent/self-hosting evidence without introducing a third executable-capability authority?
 
 These are navigation inputs, not selected Design mechanisms.
 
@@ -279,6 +284,7 @@ These are navigation inputs, not selected Design mechanisms.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.8 | 2026-08-25 | Govern the human-approved validation and quality-gate scope expansion as standalone F-19, including compatibility, migration, consumer-policy separation, and independent/self-hosting evidence obligations |
 | 3.7 | 2026-08-25 | Unify rendered-output validation and quality gates under one configured executable-capability authority while preserving their distinct policies, side effects, and non-overlapping validation responsibilities; extend the affected-consumer census accordingly |
 | 3.6 | 2026-08-25 | Define optional workflow-selected artifact sections and preserve named tool enforcement while removing full invocation/parameter duplication from phase instructions |
 | 3.5 | 2026-08-25 | Make post-edit output-profile validation and strict no-write behavior an explicit safe-edit strategy and expected result |

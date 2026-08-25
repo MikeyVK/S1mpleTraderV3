@@ -1,7 +1,7 @@
 # Template Suite Work Catalog
 
 **Status:** REVIEW  
-**Version:** 1.5  
+**Version:** 1.6  
 **Last Updated:** 2026-08-25  
 **Issue:** #460  
 **Purpose:** Durable, omission-resistant work catalog for the complete packaged template suite, its runtime engine, behavioral tests, helpers, and active consumers.
@@ -31,7 +31,7 @@ The catalog covers:
 | Unreachable Jinja templates | 4 | Explicit retain/connect/remove decision required |
 | Probe calls | 44 | 34 PASS, 10 FAIL; exact inputs and outcomes in durable evidence |
 | Candidate tests/helpers | 105 | 91 direct-review and 14 adjacent-review candidates; behavior value decided explicitly |
-| Active consumers/references | 102 | Runtime impact or synchronization need decided explicitly; includes the eight components added by output-validation/quality-gate reconciliation |
+| Active consumers/references | 102 | Runtime impact or synchronization need decided explicitly; includes the eight direct consumers added by [F-19 output-validation/quality-gate reconciliation](research-findings.md#f-19--output-validation-and-quality-gates-duplicate-executable-authority) |
 
 ## Public Artifact Ledger
 
@@ -420,11 +420,11 @@ Research is complete only when:
 9. Every active Research, Design, Planning, and Validation phase-instruction variant is mapped to its artifact schema/renderer carrier, with contradictions, missing capacity, and duplicated authority recorded.
 10. The alignment record explicitly checks that first-time-right call validity is not presented as final artifact completeness and that ordinary `safe_edit_file` refinement remains clear, expected, and token-efficient.
 11. Phase instructions may enforce tool choice, timing, and evidence scope, but contain no full MCP invocations or duplicated parameters; `scaffold_schema` remains conditional when the current schema is already known.
-12. Every output-profile and quality-gate consumer selects executable checks from one config-first capability authority and one normalized result boundary; pre-mutation validation remains free of quality-state and autofix side effects.
+12. Every [F-19](research-findings.md#f-19--output-validation-and-quality-gates-duplicate-executable-authority) output-profile and quality-gate consumer selects executable checks from one config-first capability authority and one normalized factual-result boundary; pre-mutation validation remains free of quality-state and autofix side effects.
 
 ## Current Gate
 
-Public artifact, all 79 suite-file dispositions, all 102 active-consumer dispositions, runtime Architecture Principles/hardcoding dispositions, workflow-phase/template alignment, and the dual behavior-value/architecture review of all 105 tests/helpers are complete. Deferred work is centralized in `deferred-work.md`. The remaining Research gate is independent QA; this producer catalog does not itself authorize Design or Planning.
+Public artifact, all 79 suite-file dispositions, all 102 active-consumer dispositions—including the human-approved F-19 scope expansion—runtime Architecture Principles/hardcoding dispositions, workflow-phase/template alignment, and the dual behavior-value/architecture review of all 105 tests/helpers are complete. Deferred work is centralized in `deferred-work.md`. The remaining Research gate is independent QA; this producer catalog does not itself authorize Design or Planning.
 
 
 
