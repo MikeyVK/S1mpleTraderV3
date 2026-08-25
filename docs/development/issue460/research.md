@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.4  
+**Version:** 3.5  
 **Last Updated:** 2026-08-24  
 **Issue:** 460  
 **Workflow:** Refactor / Research
@@ -163,6 +163,7 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-06 / S-04 link semantics | Approved 2026-08-23 | Required label and target form one presentation-neutral link object; concrete artifacts choose inline or complete reference-style rendering |
 | F-07 / S-07 input ownership and consumption | Approved 2026-08-23 | Artifact context contains only rendered content; scaffold/server inputs are separate, downstream tool envelopes never tunnel through bodies, hidden routing and unconsumed values are removed |
 | F-08 / S-14 output validation and strictness | Approved 2026-08-23 | Applicable output evidence is declared per artifact/profile; passed, failed, and unavailable remain distinct; strict persistence requires executed passing evidence; dormant artifacts impose no provider availability requirement. Provider discovery, injection, and call topology remain Design-owned |
+| Safe-edit post-edit validation | Approved 2026-08-25 | Every `safe_edit_file` operation validates the complete resulting artifact content through the same injected, configured output-profile boundary used by scaffolding. In strict mode, failed or unavailable required validation leaves the original file unchanged; interactive mode may persist but returns structured findings. Exact staging, atomic-write, or rollback mechanics remain Design-owned |
 | F-09 / S-15 documentation authority | Approved 2026-08-23 | Live schema and catalog own exact facts; handwritten docs explain semantics and discovery, duplicate inventories are removed, and generation remains YAGNI-driven |
 | F-10 / S-10 distribution and customization | Approved 2026-08-23 | Renewal never creates a mixed suite: proven unchanged official roots may fast-forward completely, while customized, legacy-unknown, and external roots are preserved completely and receive an inspectable non-authoritative candidate. Baseline evidence, comparison, staging, and adoption mechanics remain Design-owned |
 | F-11 / S-16 source provenance | Approved 2026-08-23 | Current resolved contract and Jinja graph produce a verifiable suite-scoped fingerprint; historical registry state is removed and adopted artifacts remain independent content |
@@ -217,6 +218,7 @@ Issue 460 should be considered substantively resolved only when:
 15. A workflow-by-phase alignment record proves that active Research, Design, Planning, and Validation instructions can persist their required outcomes through the corresponding schemas/renderers without duplicated workflow authority.
 16. Phase instructions and schema guidance distinguish a valid first scaffold from the completed phase deliverable, so agents can scaffold once and refine normally without repair calls, false completeness assumptions, or avoidable reasoning/token churn.
 17. Every retained template/scaffolding test protects durable public behavior or an architectural invariant and itself passes the applicable Architecture Principles; obsolete claims and architecturally coupled test implementations are removed or replaced rather than carried forward.
+18. A `safe_edit_file` operation validates the complete proposed result: strict mode cannot leave a partially or invalidly modified file when required validation fails or is unavailable, while interactive mode returns structured findings for any persisted invalid result.
 
 ## Deferred Work
 
@@ -278,6 +280,7 @@ These are navigation inputs, not selected Design mechanisms.
 | 3.0 | 2026-08-24 | Clarify envelope/content naming ownership: deterministic representation derivation is valid, semantic inference or non-trivial composition requires an explicit artifact field |
 | 2.9 | 2026-08-24 | Approve an explicit behavior-oriented Python/pytest unit-test responsibility and close all 22 public artifact dispositions |
 | 2.8 | 2026-08-24 | Approve a structured framework-neutral TypeScript DTO-class responsibility and reject the current string mini-language and hidden project metadata |
+| 3.5 | 2026-08-25 | Make post-edit output-profile validation and strict no-write behavior an explicit safe-edit strategy and expected result |
 | 3.4 | 2026-08-24 | Complete the 94-consumer/105-test audit, add the legacy parallel-stack clean break, reconcile deferred ownership, and request independent QA |
 | 2.7 | 2026-08-24 | Approve clean-break removal of Tool without a pgmcp/MCP replacement or deferred tool capability |
 | 2.6 | 2026-08-24 | Approve clean-break removal of broad Service scaffolding and defer any explicit command/query artifact family to separate Research |
