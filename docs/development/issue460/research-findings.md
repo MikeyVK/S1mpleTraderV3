@@ -1,10 +1,10 @@
 <!-- docs/development/issue460/research-findings.md -->
-<!-- template=generic_doc version=43c84181 created=2026-08-24 updated=2026-08-24 -->
+<!-- template=generic_doc version=43c84181 created=2026-08-24 updated=2026-08-25 -->
 # Issue 460 Research Findings
 
 **Status:** REVIEW  
-**Version:** 1.1  
-**Last Updated:** 2026-08-24  
+**Version:** 1.2  
+**Last Updated:** 2026-08-25  
 **Issue:** 460
 
 ## Purpose
@@ -85,7 +85,7 @@ Render probes were used as diagnostic observations of content behavior, not as t
 
 The durable evidence authorities for the reopened audit are:
 
-- [Template Suite Work Catalog](template-suite-catalog.md) — complete inventory of all 22 public artifacts, all 79 suite files, example surfaces, runtime/setup consumers, and 105 candidate test/helper files.
+- [Template Suite Work Catalog](template-suite-catalog.md) — complete inventory of all 22 public artifacts, all 79 suite files, example surfaces, 102 active runtime/setup and synchronization consumers, and 105 candidate test/helper files.
 - [Probe Evidence](probe-evidence.yaml) — exact minimal and property-complete contexts plus normalized schema, render, output-validation, and error outcomes for all 44 calls.
 
 Cached MCP resources and ignored files below `.pgmcp/temp/issue460/` are supplementary diagnostics only. Research claims must remain reproducible from the committed evidence and live public tools without relying on a machine-local temporary path.
@@ -948,6 +948,20 @@ Extension-only selection is also too coarse. A complete Markdown document may re
 
 Research selects the observable policy—declared applicable evidence, distinct passed/failed/unavailable states, and strict pre-persistence enforcement—not a concrete provider container, registry API, or call topology. On-use injected resolution remains the leading Design hypothesis because it satisfies those constraints without hardcoded language dispatch.
 
+#### Quality-gate consolidation boundary (approved 2026-08-25)
+
+The current runtime implements two overlapping routes. `ValidationService` owns artifact and extension dispatch plus canonical issue aggregation, while `QAManager` owns configured quality-gate execution. `PythonSyntaxValidator` already delegates its full-QA path to `QAManager`, but does so through a temporary file and then translates a manager-specific dictionary. At the same time, `ArtifactManager` and `SafeEditTool` construct validation services independently, and bootstrap constructs the quality manager separately. This is evidence of duplicated authority and dependency wiring, not evidence that either current top-level class should become the universal validator.
+
+The approved boundary is one injected, config-first catalog of executable check capabilities plus one normalized execution/result boundary:
+
+- a capability's provider, command, availability semantics, and result parsing are defined once;
+- artifact output profiles and quality gate sets are selectors over that same catalog rather than parallel validator definitions;
+- scaffolding and safe edit run applicable checks against the complete proposed content before mutation and do not acquire quality-state, baseline, logging, or autofix side effects;
+- `run_quality_gates` may add requested file/branch/project scope, quality-state lifecycle, diagnostics/presentation, and optional fixing around the shared execution boundary;
+- strictness determines whether a proposed mutation may persist, never whether evidence is reported as passed, failed, unavailable, or not executed.
+
+“Quality” qualifies the gates. A workspace is only one possible execution scope and therefore must not become a second semantic owner or configuration authority. Input JSON Schema validation, startup graph/coherence validation, workflow-gate enforcement, and behavioral test execution remain separate because they prove different contracts. Design owns the exact configuration layout, interfaces, adapters, and composition-root topology; it may not introduce a third output-profile provider/command authority while reconciling the two current paths.
+
 #### Historical Decision Rationale (2026-08-23)
 
 - Change strict_validation to default true. Omission means validation is blocking by default; false is an explicit per-artifact opt-out.
@@ -962,7 +976,7 @@ Research selects the observable policy—declared applicable evidence, distinct 
 
 #### Design hand-off
 
-Design must define the declarative capability/profile shape, provider discovery and injection mechanism, result states for passed, failed, and unavailable validation, and the exact pre-persistence sequence. It must reuse strict_validation as enforcement policy rather than duplicate it, validate inconsistent configuration combinations at startup, and keep dormant-provider absence out of global startup failure. It must also audit current Markdown, Python, TypeScript, tracking, text, and document profiles so the default change does not apply irrelevant rules.
+Design must define the declarative capability/profile and quality-gate selector shapes, the single shared capability catalog and normalized execution/result boundary, provider discovery and injection, result states for passed, failed, unavailable, and not-executed validation, and the exact pre-persistence sequence. It must reuse strict_validation as enforcement policy rather than duplicate it, preserve quality-gate scope and lifecycle behavior outside side-effect-free pre-mutation validation, validate inconsistent configuration combinations at startup, and keep dormant-provider absence out of global startup failure. It must also audit current Markdown, Python, TypeScript, tracking, text, and document profiles so the default change does not apply irrelevant rules.
 
 ### F-09 — documentation competes with scaffold_schema
 

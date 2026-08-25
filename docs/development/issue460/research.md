@@ -1,8 +1,8 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.6  
-**Last Updated:** 2026-08-24  
+**Version:** 3.7  
+**Last Updated:** 2026-08-25  
 **Issue:** 460  
 **Workflow:** Refactor / Research
 
@@ -21,7 +21,7 @@ Research content is complete and awaits independent QA. Inventory, baseline prob
 - All 22 public artifact types have an approved retain/adapt or removal disposition.
 - All 79 packaged suite files have an explicit retain/adapt or removal disposition.
 - All 105 test/helper candidates have explicit behavior-value and Architecture Principles dispositions; the original census omitted two obsolete legacy-validation test modules, which the completed consumer sweep added.
-- All 94 active runtime, setup, agent, standards, manual, and reference consumers have explicit retain/adapt/remove dispositions; two binding source rows remain separate from that census.
+- All 102 active runtime, setup, agent, standards, manual, and reference consumers have explicit retain/adapt/remove dispositions; the quality-gate reconciliation added eight directly affected components, and two binding source rows remain separate from that census.
 - Generic, Python/pytest unit and integration tests, Python/Pydantic configuration model, and TypeScript DTO class have approved responsibilities; Resource, Service, and Tool are approved for removal without generic framework replacements.
 - No transition to Design is authorized until these obligations close and a new independent QA review returns GO.
 
@@ -147,6 +147,7 @@ This matrix classifies the primary nature and issue-460 disposition of every fin
 13. First-time-right scaffolding means one valid call produces a truthful, structurally coherent, persistable artifact basis without schema/render repair; it does not promise final phase completeness or replace normal content development through `safe_edit_file`.
 14. Template and scaffolding tests are first-class code: each retained test proves durable public behavior or an architectural invariant and itself complies with every applicable Architecture Principle; passing tests do not justify private-boundary coupling, duplicated config truth, hidden dependency construction, global mutable state, or implementation-shaped harnesses.
 15. Phase instructions may enforce the correct MCP tool, timing, and evidence scope, but never duplicate a complete invocation or its input parameters; `scaffold_schema` is conditional on the agent not already holding the current artifact schema.
+16. Rendered-output validation and quality gates do not maintain parallel capability, provider, command, or result-normalization authorities; workspace is an execution scope, not a qualification of the gates.
 
 ## Approved Strategy and Decision Status
 
@@ -164,6 +165,7 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-06 / S-04 link semantics | Approved 2026-08-23 | Required label and target form one presentation-neutral link object; concrete artifacts choose inline or complete reference-style rendering |
 | F-07 / S-07 input ownership and consumption | Approved 2026-08-23 | Artifact context contains only rendered content; scaffold/server inputs are separate, downstream tool envelopes never tunnel through bodies, hidden routing and unconsumed values are removed |
 | F-08 / S-14 output validation and strictness | Approved 2026-08-23 | Applicable output evidence is declared per artifact/profile; passed, failed, and unavailable remain distinct; strict persistence requires executed passing evidence; dormant artifacts impose no provider availability requirement. Provider discovery, injection, and call topology remain Design-owned |
+| Shared output-validation and quality-gate authority | Approved 2026-08-25 | Rendered-output validation and quality gates share one injected, config-first catalog of executable check capabilities and one normalized execution/result boundary. Artifact output profiles and quality gate sets select from that catalog and never duplicate provider, command, or parsing definitions. Scaffolding and safe edit execute applicable checks against complete proposed content before mutation without quality-state or autofix side effects; `run_quality_gates` adds requested scope, quality-state lifecycle, diagnostics/presentation, and optional fixing. Strictness controls persistence only. Input-schema, startup-graph, workflow-gate, and behavioral-test validation remain separate responsibilities. Exact config layout, interfaces, and composition topology remain Design-owned |
 | Safe-edit post-edit validation | Approved 2026-08-25 | Every `safe_edit_file` operation validates the complete resulting artifact content through the same injected, configured output-profile boundary used by scaffolding. In strict mode, failed or unavailable required validation leaves the original file unchanged; interactive mode may persist but returns structured findings. Exact staging, atomic-write, or rollback mechanics remain Design-owned |
 | F-09 / S-15 documentation authority | Approved 2026-08-23 | Live schema and catalog own exact facts; handwritten docs explain semantics and discovery, duplicate inventories are removed, and generation remains YAGNI-driven |
 | F-10 / S-10 distribution and customization | Approved 2026-08-23 | Renewal never creates a mixed suite: proven unchanged official roots may fast-forward completely, while customized, legacy-unknown, and external roots are preserved completely and receive an inspectable non-authoritative candidate. Baseline evidence, comparison, staging, and adoption mechanics remain Design-owned |
@@ -221,6 +223,7 @@ Issue 460 should be considered substantively resolved only when:
 17. Every retained template/scaffolding test protects durable public behavior or an architectural invariant and itself passes the applicable Architecture Principles; obsolete claims and architecturally coupled test implementations are removed or replaced rather than carried forward.
 18. A `safe_edit_file` operation validates the complete proposed result: strict mode cannot leave a partially or invalidly modified file when required validation fails or is unavailable, while interactive mode returns structured findings for any persisted invalid result.
 19. Phase instructions enforce required tool choice, timing, and evidence scope by name and intent without copying complete MCP invocations or parameters; an agent with the current artifact schema may call `scaffold_artifact` directly, while schema discovery remains available when that knowledge is absent or stale.
+20. Artifact output profiles and quality gate sets resolve through one configured executable-capability authority and one normalized result model; pre-mutation consumers remain free of quality-state and autofix side effects, while `run_quality_gates` may add the requested scope and quality lifecycle behavior.
 
 ## Deferred Work
 
@@ -276,15 +279,16 @@ These are navigation inputs, not selected Design mechanisms.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.7 | 2026-08-25 | Unify rendered-output validation and quality gates under one configured executable-capability authority while preserving their distinct policies, side effects, and non-overlapping validation responsibilities; extend the affected-consumer census accordingly |
+| 3.6 | 2026-08-25 | Define optional workflow-selected artifact sections and preserve named tool enforcement while removing full invocation/parameter duplication from phase instructions |
+| 3.5 | 2026-08-25 | Make post-edit output-profile validation and strict no-write behavior an explicit safe-edit strategy and expected result |
+| 3.4 | 2026-08-24 | Complete the 94-consumer/105-test audit, add the legacy parallel-stack clean break, reconcile deferred ownership, and request independent QA |
 | 3.3 | 2026-08-24 | Separate first-time-right scaffold validity from final artifact completeness and require the contracts alignment audit to protect normal safe-edit refinement and LLM efficiency |
 | 3.2 | 2026-08-24 | Make the complete Architecture Principles/hardcoding sweep and workflow-phase/template alignment record explicit Research completion obligations |
 | 3.1 | 2026-08-24 | Close artifact-specific config and concrete-renderer audit in two controlled batches; all 79 suite files now have explicit dispositions |
 | 3.0 | 2026-08-24 | Clarify envelope/content naming ownership: deterministic representation derivation is valid, semantic inference or non-trivial composition requires an explicit artifact field |
 | 2.9 | 2026-08-24 | Approve an explicit behavior-oriented Python/pytest unit-test responsibility and close all 22 public artifact dispositions |
 | 2.8 | 2026-08-24 | Approve a structured framework-neutral TypeScript DTO-class responsibility and reject the current string mini-language and hidden project metadata |
-| 3.6 | 2026-08-25 | Define optional workflow-selected artifact sections and preserve named tool enforcement while removing full invocation/parameter duplication from phase instructions |
-| 3.5 | 2026-08-25 | Make post-edit output-profile validation and strict no-write behavior an explicit safe-edit strategy and expected result |
-| 3.4 | 2026-08-24 | Complete the 94-consumer/105-test audit, add the legacy parallel-stack clean break, reconcile deferred ownership, and request independent QA |
 | 2.7 | 2026-08-24 | Approve clean-break removal of Tool without a pgmcp/MCP replacement or deferred tool capability |
 | 2.6 | 2026-08-24 | Approve clean-break removal of broad Service scaffolding and defer any explicit command/query artifact family to separate Research |
 | 2.5 | 2026-08-24 | Approve the bounded Python/Pydantic configuration-model responsibility and reduce the remaining dispositions |
