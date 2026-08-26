@@ -2,18 +2,18 @@
 <!-- template=generic_doc version=43c84181 created=2026-08-25T20:10Z updated=2026-08-25 -->
 # Issue #460 Validation and Quality-Gates Brainstorm Hand-over
 
-**Status:** PRELIMINARY — TEMPORARY TRANSFER NOTE  
-**Version:** 1.0  
-**Last Updated:** 2026-08-25  
-**Intended Lifetime:** Remove after the cross-machine dialogue has been resumed and its durable decisions have been reconciled into the authoritative Research set.
+**Status:** HISTORICAL — RESOLVED TRANSFER RECORD  
+**Version:** 1.1  
+**Last Updated:** 2026-08-26  
+**Retention:** Preserved as historical reasoning context; superseded for current decisions by the authoritative Research set.
 
 ---
 
 ## Purpose and Authority
 
-This document temporarily preserves the reasoning context of the issue #460 validation brainstorm so work can continue on another machine without repeating the complete discussion.
+This document preserves the historical reasoning context of the cross-machine issue #460 validation brainstorm. Its transfer purpose is complete, and its durable decisions have been reconciled into the authoritative Research set.
 
-It is deliberately more expansive than the canonical Research artifact. It records observations, hypotheses, rejected readings, rationale, and open questions. It is **not** a new decision authority and does not override:
+It is deliberately more expansive than the canonical Research artifact. It records observations, hypotheses, rejected readings, rationale, and questions as they existed at transfer time. It is **not** a current decision authority and does not override:
 
 - [Research](research.md), which owns approved strategy and expected results;
 - [Research Findings](research-findings.md), which owns durable evidence and rationale;
@@ -22,7 +22,7 @@ It is deliberately more expansive than the canonical Research artifact. It recor
 
 Where this note and those documents differ, the authoritative document for that subject wins.
 
-## Resume Here
+## Historical Resume Point
 
 The dialogue has already reached agreement on the conceptual validation boundary:
 
@@ -30,10 +30,7 @@ The dialogue has already reached agreement on the conceptual validation boundary
 
 One terminology correction is binding: **quality** qualifies the gates. A workspace is only a possible execution scope. Avoid treating “workspace quality gates” as a separate kind or authority.
 
-The next substantive human decision is not whether the conceptual boundary is sound. It is the scope decision raised by QA-460-02:
-
-- retain the consolidation and transactional safe-edit behavior inside issue #460 as an explicit, independently auditable Design package; or
-- defer them to a separate refactor and define exactly what issue #460 may rely on without creating another temporary validation authority.
+At transfer time, QA-460-02 still required a human scope decision between retaining the consolidation and transactional safe-edit behavior inside issue #460 or deferring it to a separate governed refactor. That question is now resolved: on 2026-08-25 the human owner retained the reconciliation inside issue #460 as an explicit scope expansion. Standalone F-19 in [Research Findings](research-findings.md#f-19--output-validation-and-quality-gates-duplicate-executable-authority) and the [Research decision register](research.md#approved-strategy-and-decision-status) are the current authority.
 
 ## Why the Brainstorm Started
 
@@ -257,9 +254,10 @@ The exact bootstrap or dual-run strategy belongs to Design and Planning, but the
 - “Quality gates” is the correct term; workspace is only a scope.
 - Concrete interfaces, config layout, adapters, staging mechanics, and call topology remain Design-owned.
 
-## What Is Not Yet Decided
+## Design Questions Left Open After Scope Resolution
 
-- Whether this boundary remains inside issue #460 or becomes a separate issue/refactor.
+The scope location is no longer open. The following implementation-shaping questions remain Design-owned:
+
 - Whether the existing `quality.yaml` is decomposed, extended, or complemented by another file while preserving one loaded authority.
 - The exact Pydantic configuration models for capabilities, output profiles, and quality gate selectors.
 - The exact normalized result DTO and how existing `skipped` and dictionary-shaped results migrate.
@@ -270,19 +268,21 @@ The exact bootstrap or dual-run strategy belongs to Design and Planning, but the
 - The independent/self-hosting evidence mechanism.
 - Compatibility and migration details for public tool-result consumers.
 
-## Human Scope Decision Required by QA-460-02
+## Historical Scope Options and Resolution
 
 | Option | Benefits | Costs and risks | Required follow-through |
 |---|---|---|---|
 | Retain inside issue #460 as an explicit Design package | Produces one coherent scaffold/edit/quality authority in the same refactor and avoids designing issue #460 around a known duplicate seam. | Expands an already large issue, increases implementation and self-hosting risk, and requires explicit migration/result compatibility work. | Add a dedicated Design Intake package with compatibility, migration, validation, consumer, and independent-evidence obligations. |
 | Defer to a separate governed refactor | Narrows issue #460 and reduces concurrent change to the certification infrastructure. | Issue #460 still needs a truthful output-validation boundary; a temporary bridge could accidentally become a third authority or leave safe edit inconsistent. | Define the minimal stable contract issue #460 may consume, record deferred ownership, and prohibit duplicated provider/command/parser configuration in the interim. |
 
-No scope choice has been inferred in this note. Resume the dialogue by making this decision explicitly.
+**Resolution:** the first option was selected by the human owner on 2026-08-25. The reconciliation remains in issue 460 as standalone F-19 with explicit compatibility, migration, consumer-policy separation, and independent/self-hosting evidence obligations. This table is retained only to preserve the trade-off that informed that decision.
 
-## Suggested Continuation Questions
+## Historical Questions at Transfer Time
 
-1. Do we retain this as the ninth Design Intake package for issue #460, or split it into a separately governed issue?
-2. If split, what is the smallest issue-460 contract that prevents a third authority while allowing the template refactor to complete?
+The first two transfer questions below are resolved by retaining F-19 in issue 460. They are preserved to explain the decision path, not as current work:
+
+1. Should the boundary remain in issue 460 or move to a separately governed issue? **Resolved: retain in issue 460.**
+2. If split, what minimal contract would prevent a third authority? **Superseded by the retained-scope decision.**
 3. Which facts are reusable executable-capability facts, and which belong only to output-profile selection or quality-gate policy?
 4. What normalized result states and evidence fields are required by scaffold, safe edit, and `run_quality_gates` without leaking presentation concerns?
 5. How do strict and interactive persistence policies consume those factual outcomes?
@@ -290,9 +290,9 @@ No scope choice has been inferred in this note. Resume the dialogue by making th
 7. What startup conditions are configuration errors, and what provider absence is an on-use unavailable result?
 8. What independent evidence prevents the changed quality infrastructure from certifying itself exclusively?
 
-## Compact Continuation Prompt
+## Historical Continuation Prompt (Superseded)
 
-Use the following if a fresh agent/session must resume quickly:
+The following prompt was valid only while the cross-machine transfer was unresolved. It must not be used as current workflow direction:
 
 > Resume issue #460 from `validation-quality-gates-brainstorm-handover.md`. Treat `research.md` as decision authority and `research-to-design-qa-audit.md` as the current independent QA verdict. Do not repeat the bottom-up validation brainstorm. Start with the QA-460-02 human scope decision: retain the agreed shared output-validation/quality-gate capability boundary as an explicit issue-460 Design package, or defer it with a minimal non-duplicating contract. Preserve the terminology correction that quality qualifies the gates and workspace is only an execution scope.
 
@@ -306,12 +306,13 @@ Use the following if a fresh agent/session must resume quickly:
 - [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)
 - [Quality Gates](../../coding_standards/QUALITY_GATES.md)
 
-## Cleanup Note
+## Retention Note
 
-The user explicitly requested this temporary transfer artifact and intends to remove or reconcile it later. Its presence must not be interpreted as an additional permanent Research authority.
+The transfer has been reconciled. The user explicitly chose to retain this file as a historical reasoning record. Its presence must not be interpreted as an additional Research authority or as evidence that resolved questions remain open.
 
 ## Version History
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.1 | 2026-08-26 | `@imp researcher` | Mark the transfer as a resolved historical record and link its selected scope outcome to authoritative F-19 without rewriting the original reasoning context. |
 | 1.0 | 2026-08-25 | `@imp researcher` | Capture the complete cross-machine validation and quality-gate brainstorm, agreed boundary, terminology correction, QA scope decision, and open Design questions. |
