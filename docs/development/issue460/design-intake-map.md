@@ -3,7 +3,7 @@
 # Issue #460 Research-to-Design Intake Map
 
 **Status:** REVIEW  
-**Version:** 1.0  
+**Version:** 1.5  
 **Last Updated:** 2026-08-26  
 **Issue:** #460  
 **Workflow Boundary:** Refactor / Research → Design
@@ -21,43 +21,56 @@ A Design package is a cohesive grouping tool, not a mandatory wrapper around eve
 | Destination kind | Meaning |
 |---|---|
 | `DI-01`–`DI-08` | A cohesive Design package owns a group of related decisions and proof obligations |
-| `XC-01` | A direct cross-cutting Design obligation applies to every affected package; no separate subsystem is implied |
+| `XC-01`–`XC-02` | A direct cross-cutting Design obligation applies across affected packages; no separate subsystem or implementation cycle is implied |
 | `RC-01` | Research already resolved the decision; Design must preserve it as a binding constraint but owns no new decision |
 | `Deferred` | Explicitly outside issue 460; Design must not introduce the capability indirectly |
 
 Coverage rules:
 
 1. Every finding, Approved Strategy row, core invariant, expected result, consumer family, and still-conditional catalog disposition has exactly one primary destination.
-2. Dependencies identify required inputs or affected consumers; they do not create duplicate primary ownership.
+2. Dependencies identify required inputs or affected consumers; they do not create duplicate primary ownership. File impact is not decision ownership: a package may supply requirements, consume another package's result, or verify alignment without owning that result.
 3. A package may be subdivided inside Design only if every obligation remains traceable to one primary Design section.
-4. Package dependencies are coverage dependencies, not implementation order or cycle sequencing.
-5. Design may compare mechanisms and define interfaces, configuration schemas, and result contracts, but this map does not preselect those mechanisms.
-6. Deferred work and Research-resolved constraints remain visible so Design cannot absorb them by omission or convenience.
+4. Package dependencies are coverage dependencies, not implementation order or cycle sequencing. A Design package does not imply a matching implementation cycle.
+5. DI-01–DI-07 each own the behavioral evidence, migration tests, and concrete removals for the boundary they design. DI-08 owns shared test architecture and cross-package assurance, not those package-local decisions.
+6. Design may compare mechanisms and define interfaces, configuration schemas, and result contracts, but this map does not preselect those mechanisms.
+7. Deferred work and Research-resolved constraints remain visible so Design cannot absorb them by omission or convenience.
+
+### Relationship Vocabulary
+
+| Relationship | Meaning |
+|---|---|
+| Primary ownership | The package makes and documents the Design decision |
+| Supplied requirement | The package states a semantic need that the owning package must support |
+| Affected consumer | The package consumes or must migrate with the owned result but does not define it |
+| Verification responsibility | The package checks coherence or alignment after the owner has designed the boundary |
+
+Only primary ownership assigns the decision. The other relationships make blast radius and integration visible without creating a second authority.
 
 ## Design Package Register
 
 | ID | Cohesive mandate | Primary findings | Coverage dependencies |
 |---|---|---|---|
-| DI-01 | Suite contract model and public artifact identity | F-01, F-02, F-06, F-07, F-12, F-17 | Feeds DI-02, DI-03, DI-04, and DI-07 |
+| DI-01 | Suite contract metamodel, shared primitives, and public schema exposure | F-02, F-06, F-12, F-17 | Feeds DI-02, DI-03, DI-04, and DI-07 |
 | DI-02 | Resolved graph, runtime selection, introspection, and provenance | F-04, F-05, F-11, F-16 | Depends on DI-01; feeds DI-04 and DI-06 |
-| DI-03 | Artifact-family semantics, portability, retained types, removals, and renames | F-14 | Depends on DI-01 and DI-02; feeds DI-07 and DI-08 |
-| DI-04 | Scaffold execution, context/envelope separation, result semantics, and persistence | F-03, F-13, F-15 | Depends on DI-01 and DI-02; integrates with DI-05 |
-| DI-05 | Output-validation and quality capability reconciliation, including safe edit | F-08, F-19 | Depends on DI-01 and DI-02; supplies evidence to DI-04 |
+| DI-03 | Concrete artifact contracts, renderer semantics, portability, retained types, removals, and renames | F-01, F-07, F-14, F-14A, F-14B | Depends on DI-01 and DI-02; feeds DI-07 and DI-08 |
+| DI-04 | Scaffold and safe-edit mutation orchestration, operation results, and persistence | F-03, F-13, F-15 | Depends on DI-01 and DI-02; consumes factual evidence from DI-05 |
+| DI-05 | Output-validation capabilities, factual results, profile selection, and quality-gate orchestration | F-08, F-19 | Depends on DI-01 and DI-02; supplies factual evidence to DI-04 |
 | DI-06 | Distribution, renewal, and deployment migration | F-10 | Depends on DI-02 and final DI-03 identities/removals |
-| DI-07 | Workflow, template, agent-instruction, and documentation alignment | F-09 | Depends on DI-01 and DI-03 and consumes final public decisions from DI-02–DI-06 |
-| DI-08 | Legacy removal and test architecture | F-14A, F-14B | Consumes the retained boundaries and removal decisions of DI-01–DI-07 |
+| DI-07 | Workflow semantics, agent-instruction, and documentation alignment | F-09 | Supplies semantic requirements to DI-03; depends on DI-01 and DI-03 and consumes final public decisions from DI-02–DI-06 |
+| DI-08 | Shared test architecture and cross-package removal assurance | None | Supplies shared test infrastructure and audits evidence/removal completeness across DI-01–DI-07 |
 
 ```mermaid
 flowchart LR
-    D1[DI-01 Contract model and identity]
+    D1[DI-01 Contract metamodel]
     D2[DI-02 Graph and provenance]
-    D3[DI-03 Artifact families]
-    D4[DI-04 Scaffold pipeline]
-    D5[DI-05 Validation and quality]
+    D3[DI-03 Concrete artifact contracts]
+    D4[DI-04 Mutation orchestration]
+    D5[DI-05 Factual validation and quality]
     D6[DI-06 Distribution and migration]
-    D7[DI-07 Workflow and docs]
-    D8[DI-08 Legacy removal and tests]
+    D7[DI-07 Workflow semantics and docs]
+    D8[DI-08 Shared tests and assurance]
     XC[XC-01 Architecture Principles]
+    XR[XC-02 Legacy removal integration]
 
     D1 --> D2
     D1 --> D3
@@ -85,20 +98,29 @@ flowchart LR
     XC -. governs .-> D6
     XC -. governs .-> D7
     XC -. governs .-> D8
+    XR -. routes removals .-> D1
+    XR -. routes removals .-> D2
+    XR -. routes removals .-> D3
+    XR -. routes removals .-> D4
+    XR -. routes removals .-> D5
+    XR -. routes removals .-> D6
+    XR -. routes removals .-> D7
+    XR -. audits through .-> D8
 ```
 
 ## Package Mandates
 
-### DI-01 — Suite Contract Model and Public Artifact Identity
+### DI-01 — Suite Contract Metamodel and Public Schema Exposure
 
 | Dimension | Design intake |
 |---|---|
-| Research inputs | F-01, F-02, F-06, F-07, F-12, F-17; strategy rows for public context ownership, nested collections, client compatibility, optionality, link semantics, issue references, checklist items, and qualified identity |
-| Responsibilities and consumers | All 22 artifact configurations, shared schema primitives, caller-visible `scaffold_schema` responses, artifact IDs, field ownership, structured links/checklists/references, and config validation |
-| Design-owned decisions | Standard JSON Schema draft and internal acyclic composition form; resolution into finite reference-free public schemas; required/optional/null/default semantics; canonical structured representations; exact language/technology-qualified IDs |
-| Compatibility, migration, removal | Clean breaks have no aliases or multi-shape bridges; preserve existing artifact-purpose data; coordinated ID/context migration must be explicit |
-| Required proof | Every renderer-consumed caller shape is introspectable; invalid/unknown fields fail honestly; omitted/null/empty/false/zero/defaulted values remain distinguishable; canonical values render deterministically |
-| Exclusions | No purpose-aware discovery tool (F-18); no artifact-specific schema truth in generic Python; no target parser or class topology chosen here |
+| Primary Research inputs | F-02, F-06, F-12, F-17; strategy rows for public context ownership, client compatibility, optionality, shared link/issue/checklist representations, and qualified identity |
+| Affected inputs and consumers | Generic schema/config models, shared schema primitives, config validation, artifact IDs, and caller-visible `scaffold_schema` resolution. All 22 artifact configurations form a conformance corpus; DI-01 does not own their concrete properties |
+| Design-owned decisions | Standard JSON Schema draft; internal acyclic composition and resolution rules; finite reference-free public exposure; generic required/optional/null/default semantics; definitions of genuinely shared primitives; language/technology identity convention |
+| Supplied requirements | DI-03 supplies the concrete nested structures, field constraints, examples, and artifact-local representations that this metamodel must be able to express; DI-02 consumes the resolved form |
+| Compatibility, migration, removal | Clean breaks have no aliases or multi-shape bridges; generic schema exposure remains self-contained; coordinated identity migration must be explicit |
+| Required proof | Arbitrary conforming artifact definitions can express and resolve nested objects, collections, defaults, constraints, and shared primitives without artifact-specific Python; all current configurations are structurally representable without DI-01 asserting their semantic correctness |
+| Exclusions | Concrete artifact properties, per-field requiredness, artifact-specific defaults/constraints/examples, nested item instances, and renderer behavior belong exclusively to DI-03; no purpose-aware discovery tool (F-18) or target parser/class topology is selected here |
 
 ### DI-02 — Resolved Graph, Runtime Selection, Introspection, and Provenance
 
@@ -111,38 +133,53 @@ flowchart LR
 | Required proof | Missing, cyclic, duplicate, unreachable, and incoherent graph states fail actionably; schema, renderer, purpose, output profile, and fingerprint identify the same resolved artifact; repeated startup produces stable facts |
 | Exclusions | No historical template registry, adopted-artifact update system, or runtime purpose-discovery feature |
 
-### DI-03 — Artifact-Family Semantics and Portability
+### DI-03 — Concrete Artifact Contracts, Renderer Semantics, and Portability
 
 | Dimension | Design intake |
 |---|---|
-| Research inputs | F-14 and the approved DTO, Generic, integration-test, configuration-model, TypeScript DTO, and unit-test responsibilities; clean-break removal decisions for Resource, Service, and Tool |
-| Responsibilities and consumers | All retained and removed public artifact registrations, 22 configs, 57 Jinja templates, shared macros/patterns, language/framework identities, examples, syntax/output profiles, and generated package assets |
-| Design-owned decisions | Finite context contracts and render semantics for every retained type; exact renamed IDs; valid empty/incomplete behavior; shared primitives versus artifact-local fields; complete removal surface for rejected types |
+| Primary Research inputs | F-01, F-07, F-14, F-14A, F-14B and the approved DTO, Generic, integration-test, configuration-model, TypeScript DTO, and unit-test responsibilities; clean-break removal decisions for Resource, Service, Tool, obsolete agent hints, and unreachable test-template patterns |
+| Affected inputs and consumers | Every retained or removed public artifact registration, all 22 concrete config/schema instances, 57 Jinja templates, shared macros/patterns, examples, output-profile assignments, and generated package assets |
+| Design-owned decisions | Concrete properties, per-field requiredness, nested item structures, artifact-specific defaults/constraints/examples, minimal validity, shared-primitive selection versus local representation, and renderer semantics for every retained type; exact renamed IDs and complete removal surface for rejected types |
+| Consumed boundary | DI-03 authors every concrete contract within DI-01's metamodel and composition/optionality rules; it does not redefine the schema language or public resolution mechanism |
 | Compatibility, migration, removal | Remove project-specific S1mpleTrader assumptions, seven rejected patterns, Resource, Service, and Tool without aliases; migrate only owned PGMCP consumers; preserve existing generated production files |
-| Required proof | Every retained artifact renders valid portable output from minimal and property-complete valid contexts; every removed type is absent from registry, assets, docs, and active consumers; tests prove semantics rather than prose snapshots |
-| Exclusions | No new Python/YAML artifacts, command/query service family, pgmcp/MCP tool artifact, consumer-repository implementation, or recursive/general-purpose artifact DSL |
+| Required proof | Every concrete schema describes all and only the values its renderer consumes; minimal and property-complete valid contexts render valid portable output; every removed type is absent from registry, assets, docs, and active consumers; tests prove semantics rather than prose snapshots |
+| Exclusions | No metamodel, schema-draft, composition, or generic exposure ownership; no new Python/YAML artifacts, command/query service family, pgmcp/MCP tool artifact, consumer-repository implementation, or recursive/general-purpose artifact DSL |
 
-### DI-04 — Scaffold Execution and Persistence
-
-| Dimension | Design intake |
-|---|---|
-| Research inputs | F-03, F-13, F-15; strategy rows for caller/envelope ownership, input consumption, success semantics, and output-path semantics |
-| Responsibilities and consumers | `scaffold_artifact`, artifact manager/orchestrator, caller-context validation, render-envelope metadata, target resolution, filesystem persistence, success/failure DTOs, cached output, and `mcp_server/scaffolding/utils.py` |
-| Design-owned decisions | Ordered boundaries for untouched caller validation, envelope composition, in-memory rendering, validation evidence consumption, persistence, and structured result reporting; ownership of deterministic naming and target evidence; fate of legacy naming/persistence helpers |
-| Compatibility, migration, removal | Unknown caller fields may not be filtered silently; body content may not carry operation metadata or host paths; success/failure envelopes remain explicit through any DTO migration |
-| Required proof | A valid first call yields a truthful persistable basis; contract/render/validation/persistence failures remain distinguishable; failed strict execution leaves no artifact; output path remains result evidence rather than generated body content |
-| Exclusions | DI-05 owns executable validation facts, safe-edit transaction semantics, and quality-gate behavior; first-time-right does not mean final phase completeness |
-
-### DI-05 — Output Validation, Quality Capabilities, and Safe Edit
+### DI-04 — Scaffold and Safe-Edit Mutation Orchestration
 
 | Dimension | Design intake |
 |---|---|
-| Research inputs | F-08, F-19, safe-edit post-edit validation, and approved output-validation/strictness strategy |
-| Responsibilities and consumers | Artifact output profiles, `.pgmcp/config/quality.yaml`, quality config models, validation modules/registry/service, `QAManager`, quality tools, artifact manager, `SafeEditTool`, bootstrap injection, normalized result DTOs, and public failure/presentation consumers |
-| Design-owned decisions | One loaded executable-capability authority; separate output-profile and quality-gate selectors; factual passed/failed/unavailable/not-executed result contract; dependency injection; startup reference validation versus on-use availability; strict/interactive persistence policy; complete proposed-content transaction boundary; public status/result migration |
-| Compatibility, migration, removal | No third provider/command/parser authority; do not silently reinterpret `skipped`, drop result fields, or alter failure envelopes; pre-mutation consumers remain free of quality state, diagnostics, presentation, scope lifecycle, and autofix |
-| Required proof | Scaffold and safe edit consume the same factual capability evidence; strict failures/unavailability preserve original state; quality gates retain their distinct scope/lifecycle behavior; independent/self-hosting evidence prevents the migrated path from certifying itself exclusively |
-| Exclusions | Input schema validation, startup template-graph validation, workflow enforcement, and behavioral test execution remain distinct responsibilities |
+| Primary Research inputs | F-03, F-13, F-15; strategy rows for caller/envelope ownership, input consumption, success semantics, output-path semantics, and safe-edit post-edit validation |
+| Affected inputs and consumers | `scaffold_artifact`, artifact manager/orchestrator, `SafeEditTool`, caller-context validation, render-envelope metadata, complete proposed content, target resolution, staging/atomicity/rollback, filesystem persistence, mutation-operation DTOs, cached output, and `mcp_server/scaffolding/utils.py` |
+| Design-owned decisions | Ordered scaffold and edit boundaries for untouched caller validation, envelope composition, in-memory proposed content, DI-05 factual-evidence consumption, strict versus interactive mutation policy, atomic persistence, and scaffold/safe-edit operation reporting; deterministic naming, target evidence, and legacy naming/persistence-helper fate |
+| Consumed boundary | DI-04 consumes DI-05 factual states exactly as reported. It may decide whether a scaffold or edit persists, but may never reinterpret `failed`, `unavailable`, or `not_executed` as another factual state |
+| Compatibility, migration, removal | Unknown caller fields may not be filtered silently; body content may not carry operation metadata or host paths; scaffold/safe-edit envelopes remain explicit through migration; strict failure or required unavailable evidence leaves original state unchanged |
+| Required proof | A valid first call yields a truthful persistable basis; contract/render/factual-validation/persistence failures remain distinguishable; failed strict scaffold creates no artifact; failed strict edit preserves the original file; interactive persistence returns the unchanged factual findings; output path remains result evidence |
+| Exclusions | DI-05 exclusively owns capability facts, selectors, factual check-result semantics, and quality-operation behavior. DI-04 owns no provider/command/parser/availability truth and no quality scope, lifecycle, diagnostics, presentation, or autofix; first-time-right does not mean final phase completeness |
+
+### DI-05 — Factual Output Validation and Quality-Gate Execution
+
+| Dimension | Design intake |
+|---|---|
+| Required Research authority | Read [F-08](research-findings.md#f-08--schema-valid-rich-contexts-can-produce-invalid-source), [F-19](research-findings.md#f-19--output-validation-and-quality-gates-duplicate-executable-authority), their exact rows in the [Approved Strategy](research.md#approved-strategy-and-decision-status), I-16, and E-13/E-20 as one binding input set before designing DI-05; this intake map does not replace their richer evidence, boundaries, or rationale |
+| Affected inputs and consumers | Artifact output-profile definitions, `.pgmcp/config/quality.yaml`, quality config models, validation modules/registry/service, `QAManager`, quality tools, bootstrap injection, factual check-result DTOs, the `run_quality_gates` operation envelope, and public quality presentation consumers |
+| Design-owned decisions | One loaded executable-capability authority; provider/command/availability/parser facts; side-effect-free execution; separate output-profile and quality-gate selectors; factual `passed`/`failed`/`unavailable`/`not_executed` result contract; startup reference validation versus on-use availability; quality-scope/lifecycle/diagnostics/presentation/autofix adapter; public factual and quality-operation result migration |
+| Supplied requirements | DI-04 supplies complete proposed content and consumes applicable factual results for scaffold/edit persistence. DI-05 reports facts and applicable evidence requirements but does not own strict/interactive mutation policy, atomicity, rollback, or scaffold/safe-edit operation envelopes |
+| Compatibility, migration, removal | No third provider/command/parser authority; do not silently reinterpret `skipped`, drop result fields, or alter quality failure envelopes; the factual executor remains free of persistence, quality state, diagnostics, presentation, scope lifecycle, and autofix side effects |
+| Required proof | Scaffold and safe edit receive the same factual capability evidence; DI-04 cannot alter factual states; quality gates retain distinct scope/lifecycle behavior; explicit quality-autofix remains outside the side-effect-free executor; independent/self-hosting evidence prevents the migrated quality path from certifying itself exclusively |
+| Exclusions | DI-05 never decides whether scaffolded or edited proposed content persists. Input schema validation, startup template-graph validation, mutation orchestration, workflow enforcement, and behavioral test execution remain distinct responsibilities |
+
+#### DI-05 Internal Responsibility Lenses
+
+DI-05 remains one cohesive Design package and one authority for executable-capability facts. These lenses are mandatory separations of responsibility inside that authority, not independent package authorities, preselected components, or implementation cycles. Design must preserve their distinctions while selecting the eventual interfaces and composition topology from the complete Research authority above.
+
+| Responsibility lens | Boundary that Design must preserve |
+|---|---|
+| Capability configuration and availability | Own configured providers, commands, parsers, startup reference validity, and factual environment availability without selecting artifact or quality policy |
+| Side-effect-free execution and factual results | Execute selected capabilities and report only structured `passed`, `failed`, `unavailable`, or `not_executed` evidence; never mutate, persist, autofix, or present |
+| Output-profile selection | Select applicable capabilities and evidence requirements for an output profile without owning execution or scaffold/safe-edit persistence policy |
+| Quality-gate selection and orchestration adapter | Preserve requested scope, gate lifecycle, diagnostics, presentation, and explicit autofix while consuming factual results without reinterpreting them |
+| Migration and independent evidence | Govern public-result migration, removal of duplicate authorities, and independent/self-hosting proof that the migrated quality path is not its sole certifier |
 
 ### DI-06 — Distribution, Renewal, and Deployment Migration
 
@@ -155,27 +192,43 @@ flowchart LR
 | Required proof | Fresh install, unchanged upgrade, customized upgrade, legacy-unknown root, external root, interrupted adoption, and packaged-wheel scenarios preserve the approved behavior |
 | Exclusions | No general historical registry, automatic artifact-content upgrades, cross-repository migration, or complete YAML artifact subset |
 
-### DI-07 — Workflow, Template, Agent-Instruction, and Documentation Alignment
+### DI-07 — Workflow Semantics, Agent-Instruction, and Documentation Alignment
 
 | Dimension | Design intake |
 |---|---|
 | Research inputs | F-09; documentation-authority and workflow/template semantic-alignment strategies |
-| Responsibilities and consumers | All active Research/Design/Planning/Validation phase-instruction variants, their document schemas/renderers, `contracts.yaml`, authoritative agent instructions and generated variants, active scaffolding/validation/manual references, `phase-workflows.md`, and `validation_api.md` |
-| Design-owned decisions | Common document-schema core and optional semantic carriers; workflow-specific required outcomes; tool enforcement wording without embedded invocations; exact active-document authority and whether conditional references remain separate or consolidate |
+| Responsibilities and consumers | All active Research/Design/Planning/Validation phase-instruction variants, `contracts.yaml`, authoritative agent instructions and generated variants, active scaffolding/validation/manual references, `phase-workflows.md`, and `validation_api.md`; the corresponding document contracts and renderers are affected DI-03-owned consumers |
+| Design-owned decisions | Workflow-specific required outcomes and semantic requirements supplied to DI-03; substantive phase-instruction actions and completeness expectations; tool enforcement wording without embedded invocations; exact active-document authority and whether conditional references remain separate or consolidate |
+| Supplied and consumed boundaries | DI-07 states what each workflow phase must be able to persist and later verifies the alignment. DI-01 owns the metamodel capability; DI-03 exclusively owns concrete phase-document properties, requiredness, nesting, defaults, constraints, examples, and renderer behavior |
 | Compatibility, migration, removal | Live schema/catalog facts outrank handwritten inventories; templates do not duplicate phase authority; agent variants may differ from SSOT where intentionally generated/owned; stale universal workflow/TDD and legacy validation narratives are removed |
-| Required proof | Every active phase variant maps to a suitable persisted carrier; schema/template/instruction meanings align; valid initial scaffold is not described as final completion; ordinary safe-edit refinement remains clear; local links and active references resolve |
-| Exclusions | No new runtime discovery feature, full tool-call duplication, phase-instruction prose snapshots, or historical narrative of mechanical changes |
+| Required proof | Every active phase variant has an explicit semantic requirement mapped to a suitable DI-03-owned persisted carrier; schema/template/instruction meanings align; valid initial scaffold is not described as final completion; ordinary safe-edit refinement remains clear; local links and active references resolve |
+| Exclusions | No ownership of concrete document schemas or renderers, shared schema primitives, field requiredness, nested structures, defaults, constraints, or rendering rules; no new runtime discovery feature, full tool-call duplication, phase-instruction prose snapshots, or historical narrative of mechanical changes |
 
-### DI-08 — Legacy Removal and Test Architecture
+### Package-Owned Behavioral Evidence and Removals
+
+The following ownership is part of each package mandate, not deferred to DI-08. Shared DI-08 infrastructure may support this proof but does not own the behavior or removal decision.
+
+| Package | Package-owned behavioral evidence and concrete removals |
+|---|---|
+| DI-01 | Metamodel, composition, shared-primitive, public-exposure, identity-migration tests; superseded schema/config-model surfaces |
+| DI-02 | Graph resolution, startup diagnostics, runtime selection, introspection, provenance tests; obsolete registry, graph, metadata, and lifecycle surfaces |
+| DI-03 | Per-artifact schema/renderer semantics, portability, rename/removal migration tests; rejected templates, configs, patterns, examples, and imports |
+| DI-04 | Scaffold/safe-edit transaction, policy, atomicity, rollback, persistence, and operation-result tests; superseded scaffold/persistence helpers |
+| DI-05 | Capability availability, factual execution/results, selector, quality-orchestration, migration, and self-hosting tests; legacy validation/quality surfaces |
+| DI-06 | Install, renewal, customization, candidate/adoption, package, and owner-deployment migration tests; obsolete distribution assets and procedures |
+| DI-07 | Workflow-carrier, instruction, authority, documentation, and link-alignment tests; stale instruction and documentation consumers |
+
+### DI-08 — Shared Test Architecture and Cross-Package Removal Assurance
 
 | Dimension | Design intake |
 |---|---|
-| Research inputs | F-14A, F-14B; approved agent-hint, unreachable-pattern, legacy parallel-surface, and test-architecture strategies |
-| Responsibilities and consumers | Artifact-specific component scaffolders, duplicate renderer/result/base utilities, metadata parser/config/lifecycle exports, public always-pass validation tool, dead patterns/imports, all 105 affected test/helper candidates, shared fixtures, and obsolete documentation/instruction consumers |
-| Design-owned decisions | Final removal graph and export cleanup; retained public seams after DI-01–DI-07; which conditional tests/helpers adapt, consolidate, split, replace, rename, or remove while preserving their recorded behavioral constraint |
-| Compatibility, migration, removal | No compatibility shell for rejected legacy surfaces; unrelated runtime behavior and tests remain untouched; removed tests cannot leave unowned behavior gaps |
-| Required proof | Every retained test protects durable public behavior or an Architecture Principle through explicit dependencies and isolated state; removals have replacement evidence where behavior remains; no source/prose snapshots or private implementation coupling substitute for public proof |
-| Exclusions | No test explosion, implementation-shaped fixtures, fabricated example code solely for validation, or changes to unrelated test domains |
+| Research inputs | I-14 and E-17; approved test-suite architecture strategy; the complete 105-row affected test/helper ledger; the package-owned removal routes governed by XC-02 |
+| Responsibilities and consumers | Shared fixtures and helpers, dependency-injection and test-composition patterns, reusable config-driven test support, cross-package regression/integration evidence, public test-seam rules, obsolete tests without a retained behavioral owner, and the final completeness audit across package-owned evidence and removals |
+| Design-owned decisions | Shared test architecture and cross-package evidence composition; disposition of genuinely shared helpers and ownerless obsolete tests; assurance rules that route every test and removal to one behavioral package; final audit of the complete test ledger and removal graph |
+| Supplied boundary | DI-01–DI-07 own their package-specific behavioral evidence, migration tests, and concrete removals. A test may use DI-08 infrastructure while its behavioral ownership remains with the package whose public boundary it proves |
+| Compatibility, migration, removal | Unrelated runtime behavior and tests remain untouched; removed tests cannot leave unowned behavior gaps; shared infrastructure may not become a private-implementation coupling layer or a central owner of package behavior |
+| Required proof | Every retained test protects durable public behavior or an Architecture Principle through explicit dependencies and isolated state; every package-owned removal is covered or explicitly shown to remove no retained behavior; cross-package evidence is independently composable; no source/prose snapshots substitute for public proof |
+| Exclusions | No catch-all ownership of package-specific tests or production removals, mandatory implementation-cycle mapping, test explosion, implementation-shaped fixtures, fabricated example code solely for validation, or changes to unrelated test domains |
 
 ## Direct and Resolved Obligations
 
@@ -188,6 +241,17 @@ This is a direct cross-cutting Design obligation, not a ninth subsystem package.
 | DI-01–DI-08 | Apply the complete relevant [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md), especially Config-First/DRY/OCP, fail-fast startup, SRP/DIP/ISP, composition-root ownership, no import-time I/O, CQS, Law of Demeter, presentation separation, and YAGNI |
 | Design evidence | Name authoritative configuration ownership, injected boundaries, read/write responsibilities, startup validation, and public result/presentation separation for each affected package |
 | Test evidence | Test code follows the same boundaries and cannot justify duplicated truth, hidden construction, global mutable state, or private implementation coupling |
+
+### XC-02 — Legacy Removal Integration
+
+This is a cross-cutting routing and integration obligation, not a removal subsystem or mandatory implementation cycle.
+
+| Applies to | Obligation |
+|---|---|
+| DI-01–DI-07 | Each package owns removal of the legacy production, configuration, export, instruction, and test surfaces superseded by the boundary it designs |
+| Required routing | Registry/graph removals route to DI-02; artifact/template/pattern removals to DI-03; scaffold/persistence helpers to DI-04; validation/quality surfaces to DI-05; distribution residues to DI-06; instruction/documentation consumers to DI-07 |
+| DI-08 assurance | Audit the complete removal graph, shared helper impact, cross-package regression evidence, and absence of unowned behavioral gaps without taking over the concrete removal decisions |
+| Compatibility constraint | Apply the approved clean breaks without compatibility shells; retained public seams and migration evidence remain owned by their technical packages |
 
 ### RC-01 — Approved Strategy Fidelity
 
@@ -204,22 +268,22 @@ Research has already approved compatibility and migration per boundary. Design o
 
 | Finding | Primary destination | Coverage note |
 |---|---|---|
-| F-01 | DI-01 | Complete caller-visible structured schema |
+| F-01 | DI-03 | Every concrete nested caller structure matches its renderer |
 | F-02 | DI-01 | Optionality, nullability, emptiness, and defaults |
 | F-03 | DI-04 | Caller context remains unchanged before envelope composition |
 | F-04 | DI-02 | One declared runtime renderer and public contract |
 | F-05 | DI-02 | Complete resolved Jinja/config graph |
 | F-06 | DI-01 | Canonical structured link semantics |
-| F-07 | DI-01 | Exposed and consumed caller-field coherence |
-| F-08 | DI-05 | Output profile applicability and strictness |
+| F-07 | DI-03 | Every concrete exposed field has one artifact-local meaning and rendering effect |
+| F-08 | DI-05 | Output-profile applicability and factual validation states; DI-04 owns the resulting mutation policy |
 | F-09 | DI-07 | Active documentation authority |
 | F-10 | DI-06 | Renewal and customization safety |
 | F-11 | DI-02 | Complete current-graph identity and provenance |
 | F-12 | DI-01 | Canonical issue references and checklist items |
 | F-13 | DI-04 | Objective success and failure semantics |
 | F-14 | DI-03 | Portable package artifact families |
-| F-14A | DI-08 | Obsolete agent hints and dead imports |
-| F-14B | DI-08 | Unreachable test-pattern placeholders |
+| F-14A | DI-03 | Obsolete suite-owned agent-hint pattern and dead template imports |
+| F-14B | DI-03 | Unreachable test-template pattern placeholders |
 | F-15 | DI-04 | Persistence target excluded from generated body |
 | F-16 | DI-02 | Existing suite-owned purpose through introspection |
 | F-17 | DI-01 | Language/technology-qualified public identity |
@@ -232,15 +296,16 @@ All 43 strategy rows from [Research](research.md#approved-strategy-and-decision-
 
 | Primary destination | Approved Strategy rows | Count |
 |---|---|---:|
-| DI-01 | F-01 / S-01 public context ownership; F-01 / S-02 nested collections; F-01 client compatibility; F-02 / S-03 optionality and nullability; F-06 / S-04 link semantics; F-12 / S-05 issue references; F-12 / S-06 checklist items; F-17 language/technology-qualified identity | 8 |
+| DI-01 | F-01 / S-01 public context ownership; F-01 client compatibility; F-02 / S-03 optionality and nullability; F-06 / S-04 link semantics; F-12 / S-05 issue references; F-12 / S-06 checklist items; F-17 language/technology-qualified identity | 7 |
 | DI-02 | F-04 / S-08 DTO runtime selection; F-05 / S-09 resolved template graph; F-11 / S-16 source provenance; F-16 artifact-purpose introspection | 4 |
-| DI-03 | F-14 / S-12 package portability; DTO artifact responsibility; Generic Python class responsibility; Python/pytest integration-test responsibility; Resource artifact responsibility; Python/Pydantic configuration-model responsibility; Service artifact responsibility; Tool artifact responsibility; TypeScript DTO-class responsibility; Python/pytest unit-test responsibility | 10 |
-| DI-04 | F-03 caller context and render-envelope ownership; F-07 / S-07 input ownership and consumption; F-13 success semantics; F-15 / S-13 output path semantics | 4 |
-| DI-05 | F-08 / S-14 output validation and strictness; F-19 shared output-validation and quality-gate authority; Safe-edit post-edit validation | 3 |
+| DI-03 | F-01 / S-02 nested collections; F-14 / S-12 package portability; DTO artifact responsibility; Generic Python class responsibility; Python/pytest integration-test responsibility; Resource artifact responsibility; Python/Pydantic configuration-model responsibility; Service artifact responsibility; Tool artifact responsibility; TypeScript DTO-class responsibility; Python/pytest unit-test responsibility; F-14A agent hints; F-14B unreachable test patterns | 13 |
+| DI-04 | F-03 caller context and render-envelope ownership; F-07 / S-07 input ownership and consumption; F-13 success semantics; F-15 / S-13 output path semantics; Safe-edit post-edit validation | 5 |
+| DI-05 | F-08 / S-14 output validation and strictness; F-19 shared output-validation and quality-gate authority | 2 |
 | DI-06 | F-10 / S-10 distribution and customization; Deployment compatibility | 2 |
 | DI-07 | F-09 / S-15 documentation authority; Workflow/template semantic alignment | 2 |
-| DI-08 | F-14A agent hints; Legacy parallel scaffolding and validation surfaces; Test-suite architecture compliance; F-14B unreachable test patterns | 4 |
+| DI-08 | Test-suite architecture compliance | 1 |
 | XC-01 | Runtime architecture compliance | 1 |
+| XC-02 | Legacy parallel scaffolding and validation surfaces | 1 |
 | RC-01 | F-12 original-issue coverage | 1 |
 | Deferred | Deferred YAML artifact subset; Portable Python artifact coverage; F-18 purpose-aware runtime artifact discovery; Command/query service artifact family | 4 |
 | **Total** |  | **43** |
@@ -249,12 +314,12 @@ All 43 strategy rows from [Research](research.md#approved-strategy-and-decision-
 
 | Primary destination | Core invariants | Count |
 |---|---|---:|
-| DI-01 | I-01 discoverable renderer values; I-02 one meaning/effect per field; I-05 finite reference-free public schemas; I-06 distinct optional/null/empty/default states; I-08 no template truth in generic server code/prose | 5 |
+| DI-01 | I-05 finite reference-free public schemas; I-06 distinct optional/null/empty/default states; I-08 no template truth in generic server code/prose | 3 |
 | DI-02 | I-03 coherent schema/renderer/graph/profile/package/renewal unit | 1 |
-| DI-03 | I-07 no hidden consumer-project dependencies | 1 |
+| DI-03 | I-01 discoverable renderer values; I-02 one meaning/effect per field; I-07 no hidden consumer-project dependencies | 3 |
 | DI-04 | I-04 validate unchanged caller context before envelope; I-09 portable body without persistence target; I-13 valid scaffold basis versus final completion | 3 |
 | DI-05 | I-16 one capability/provider/command/result authority | 1 |
-| DI-07 | I-12 workflow-specific semantic carriers; I-15 tool enforcement without invocation duplication | 2 |
+| DI-07 | I-12 workflow-specific semantic requirements for DI-03-owned carriers; I-15 tool enforcement without invocation duplication | 2 |
 | DI-08 | I-14 durable and architecturally valid tests | 1 |
 | XC-01 | I-11 no generic-code hardcoding of suite/workflow/provider/install policy | 1 |
 | RC-01 | I-10 explicit compatibility and migration strategy per boundary | 1 |
@@ -264,12 +329,12 @@ All 43 strategy rows from [Research](research.md#approved-strategy-and-decision-
 
 | Primary destination | Expected results | Count |
 |---|---|---:|
-| DI-01 | E-01 caller constructs every supported shape; E-04 stable optionality semantics; E-05 canonical links/issues/checklists; E-06 explicit role for every field; E-08 server does not own template content truth | 5 |
+| DI-01 | E-04 stable optionality semantics; E-05 canonical links/issues/checklists; E-08 server does not own template content truth | 3 |
 | DI-02 | E-02 schema describes resolved renderer graph; E-07 metadata/contracts/templates/examples/identity travel coherently | 2 |
-| DI-03 | E-10 generic names conceal no project assumptions | 1 |
-| DI-04 | E-03 accepted context reaches valid governed persistence; E-11 portable output without host paths | 2 |
-| DI-05 | E-13 validity/availability/strictness remain distinct; E-18 complete-result safe-edit validation; E-20 shared capability authority with independent evidence | 3 |
-| DI-07 | E-09 docs cannot contradict live schema; E-15 workflow-by-phase carrier alignment; E-16 scaffold-versus-completion clarity; E-19 tool enforcement without invocation duplication | 4 |
+| DI-03 | E-01 caller constructs every supported concrete shape; E-06 explicit role for every concrete field; E-10 generic names conceal no project assumptions | 3 |
+| DI-04 | E-03 accepted context reaches valid governed persistence; E-11 portable output without host paths; E-18 complete-result safe-edit validation and mutation policy | 3 |
+| DI-05 | E-13 validity/availability/strictness remain distinct factual inputs; E-20 shared capability authority with independent evidence | 2 |
+| DI-07 | E-09 docs cannot contradict live schema; E-15 workflow-by-phase requirements align with DI-03-owned carriers; E-16 scaffold-versus-completion clarity; E-19 tool enforcement without invocation duplication | 4 |
 | DI-08 | E-17 retained tests protect durable public behavior or architecture | 1 |
 | XC-01 | E-14 runtime/setup passes complete Architecture Principles sweep | 1 |
 | RC-01 | E-12 compatibility choices approved before Design | 1 |
@@ -281,15 +346,15 @@ The [Template Suite Work Catalog](template-suite-catalog.md) remains authoritati
 
 | Consumer family | Primary destination | Material dependent packages |
 |---|---|---|
-| Portable JSON Schema/config contracts and artifact IDs | DI-01 | DI-02, DI-03, DI-04, DI-07 |
-| Jinja graph, loader, runtime catalog, metadata, purpose, and provenance | DI-02 | DI-03, DI-04, DI-06 |
-| Concrete retained/removed templates, macros, examples, and output profiles | DI-03 | DI-01, DI-02, DI-05, DI-07 |
-| Scaffold tools, artifact orchestration, envelope/result DTOs, target resolution, and persistence | DI-04 | DI-01, DI-02, DI-05 |
-| Validation services, quality configuration/orchestration, safe edit, and normalized findings/results | DI-05 | DI-04, DI-08 |
-| CLI/init/upgrade, package assets, root resolution, and release procedures | DI-06 | DI-02, DI-03 |
-| Contracts, phase instructions, agent variants, manuals, and active references | DI-07 | DI-01–DI-06 |
-| Legacy scaffold/registry/metadata/validation exports and instruction consumers | DI-08 | DI-01–DI-07 |
-| Behavioral tests, helpers, fixtures, and architecture checks | DI-08 | DI-01–DI-07, XC-01 |
+| Contract metamodel, shared schema primitives, artifact IDs, public schema resolution, package-owned tests, and superseded schema surfaces | DI-01 | DI-02, DI-03, DI-04, DI-07, DI-08 |
+| Jinja graph, loader, runtime catalog, metadata, purpose, provenance, package-owned tests, and obsolete graph/registry surfaces | DI-02 | DI-03, DI-04, DI-06, DI-08, XC-02 |
+| Concrete artifact config/schema instances, retained/removed templates, macros, examples, output-profile assignments, and package-owned tests | DI-03 | DI-01, DI-02, DI-05, DI-07, DI-08, XC-02 |
+| Scaffold and safe-edit tools, mutation orchestration, mutation-operation DTOs, target resolution, strict/interactive policy, atomicity, persistence, package-owned tests, and superseded helpers | DI-04 | DI-01, DI-02, DI-05, DI-08, XC-02 |
+| Validation capabilities, factual check-result DTOs, output-profile/quality selectors, quality orchestration, quality-operation DTOs, quality presentation, package-owned tests, and legacy validation surfaces | DI-05 | DI-04, DI-08, XC-02 |
+| CLI/init/upgrade, package assets, root resolution, release procedures, package-owned tests, and obsolete distribution residues | DI-06 | DI-02, DI-03, DI-08, XC-02 |
+| Contracts, phase instructions, agent variants, manuals, active references, package-owned tests, and stale instruction/documentation consumers | DI-07 | DI-01–DI-06, DI-08, XC-02 |
+| Cross-package legacy-removal routing and integration constraint | XC-02 | DI-01–DI-08 |
+| Shared test architecture, fixtures/helpers, cross-package regression/integration evidence, ownerless obsolete tests, and removal-completeness audit | DI-08 | DI-01–DI-07, XC-01, XC-02 |
 | Current-owner deployment and external workspace migration | DI-06 | RC-01 |
 
 ## Conditional Catalog Disposition Intake
@@ -311,9 +376,10 @@ A Design package is covered only when its Design section:
 2. states the selected interfaces/configuration contracts and rejected alternatives;
 3. accounts for its consumer families and conditional catalog rows;
 4. preserves compatibility, migration, and removal constraints;
-5. defines production and test boundaries under XC-01;
-6. identifies required independent evidence and known self-hosting risk;
-7. records package dependencies and exclusions without turning them into implementation sequencing.
+5. defines its package-owned production removals, behavioral evidence, and migration tests under XC-01 and XC-02;
+6. identifies any shared DI-08 infrastructure or cross-package evidence without transferring behavioral ownership;
+7. identifies required independent evidence and known self-hosting risk;
+8. records package dependencies and exclusions without turning them into implementation sequencing.
 
 Design cannot claim complete intake while any coverage matrix entry lacks a corresponding Design section or is owned primarily by more than one section.
 
@@ -355,4 +421,9 @@ The authoritative [Deferred Work](deferred-work.md) remains the complete deferre
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.5 | 2026-08-26 | `@imp researcher` | Preserve DI-05 as one Design authority while making its internal responsibility lenses and mandatory Research inputs explicit. |
+| 1.4 | 2026-08-26 | `@imp researcher` | Limit DI-07 to workflow semantic requirements and alignment; retain concrete phase-document schema and renderer ownership in DI-03. |
+| 1.3 | 2026-08-26 | `@imp researcher` | Keep DI-08 as shared test architecture and assurance, assign package-local evidence and removals to DI-01–DI-07, and add XC-02 removal routing. |
+| 1.2 | 2026-08-26 | `@imp researcher` | Separate DI-05 factual capability/check ownership from DI-04 scaffold/safe-edit mutation policy, persistence, and operation-result ownership. |
+| 1.1 | 2026-08-26 | `@imp researcher` | Separate DI-01 metamodel/shared-exposure ownership from DI-03 concrete artifact-schema and renderer ownership across mandates and coverage matrices. |
 | 1.0 | 2026-08-26 | `@imp researcher` | Establish complete Research-to-Design primary ownership across packages, direct obligations, resolved constraints, deferred work, consumer families, and conditional catalog dispositions. |
