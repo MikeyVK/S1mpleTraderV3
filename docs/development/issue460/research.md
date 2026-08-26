@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.9  
+**Version:** 3.10  
 **Last Updated:** 2026-08-25  
 **Issue:** 460  
 **Workflow:** Refactor / Research
@@ -185,7 +185,6 @@ The table below is the canonical strategy and status register. Supporting ration
 | Runtime architecture compliance | Approved 2026-08-24 | Audit every affected runtime/setup component against the complete Architecture Principles, with explicit emphasis on Config-First/DRY/OCP hardcoding, fail-fast startup, SRP/DIP/ISP, composition-root ownership, no import-time I/O, CQS, Law of Demeter, presentation separation, and YAGNI; artifact-specific knowledge remains in the packaged suite |
 | Legacy parallel scaffolding and validation surfaces | Approved 2026-08-24 | Remove the artifact-specific component-scaffolder stack, duplicate renderer/result/base utilities, source-header metadata parser/config/lifecycle exports, and the public always-pass `validate_template` tool with its dedicated DTOs/tests/instruction references. Retained behavior is owned by one resolved generic scaffold path, fail-fast startup graph validation, and declared output-profile validation; no compatibility shell is justified |
 | Workflow/template semantic alignment | Approved 2026-08-25 | Compare every active Research, Design, Planning, and Validation `phase_instructions` variant with its final artifact schema and renderer. The shared schema provides a common core plus semantically named optional sections; each workflow instruction determines which sections its outcome requires. Phase instructions retain substantive actions, authority, workflow-specific completeness, and enforcement of the correct MCP tool, timing, and evidence scope, but never embed full invocations or duplicate tool-input parameters. `scaffold_schema` is required only when the agent does not already hold the current schema. Explicitly reject wording that conflates a valid first scaffold with a final complete artifact or obscures normal `safe_edit_file` refinement |
-
 | Test-suite architecture compliance | Approved 2026-08-24 | Audit every affected test and helper twice: first for durable public behavior/invariant value, then against every applicable Architecture Principle. Retained coverage must use public boundaries, explicit dependencies, isolated state, config-derived facts, proportionate helpers, and production-equivalent typing/quality; valuable intent does not excuse architectural coupling, and clean structure does not justify behaviorless tests |
 | Deferred YAML artifact subset | Deferred 2026-08-23 | Remove the two incomplete unreachable bases now; coordination should create the complete package subset as the first post-460 PGMCP issue on its own branch |
 | [Portable Python artifact coverage](deferred-work.md) | Deferred 2026-08-24 | Add no new Python artifact types in issue 460; preserve the inventory centrally; the approved Generic plain-class artifact remains bounded and may not absorb those deferred responsibilities |
@@ -245,10 +244,6 @@ Detailed deferred evidence is centralized in [Deferred Work](deferred-work.md).
 
 The approved Generic Python class responsibility remains bounded to a body-free plain-class skeleton and may not absorb the deferred Python artifact responsibilities. Its artifact-local body exclusion does not constrain the independently researched contracts of specialized Python templates.
 
-## Open Research Work
-
-1. Request a new independent QA review of the completed Research authority, work catalog, probe evidence, and centralized deferred-work notice.
-
 ## Design-Owned Questions After Research Closes
 
 Design may answer these questions only after every required strategy is approved. The [Design Intake Map](design-intake-map.md) assigns the complete mandate; these questions remain a concise navigation view rather than the coverage authority:
@@ -262,7 +257,15 @@ Design may answer these questions only after every required strategy is approved
 
 These are navigation inputs, not selected Design mechanisms.
 
-## Research Deliverables
+### Refactor / Research Hand-over
+
+#### Scope
+
+- Investigated the complete schema-to-rendering contract boundary across all 22 public artifact types, all 79 packaged suite files, resolved runtime/setup/documentation/agent consumers, and the affected test/helper surface.
+- Included the human-approved F-19 validation/quality scope expansion and safe-edit pre-mutation behavior.
+- Excluded target topology, implementation sequencing, cross-repository work, new artifact families, purpose-aware runtime discovery, and all work in the approved deferred register.
+
+#### Deliverables
 
 - [Primary Research](research.md)
 - [Detailed Research Findings](research-findings.md)
@@ -270,6 +273,24 @@ These are navigation inputs, not selected Design mechanisms.
 - [Probe Evidence](probe-evidence.yaml)
 - [Deferred Work](deferred-work.md)
 - [Design Intake Map](design-intake-map.md)
+- [Independent Research-to-Design QA Audit](research-to-design-qa-audit.md)
+
+#### Evidence
+
+- Blast radius and candidate seams: the catalog records 79 suite files, 102 active consumers plus two binding source rows, and 105 affected tests/helpers across code, configuration, tests, documentation, agents, packaging, setup, validation, and quality-gate boundaries.
+- Preserved behavior/contracts: the finding classification, 44 exact minimal/property-complete probes, core invariants, artifact responsibility decisions, and package-level Design mandates identify retained behavior, clean breaks, removals, and exclusions.
+- Approved Strategy: all 43 strategy rows in the [canonical register](#approved-strategy-and-decision-status) have a primary destination in the [Design Intake Map](design-intake-map.md); no hand-over statement changes their authority.
+- Coverage evidence: all 21 finding IDs, 16 invariants, 20 expected results, 10 consumer families, and four conditional catalog dispositions have exactly one primary Design destination.
+
+#### Open Work
+
+- Blocker: independent QA must re-review the reconciled Research set; this producer hand-over does not authorize Design.
+- Design questions and coupling risks: resolve the package-owned decisions and dependencies in the [Design Intake Map](design-intake-map.md), including F-19 compatibility, migration, and self-hosting evidence.
+- Deferred work: [approved deferred register](deferred-work.md).
+
+#### Review Request
+
+- Review requested.
 
 ## References
 
@@ -287,6 +308,7 @@ These are navigation inputs, not selected Design mechanisms.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.10 | 2026-08-26 | Complete the formal Research hand-over, repair the canonical strategy table, assign conditional catalog decisions, and align the approved deferred-work lifecycle for independent re-review |
 | 3.9 | 2026-08-26 | Add the authoritative Design Intake Map with exactly one primary destination for every finding, strategy, invariant, expected result, consumer family, and conditional catalog disposition |
 | 3.8 | 2026-08-25 | Govern the human-approved validation and quality-gate scope expansion as standalone F-19, including compatibility, migration, consumer-policy separation, and independent/self-hosting evidence obligations |
 | 3.7 | 2026-08-25 | Unify rendered-output validation and quality gates under one configured executable-capability authority while preserving their distinct policies, side effects, and non-overlapping validation responsibilities; extend the affected-consumer census accordingly |

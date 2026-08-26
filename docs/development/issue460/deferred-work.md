@@ -2,9 +2,9 @@
 <!-- template=generic_doc version=43c84181 created=2026-08-24 updated=2026-08-24 -->
 # Issue 460 Deferred Work
 
-**Status:** PRELIMINARY  
-**Version:** 1.2  
-**Last Updated:** 2026-08-24  
+**Status:** APPROVED  
+**Version:** 1.3  
+**Last Updated:** 2026-08-26  
 **Originating Issue:** 460
 
 ## Purpose
@@ -13,7 +13,7 @@ Preserve all work explicitly deferred from issue 460 in one durable, non-authori
 
 ## Status and Authority
 
-The five deferrals below were approved during issue-460 Research. Their inventories and preliminary priorities are inputs to future Research, not future Design or implementation authorization.
+The five deferrals below are closed issue-460 Research decisions. Their inventories and any ordering recommendations are inputs to future Research, not future Design or implementation authorization. `APPROVED` confirms their exclusion and ownership; it does not authorize the deferred work.
 
 The Generic Python class responsibility is approved in [Research](research.md) as a bounded body-free plain-class skeleton. That artifact-local boundary does not decide method-content policy for specialized Python templates.
 
@@ -200,6 +200,7 @@ No exact IDs, schemas, inheritance structure, or renderer topology are approved 
 - [Issue 460 Research](research.md)
 - [Issue 460 Research Findings](research-findings.md)
 - [Issue 460 Template-Suite Catalog](template-suite-catalog.md)
+- [Issue 460 Design Intake Map](design-intake-map.md)
 - [Documentation Standard](../../coding_standards/DOCUMENTATION_STANDARD.md)
 - [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)
 
@@ -209,6 +210,7 @@ No exact IDs, schemas, inheritance structure, or renderer topology are approved 
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.3 | 2026-08-26 | Mark the five deferrals as closed approved Research exclusions and link their Design coverage authority without granting implementation authorization |
 | 1.2 | 2026-08-24 | Defer any explicit command/query service artifact family after approving removal of the current broad Service and hidden subtype routing |
 | 1.1 | 2026-08-24 | Add deferred F-18 runtime discovery, reconcile the approved Generic boundary, and remove any implied suite-wide method-body rule |
 | 1.0 | 2026-08-24 | Consolidate all issue-460 deferred work and preserve the Generic Python approval boundary |
