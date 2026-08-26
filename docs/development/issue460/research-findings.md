@@ -3,8 +3,8 @@
 # Issue 460 Research Findings
 
 **Status:** REVIEW  
-**Version:** 1.2  
-**Last Updated:** 2026-08-25  
+**Version:** 1.3  
+**Last Updated:** 2026-08-26  
 **Issue:** 460
 
 ## Purpose
@@ -19,6 +19,7 @@ This document is an evidence companion, not a decision authority.
 - [Template Suite Work Catalog](template-suite-catalog.md) owns inventory and per-component dispositions.
 - [Probe Evidence](probe-evidence.yaml) owns exact durable probe contexts and outcomes.
 - [Deferred Work](deferred-work.md) owns all follow-up work outside issue 460.
+- [Design Intake Map](design-intake-map.md) owns the primary Design destination of every Research obligation without changing its evidence or decision.
 
 Any decision wording retained below is historical rationale only. If it differs from `research.md`, the primary Research artifact governs. The Generic Python class and Python/pytest integration-test responsibilities are approved in `research.md`; any older proposal wording below is retained only as supporting rationale.
 

@@ -1,7 +1,7 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
 **Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.8  
+**Version:** 3.9  
 **Last Updated:** 2026-08-25  
 **Issue:** 460  
 **Workflow:** Refactor / Research
@@ -12,7 +12,7 @@ Establish the observable content, compatibility, ownership, and portability boun
 
 The public caller contract is the output of `scaffold_schema`. Template configuration, Jinja sources, loader and packaging code, tests, and reference documentation are evidence about that contract, not alternative caller authorities.
 
-This document is the sole authority for issue-460 decision status, Approved Strategy, expected results, open work, and the Research gate. Detailed evidence is retained in [Research Findings](research-findings.md).
+This document is the sole authority for issue-460 decision status, Approved Strategy, expected results, open work, and the Research gate. Detailed evidence is retained in [Research Findings](research-findings.md). The [Design Intake Map](design-intake-map.md) is the subordinate authority for complete primary Design coverage; it cannot change Research decisions.
 
 ## Current Status and Gate
 
@@ -22,6 +22,7 @@ Research content is complete and awaits independent QA. Inventory, baseline prob
 - All 79 packaged suite files have an explicit retain/adapt or removal disposition.
 - All 105 test/helper candidates have explicit behavior-value and Architecture Principles dispositions; the original census omitted two obsolete legacy-validation test modules, which the completed consumer sweep added.
 - All 102 active runtime, setup, agent, standards, manual, and reference consumers have explicit retain/adapt/remove dispositions; the quality-gate reconciliation added eight directly affected components, and two binding source rows remain separate from that census.
+- The authoritative Design Intake Map assigns all 21 finding IDs, 43 strategy rows, 16 invariants, 20 expected results, 10 consumer families, and four conditional catalog dispositions to exactly one primary package, direct obligation, Research-resolved constraint, or deferred destination.
 - Generic, Python/pytest unit and integration tests, Python/Pydantic configuration model, and TypeScript DTO class have approved responsibilities; Resource, Service, and Tool are approved for removal without generic framework replacements.
 - No transition to Design is authorized until these obligations close and a new independent QA review returns GO.
 
@@ -78,6 +79,7 @@ The audit established that these are suite-level contract failures. Some schema-
 | [Probe Evidence](probe-evidence.yaml) | Exact durable minimal/property-complete contexts and outcomes for 44 calls |
 | Live `scaffold_schema` and `scaffold_artifact` tools | Reproduction of the current public caller behavior |
 | [Deferred Work](deferred-work.md) | All future work explicitly excluded from issue 460 |
+| [Design Intake Map](design-intake-map.md) | Complete primary Research-to-Design coverage without target-design or implementation authority |
 | This document | Decision status, Approved Strategy, expected results, open work, and Research gate |
 
 Cached tool resources and ignored temporary outputs are supplementary diagnostics only. They are not durable evidence authorities.
@@ -249,7 +251,7 @@ The approved Generic Python class responsibility remains bounded to a body-free 
 
 ## Design-Owned Questions After Research Closes
 
-Design may answer these questions only after every required strategy is approved:
+Design may answer these questions only after every required strategy is approved. The [Design Intake Map](design-intake-map.md) assigns the complete mandate; these questions remain a concise navigation view rather than the coverage authority:
 
 1. Which standard JSON Schema draft and composition form produce one resolved reference-free public contract?
 2. How are schema and Jinja dependency edges resolved, ordered, validated, and identified?
@@ -267,6 +269,7 @@ These are navigation inputs, not selected Design mechanisms.
 - [Template Suite Work Catalog](template-suite-catalog.md)
 - [Probe Evidence](probe-evidence.yaml)
 - [Deferred Work](deferred-work.md)
+- [Design Intake Map](design-intake-map.md)
 
 ## References
 
@@ -284,6 +287,7 @@ These are navigation inputs, not selected Design mechanisms.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.9 | 2026-08-26 | Add the authoritative Design Intake Map with exactly one primary destination for every finding, strategy, invariant, expected result, consumer family, and conditional catalog disposition |
 | 3.8 | 2026-08-25 | Govern the human-approved validation and quality-gate scope expansion as standalone F-19, including compatibility, migration, consumer-policy separation, and independent/self-hosting evidence obligations |
 | 3.7 | 2026-08-25 | Unify rendered-output validation and quality gates under one configured executable-capability authority while preserving their distinct policies, side effects, and non-overlapping validation responsibilities; extend the affected-consumer census accordingly |
 | 3.6 | 2026-08-25 | Define optional workflow-selected artifact sections and preserve named tool enforcement while removing full invocation/parameter duplication from phase instructions |

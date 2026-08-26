@@ -1,14 +1,14 @@
 # Template Suite Work Catalog
 
 **Status:** REVIEW  
-**Version:** 1.6  
+**Version:** 1.7  
 **Last Updated:** 2026-08-25  
 **Issue:** #460  
 **Purpose:** Durable, omission-resistant work catalog for the complete packaged template suite, its runtime engine, behavioral tests, helpers, and active consumers.
 
 ## Authority and Use
 
-This catalog is the Research inventory and the sole authority for per-component disposition state. It is not a second runtime registry and does not prescribe the Design mechanism. [Research](research.md) owns strategy approval and the Research gate; [Research Findings](research-findings.md) owns detailed rationale; [Deferred Work](deferred-work.md) owns excluded follow-up work. Every row must receive an explicit disposition before Planning can claim complete coverage. The live schema and probe baseline is recorded in [probe-evidence.yaml](probe-evidence.yaml).
+This catalog is the Research inventory and the sole authority for per-component disposition state. It is not a second runtime registry and does not prescribe the Design mechanism. [Research](research.md) owns strategy approval and the Research gate; [Research Findings](research-findings.md) owns detailed rationale; [Deferred Work](deferred-work.md) owns excluded follow-up work; the [Design Intake Map](design-intake-map.md) owns each row's primary Design destination without changing its disposition. Every row must receive an explicit disposition before Planning can claim complete coverage. The live schema and probe baseline is recorded in [probe-evidence.yaml](probe-evidence.yaml).
 
 The catalog covers:
 
@@ -424,7 +424,7 @@ Research is complete only when:
 
 ## Current Gate
 
-Public artifact, all 79 suite-file dispositions, all 102 active-consumer dispositions—including the human-approved F-19 scope expansion—runtime Architecture Principles/hardcoding dispositions, workflow-phase/template alignment, and the dual behavior-value/architecture review of all 105 tests/helpers are complete. Deferred work is centralized in `deferred-work.md`. The remaining Research gate is independent QA; this producer catalog does not itself authorize Design or Planning.
+Public artifact, all 79 suite-file dispositions, all 102 active-consumer dispositions—including the human-approved F-19 scope expansion—runtime Architecture Principles/hardcoding dispositions, workflow-phase/template alignment, and the dual behavior-value/architecture review of all 105 tests/helpers are complete. The Design Intake Map assigns every catalog family and conditional disposition to one primary Design destination. Deferred work is centralized in `deferred-work.md`. The remaining Research gate is independent QA; this producer catalog does not itself authorize Design or Planning.
 
 
 
