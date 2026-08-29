@@ -1,8 +1,8 @@
 # Research: Issue 460 — Scaffolding Schema–Template Rendering Contract Audit
 
-**Status:** REVIEW — INDEPENDENT QA REQUESTED  
-**Version:** 3.10  
-**Last Updated:** 2026-08-25  
+**Status:** DEFINITIVE — AMENDED RESEARCH CLOSED; UNCONDITIONAL DESIGN GO  
+**Version:** 3.14  
+**Last Updated:** 2026-08-29  
 **Issue:** 460  
 **Workflow:** Refactor / Research
 
@@ -12,19 +12,19 @@ Establish the observable content, compatibility, ownership, and portability boun
 
 The public caller contract is the output of `scaffold_schema`. Template configuration, Jinja sources, loader and packaging code, tests, and reference documentation are evidence about that contract, not alternative caller authorities.
 
-This document is the sole authority for issue-460 decision status, Approved Strategy, expected results, open work, and the Research gate. Detailed evidence is retained in [Research Findings](research-findings.md). The [Design Intake Map](design-intake-map.md) is the subordinate authority for complete primary Design coverage; it cannot change Research decisions.
+This document is the sole authority for issue-460 decision status, Approved Strategy, expected results, open work, and the Research gate. Detailed evidence is retained in [Research Findings](research-findings.md). The [Design Intake Map](design-intake-map.md) is the subordinate authority for complete primary Design coverage; it cannot change Research decisions. The [Pre-Implementation Documentation Contract](README.md) governs the form, topology, and navigation of the Research and Design set without changing this document's content authority.
 
 ## Current Status and Gate
 
-Research content is complete and awaits independent QA. Inventory, baseline probes, strategy approval, all component dispositions, phase/template alignment, active-consumer impact, test architecture, and centralized deferred-work ownership are closed.
+Research was explicitly reopened on 2026-08-29 after Design exposed an unsound identity boundary in the binding F-11/S-16 Approved Strategy. The bounded human-approved amendment now separates F-10 complete-suite management identity from F-11 selected-template-package provenance. Fresh independent QA reviewed that amendment on 2026-08-29 and returned an unconditional GO for Design. Inventory, baseline probes, all component dispositions, phase/template alignment, active-consumer impact, test architecture, centralized deferred-work ownership, and every other Approved Strategy boundary remained closed and unchanged.
 
 - All 22 public artifact types have an approved retain/adapt or removal disposition.
 - All 79 packaged suite files have an explicit retain/adapt or removal disposition.
 - All 105 test/helper candidates have explicit behavior-value and Architecture Principles dispositions; the original census omitted two obsolete legacy-validation test modules, which the completed consumer sweep added.
 - All 102 active runtime, setup, agent, standards, manual, and reference consumers have explicit retain/adapt/remove dispositions; the quality-gate reconciliation added eight directly affected components, and two binding source rows remain separate from that census.
-- The authoritative Design Intake Map assigns all 21 finding IDs, 43 strategy rows, 16 invariants, 20 expected results, 10 consumer families, and four conditional catalog dispositions to exactly one primary package, direct obligation, Research-resolved constraint, or deferred destination.
-- Generic, Python/pytest unit and integration tests, Python/Pydantic configuration model, and TypeScript DTO class have approved responsibilities; Resource, Service, and Tool are approved for removal without generic framework replacements.
-- No transition to Design is authorized until these obligations close and a new independent QA review returns GO.
+- The authoritative Design Intake Map still assigns all 21 finding IDs, 43 strategy rows, 16 invariants, 20 expected results, 10 consumer families, and four conditional catalog dispositions to exactly one primary package, direct obligation, Research-resolved constraint, or deferred destination.
+- Generic, Python/pytest unit and integration tests, Python/Pydantic configuration model, and TypeScript DTO class retain their approved responsibilities; Resource, Service, and Tool remain approved for removal without generic framework replacements.
+- The previous unconditional QA GO remains point-in-time evidence for the superseded global provenance interpretation. The fresh independent amendment review found no Research blocker and granted an unconditional GO to resume Design on the corrected F-10/F-11 boundary.
 
 ## Scope
 
@@ -98,7 +98,7 @@ Cached tool resources and ignored temporary outputs are supplementary diagnostic
 | F-08 | Several templates produce syntactically invalid source from schema-valid rich contexts. | A successful scaffold operation does not imply a usable artifact. | Python artifact templates |
 | F-09 | Reference examples contradict live scaffold_schema responses. | Humans and LLMs receive competing instructions; examples encourage invalid calls. | documentation |
 | F-10 | Workspace renewal can update templates while preserving their contract configuration separately. | A valid package can become a mixed-version contract/template installation. | distribution and upgrades |
-| F-11 | Current metadata dialects and version hashes do not cover the complete resolved graph. | Consumers cannot reliably determine which semantic contract produced an artifact. | portable suite metadata, provenance |
+| F-11 | Current metadata dialects and version hashes do not cover the complete resolved graph. | Consumers cannot reliably determine which selected template package and reachable shared contributors produced an artifact. | template-package metadata and provenance |
 | F-12 | The four issue-460 PR defects are manifestations of representation ambiguity, not isolated formatting errors. | Local template edits would leave the same failure class elsewhere. | suite-wide content model |
 | F-13 | Successful scaffolding can still emit visibly null, blank, concatenated, or machine-specific content. | Callers receive artifacts that require immediate manual repair despite tool success. | cross-cutting acceptance, output profiles, concrete templates |
 | F-14 | Some code templates embed project-specific imports and architecture assumptions absent from scaffold_schema. | The advertised generic template suite is not independently reusable in other environments. | template-suite portability |
@@ -124,7 +124,7 @@ This matrix classifies the primary nature and issue-460 disposition of every fin
 | F-08 | Behavior defect | Equivalent defect | Every accepted context produces profile-valid output or explicit pre-persistence failure/unavailable evidence | Clean break | Declarative output profile with on-use validator capability resolution |
 | F-09 | Structural debt | Enabling correction | Active documentation cannot compete with live schema and catalog facts | Not applicable — authority cleanup | Remove duplication; derive exact views only when retained value is proven |
 | F-10 | Structural debt | Enabling correction | Renewal never creates a mixed contract/template suite and never overwrites unproven user customization | Staged migration | One active root with managed baseline and non-authoritative candidate |
-| F-11 | Structural debt | Enabling correction | Provenance identity covers the complete resolved graph and caller contract | Clean break | Suite-scoped content-addressed graph fingerprint |
+| F-11 | Structural debt | Enabling correction | Selected-template-package provenance covers its complete local caller/rendering contract and every transitively reachable shared contributor without lateral package effects | Clean break | Resolved package provenance closure, separate from F-10 complete-suite management identity |
 | F-12 | Behavior defect | Required by issue 460 | Issue references and checklist state each have one canonical input representation | Clean break | Positive issue IDs and structured checklist items |
 | F-13 | Behavior defect | Equivalent defect | Tool success distinguishes contract, render, validation, persistence, and unavailable evidence | Clean break | Structured result states rather than inferred success |
 | F-14 | Behavior defect | Equivalent portability defect | Portable package artifacts contain no hidden consumer-project dependencies | Clean break | Portable package baseline plus workspace-owned specialization |
@@ -140,7 +140,7 @@ This matrix classifies the primary nature and issue-460 disposition of every fin
 
 1. Every renderer-consumed caller value is discoverable through `scaffold_schema`.
 2. Every exposed caller-content field has one declared meaning and an observable rendering effect.
-3. The selected schema, renderer, dependency graph, output profile, package identity, and renewal unit remain coherent.
+3. The selected schema, renderer, dependency graph, output profile, package identity, version, and resolved package provenance remain coherent; a package-local change has no observable effect on another concrete package, shared changes affect only transitive consumers, and F-10 complete-suite management identity remains separate.
 4. Caller context is validated unchanged before render-envelope or server metadata is added.
 5. Public client schemas remain finite, self-contained, and reference-free.
 6. Optional, omitted, empty, null, and defaulted values remain semantically distinct.
@@ -174,8 +174,8 @@ The table below is the canonical strategy and status register. Supporting ration
 | F-19 shared output-validation and quality-gate authority | Approved scope expansion 2026-08-25 | Retain this reconciliation inside issue 460. Rendered-output validation and quality gates share one injected, config-first authority for executable capability facts and one side-effect-free normalized factual-result seam; output profiles and quality gate sets remain separate selectors and policy consumers. Scaffolding and safe edit validate complete proposed content before mutation without quality-state or autofix side effects; `run_quality_gates` retains requested scope, quality-state lifecycle, diagnostics/presentation, and optional fixing. Passed, failed, unavailable, and not-executed evidence remain distinct, and strictness controls persistence only. Input-schema, startup-graph, workflow-gate, and behavioral-test validation remain separate responsibilities. Design must govern the compatibility and migration of existing public results and provide independent/self-hosting evidence so the changed quality path is not the sole authority certifying its own migration. Exact config layout, interfaces, adapters, transaction mechanics, and composition topology remain Design-owned |
 | Safe-edit post-edit validation | Approved 2026-08-25 | Every `safe_edit_file` operation validates the complete resulting artifact content through the same injected, configured output-profile boundary used by scaffolding. In strict mode, failed or unavailable required validation leaves the original file unchanged; interactive mode may persist but returns structured findings. Exact staging, atomic-write, or rollback mechanics remain Design-owned |
 | F-09 / S-15 documentation authority | Approved 2026-08-23 | Live schema and catalog own exact facts; handwritten docs explain semantics and discovery, duplicate inventories are removed, and generation remains YAGNI-driven |
-| F-10 / S-10 distribution and customization | Approved 2026-08-23 | Renewal never creates a mixed suite: proven unchanged official roots may fast-forward completely, while customized, legacy-unknown, and external roots are preserved completely and receive an inspectable non-authoritative candidate. Baseline evidence, comparison, staging, and adoption mechanics remain Design-owned |
-| F-11 / S-16 source provenance | Approved 2026-08-23 | Current resolved contract and Jinja graph produce a verifiable suite-scoped fingerprint; historical registry state is removed and adopted artifacts remain independent content |
+| F-10 / S-10 distribution and customization | Approved 2026-08-23; identity boundary clarified 2026-08-29 | Renewal never creates a mixed suite: proven unchanged official roots may fast-forward completely, while customized, legacy-unknown, and external roots are preserved completely and receive an inspectable non-authoritative candidate. A separate complete-suite management identity serves install, baseline, candidate, adoption, and renewal consumers only; it does not become package provenance or leak into package-directed artifact/tool outputs. Baseline evidence, comparison, staging, adoption, and complete-suite identity mechanics remain Design-owned |
+| F-11 / S-16 source provenance | Approved 2026-08-23; human-approved amendment 2026-08-29 | Selected-template-package provenance uses a resolved package fingerprint covering that package's complete local caller contract and rendering semantics plus every transitively reachable shared contributor. A package-local change affects only that package's version, fingerprint, schema output, rendered content, artifact metadata, and package-directed tool results; a shared change affects only transitive package consumers. Concrete packages cannot depend on one another; packages may depend on shared support, shared support may depend on shared support, and shared support cannot depend on a concrete package. Package-local changes require only that package's human-readable version to change; shared changes require version changes only for affected transitive consumers. The exact digest, canonical encoding, reverse-dependency mechanism, version-only-bump policy, and SemVer severity remain Design-owned. Historical registry state remains removed and adopted artifacts remain independent content |
 | F-12 / S-05 issue references | Approved 2026-08-23 | Positive integers carry issue identity; renderers own # and other presentation syntax |
 | F-12 / S-06 checklist items | Approved 2026-08-23 | Required text and explicit checked state form one structured item; primitive strings and bridges are rejected |
 | F-12 original-issue coverage | Covered 2026-08-23 | All four PR defects map to approved suite-wide boundaries; no PR-only strategy remains |
@@ -215,7 +215,7 @@ Issue 460 should be considered substantively resolved only when:
 4. Optionality, nullability, emptiness, and defaults have one declared meaning.
 5. Links, issue references, and checklist items each have one canonical representation.
 6. Every exposed field has an explicit role and no caller intent is silently discarded.
-7. Template-suite metadata, contracts, templates, any included examples, and version identity travel as a coherent portable unit.
+7. Complete-suite management metadata and content evidence travel coherently for installation and renewal, while each concrete template package exposes an isolated human-readable version and resolved provenance identity over only its local semantics and transitively reachable shared contributors.
 8. pgmcp-server does not become the owner of template-specific content truth.
 9. Human documentation cannot contradict the live scaffold_schema field surface.
 10. Generic artifact names do not conceal consumer-project imports, lifecycle assumptions, or prerequisites.
@@ -244,14 +244,14 @@ Detailed deferred evidence is centralized in [Deferred Work](deferred-work.md).
 
 The approved Generic Python class responsibility remains bounded to a body-free plain-class skeleton and may not absorb the deferred Python artifact responsibilities. Its artifact-local body exclusion does not constrain the independently researched contracts of specialized Python templates.
 
-## Design-Owned Questions After Research Closes
+## Design-Owned Questions After Amended Research Closure
 
-Design may answer these questions only after every required strategy is approved. The [Design Intake Map](design-intake-map.md) assigns the complete mandate; these questions remain a concise navigation view rather than the coverage authority:
+Fresh independent Research review has authorized re-entry to Design. The [Design Intake Map](design-intake-map.md) assigns the complete mandate; these questions remain a concise navigation view rather than the coverage authority:
 
 1. Which standard JSON Schema draft and composition form produce one resolved reference-free public contract?
 2. How are schema and Jinja dependency edges resolved, ordered, validated, and identified?
 3. Which portable metadata form replaces inconsistent current tier-three representations?
-4. How do result DTOs report target, validation evidence, suite identity, and graph fingerprint outside caller content?
+4. How do package-directed result DTOs report target, validation evidence, selected package version, and resolved package fingerprint without leaking F-10 complete-suite management identity, while installation and renewal results report their separate suite-management evidence?
 5. Which concrete interfaces realize the approved boundaries without introducing artifact-specific server knowledge?
 6. How does the F-19 package migrate existing validation and quality result consumers, preserve distinct policy ownership, and establish independent/self-hosting evidence without introducing a third executable-capability authority?
 
@@ -284,16 +284,17 @@ These are navigation inputs, not selected Design mechanisms.
 
 #### Open Work
 
-- Blocker: independent QA must re-review the reconciled Research set; this producer hand-over does not authorize Design.
-- Design questions and coupling risks: resolve the package-owned decisions and dependencies in the [Design Intake Map](design-intake-map.md), including F-19 compatibility, migration, and self-hosting evidence.
+- Research blockers: None. Fresh independent review granted an unconditional GO for Design on the amended F-10/F-11 boundary.
+- Design questions and coupling risks: first reconcile the superseded global-provenance passages in the existing Design package, then resolve the package-owned decisions and dependencies in the [Design Intake Map](design-intake-map.md), including package-fingerprint mechanics, affected-package version diagnostics, and F-19 compatibility, migration, and self-hosting evidence.
 - Deferred work: [approved deferred register](deferred-work.md).
 
-#### Review Request
+#### Review Status
 
-- Review requested.
+- Independent amendment review completed on 2026-08-29; unconditional GO for Design granted. The first Design activity must reconcile the superseded global-provenance decisions.
 
 ## References
 
+- [Pre-Implementation Documentation Contract](README.md)
 - [Documentation Standard](../../coding_standards/DOCUMENTATION_STANDARD.md)
 - [Architecture Principles](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)
 - [Scaffolding Tool Reference](../../reference/tools/scaffolding.md)
@@ -308,6 +309,10 @@ These are navigation inputs, not selected Design mechanisms.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.14 | 2026-08-29 | Close the bounded F-10/F-11 amendment after fresh independent QA GO and require the superseded global-provenance Design passages to be reconciled first |
+| 3.13 | 2026-08-29 | Reopen Research and record the human-approved F-10/F-11 amendment that separates complete-suite management identity from isolated selected-template-package provenance; request fresh independent review |
+| 3.12 | 2026-08-27 | Link the issue-local pre-implementation documentation contract as the form and navigation authority |
+| 3.11 | 2026-08-27 | Close the Research gate after unconditional independent QA GO and supersede all earlier transition reservations |
 | 3.10 | 2026-08-26 | Complete the formal Research hand-over, repair the canonical strategy table, assign conditional catalog decisions, and align the approved deferred-work lifecycle for independent re-review |
 | 3.9 | 2026-08-26 | Add the authoritative Design Intake Map with exactly one primary destination for every finding, strategy, invariant, expected result, consumer family, and conditional catalog disposition |
 | 3.8 | 2026-08-25 | Govern the human-approved validation and quality-gate scope expansion as standalone F-19, including compatibility, migration, consumer-policy separation, and independent/self-hosting evidence obligations |

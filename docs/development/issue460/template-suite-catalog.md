@@ -1,8 +1,8 @@
 # Template Suite Work Catalog
 
-**Status:** REVIEW  
-**Version:** 1.8  
-**Last Updated:** 2026-08-25  
+**Status:** DEFINITIVE INVENTORY — F-10/F-11 AMENDMENT REVIEWED  
+**Version:** 1.11  
+**Last Updated:** 2026-08-29  
 **Issue:** #460  
 **Purpose:** Durable, omission-resistant work catalog for the complete packaged template suite, its runtime engine, behavioral tests, helpers, and active consumers.
 
@@ -253,8 +253,8 @@ Every runtime/setup row is audited against the complete [Architecture Principles
 | [mcp_server/scaffolding/renderer.py](../../../mcp_server/scaffolding/renderer.py) | duplicate Jinja renderer | **Consolidate/remove** — it duplicates TemplateEngine, defaults to a package-relative root, and exposes `Any`; retain one explicitly injected generic rendering capability only |
 | [mcp_server/scaffolding/metadata.py](../../../mcp_server/scaffolding/metadata.py) | generated-file header parser | **Remove** — no approved runtime decision consumes source-header provenance and its extension regex registry duplicates output-profile responsibility |
 | [mcp_server/scaffolding/utils.py](../../../mcp_server/scaffolding/utils.py) | legacy naming/persistence helpers | **Design decision required — DI-04** — remove these helpers or replace only the behavior justified by DI-04-owned boundaries. PascalCase and CWD defaults are hidden policy; naming comes from artifact configuration and persistence from the designed filesystem boundary |
-| [mcp_server/scaffolding/template_registry.py](../../../mcp_server/scaffolding/template_registry.py) | mutable historical registry | **Remove** — no runtime consumer needs the persisted current-version/history map; it performs I/O at construction, silently replaces malformed state with an empty registry, migrates/deletes legacy YAML, and duplicates the resolved suite identity without an evidenced use case |
-| [mcp_server/scaffolding/version_hash.py](../../../mcp_server/scaffolding/version_hash.py) | legacy provenance hashing | **Remove/replace only at the resolved-suite boundary** — current regex extraction and fabricated 1.0.0 fallbacks are neither fail-fast nor graph-complete. If Design retains a baseline identity, derive it deterministically from the validated resolved graph/config; do not revive per-artifact lifecycle state |
+| [mcp_server/scaffolding/template_registry.py](../../../mcp_server/scaffolding/template_registry.py) | mutable historical registry | **Remove** — no runtime consumer needs the persisted current-version/history map; it performs I/O at construction, silently replaces malformed state with an empty registry, migrates/deletes legacy YAML, and duplicates provenance/management facts without an evidenced use case |
+| [mcp_server/scaffolding/version_hash.py](../../../mcp_server/scaffolding/version_hash.py) | legacy provenance hashing | **Remove/replace at the resolved selected-package provenance boundary** — current regex extraction and fabricated 1.0.0 fallbacks are neither fail-fast nor graph-complete. Keep any F-10 complete-suite baseline identity separate for installation/renewal consumers; do not revive per-artifact lifecycle state |
 | [mcp_server/schemas/base.py](../../../mcp_server/schemas/base.py) | legacy context hierarchy | **Remove from scaffold pipeline** — BaseContext/BaseRenderContext encode a Pydantic inheritance model and lifecycle mixin that the approved complete JSON Schema plus separate envelope supersede; do not translate suite-specific schemas back into a constrained Python field dialect |
 
 | [mcp_server/schemas/mixins/lifecycle.py](../../../mcp_server/schemas/mixins/lifecycle.py) | legacy render-context lifecycle | **Remove** — output path, timestamps, template ID, and version hash are not caller context and the approved minimal envelope/provenance boundary does not justify a render-model mixin |
@@ -373,7 +373,7 @@ Test code is first-class code. Applicable checks include public-boundary behavio
 | [tests/mcp_server/unit/config/test_validator_c3.py](../../../tests/mcp_server/unit/config/test_validator_c3.py) | unit | broad dependency match | Adjacent | **Adapt** — extend public startup validation to graph/schema/profile/capability coherence; avoid private validator calls and duplicated IDs |
 | [tests/mcp_server/unit/config/test_workflow_config_c6.py](../../../tests/mcp_server/unit/config/test_workflow_config_c6.py) | unit | broad dependency match | Adjacent | **Exclude** — workflow-template config cleanup is outside this template suite boundary |
 | [tests/mcp_server/unit/integration/test_all_tools.py](../../../tests/mcp_server/unit/integration/test_all_tools.py) | integration | broad dependency match | Adjacent | **Exclude** — general tool flows are unaffected; shared bootstrap fixtures may need mechanical adaptation |
-| [tests/mcp_server/unit/managers/test_artifact_manager_metadata.py](../../../tests/mcp_server/unit/managers/test_artifact_manager_metadata.py) | unit | raw, path, registry, fixtures | Direct | **Replace** — lifecycle/body metadata assertions become separate envelope/result and resolved-suite identity behavior |
+| [tests/mcp_server/unit/managers/test_artifact_manager_metadata.py](../../../tests/mcp_server/unit/managers/test_artifact_manager_metadata.py) | unit | raw, path, registry, fixtures | Direct | **Replace** — lifecycle/body metadata assertions become separate envelope/result and selected-package provenance behavior; complete-suite management identity is outside this package-directed consumer |
 | [tests/mcp_server/unit/managers/test_artifact_manager_registry.py](../../../tests/mcp_server/unit/managers/test_artifact_manager_registry.py) | unit | path, registry | Direct | **Remove** — TemplateRegistry persistence and version-hash orchestration are retired |
 | [tests/mcp_server/unit/managers/test_artifact_manager.py](../../../tests/mcp_server/unit/managers/test_artifact_manager.py) | unit | path, registry, fixtures | Direct | **Replace** — preserve orchestration, strict validation, and persistence through public behavior with narrow explicit collaborators; remove private patches and mock-shaped internal call assertions |
 | [tests/mcp_server/unit/managers/test_c3_note_context_scaffold_chain.py](../../../tests/mcp_server/unit/managers/test_c3_note_context_scaffold_chain.py) | unit | path | Direct | **Adapt** — retain actionable public recovery notes; remove signature inspection, global function replacement, and internal chain assertions |
@@ -424,7 +424,7 @@ Research is complete only when:
 
 ## Current Gate
 
-Public artifact, all 79 suite-file dispositions, all 102 active-consumer dispositions—including the human-approved F-19 scope expansion—runtime Architecture Principles/hardcoding dispositions, workflow-phase/template alignment, and the dual behavior-value/architecture review of all 105 tests/helpers are complete. The Design Intake Map assigns every catalog family and conditional disposition to one primary Design destination. Deferred work is centralized in `deferred-work.md`. The remaining Research gate is independent QA; this producer catalog does not itself authorize Design or Planning.
+Public artifact, all 79 suite-file dispositions, all 102 active-consumer dispositions—including the human-approved F-19 scope expansion—runtime Architecture Principles/hardcoding dispositions, workflow-phase/template alignment, and the dual behavior-value/architecture review of all 105 tests/helpers remain complete and unchanged. The Design Intake Map still assigns every catalog family and conditional disposition to one primary Design destination, and deferred work remains centralized in `deferred-work.md`. Fresh independent review accepted the bounded F-10/F-11 amendment and granted an unconditional GO to resume Design; the superseded global-provenance Design passages must be reconciled first.
 
 
 

@@ -2,13 +2,18 @@
 <!-- template=generic_doc version=43c84181 created=2026-08-25T14:44Z updated=2026-08-25 -->
 # Issue #460 Research-to-Design QA Audit
 
-**Status:** DEFINITIVE  
-**Version:** 1.0  
-**Last Updated:** 2026-08-25  
+**Status:** DEFINITIVE REVIEW HISTORY — AMENDMENT DESIGN GO  
+**Version:** 1.2  
+**Last Updated:** 2026-08-29  
 **Review Authority:** Independent `@qa design-reviewer`  
-**Recorded By:** `@imp researcher`, without substantive alteration of the QA verdict
+**Recorded By:** `@imp researcher`, without substantive alteration of the historical QA verdict  
+**Current Applicability:** Unconditional Design GO for the 2026-08-29 F-10/F-11 amendment; the original NOGO remains historical
 
 ---
+
+## Supersession Notice
+
+This audit preserves the independent point-in-time NOGO issued before the original Research reconciliation and records both later independent GO decisions. The original remediation was closed on 2026-08-27. Design then exposed an unsound F-10/F-11 identity boundary, Research was reopened for that boundary only, and fresh independent QA granted an unconditional GO on 2026-08-29. Historical wording is retained as evidence and must not be interpreted as current debt or an open gate. [Research](research.md) and the [Design Intake Map](design-intake-map.md) own the current closed status and active mandate.
 
 ## Purpose
 
@@ -31,9 +36,9 @@ Record the independent QA assessment of the issue #460 research set, with partic
 - Production-code verification.
 - Authorization to start Design despite unresolved Research blockers.
 
-## Verdict
+## Historical Verdict — Superseded
 
-**NOGO for the Research-to-Design transition in the current form.**
+**Point-in-time verdict on 2026-08-25: NOGO for the Research-to-Design transition in the form reviewed at that time. This verdict has been superseded by the unconditional Design GO.**
 
 This is not a rejection of the substantive Research quality. The evidence base is strong and largely complete. The blocking concern is that the evidence has not yet been converted into a bounded, explicit, and auditable Design mandate. Design would currently need to regroup the Research, reconstruct scope decisions, and establish coverage itself. That would make Design repeat part of Research and prematurely perform Planning work.
 
@@ -181,19 +186,32 @@ The `safe_edit` and broader quality-gate consolidation should preferably become 
 
 These are Design coverage dependencies, not implementation-cycle sequencing.
 
-## Required Remediation Before QA Re-review
+## Historical Remediation Checklist — Completed
 
-1. Repair the canonical Approved Strategy table.
-2. Add the formal Research hand-over.
-3. Add a complete Design Intake Map covering every finding, strategy boundary, invariant, consumer family, and expected result.
-4. Convert every conditional catalog disposition into an assigned Design decision with explicit constraints.
-5. Obtain a human scope decision for `safe_edit` and the quality-gate consolidation.
-6. Align the deferred-work lifecycle status.
-7. Request a focused independent QA re-review of coverage, scope governance, and rendered document integrity.
+All seven remediations were completed before the unconditional Design GO. This is a closure record, not an open checklist.
 
-## Re-review Expectation
+1. [x] Repair the canonical Approved Strategy table.
+2. [x] Add the formal Research hand-over.
+3. [x] Add a complete Design Intake Map covering every finding, strategy boundary, invariant, consumer family, and expected result.
+4. [x] Convert every conditional catalog disposition into an assigned Design decision with explicit constraints.
+5. [x] Obtain a human scope decision for `safe_edit` and the quality-gate consolidation.
+6. [x] Align the deferred-work lifecycle status.
+7. [x] Complete focused independent QA re-review of coverage, scope governance, and rendered document integrity.
 
-Once these corrections are complete, the next QA round should be a bounded coverage audit rather than another substantive reconstruction of the Research. A GO remains possible without repeating the full multi-cycle Research effort.
+## Original Re-review Outcome
+
+The bounded re-review was completed after the corrections above and returned an unconditional GO for Design. No original Research remediation or transition reservation remained open.
+
+## F-10/F-11 Amendment Re-review — 2026-08-29
+
+Independent QA found no substantive Research blocker. The amended boundary coherently separates three consumer identities: human-readable package version, resolved selected-package fingerprint, and complete-suite management identity. Package-local changes no longer create lateral package effects; transitively reachable shared contributors remain part of provenance; complete-suite identity remains available only to install, baseline, candidate, adoption, and renewal consumers; and exact mechanisms remain Design-owned.
+
+The review identified two follow-up conditions rather than Research blockers:
+
+1. the existing global-provenance decisions in `design-suite-resolution.md` and `design-shared-contracts.md` are superseded and must be the first Design reconciliation;
+2. the definitive Research amendment must be committed before the formal phase transition.
+
+**Gate outcome: unconditional GO to resume Design on the amended F-10/F-11 boundary.**
 
 ## Evidence Reviewed
 
@@ -212,6 +230,8 @@ No production tests or quality gates were used as substantive evidence for this 
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.2 | 2026-08-29 | Independent QA; recorded by `@imp researcher` | Record the bounded F-10/F-11 amendment review, its unconditional Design GO, and the mandatory first Design reconciliation. |
+| 1.1 | 2026-08-27 | `@imp designer` | Preserve the original verdict as historical evidence while recording completed remediation and the superseding unconditional Design GO. |
 | 1.0 | 2026-08-25 | Independent QA; recorded by @imp | Initial definitive Research-to-Design audit |
 
 [research]: research.md

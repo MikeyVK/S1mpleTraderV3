@@ -2,9 +2,9 @@
 <!-- template=generic_doc version=43c84181 created=2026-08-24 updated=2026-08-25 -->
 # Issue 460 Research Findings
 
-**Status:** REVIEW  
-**Version:** 1.3  
-**Last Updated:** 2026-08-26  
+**Status:** DEFINITIVE EVIDENCE — F-10/F-11 AMENDMENT REVIEWED  
+**Version:** 1.6  
+**Last Updated:** 2026-08-29  
 **Issue:** 460
 
 ## Purpose
@@ -13,7 +13,7 @@ Preserve detailed factual findings, option analysis, blast-radius evidence, and 
 
 ## Authority
 
-This document is an evidence companion, not a decision authority.
+This document is an evidence companion, not a decision authority. Research was explicitly reopened on 2026-08-29 for one human-approved F-10/F-11 identity amendment discovered during Design. The earlier unconditional QA GO remains historical evidence for the superseded suite-scoped provenance interpretation; fresh independent review of the amendment found no Research blocker and granted an unconditional GO to resume Design.
 
 - [Research](research.md) owns the current decision status, Approved Strategy, expected results, open work, and Research gate.
 - [Template Suite Work Catalog](template-suite-catalog.md) owns inventory and per-component dispositions.
@@ -247,7 +247,7 @@ These graph facts matter because scaffold_schema should describe the resolved re
 | F-08 | Several templates produce syntactically invalid source from schema-valid rich contexts. | A successful scaffold operation does not imply a usable artifact. | Python artifact templates |
 | F-09 | Reference examples contradict live scaffold_schema responses. | Humans and LLMs receive competing instructions; examples encourage invalid calls. | documentation |
 | F-10 | Workspace renewal can update templates while preserving their contract configuration separately. | A valid package can become a mixed-version contract/template installation. | distribution and upgrades |
-| F-11 | Current metadata dialects and version hashes do not cover the complete resolved graph. | Consumers cannot reliably determine which semantic contract produced an artifact. | portable suite metadata, provenance |
+| F-11 | Current metadata dialects and version hashes do not cover the complete resolved graph. | Consumers cannot reliably determine which selected template package and reachable shared contributors produced an artifact. | template-package metadata and provenance |
 | F-12 | The four issue-460 PR defects are manifestations of representation ambiguity, not isolated formatting errors. | Local template edits would leave the same failure class elsewhere. | suite-wide content model |
 | F-13 | Successful scaffolding can still emit visibly null, blank, concatenated, or machine-specific content. | Callers receive artifacts that require immediate manual repair despite tool success. | cross-cutting acceptance, output profiles, concrete templates |
 | F-14 | Some code templates embed project-specific imports and architecture assumptions absent from scaffold_schema. | The advertised generic template suite is not independently reusable in other environments. | template-suite portability |
@@ -1128,15 +1128,15 @@ Two different source graphs can therefore produce the same recorded hash. The re
 
 #### Provenance is not artifact lifecycle
 
-A graph fingerprint describes the scaffold recipe used at creation. It is not a content hash and does not prove that the current artifact still equals the original rendering. Once an artifact is adopted and edited for production use, its content owns its lifecycle; template changes must not imply automatic regeneration or update.
+A resolved package fingerprint describes the selected template package and reachable shared scaffold recipe used at creation. It is not an artifact-content hash and does not prove that the current artifact still equals the original rendering. Once an artifact is adopted and edited for production use, its content owns its lifecycle; template changes must not imply automatic regeneration or update.
 
 If a fresh template result is desired later, the safe workflow is to scaffold a new candidate beside the existing production artifact and compare or merge them explicitly with a human, LLM, or text editor. The existing artifact is the comparison baseline. No historical template registry or automatic template-driven update mechanism is required.
 
-A fingerprint is one-way and cannot reconstruct its input graph. The artifact type and suite identity can select a currently available catalog graph, whose fingerprint can be recomputed:
+A fingerprint is one-way and cannot reconstruct its input graph. The artifact type, human-readable template-package version, and resolved package fingerprint can select and compare a currently available package closure:
 
-- a match proves that the available contract and contributors equal the scaffold source identity;
-- a mismatch proves only that the available graph differs;
-- an unavailable matching suite snapshot makes historical reconstruction impossible.
+- a match proves that the selected package's available local contract/rendering semantics and reachable shared contributors equal the scaffold source identity;
+- a mismatch proves only that the available resolved package closure differs;
+- an unavailable matching package closure makes historical reconstruction impossible.
 
 Exact historical reconstruction requires the original suite snapshot in an active root, staged candidate, release, Git history, or explicit backup. Storing partial registry metadata does not provide that snapshot.
 
@@ -1144,16 +1144,17 @@ Exact historical reconstruction requires the original suite snapshot in an activ
 
 | Boundary | F-11 impact |
 |---|---|
-| Startup catalog | Owns the current artifact type to resolved contract/graph/fingerprint mapping |
-| Template graph analysis | Reuses the complete static dependency graph approved under F-05 |
-| Artifact contract | Contributes the resolved caller schema to source identity |
-| Suite identity | Reuses F-10 suite identity so a graph fingerprint has a source namespace |
-| Generated metadata | Describes initial scaffold source, not current content integrity or an update obligation |
-| scaffold_schema | Can expose current suite identity, graph fingerprint, and contributor paths beside the resolved contract |
+| Startup catalog | Owns the current artifact type to resolved template-package contract, dependency closure, and provenance mapping |
+| Template graph analysis | Reuses the complete static dependency graph approved under F-05 and rejects concrete-package-to-concrete-package or shared-to-concrete-package edges |
+| Artifact contract | Contributes the selected package's complete local caller contract and rendering semantics to source identity |
+| Shared support | Contributes only when transitively reachable from the selected concrete package; a shared change affects only packages that reach it |
+| F-10 suite management identity | Remains separate and complete-suite-scoped for install, baseline, candidate, adoption, and renewal consumers; it is not package provenance |
+| Generated metadata | Reports the selected package's human-readable version and resolved package fingerprint as initial scaffold source, not current content integrity or an update obligation |
+| Package-directed scaffold/schema evidence | Reports selected-package provenance and must not expose complete-suite management identity merely because that identity exists |
 | template_registry.json | Has no demonstrated production consumer or complete historical evidence and is YAGNI |
 | ArtifactManager/bootstrap/upgrade | Remove registry persistence, lookup, migration, injection, and dynamic-state preservation |
-| Tests | Protect deterministic current-graph fingerprinting and observable metadata; remove tests whose only value is historical registry mechanics |
-| Documentation | Explains source identity, match/mismatch limits, and side-by-side regeneration without claiming historical reconstruction |
+| Tests | Protect deterministic resolved-package provenance, lateral package isolation, transitive shared impact, and observable metadata; remove tests whose only value is historical registry mechanics |
+| Documentation | Explains package source identity, match/mismatch limits, and side-by-side regeneration without claiming historical reconstruction |
 
 #### Historical Preservation Rationale
 
@@ -1176,9 +1177,32 @@ Exact historical reconstruction requires the original suite snapshot in an activ
 - Treat adopted artifacts as independent production content. Refresh, when explicitly desired, means scaffold a separate candidate and compare manually or with an LLM.
 - Do not retain a historical provenance store, content hash, automatic updater, or compatibility bridge for the registry.
 
+
+#### Approved Strategy Amendment (2026-08-29)
+
+Design exposed that applying one complete-suite fingerprint to every package-directed artifact and tool result creates observable lateral coupling: changing package A would alter package B's provenance even when B's contract, rendering semantics, and reachable shared support are unchanged. Human approval therefore supersedes only the earlier suite-scoped F-11/S-16 provenance wording. F-10 complete-suite management and every other F-11 preservation decision remain intact.
+
+| Alternative | Consumer effect and trade-off | Decision |
+|---|---|---|
+| One global fingerprint in all artifact and package-directed tool outputs | Simple equality value, but an unrelated package change changes another package's metadata and evidence, defeating the concrete-package boundary | Rejected |
+| Package-local identity that omits shared contributors | Isolates concrete packages, but cannot identify inherited bases, imported patterns, shared definitions, or other reachable semantics that can change output | Rejected |
+| Separate F-10 complete-suite management identity plus F-11 resolved package provenance closure | Gives installation/renewal consumers a complete candidate identity while artifact/scaffold/schema consumers receive only the selected package plus reachable shared semantics; requires Design to resolve and compare the dependency closure | Approved |
+
+The amended observable boundary is:
+
+- a change local to one concrete package has no observable effect on any other concrete package, including the other package's version, resolved provenance fingerprint, schema output, rendered content, artifact metadata, or package-directed tool result;
+- a shared base, pattern, or definition change affects only concrete packages that reach it transitively;
+- concrete packages may depend on shared support; shared support may depend on shared support; concrete-package-to-concrete-package and shared-to-concrete-package dependencies are prohibited;
+- F-10 retains a separate complete-suite management identity for installation, baseline, candidate, adoption, and renewal consumers;
+- F-11 provenance is selected-template-package-scoped and covers the package's complete local caller contract/rendering semantics plus every transitively reachable shared contributor;
+- complete-suite management identity does not appear in package-directed artifact or tool outputs merely because it exists;
+- a package-local change requires only that package's human-readable version to change, while a shared change requires version changes only for affected transitive consumers.
+
+The exact digest algorithm, canonical byte encoding, reverse-dependency mechanism, version-only-bump policy mechanics, and SemVer severity remain Design-owned. The historical 2026-08-23 statement to reuse F-10 suite identity inside artifact provenance is retained above as point-in-time rationale and is superseded by this amendment.
+
 #### Design hand-off
 
-Design must define canonical graph-fingerprint input and serialization, compact metadata field names and length, suite/graph identity exposure, registry-removal blast radius, and the side-by-side candidate safety contract. It must determine whether scaffold_schema can carry provenance metadata without confusing it with the JSON Schema payload. It may not reintroduce manual version labels as fingerprint authority or turn provenance into an artifact update mechanism.
+Fresh independent Research review granted an unconditional GO on 2026-08-29. Design must now define canonical resolved-package fingerprint inputs and serialization, compact metadata field names and length, dependency-edge and affected-consumer mechanics, registry-removal blast radius, and the side-by-side candidate safety contract. It must keep F-10 complete-suite management identity out of package-directed outputs, determine how scaffold_schema carries selected-package provenance without confusing it with the JSON Schema payload, and define enforceable affected-package version diagnostics. It may not reintroduce manual version labels as fingerprint authority, infer SemVer severity automatically, or turn provenance into an artifact update mechanism.
 
 ### F-12 — the PR defects are suite-level contract symptoms
 
@@ -1275,7 +1299,7 @@ Every successful probe starts with the absolute output path, including drive let
 The persistence target and artifact content have different ownership:
 
 - output_path remains a validated scaffold-tool envelope value used to resolve the write target and reported through result information;
-- suite/type/graph identity can describe the initial scaffold source under F-11;
+- selected template-package identity, version, and resolved package fingerprint can describe the initial scaffold source under F-11;
 - the target path does not belong in generic rendered content.
 
 Absolute paths make identical inputs differ across machines, disclose local directory structure, and become stale when files move. Workspace-relative paths avoid host disclosure but retain the stale-content and redundant-diff problem. Remove both forms from the generic tier-zero artifact body.
@@ -1283,6 +1307,9 @@ Absolute paths make identical inputs differ across machines, disclose local dire
 A concrete artifact may render a path only when that path has domain meaning and is declared explicitly by its own schema and template. It must not receive the generic persistence target implicitly.
 
 **Historical decision rationale (2026-08-23):** omit filesystem paths from generic artifact bodies. Retain output_path for target resolution and result evidence only; retain source provenance independently through the F-11 suite/type/graph identity. No compatibility bridge is required for the development-only header convention.
+
+
+**2026-08-29 amendment note:** the path-removal decision remains unchanged. The historical `suite/type/graph identity` phrase is superseded only for provenance scope: package-directed evidence uses selected-package version and resolved package fingerprint, not F-10 complete-suite management identity.
 
 **Canonical decision/status:** see the [Research decision register](research.md#approved-strategy-and-decision-status).
 
@@ -1667,6 +1694,9 @@ The option analysis below preserves historical rationale only. Current approval 
 
 **Historical decision rationale (2026-08-23):** choose B. Fingerprint the resolved contract and complete static Jinja graph under the F-10 suite identity, expose current contributors through the catalog boundary, and remove template_registry.json. Metadata describes initial scaffold source only. Production artifacts remain independently editable; a later refresh is a separately scaffolded candidate compared with the existing artifact, never an automatic update.
 
+
+**Approved strategy amendment (2026-08-29):** retain deterministic current provenance and registry removal, but supersede the use of F-10 suite identity in package-directed provenance. Reject one global fingerprint in all artifact outputs because it creates lateral package coupling. Reject package-local identity that omits shared contributors because it is incomplete. Approve a separate F-10 complete-suite management identity plus an F-11 resolved package fingerprint over the selected package's local contract/rendering semantics and transitively reachable shared contributors.
+
 **Canonical decision/status:** see the [Research decision register](research.md#approved-strategy-and-decision-status).
 
 ## Portable Maintenance Boundary
@@ -1684,14 +1714,14 @@ A sound separation is:
 - inheritance and import dependency metadata;
 - content-oriented portable validation or auditing rules;
 - optional examples, when present, that are derived from the same introspection surface;
-- suite version and resolved graph identity.
+- human-readable package versions, resolved package provenance, and separate complete-suite management evidence.
 
 ### pgmcp-server responsibility
 
 - expose the suite-owned contract through scaffold_schema;
 - validate caller context against that returned contract;
 - invoke the resolved renderer without silently changing the contract;
-- preserve suite version coherence during packaging and workspace operations;
+- preserve package provenance and complete-suite management identity coherently within their separate consumer scopes;
 - report actionable contract or render failures.
 
 ### Human/LLM responsibility
