@@ -1,16 +1,16 @@
 <!-- docs/development/issue460/design-intake-map.md -->
-<!-- template=generic_doc version=43c84181 created=2026-08-26 updated=2026-08-29 -->
+<!-- template=generic_doc version=43c84181 created=2026-08-26 updated=2026-08-30 -->
 # Issue #460 Research-to-Design Intake Map
 
-**Status:** DEFINITIVE — AMENDED RESEARCH DESIGN-READY  
-**Version:** 1.9  
-**Last Updated:** 2026-08-29  
+**Status:** DEFINITIVE — THIRD F-10/F-11 OWNERSHIP CORRECTION INDEPENDENTLY CONFIRMED; DESIGN GO  
+**Version:** 1.13  
+**Last Updated:** 2026-08-30  
 **Issue:** #460  
 **Workflow Boundary:** Refactor / Research → Design
 
 ## Purpose and Authority
 
-This document is the authoritative Research-to-Design scope index for issue 460. It proves that every Research obligation has one primary Design destination without selecting target mechanisms, method bodies, patch sequences, or implementation cycles. Research was explicitly reopened on 2026-08-29 for the human-approved F-10/F-11 identity amendment. The previous unconditional QA GO remains historical evidence for the superseded suite-scoped provenance wording; fresh independent review found no Research blocker and granted an unconditional GO to resume Design on the amended boundary.
+This document is the authoritative Research-to-Design scope index for issue 460. It proves that every Research obligation has one primary Design destination without selecting target mechanisms, method bodies, patch sequences, or implementation cycles. Research closed definitively on 2026-08-30 after the user reported that the independent QA authority approved the third narrowly bounded F-10/F-11 ownership correction. The unconditional QA GO dated 2026-08-29 remains historical evidence for the superseded first-amendment wording. The targeted 2026-08-30 confirmation removes the later reservation and authorizes Design to continue.
 
 [Research](research.md) remains the sole authority for approved strategy, invariants, expected results, and the Research gate. [Research Findings](research-findings.md) owns evidence and rationale. The [Template Suite Work Catalog](template-suite-catalog.md) owns per-component dispositions. The [Pre-Implementation Documentation Contract](README.md) governs the form and navigation of the full set. This map owns only Design coverage and primary responsibility.
 
@@ -127,11 +127,11 @@ flowchart LR
 | Dimension | Design intake |
 |---|---|
 | Research inputs | F-04, F-05, F-11, F-16; strategy rows for DTO runtime selection, resolved template graph, source provenance, and artifact-purpose introspection |
-| Responsibilities and consumers | Modular config loader, Jinja loader/analyzer, template engine, bootstrap composition, runtime catalog, `scaffold_schema`, selected-template-package provenance/result evidence, graph metadata, and `.pgmcp/config/artifacts.yaml` |
-| Design-owned decisions | Dependency-edge model for inheritance/import/include and prohibited package edges; startup resolution and diagnostics; one declared runtime renderer; concise purpose carrier; selected-package dependency closure, resolved package fingerprint, affected-consumer/version diagnostics, and package-directed result evidence; whether the empty artifacts index retains a justified package/index responsibility |
+| Responsibilities and consumers | Modular config loader, Jinja loader/analyzer, template engine, bootstrap composition, runtime catalog, persisted artifact source-provenance facts, package-directed non-artifact evidence where justified, graph metadata, and `.pgmcp/config/artifacts.yaml` |
+| Design-owned decisions | Dependency-edge model for inheritance/import/include and prohibited package edges; startup resolution and diagnostics; one declared runtime renderer; concise purpose carrier; automatic selected-package closure/fingerprint; one-manifest-version/no-file-version schema validation without external bump-history policing; compact persisted artifact provenance combining DI-02 package facts with the DI-06 source suite fingerprint; YAGNI admission of suite identity in non-artifact package-directed DTOs; whether the empty artifacts index retains a justified package/index responsibility |
 | Compatibility, migration, removal | Remove the implicit DTO override and historical registry/hash authority without compatibility shells; public schemas remain self-contained; suite mutations become restart-stable |
-| Required proof | Missing, cyclic, duplicate, unreachable, prohibited, and incoherent graph states fail actionably; schema, renderer, purpose, output profile, version, and fingerprint identify the same resolved package; a package-local change has no observable effect on any other package, and a shared change affects exactly its transitive consumers; repeated startup produces stable facts |
-| Exclusions | No historical template registry, adopted-artifact update system, or runtime purpose-discovery feature |
+| Required proof | Missing, cyclic, duplicate, unreachable, prohibited, and incoherent current-suite graph states fail actionably; schema, renderer, purpose, output profile, version, and resolved fingerprint identify the same package; a package-local change leaves every other package's semantic facts and affected-package diagnostics unchanged while only newly scaffolded artifacts may receive a new source suite fingerprint; shared changes affect exactly their transitive consumers; repeated startup produces stable facts. Ordinary resolution, introspection, and scaffolding use only the currently supplied suite and require no historical setup |
+| Exclusions | No historical template or Git/release association registry, history inspection, retention validator, snapshot archive/lookup service, absent-history failure/evidence state, external version-policy enforcement, adopted-artifact update system, or runtime purpose-discovery feature |
 
 ### DI-03 — Concrete Artifact Contracts, Renderer Semantics, and Portability
 
@@ -185,12 +185,12 @@ DI-05 remains one cohesive Design package and one authority for executable-capab
 
 | Dimension | Design intake |
 |---|---|
-| Research inputs | F-10; approved distribution/customization and deployment-compatibility strategies; the amended separation between complete-suite management identity and DI-02 selected-package provenance |
-| Responsibilities and consumers | CLI/init/upgrade flows, packaged template assets, active/custom/external roots, baseline evidence, staged candidates, adoption, release procedures, and the owner's two-machine/four-workspace migration |
-| Design-owned decisions | Complete-suite management identity and deterministic baseline/candidate comparison; detection of a proven unchanged official root; complete fast-forward versus preserved customized/unknown root; candidate location and inspection/adoption contract; atomic suite/config identity during renewal |
+| Research inputs | F-10; approved distribution/customization and deployment-compatibility strategies; one complete-suite fingerprint reused for management and persisted artifact source provenance; resolved package fingerprints supplied by DI-02 for precise affected-package analysis |
+| Responsibilities and consumers | CLI/init/upgrade flows, packaged template assets, active/custom/external roots, already available baseline evidence, staged candidates, adoption, managed packaged-suite release procedures, and the owner's two-machine/four-workspace migration; external/custom suite history and release-version policy remain workspace-owned |
+| Design-owned decisions | Automatic complete-suite fingerprint; deterministic comparison of already available managed baseline/candidate suites plus resolved-package impact comparison without a separate base fingerprint; detection of a proven unchanged official root; complete fast-forward versus preserved customized/unknown root; candidate location and inspection/adoption contract. No historical retention, Git/release association, lookup/indexing, reconstruction-availability, or external version-policy mechanism is Design-owned |
 | Compatibility, migration, removal | Never overwrite unproven customization or create mixed-version config/template roots; clean-break public changes are documented and manually migrated by the current owner |
-| Required proof | Fresh install, unchanged upgrade, customized upgrade, legacy-unknown root, external root, interrupted adoption, and packaged-wheel scenarios preserve the approved behavior; complete-suite identity remains available to management consumers without appearing in package-directed artifact/tool evidence |
-| Exclusions | No general historical registry, automatic artifact-content upgrades, cross-repository migration, or complete YAML artifact subset |
+| Required proof | Fresh install, unchanged upgrade, customized upgrade, legacy-unknown root, external root, interrupted adoption, and packaged-wheel scenarios preserve the approved behavior; already available snapshots compare deterministically, resolved package fingerprints identify affected consumers, external/custom roots remain preserved rather than automatically renewed, and newly persisted artifacts carry the four approved provenance facts. Ordinary upgrade and provenance fixtures use currently supplied or already available snapshots and require no historical-retention setup |
+| Exclusions | No general historical or Git/release association registry, retention validation, snapshot archive, provenance lookup/index, historical scan, reconstruction guarantee, external SemVer-history policing, absent-history evidence/control code, automatic artifact-content upgrades, cross-repository migration, or complete YAML artifact subset |
 
 ### DI-07 — Workflow Semantics, Agent-Instruction, and Documentation Alignment
 
@@ -255,7 +255,7 @@ This is a cross-cutting routing and integration obligation, not a removal subsys
 
 ### RC-01 — Approved Strategy Fidelity
 
-Research has approved compatibility and migration per boundary, including the human-approved F-10/F-11 amendment dated 2026-08-29. Fresh independent review is still required before these inputs authorize Design to resume. Design owns no new choice to preserve versus bridge versus clean break unless new evidence makes an approved strategy unsound.
+Research has approved compatibility and migration per boundary, including the ownership-corrected F-10/F-11 amendment dated 2026-08-30. The user reported targeted independent QA approval of that correction on the same date, so these inputs authorize Design to continue. Design owns no new choice to preserve versus bridge versus clean break unless new evidence makes an approved strategy unsound.
 
 | Obligation | Consequence |
 |---|---|
@@ -278,7 +278,7 @@ Research has approved compatibility and migration per boundary, including the hu
 | F-08 | DI-05 | Output-profile applicability and factual validation states; DI-04 owns the resulting mutation policy |
 | F-09 | DI-07 | Active documentation authority |
 | F-10 | DI-06 | Renewal and customization safety |
-| F-11 | DI-02 | Isolated selected-package provenance over local semantics and transitively reachable shared contributors |
+| F-11 | DI-02 | Isolated package semantic provenance plus compact persisted artifact source-suite provenance supplied by DI-06 |
 | F-12 | DI-01 | Canonical issue references and checklist items |
 | F-13 | DI-04 | Objective success and failure semantics |
 | F-14 | DI-03 | Portable package artifact families |
@@ -315,7 +315,7 @@ All 43 strategy rows from [Research](research.md#approved-strategy-and-decision-
 | Primary destination | Core invariants | Count |
 |---|---|---:|
 | DI-01 | I-05 finite reference-free public schemas; I-06 distinct optional/null/empty/default states; I-08 no template truth in generic server code/prose | 3 |
-| DI-02 | I-03 coherent selected-package schema/renderer/graph/profile/version/provenance, lateral package isolation, transitive shared impact, and separation from the F-10 renewal identity | 1 |
+| DI-02 | I-03 one package-manifest version, no file/shared versions, coherent resolved package semantics, transitive shared impact, unchanged lateral package diagnostics, and truthful source-suite fingerprint changes only in newly scaffolded artifacts | 1 |
 | DI-03 | I-01 discoverable renderer values; I-02 one meaning/effect per field; I-07 no hidden consumer-project dependencies | 3 |
 | DI-04 | I-04 validate unchanged caller context before envelope; I-09 portable body without persistence target; I-13 valid scaffold basis versus final completion | 3 |
 | DI-05 | I-16 one capability/provider/command/result authority | 1 |
@@ -330,7 +330,7 @@ All 43 strategy rows from [Research](research.md#approved-strategy-and-decision-
 | Primary destination | Expected results | Count |
 |---|---|---:|
 | DI-01 | E-04 stable optionality semantics; E-05 canonical links/issues/checklists; E-08 server does not own template content truth | 3 |
-| DI-02 | E-02 schema describes resolved renderer graph; E-07 separates coherent complete-suite management evidence from isolated selected-package provenance, with DI-06 as the management consumer | 2 |
+| DI-02 | E-02 schema describes resolved renderer graph; E-07 combines isolated automatic package identity with DI-06 complete-suite equality evidence in persisted artifact provenance, conditional on owner-supplied historical sources and without a lookup guarantee | 2 |
 | DI-03 | E-01 caller constructs every supported concrete shape; E-06 explicit role for every concrete field; E-10 generic names conceal no project assumptions | 3 |
 | DI-04 | E-03 accepted context reaches valid governed persistence; E-11 portable output without host paths; E-18 complete-result safe-edit validation and mutation policy | 3 |
 | DI-05 | E-13 validity/availability/strictness remain distinct factual inputs; E-20 shared capability authority with independent evidence | 2 |
@@ -347,11 +347,11 @@ The [Template Suite Work Catalog](template-suite-catalog.md) remains authoritati
 | Consumer family | Primary destination | Material dependent packages |
 |---|---|---|
 | Contract metamodel, shared schema primitives, artifact IDs, public schema resolution, package-owned tests, and superseded schema surfaces | DI-01 | DI-02, DI-03, DI-04, DI-07, DI-08 |
-| Jinja graph, loader, runtime catalog, selected-package metadata, purpose, resolved package provenance, package-impact diagnostics, package-owned tests, and obsolete graph/registry surfaces | DI-02 | DI-03, DI-04, DI-06, DI-08, XC-02 |
+| Jinja graph, loader, runtime catalog, package-manifest version authority, resolved package provenance, compact persisted artifact provenance, package-impact diagnostics, package-owned tests, and obsolete graph/registry surfaces | DI-02 | DI-03, DI-04, DI-06, DI-08, XC-02 |
 | Concrete artifact config/schema instances, retained/removed templates, macros, examples, output-profile assignments, and package-owned tests | DI-03 | DI-01, DI-02, DI-05, DI-07, DI-08, XC-02 |
 | Scaffold and safe-edit tools, mutation orchestration, mutation-operation DTOs, target resolution, strict/interactive policy, atomicity, persistence, package-owned tests, and superseded helpers | DI-04 | DI-01, DI-02, DI-05, DI-08, XC-02 |
 | Validation capabilities, factual check-result DTOs, output-profile/quality selectors, quality orchestration, quality-operation DTOs, quality presentation, package-owned tests, and legacy validation surfaces | DI-05 | DI-04, DI-08, XC-02 |
-| CLI/init/upgrade, package assets, root resolution, complete-suite management identity, baseline/candidate comparison, release procedures, package-owned tests, and obsolete distribution residues | DI-06 | DI-02, DI-03, DI-08, XC-02 |
+| CLI/init/upgrade, package assets, root resolution, complete-suite/source-suite fingerprint, already-available baseline/candidate and affected-package comparison, managed packaged-suite release procedures, package-owned tests, and obsolete distribution residues; external history/release policy is explicitly owner-owned | DI-06 | DI-02, DI-03, DI-08, XC-02 |
 | Contracts, phase instructions, agent variants, manuals, active references, package-owned tests, and stale instruction/documentation consumers | DI-07 | DI-01–DI-06, DI-08, XC-02 |
 | Cross-package legacy-removal routing and integration constraint | XC-02 | DI-01–DI-08 |
 | Shared test architecture, fixtures/helpers, cross-package regression/integration evidence, ownerless obsolete tests, and removal-completeness audit | DI-08 | DI-01–DI-07, XC-01, XC-02 |
@@ -385,7 +385,7 @@ Design cannot claim complete intake while any coverage matrix entry lacks a corr
 
 ## Coverage Audit
 
-The amendment changes no counts or primary destinations: F-11 remains DI-02-owned and F-10 remains DI-06-owned. The identity separation and consumer dependency are now explicit and were accepted by fresh independent Research review.
+The third correction changes no counts or primary destinations: F-11 remains DI-02-owned and consumes the DI-06 source suite fingerprint for persisted artifact provenance; F-10 remains DI-06-owned only for safe management and comparison of currently supplied or already available managed snapshots. External/workspace history retention, release-version policy, tags/releases, lookup/indexing, and reconstruction availability are owner responsibilities outside PGMCP. The user-reported targeted independent QA confirmation closes the Research reservation and authorizes Design to continue.
 
 | Research authority | Expected | Mapped | Primary-ownership result |
 |---|---:|---:|---|
@@ -405,7 +405,7 @@ The authoritative [Deferred Work](deferred-work.md) remains the complete deferre
 - a command/query service artifact family;
 - purpose-aware runtime artifact discovery;
 - S1mpleTrader-local specialization or cross-repository migration;
-- a generic historical template registry or automatic updates of adopted artifact content.
+- a generic historical template or Git/release association registry, retention validator, snapshot archive, provenance lookup/index, historical scan, external version-policy enforcement, reconstruction guarantee, absent-history evidence/control code, or automatic updates of adopted artifact content.
 
 ## Related Documentation
 
@@ -424,6 +424,10 @@ The authoritative [Deferred Work](deferred-work.md) remains the complete deferre
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.13 | 2026-08-30 | `@imp researcher` | Record the user-reported targeted independent QA approval, close the Research reservation, and authorize Design continuation without changing intake ownership. |
+| 1.12 | 2026-08-30 | `@imp researcher` | Remove unintended negative proof obligations: ordinary current-suite and available-snapshot behavior requires no historical setup; excluded retention/lookup mechanisms remain Exclusions only. |
+| 1.11 | 2026-08-30 | `@imp researcher` | Address the independent QA ownership finding: retain DI-02/DI-06 fingerprint and provenance routing while removing historical retention, association, lookup, reconstruction, and external-version enforcement from PGMCP Design; request targeted confirmation. |
+| 1.10 | 2026-08-30 | `@imp researcher` | Route the second F-10/F-11 amendment: DI-02 owns automatic package identity and compact artifact provenance, DI-06 owns the complete/source-suite fingerprint and immutable snapshot association, and fresh review is required. |
 | 1.9 | 2026-08-29 | `@imp researcher` | Record the fresh independent QA GO for the amended F-10/F-11 boundary and authorize Design to reconcile its superseded global-provenance decisions first. |
 | 1.8 | 2026-08-29 | `@imp researcher` | Route the human-approved F-10/F-11 identity amendment: DI-06 owns complete-suite management identity, DI-02 owns isolated selected-package provenance, and fresh independent review is required. |
 | 1.7 | 2026-08-27 | `@imp designer` | Link the issue-local pre-implementation documentation contract as the form and navigation authority. |

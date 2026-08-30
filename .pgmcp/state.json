@@ -17,7 +17,7 @@
     "ready"
   ],
   "execution_mode": "interactive",
-  "skip_reason": "Design evidence exposed that F-11/S-16 conflates complete-suite management identity with selected template-package provenance. The human explicitly approved correcting Research through a dedicated researcher, so the binding strategy must be reopened rather than changed during Design by stealth.",
+  "skip_reason": "Administrative correction: Research was explicitly reopened and independently re-approved while workflow state remained Design; return to Research only to commit the approved Research amendment under the correct phase before normal progression back to Design.",
   "issue_title": "Audit scaffolding schema-template rendering contracts",
   "parent_branch": "main",
   "created_at": "2026-08-22T19:45:36.738143+00:00",
@@ -37,6 +37,22 @@
       "human_approval_message": "Ja dat moet gebeuren, maar betekend dit dat research wordt geraakt? Want als dat het geval is moeten we secuur te werk gaan. Ik leuk dan erg op de gedachte om de research agent die eerder actief was deze wijziging op basis van een duidelijke overdracht van jou uit te laten voeren.",
       "forced": true,
       "skip_reason": "Design evidence exposed that F-11/S-16 conflates complete-suite management identity with selected template-package provenance. The human explicitly approved correcting Research through a dedicated researcher, so the binding strategy must be reopened rather than changed during Design by stealth."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-29T16:30:22.253959+00:00",
+      "human_approval_message": "Go voor hervatten van design, lees bijgevoegde qa review.",
+      "forced": false,
+      "skip_reason": null
+    },
+    {
+      "from_phase": "design",
+      "to_phase": "research",
+      "timestamp": "2026-08-30T13:09:46.953421+00:00",
+      "human_approval_message": "QA is akkoord, we gaan door!",
+      "forced": true,
+      "skip_reason": "Administrative correction: Research was explicitly reopened and independently re-approved while workflow state remained Design; return to Research only to commit the approved Research amendment under the correct phase before normal progression back to Design."
     }
   ],
   "reconstructed": false,

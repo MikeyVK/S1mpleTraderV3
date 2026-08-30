@@ -3,8 +3,8 @@
 # Issue 460 Pre-Implementation Documentation Contract
 
 **Status:** DEFINITIVE  
-**Version:** 1.2  
-**Last Updated:** 2026-08-29
+**Version:** 1.5  
+**Last Updated:** 2026-08-30
 
 ---
 
@@ -60,11 +60,13 @@ source of truth.
 
 ## Research Documentation Structure
 
-Research was explicitly reopened on 2026-08-29 for the bounded F-10/F-11 identity
-amendment discovered during Design. The previous unconditional Design GO remains
-historical evidence for the superseded suite-scoped provenance interpretation. Fresh
-independent review accepted the amendment and granted an unconditional GO to resume
-Design, whose first activity must reconcile the superseded global-provenance decisions.
+Research closed definitively on 2026-08-30 after the user reported that the independent
+QA authority approved the third narrowly bounded F-10/F-11 ownership correction. The
+approved two-fingerprint direction and compact persisted artifact provenance remain
+unchanged; only the overbroad PGMCP promise for historical retention and lookup is
+removed. The unconditional Design GO dated 2026-08-29 remains historical evidence for
+the superseded first-amendment interpretation. The targeted 2026-08-30 confirmation
+supersedes the later pending gate and authorizes Design to continue.
 
 | Document | Authority and Responsibility |
 |---|---|
@@ -75,7 +77,7 @@ Design, whose first activity must reconcile the superseded global-provenance dec
 | [probe-evidence.yaml](probe-evidence.yaml) | Reproducible structured probe observations; evidence rather than policy |
 | [deferred-work.md](deferred-work.md) | Explicit exclusions and post-issue work that Design must not absorb |
 | [design-intake-map.md](design-intake-map.md) | Authoritative routing from findings, strategies, invariants, expected results, consumers, and removals into DI-01–DI-08, XC-01–XC-02, and RC-01 |
-| [research-to-design-qa-audit.md](research-to-design-qa-audit.md) | Independent Research review history, including the 2026-08-29 unconditional Design GO for the F-10/F-11 amendment |
+| [research-to-design-qa-audit.md](research-to-design-qa-audit.md) | Independent point-in-time Research review history; the user separately reported targeted independent QA approval of the third ownership correction on 2026-08-30, so no Research gate remains pending |
 | [validation-quality-gates-brainstorm-handover.md](validation-quality-gates-brainstorm-handover.md) | Historical exploratory input for the validation/quality boundary; not a current gate or Design authority |
 
 Research documents retain detailed ledgers. Design documents reference their stable IDs
@@ -272,6 +274,9 @@ The pre-implementation documentation contract is satisfied when:
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.5 | 2026-08-30 | `@imp researcher` | Record the user-reported targeted independent QA approval, close the Research gate, and index the unconditional Design GO. |
+| 1.4 | 2026-08-30 | `@imp researcher` | Index the third F-10/F-11 ownership correction, record that the QA finding is addressed, and retain targeted independent confirmation as the active gate. |
+| 1.3 | 2026-08-30 | `@imp researcher` | Reflect the second F-10/F-11 Research reopening and mark the prior QA GO as point-in-time evidence pending fresh review. |
 | 1.2 | 2026-08-29 | `@imp researcher` | Record the independent amendment review and unconditional GO to resume Design with global-provenance reconciliation first. |
 | 1.1 | 2026-08-29 | `@imp researcher` | Reflect the bounded F-10/F-11 Research reopening and require current gate status to follow the canonical Research artifact. |
 | 1.0 | 2026-08-27 | `@imp designer` | Establish the issue-local Research and Design documentation topology, ownership rules, required Design sections, traceability contract, and hands-on workshop workflow. |
