@@ -3,7 +3,7 @@
   "branch": "refactor/460-audit-scaffolding-schema-template-contracts",
   "issue_number": 460,
   "workflow_name": "refactor",
-  "current_phase": "research",
+  "current_phase": "design",
   "current_cycle": null,
   "last_cycle": null,
   "cycle_history": [],
@@ -53,6 +53,14 @@
       "human_approval_message": "QA is akkoord, we gaan door!",
       "forced": true,
       "skip_reason": "Administrative correction: Research was explicitly reopened and independently re-approved while workflow state remained Design; return to Research only to commit the approved Research amendment under the correct phase before normal progression back to Design."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "design",
+      "timestamp": "2026-08-30T13:10:12.309664+00:00",
+      "human_approval_message": "QA is akkoord, we gaan door!",
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false,
